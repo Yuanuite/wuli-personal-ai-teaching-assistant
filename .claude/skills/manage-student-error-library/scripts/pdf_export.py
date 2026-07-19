@@ -15,6 +15,7 @@ from typing import Any
 
 
 IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)(?:\{width=\d+%\})?")
+_PANDOC_IMAGE_RE = re.compile(r"(!\[[^\]]*\]\([^)\s]+\))(?!\{width=)")
 
 
 def generate_markdown_pdf(
@@ -48,54 +49,111 @@ def generate_markdown_pdf(
     return fallback
 
 
+_PANDOC_SAFE_EXTENSIONS = {".webp", ".svg", ".gif", ".bmp", ".tiff", ".tif"}
+
+def _prerender_svgs(markdown: str, base: Path) -> tuple[str, list[Path]]:
+    """Pre-render images that pandoc/xelatex cannot reliably handle to 1200px-wide PNGs."""
+    rsvg = shutil.which("rsvg-convert")
+    rendered: list[Path] = []
+    try:
+        from PIL import Image as PILImage
+    except Exception:
+        PILImage = None
+
+    def _replace(m: re.Match) -> str:
+        target = m.group(2).split("#", 1)[0]
+        source = base / target
+        if not source.is_file():
+            return m.group(0)
+        suffix = source.suffix.lower()
+        png = source.with_suffix(".pdfgen.png")
+        ok = False
+        if suffix == ".svg" and rsvg:
+            res = subprocess.run(
+                [rsvg, "-f", "png", "-w", "1200", "-o", str(png), str(source)],
+                capture_output=True, text=True, timeout=30, check=False,
+            )
+            ok = res.returncode == 0 and png.is_file()
+        elif suffix in _PANDOC_SAFE_EXTENSIONS and PILImage:
+            try:
+                with PILImage.open(source) as img:
+                    img.load()
+                    w, h = img.size
+                    if w > 1600:
+                        img = img.resize((1200, int(h * 1200 / w)), PILImage.LANCZOS)
+                    img.convert("RGB").save(png)
+                ok = png.is_file()
+            except Exception:
+                pass
+        if not ok:
+            return m.group(0)
+        old = m.group(0)
+        rendered.append(png)
+        return old.replace(target, str(png.relative_to(base)))
+
+    return IMAGE_RE.sub(_replace, markdown), rendered
+
+
 def _try_pandoc(markdown_path: Path, pdf_path: Path, success_status: str) -> dict[str, Any]:
     pandoc = shutil.which("pandoc")
     xelatex = shutil.which("xelatex")
     if not pandoc or not xelatex:
         return {"status": "skipped", "reason": "pandoc or xelatex not found"}
+    raw = markdown_path.read_text(encoding="utf-8")
+    # Pre-render SVGs to PNG to avoid pandoc producing huge intermediate bitmaps
+    raw, svg_rendered = _prerender_svgs(raw, markdown_path.parent)
+    # Add width limit to images to prevent xelatex "Dimension too large"
+    raw = _PANDOC_IMAGE_RE.sub(r"\1{width=90%}", raw)
+    tmp_md = markdown_path.with_suffix(".pandoc.md")
+    tmp_md.write_text(raw, encoding="utf-8")
     last_error = ""
-    for font in ("STSong", "Heiti SC", "PingFang SC", "Arial Unicode MS"):
-        result = subprocess.run(
-            [
-                pandoc,
-                markdown_path.name,
-                "-o",
-                pdf_path.name,
-                "--pdf-engine=xelatex",
-                "-V",
-                f"mainfont={font}",
-                "-V",
-                f"CJKmainfont={font}",
-                "-V",
-                "geometry:margin=2cm",
-                "-V",
-                "fontsize=11pt",
-                "-V",
-                "linestretch=1.25",
-                "-V",
-                "colorlinks=true",
-                "--from",
-                "markdown+tex_math_dollars+raw_tex",
-                "--standalone",
-            ],
-            cwd=markdown_path.parent,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
-        )
-        if result.returncode == 0 and pdf_path.is_file():
-            return {
-                "status": success_status,
-                "file": pdf_path.name,
-                "path": str(pdf_path),
-                "size": pdf_path.stat().st_size,
-                "engine": "pandoc-xelatex",
-                "font": font,
-            }
-        last_error = (result.stderr or result.stdout or "PDF generation failed").strip()[-800:]
-        pdf_path.unlink(missing_ok=True)
-    return {"status": "skipped", "reason": last_error or "PDF generation failed", "engine": "pandoc-xelatex"}
+    try:
+        for font in ("STSong", "Heiti SC", "PingFang SC", "Arial Unicode MS"):
+            result = subprocess.run(
+                [
+                    pandoc,
+                    tmp_md.name,
+                    "-o",
+                    pdf_path.name,
+                    "--pdf-engine=xelatex",
+                    "-V",
+                    f"mainfont={font}",
+                    "-V",
+                    f"CJKmainfont={font}",
+                    "-V",
+                    "geometry:margin=2cm",
+                    "-V",
+                    "fontsize=11pt",
+                    "-V",
+                    "linestretch=1.25",
+                    "-V",
+                    "colorlinks=true",
+                    "--from",
+                    "markdown+tex_math_dollars+raw_tex",
+                    "--standalone",
+                ],
+                cwd=markdown_path.parent,
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=False,
+            )
+            if result.returncode == 0 and pdf_path.is_file():
+                return {
+                    "status": success_status,
+                    "file": pdf_path.name,
+                    "path": str(pdf_path),
+                    "size": pdf_path.stat().st_size,
+                    "engine": "pandoc-xelatex",
+                    "font": font,
+                }
+            last_error = (result.stderr or result.stdout or "PDF generation failed").strip()[-800:]
+            pdf_path.unlink(missing_ok=True)
+        return {"status": "skipped", "reason": last_error or "PDF generation failed", "engine": "pandoc-xelatex"}
+    finally:
+        tmp_md.unlink(missing_ok=True)
+        for png in svg_rendered:
+            png.unlink(missing_ok=True)
 
 
 def _try_reportlab(markdown_path: Path, pdf_path: Path, success_status: str) -> dict[str, Any]:

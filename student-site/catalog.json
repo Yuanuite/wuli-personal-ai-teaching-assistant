@@ -1,123 +1,63 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-20T07:00:50+08:00",
+  "generated_at": "2026-07-20T07:15:30+08:00",
   "questions": [
     {
-      "id": "question-212ecbad04d3",
-      "title": "带电粒子在同心圆复合场中的运动",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "洛伦兹力方向",
-        "带电粒子在匀强磁场中的圆周运动",
-        "电场力做功与动能定理",
-        "圆周运动几何关系"
-      ],
-      "content": "questions/question-212ecbad04d3/content.md",
-      "pdf": "questions/question-212ecbad04d3/带答案错题.pdf",
-      "simulation": "questions/question-212ecbad04d3/simulation.html",
-      "published_at": "2026-07-20T07:00:50+08:00"
-    },
-    {
-      "id": "question-cf1c40d5261d",
-      "title": "带电微粒在正交复合场中沿直线运动",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "复合场中的受力平衡",
-        "洛伦兹力方向",
-        "带电粒子直线运动"
-      ],
-      "content": "questions/question-cf1c40d5261d/content.md",
-      "pdf": "questions/question-cf1c40d5261d/带答案错题.pdf",
-      "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
-    },
-    {
-      "id": "question-1ffa341ff73a",
-      "title": "内外反向圆形磁场中的周期轨迹",
+      "id": "question-fc379ca42475",
+      "title": "两同向分区磁场中带电粒子的运动与相遇",
       "subject": "高中物理",
       "knowledge_points": [
         "带电粒子在匀强磁场中的圆周运动",
-        "圆形有界磁场",
-        "交替磁场轨迹几何"
+        "分区域磁场轨迹",
+        "多粒子相遇",
+        "平均速度"
       ],
-      "content": "questions/question-1ffa341ff73a/content.md",
-      "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
-      "simulation": "questions/question-1ffa341ff73a/simulation.html",
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "content": "questions/question-fc379ca42475/content.md",
+      "pdf": "questions/question-fc379ca42475/带答案错题.pdf",
+      "simulation": "questions/question-fc379ca42475/simulation.html",
+      "published_at": "2026-07-20T07:15:30+08:00"
     },
     {
-      "id": "question-7c895bdfc8a3",
-      "title": "测电源电动势内阻与输出功率图像",
+      "id": "question-68c8b4e26b37",
+      "title": "航拍直升机电池容量与能量转化",
       "subject": "高中物理",
       "knowledge_points": [
-        "测量电源电动势和内阻",
-        "U-I图像",
-        "电源输出功率"
+        "电池容量",
+        "非纯电阻电路",
+        "能量转化"
       ],
-      "content": "questions/question-7c895bdfc8a3/content.md",
-      "pdf": "questions/question-7c895bdfc8a3/带答案错题.pdf",
+      "content": "questions/question-68c8b4e26b37/content.md",
+      "pdf": "questions/question-68c8b4e26b37/带答案错题.pdf",
       "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "published_at": "2026-07-20T07:15:24+08:00"
     },
     {
-      "id": "question-5a662eb6b6c7",
-      "title": "变化磁场中悬挂线框的电流与拉力",
+      "id": "question-74ea50e28b41",
+      "title": "正方体上下表面两通电导体棒的作用",
       "subject": "高中物理",
       "knowledge_points": [
-        "楞次定律",
-        "法拉第电磁感应定律",
+        "通电直导线的磁场",
         "安培力",
-        "感应电荷量"
+        "力矩方向"
       ],
-      "content": "questions/question-5a662eb6b6c7/content.md",
-      "pdf": "questions/question-5a662eb6b6c7/带答案错题.pdf",
+      "content": "questions/question-74ea50e28b41/content.md",
+      "pdf": "questions/question-74ea50e28b41/带答案错题.pdf",
       "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "published_at": "2026-07-20T07:15:21+08:00"
     },
     {
-      "id": "question-b1625e7b2228",
-      "title": "正方形线框匀速穿越宽磁场",
+      "id": "question-f703825b69fd",
+      "title": "带电粒子先过电场再进入有界磁场",
       "subject": "高中物理",
       "knowledge_points": [
-        "线框穿越有界磁场",
-        "动生电动势",
-        "安培力",
-        "焦耳热"
+        "带电粒子在匀强电场中的类平抛",
+        "带电粒子在匀强磁场中的圆周运动",
+        "有界磁场相切条件"
       ],
-      "content": "questions/question-b1625e7b2228/content.md",
-      "pdf": "questions/question-b1625e7b2228/带答案错题.pdf",
-      "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
-    },
-    {
-      "id": "question-af67027e2f4e",
-      "title": "导体棒依次穿过两个磁场的速度图像",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "电磁感应中的导体棒",
-        "安培力与终端速度",
-        "速度—时间图像",
-        "感应电荷量"
-      ],
-      "content": "questions/question-af67027e2f4e/content.md",
-      "pdf": "questions/question-af67027e2f4e/带答案错题.pdf",
-      "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
-    },
-    {
-      "id": "question-4b77c1556367",
-      "title": "可变磁场驱动的电磁天平",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "法拉第电磁感应定律",
-        "楞次定律",
-        "安培力",
-        "电磁天平"
-      ],
-      "content": "questions/question-4b77c1556367/content.md",
-      "pdf": "questions/question-4b77c1556367/带答案错题.pdf",
-      "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "content": "questions/question-f703825b69fd/content.md",
+      "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
+      "simulation": "questions/question-f703825b69fd/simulation.html",
+      "published_at": "2026-07-20T07:15:17+08:00"
     },
     {
       "id": "question-baa157722303",
@@ -132,64 +72,124 @@
       "content": "questions/question-baa157722303/content.md",
       "pdf": "questions/question-baa157722303/带答案错题.pdf",
       "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "published_at": "2026-07-20T07:15:12+08:00"
     },
     {
-      "id": "question-f703825b69fd",
-      "title": "带电粒子先过电场再进入有界磁场",
+      "id": "question-4b77c1556367",
+      "title": "可变磁场驱动的电磁天平",
       "subject": "高中物理",
       "knowledge_points": [
-        "带电粒子在匀强电场中的类平抛",
-        "带电粒子在匀强磁场中的圆周运动",
-        "有界磁场相切条件"
-      ],
-      "content": "questions/question-f703825b69fd/content.md",
-      "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
-      "simulation": "questions/question-f703825b69fd/simulation.html",
-      "published_at": "2026-07-20T07:00:50+08:00"
-    },
-    {
-      "id": "question-74ea50e28b41",
-      "title": "正方体上下表面两通电导体棒的作用",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "通电直导线的磁场",
+        "法拉第电磁感应定律",
+        "楞次定律",
         "安培力",
-        "力矩方向"
+        "电磁天平"
       ],
-      "content": "questions/question-74ea50e28b41/content.md",
-      "pdf": "questions/question-74ea50e28b41/带答案错题.pdf",
+      "content": "questions/question-4b77c1556367/content.md",
+      "pdf": "questions/question-4b77c1556367/带答案错题.pdf",
       "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "published_at": "2026-07-20T07:15:07+08:00"
     },
     {
-      "id": "question-68c8b4e26b37",
-      "title": "航拍直升机电池容量与能量转化",
+      "id": "question-af67027e2f4e",
+      "title": "导体棒依次穿过两个磁场的速度图像",
       "subject": "高中物理",
       "knowledge_points": [
-        "电池容量",
-        "非纯电阻电路",
-        "能量转化"
+        "电磁感应中的导体棒",
+        "安培力与终端速度",
+        "速度—时间图像",
+        "感应电荷量"
       ],
-      "content": "questions/question-68c8b4e26b37/content.md",
-      "pdf": "questions/question-68c8b4e26b37/带答案错题.pdf",
+      "content": "questions/question-af67027e2f4e/content.md",
+      "pdf": "questions/question-af67027e2f4e/带答案错题.pdf",
       "simulation": null,
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "published_at": "2026-07-20T07:15:02+08:00"
     },
     {
-      "id": "question-fc379ca42475",
-      "title": "两同向分区磁场中带电粒子的运动与相遇",
+      "id": "question-b1625e7b2228",
+      "title": "正方形线框匀速穿越宽磁场",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "线框穿越有界磁场",
+        "动生电动势",
+        "安培力",
+        "焦耳热"
+      ],
+      "content": "questions/question-b1625e7b2228/content.md",
+      "pdf": "questions/question-b1625e7b2228/带答案错题.pdf",
+      "simulation": null,
+      "published_at": "2026-07-20T07:14:56+08:00"
+    },
+    {
+      "id": "question-5a662eb6b6c7",
+      "title": "变化磁场中悬挂线框的电流与拉力",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "楞次定律",
+        "法拉第电磁感应定律",
+        "安培力",
+        "感应电荷量"
+      ],
+      "content": "questions/question-5a662eb6b6c7/content.md",
+      "pdf": "questions/question-5a662eb6b6c7/带答案错题.pdf",
+      "simulation": null,
+      "published_at": "2026-07-20T07:14:52+08:00"
+    },
+    {
+      "id": "question-7c895bdfc8a3",
+      "title": "测电源电动势内阻与输出功率图像",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "测量电源电动势和内阻",
+        "U-I图像",
+        "电源输出功率"
+      ],
+      "content": "questions/question-7c895bdfc8a3/content.md",
+      "pdf": "questions/question-7c895bdfc8a3/带答案错题.pdf",
+      "simulation": null,
+      "published_at": "2026-07-20T07:14:48+08:00"
+    },
+    {
+      "id": "question-1ffa341ff73a",
+      "title": "内外反向圆形磁场中的周期轨迹",
       "subject": "高中物理",
       "knowledge_points": [
         "带电粒子在匀强磁场中的圆周运动",
-        "分区域磁场轨迹",
-        "多粒子相遇",
-        "平均速度"
+        "圆形有界磁场",
+        "交替磁场轨迹几何"
       ],
-      "content": "questions/question-fc379ca42475/content.md",
-      "pdf": "questions/question-fc379ca42475/带答案错题.pdf",
-      "simulation": "questions/question-fc379ca42475/simulation.html",
-      "published_at": "2026-07-20T07:00:50+08:00"
+      "content": "questions/question-1ffa341ff73a/content.md",
+      "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
+      "simulation": "questions/question-1ffa341ff73a/simulation.html",
+      "published_at": "2026-07-20T07:14:43+08:00"
+    },
+    {
+      "id": "question-cf1c40d5261d",
+      "title": "带电微粒在正交复合场中沿直线运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "复合场中的受力平衡",
+        "洛伦兹力方向",
+        "带电粒子直线运动"
+      ],
+      "content": "questions/question-cf1c40d5261d/content.md",
+      "pdf": "questions/question-cf1c40d5261d/带答案错题.pdf",
+      "simulation": null,
+      "published_at": "2026-07-20T07:14:37+08:00"
+    },
+    {
+      "id": "question-212ecbad04d3",
+      "title": "带电粒子在同心圆复合场中的运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "洛伦兹力方向",
+        "带电粒子在匀强磁场中的圆周运动",
+        "电场力做功与动能定理",
+        "圆周运动几何关系"
+      ],
+      "content": "questions/question-212ecbad04d3/content.md",
+      "pdf": "questions/question-212ecbad04d3/带答案错题.pdf",
+      "simulation": "questions/question-212ecbad04d3/simulation.html",
+      "published_at": "2026-07-20T07:14:34+08:00"
     }
   ]
 }
