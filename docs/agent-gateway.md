@@ -143,7 +143,7 @@ queued → running → completed
                  ↘ failed
 ```
 
-页面可离开当前 Tab；任务完成后自动刷新。刷新浏览器时，条目详情会返回最近作业并恢复轮询。相同条目同一时刻只允许一个 Agent 修改任务，不同条目可以并行。作业记录显示请求档位、实际模型档位、模型名和 provider 返回的 token 用量；CLI 无法提供这些数据时字段为空，不估算。作业目录权限收紧为 `0700`、记录文件为 `0600`；公开作业 API 不返回 provider 的原始 stdout/stderr。Gateway 作业状态与题目 `pipeline.json` 状态相互独立。
+页面可离开当前 Tab；任务完成后自动刷新。刷新浏览器时，条目详情会返回最新作业并恢复轮询。相同条目同一时刻只允许一个 Agent 修改任务，不同条目可以并行。作业记录显示请求档位、实际模型档位、模型名和 provider 返回的 token 用量；CLI 无法提供这些数据时字段为空，不估算。作业目录权限收紧为 `0700`、记录文件为 `0600`；公开作业 API 不返回 provider 的原始 stdout/stderr。Gateway 作业状态与题目 `pipeline.json` 状态相互独立。
 
 常用检查：
 
@@ -160,7 +160,7 @@ curl -fsS "http://127.0.0.1:8787/api/jobs?entry_id=ENTRY_ID"
 
 | 现象 | 含义与处理 |
 |---|---|
-| provider 显示不可用 | 查看版本、缺失参数、主动探测或最近一次熔断原因；修复后重试 probe |
+| provider 显示不可用 | 查看版本、缺失参数、主动探测或上次熔断原因；修复后重试 probe |
 | 第一 provider 失败后切到第二个 | 启动失败发生在任何候选修改之前，属于安全降级 |
 | “候选未通过范围或内容校验” | canonical 未提升；查看 `unauthorized_changes` 或 `validation_errors` |
 | 作业因服务重启失败 | 重新提交；系统不会复用状态不明的旧进程 |

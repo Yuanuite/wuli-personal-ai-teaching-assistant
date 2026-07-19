@@ -155,8 +155,8 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 - OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求，默认 300 秒；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。
 - OCR：优先 Apple Vision 本地识别；失败时保留可复核条目，不丢弃原图。远程 OCR 必须先取得授权。
 - 视觉复核：边车失败、返回不确定项或无可用边车时生成教师复核单；绝不以 OCR 置信度代替复核。
-- PDF：PDF 工具链不可用时，继续交付 Markdown，并在 manifest 的 `pdf` 字段记录跳过原因。
-- 公开 PDF：公开题图会重新参与 PDF 生成；字体或 WebP 支持缺失时允许记为 `skipped`，不阻断安全的 Markdown 页面发布，学生站不得展示不存在的下载链接。
+- PDF：本地交付优先使用 `pandoc+xelatex` 生成 `带答案错题.pdf`；失败时降级到 Python `reportlab`。两条链路都不可用时继续交付 Markdown，并在 manifest 的 `pdf` 字段记录跳过原因。
+- 公开 PDF：公开题图会重新参与 PDF 生成，输出文件名固定为 `带答案错题.pdf`，下载入口只在具体题目阅读页显示。公开端不得直接复制私有 `output/` 中的 PDF；必须从脱敏后的 `content.md` 和公开题图重新生成。`pandoc+xelatex` 失败时降级到 `reportlab`，降级版保留 Markdown 中的 LaTeX 编码；若仍失败则记为 `skipped`，不阻断安全的 Markdown 页面发布，学生站不得展示不存在的下载链接。
 - JSON Schema：需要 Python `jsonschema`。缺失时模型验证失败，不把未校验模型标为成功。
 - 浏览器运行时：需要 Node.js、Playwright 和可启动的 Chromium。依赖不存在时 `runtime_check.status=skipped`；浏览器成功启动但页面或控件报错时为 `failed`，阻止交付。
 - 不支持的 `model_type`：仿真构建明确失败，不套用错误模板。

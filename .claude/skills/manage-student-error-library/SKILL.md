@@ -87,7 +87,7 @@ python3 <skill-dir>/scripts/process_uploads.py \
 
 Return only artifacts recorded in `delivery-manifest.json`. The final directory includes Markdown, PDF when available, optional simulator, and `student-package.zip`.
 
-Public student-site publication is a separate, explicit post-delivery action. For entries with source images, first create a non-destructive cropped/redacted WebP copy through `save_public_images`; record the source/output digests and teacher approval in `publication-images.json`. Never treat automatic cropping as privacy approval. Then run `scripts/public_site.py prepare <entry-id>`, show the private `publication-draft/`, and require the teacher's privacy confirmation before `publish`. Publish only the allowlisted student Markdown, teacher-approved public question images, a PDF regenerated from that sanitized Markdown when available, referenced safe answer images, and a teacher-approved simulator. Never publish source uploads, teacher answers, internal IDs/JSON, manifests, review evidence, absolute paths, or unapproved simulations. Copy into `student-site/` only; never initialize, commit, or push GitHub without a separate explicit request.
+Public student-site publication is a separate, explicit post-delivery action. For entries with source images, first create a non-destructive cropped/redacted WebP copy through `save_public_images`; record the source/output digests and teacher approval in `publication-images.json`. Never treat automatic cropping as privacy approval. Then run `scripts/public_site.py prepare <entry-id>`, show the private `publication-draft/`, and require the teacher's privacy confirmation before `publish`. Publish only the allowlisted student Markdown, teacher-approved public question images, a public-chain `带答案错题.pdf` regenerated from sanitized Markdown and public images when available, referenced safe answer images, and a teacher-approved simulator. Never publish source uploads, teacher answers, internal IDs/JSON, manifests, review evidence, absolute paths, private output PDFs, or unapproved simulations. Copy into `student-site/` only; never initialize, commit, or push GitHub without a separate explicit request.
 
 Do not pause for routine confirmation. Pause only for unresolved source ambiguity, permission to upload private material remotely, or a required dependency without a safe fallback.
 
@@ -134,7 +134,7 @@ When the user asks for薄弱点分析 or 复习错题:
 2. **Distinguish frequency from weakness** — a knowledge point appearing 5× in stats means it was tested 5×, not necessarily that the student is weakest at it. Cross-check with `review` correctness records: high error rate on a rare topic > low error rate on a frequent topic.
 3. **Present as a ranked table** — top 3-5 knowledge points by (error count × avg difficulty), not by raw frequency. Example output:
    ```
-   | 知识点 | 错题数 | 平均难度 | 最近一次错误 | 建议 |
+   | 知识点 | 错题数 | 平均难度 | 错误日期 | 建议 |
    |--------|--------|---------|-------------|------|
    | 带电粒子在磁场中的圆周运动 | 3 | 4/5 | 2026-07-17 | 重点复习几何约束 + 多解枚举 |
    ```

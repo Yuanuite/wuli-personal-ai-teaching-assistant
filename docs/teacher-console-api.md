@@ -25,7 +25,7 @@ X-Teacher-Console: 1
 | `GET /api/health` | 服务状态、项目位置、选中 provider、版本、能力和数据位置 |
 | `GET /api/agent/providers` | 当前 Gateway provider 探测快照 |
 | `GET /api/jobs/<job-id>` | 轮询后台 Agent 作业 |
-| `GET /api/jobs?entry_id=<entry-id>` | 找回某题最近一次后台作业 |
+| `GET /api/jobs?entry_id=<entry-id>` | 找回某题最新后台作业 |
 | `GET /api/entries` | 条目摘要及本地文件夹分组 |
 | `GET /api/entries/<entry-id>` | 单题题干、分层答案、复核状态、仿真、发布和下载信息 |
 | `GET /api/entry-file/<entry-id>/<relative>` | 查看条目内经过路径约束的文件 |

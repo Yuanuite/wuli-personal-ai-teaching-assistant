@@ -3,6 +3,7 @@
 ## 2026-07-20
 
 - 项目添加 MIT License。
+- 公开学生端 PDF 下载统一为题目阅读页的 `带答案错题.pdf`；公开 PDF 不再使用旧 `answer.pdf` 名称，也不直接复制私有 `output/` PDF，而是从脱敏 Markdown 与公开题图重新生成。PDF 生成新增 `pandoc+xelatex → reportlab` 降级链，降级版保留 Markdown 中的 LaTeX 编码。
 - 仿真器新增 `planar-magnetic-multi-particle` 类型，支持平面分界同向磁场、多正电粒子分段圆弧、关键事件暂停和相遇判定；最新上下分区磁场双粒子题已生成预审 HTML/ZIP，并通过模型、静态和浏览器交互检查。
 - 教师端 Agent 新增“自动 / 经济 / 深度”档位；OpenAI-compatible provider 支持标准、经济和深度模型映射，缺少可选模型时明确记录降级，并公开模型名与 token 用量。任务按类型和档位裁剪上下文，经济返修不再发送 `record.json`、整套 Skill 或无关物理模型/素材。
 - 文档审计按知识库真源修正竞赛口径为 13 个条目（11 个已交付、1 个待可视化复核、1 个待答案复核），并明确结构化推理不接收原图、远程视觉复核仍受双隐私门禁约束。

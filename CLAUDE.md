@@ -34,7 +34,7 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 
 最终以每题输出目录中的 `delivery-manifest.json` 为准，不从散落文件推测是否完成。
 
-公开发布是交付后的独立门禁：原始题图先通过自动建议裁剪、教师手动调整/遮挡和 `publication-images.json` 摘要确认，生成 `publication-assets/` 公开副本；再生成条目内 `publication-draft/`，教师预览并确认隐私后，才复制学生版 Markdown、公开题图、重新生成的公开 PDF、答案引用的安全图片和已批准仿真到 `student-site/`。禁止直接复制原始上传、教师版解析、条目内部 JSON、交付 manifest 或本地绝对路径；禁止自动推送 GitHub。
+公开发布是交付后的独立门禁：原始题图先通过自动建议裁剪、教师手动调整/遮挡和 `publication-images.json` 摘要确认，生成 `publication-assets/` 公开副本；再生成条目内 `publication-draft/`，教师预览并确认隐私后，才复制学生版 Markdown、公开题图、重新生成的公开版 `带答案错题.pdf`、答案引用的安全图片和已批准仿真到 `student-site/`。禁止直接复制原始上传、教师版解析、条目内部 JSON、交付 manifest、本地绝对路径或私有交付 PDF；禁止自动推送 GitHub。
 
 无视觉能力的主模型不得自行解除原图复核门禁；使用独立视觉适配器，或等待实际查看原图的人执行 `approve-source`。
 
