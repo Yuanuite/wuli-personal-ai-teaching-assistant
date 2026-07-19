@@ -1,0 +1,35 @@
+[
+  {
+    "name": "验证真实查询召回率",
+    "category": "quality",
+    "mode": "derisk",
+    "p": 0.4,
+    "minutes": 20,
+    "impact": 5,
+    "confidence": 0.8,
+    "compounding": 1,
+    "evidence": ["缺少真实查询评测集"],
+    "successCondition": "Recall@10 不低于 80%",
+    "stopCondition": "上限测试仍低于 65%"
+  },
+  {
+    "name": "建立检索回归评测入口",
+    "category": "process",
+    "mode": "execute",
+    "minutes": 45,
+    "impact": 5,
+    "confidence": 0.9,
+    "compounding": 2,
+    "evidence": ["当前无法跨版本比较召回率"]
+  },
+  {
+    "name": "更新运行手册",
+    "category": "knowledge",
+    "mode": "execute",
+    "minutes": 30,
+    "impact": 3,
+    "confidence": 0.7,
+    "compounding": 2,
+    "evidence": ["未发现部署与回滚文档"]
+  }
+]

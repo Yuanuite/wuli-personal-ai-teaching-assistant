@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "scout.eval.v1",
+  "ok": true,
+  "passed": 12,
+  "total": 12,
+  "scorePercent": 100,
+  "results": [
+    {
+      "id": "E01",
+      "pass": true,
+      "detail": "structured empty-project result"
+    },
+    {
+      "id": "E02",
+      "pass": true,
+      "detail": "PATH_NOT_ACCESSIBLE"
+    },
+    {
+      "id": "E03",
+      "pass": true,
+      "detail": {
+        "input": 4,
+        "valid": 3,
+        "skipped": 1
+      }
+    },
+    {
+      "id": "E04",
+      "pass": true,
+      "detail": "invalid p handled"
+    },
+    {
+      "id": "E07",
+      "pass": true,
+      "detail": "failure discovery order"
+    },
+    {
+      "id": "E09",
+      "pass": true,
+      "detail": "project script not executed"
+    },
+    {
+      "id": "E10",
+      "pass": true,
+      "detail": "secret skipped"
+    },
+    {
+      "id": "E11",
+      "pass": true,
+      "detail": "PATH_OUTSIDE_PROJECT"
+    },
+    {
+      "id": "E12",
+      "pass": true,
+      "detail": "portable paths"
+    },
+    {
+      "id": "E13",
+      "pass": true,
+      "detail": "description: 只读侦查代码项目，识别阻断、质量盲区与高风险假设，给出有证据、可执行、可审计的下一步优先级建议。"
+    },
+    {
+      "id": "E14",
+      "pass": true,
+      "detail": [
+        "历史实际耗时中位数是预测的 2.00 倍，后续 T 建议乘以该系数。",
+        "成功概率平均高估 30 个百分点，建议下调 p 档位。"
+      ]
+    },
+    {
+      "id": "PKG",
+      "pass": true,
+      "detail": "required files"
+    }
+  ]
+}

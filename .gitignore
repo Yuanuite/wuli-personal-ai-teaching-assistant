@@ -1,0 +1,13 @@
+.DS_Store
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.zip
+*.bak
+error-collection/
+student-error-library/
+output/
+tmp/
+.skill-backups/

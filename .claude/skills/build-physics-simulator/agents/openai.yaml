@@ -1,0 +1,4 @@
+interface:
+  display_name: "Build Physics Simulator"
+  short_description: "从统一物理模型构建并验证离线交互仿真"
+  default_prompt: "Use $build-physics-simulator to create and validate physics-model.json and an offline simulator for this reviewed dynamic physics problem; leave OCR, answers, PDF, and knowledge-base delivery to the lifecycle owner."

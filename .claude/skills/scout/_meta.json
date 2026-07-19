@@ -1,0 +1,10 @@
+{
+  "slug": "scout",
+  "name": "Scout",
+  "version": "2.0.0",
+  "description": "只读侦查代码项目，识别阻断、质量盲区与高风险假设，给出有证据、可执行、可审计的下一步优先级建议。",
+  "license": "MIT",
+  "language": "zh-CN",
+  "categories": ["code-quality", "developer-productivity", "devops", "security"],
+  "entry": "SKILL.md"
+}

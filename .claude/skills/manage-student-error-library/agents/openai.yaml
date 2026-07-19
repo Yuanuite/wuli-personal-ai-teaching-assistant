@@ -1,0 +1,4 @@
+interface:
+  display_name: "学生错题知识库"
+  short_description: "即使主模型无视觉能力也能安全完成OCR、复核、解析与交付"
+  default_prompt: "Use $manage-student-error-library to process new questions end to end; declare image capability, use the visual-review sidecar or human approval when needed, then generate answers, PDF, optional simulation, and the student package."

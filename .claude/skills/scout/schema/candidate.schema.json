@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/scout/candidate.schema.json",
+  "title": "Scout Candidate Action",
+  "type": "object",
+  "required": ["name", "category", "mode", "minutes"],
+  "properties": {
+    "name": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "category": { "enum": ["blocker", "quality", "process", "feature", "knowledge"] },
+    "mode": { "enum": ["derisk", "execute"] },
+    "p": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+    "minutes": { "type": "number", "exclusiveMinimum": 0 },
+    "impact": { "type": "number", "minimum": 1, "maximum": 5, "default": 3 },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.6 },
+    "compounding": { "type": "number", "minimum": 0, "maximum": 2, "default": 0 },
+    "reversibility": { "type": "number", "minimum": 0, "maximum": 1, "default": 0.7 },
+    "goalAlignment": { "type": "number", "minimum": 0, "maximum": 2, "default": 0 },
+    "evidence": {
+      "type": "array",
+      "maxItems": 20,
+      "items": { "type": "string", "minLength": 1, "maxLength": 500 }
+    },
+    "successCondition": { "type": "string", "maxLength": 1000 },
+    "stopCondition": { "type": "string", "maxLength": 1000 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "derisk" } }, "required": ["mode"] },
+      "then": { "required": ["p"] }
+    }
+  ],
+  "additionalProperties": true
+}

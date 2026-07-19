@@ -1,0 +1,95 @@
+<div id="physics-simulator-template">
+  <div class="viz-controls">
+    <label class="form-label" for="duration-template">总时长：<strong id="duration-value-template">15 秒</strong></label>
+    <input class="form-range" id="duration-template" type="range" min="5" max="60" value="15">
+    <button class="btn btn-primary" id="play-template" type="button">播放</button>
+    <button class="btn" id="replay-template" type="button">重播</button>
+  </div>
+  <div class="viz-controls">
+    <label class="form-label" for="progress-template">进度：<strong id="progress-value-template">0%</strong></label>
+    <input class="form-range" id="progress-template" type="range" min="0" max="1000" value="0">
+    <button class="btn" id="zoom-out-template" type="button">−</button>
+    <button class="btn" id="fit-template" type="button">适合窗口</button>
+    <button class="btn" id="zoom-in-template" type="button">＋</button>
+  </div>
+  <canvas id="canvas-template" role="img" aria-label="可播放、调速、缩放和平移的物理过程"></canvas>
+  <div class="card" id="status-template" aria-live="polite"></div>
+</div>
+<style>
+  #physics-simulator-template{display:grid;gap:10px;width:100%}
+  #physics-simulator-template canvas{display:block;width:100%;aspect-ratio:16/9;touch-action:none;cursor:grab}
+  #physics-simulator-template #status-template{padding:10px 12px}
+</style>
+<script>
+(() => {
+  const root = document.getElementById('physics-simulator-template');
+  const canvas = root.querySelector('#canvas-template');
+  const ctx = canvas.getContext('2d');
+  const duration = root.querySelector('#duration-template');
+  const durationValue = root.querySelector('#duration-value-template');
+  const progressInput = root.querySelector('#progress-template');
+  const progressValue = root.querySelector('#progress-value-template');
+  const play = root.querySelector('#play-template');
+  const status = root.querySelector('#status-template');
+  let progress = 0, playing = false, lastTime = 0, zoom = 1, panX = 0, panY = 0;
+  const pointers = new Map();
+  let dragStart = null, pinchStart = null;
+  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+  const color = name => getComputedStyle(root).getPropertyValue(name).trim();
+
+  function model(t) {
+    const angle = t * Math.PI * 2;
+    return { x: 120 * Math.cos(angle), y: 70 * Math.sin(angle), vx: -Math.sin(angle), vy: Math.cos(angle) };
+  }
+  function draw() {
+    const width = Math.max(320, Math.round(canvas.getBoundingClientRect().width));
+    const height = Math.round(width * 9 / 16);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr); canvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = color('--background'); ctx.fillRect(0, 0, width, height);
+    ctx.save(); ctx.translate(width / 2 + panX, height / 2 + panY); ctx.scale(zoom, zoom);
+    ctx.strokeStyle = color('--border'); ctx.lineWidth = 1 / zoom;
+    ctx.beginPath(); ctx.ellipse(0, 0, 120, 70, 0, 0, Math.PI * 2); ctx.stroke();
+    const point = model(progress);
+    ctx.fillStyle = color('--destructive'); ctx.beginPath(); ctx.arc(point.x, point.y, 8 / zoom, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    durationValue.textContent = `${duration.value} 秒`;
+    progressInput.value = String(Math.round(progress * 1000));
+    progressValue.textContent = `${Math.round(progress * 100)}%`;
+    status.textContent = progress >= 1 ? '过程结束' : '过程进行中';
+  }
+  function setPlaying(value) { playing = value; lastTime = 0; play.textContent = value ? '暂停' : '播放'; }
+  function frame(time) {
+    if (playing) {
+      if (!lastTime) lastTime = time;
+      progress += (time - lastTime) / (Number(duration.value) * 1000); lastTime = time;
+      if (progress >= 1) { progress = 1; setPlaying(false); }
+      draw();
+    }
+    requestAnimationFrame(frame);
+  }
+  duration.addEventListener('input', draw);
+  progressInput.addEventListener('input', () => { progress = Number(progressInput.value) / 1000; setPlaying(false); draw(); });
+  play.addEventListener('click', () => { if (progress >= 1) progress = 0; setPlaying(!playing); draw(); });
+  root.querySelector('#replay-template').addEventListener('click', () => { progress = 0; setPlaying(true); draw(); });
+  root.querySelector('#zoom-in-template').addEventListener('click', () => { zoom = clamp(zoom * 1.2, .5, 4); draw(); });
+  root.querySelector('#zoom-out-template').addEventListener('click', () => { zoom = clamp(zoom / 1.2, .5, 4); draw(); });
+  root.querySelector('#fit-template').addEventListener('click', () => { zoom = 1; panX = 0; panY = 0; draw(); });
+  canvas.addEventListener('wheel', event => { event.preventDefault(); zoom = clamp(zoom * (event.deltaY < 0 ? 1.1 : .9), .5, 4); draw(); }, { passive: false });
+  canvas.addEventListener('pointerdown', event => {
+    canvas.setPointerCapture(event.pointerId); pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.size === 1) dragStart = { x: event.clientX, y: event.clientY, panX, panY };
+    if (pointers.size === 2) { const p = [...pointers.values()]; pinchStart = { d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y), zoom }; }
+  });
+  canvas.addEventListener('pointermove', event => {
+    if (!pointers.has(event.pointerId)) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.size === 1 && dragStart) { panX = dragStart.panX + event.clientX - dragStart.x; panY = dragStart.panY + event.clientY - dragStart.y; draw(); }
+    if (pointers.size === 2 && pinchStart) { const p = [...pointers.values()]; zoom = clamp(pinchStart.zoom * Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) / Math.max(1, pinchStart.d), .5, 4); draw(); }
+  });
+  const end = event => { pointers.delete(event.pointerId); dragStart = null; pinchStart = null; };
+  canvas.addEventListener('pointerup', end); canvas.addEventListener('pointercancel', end);
+  new ResizeObserver(draw).observe(root); draw(); requestAnimationFrame(frame);
+})();
+</script>

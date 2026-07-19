@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/scout/outcome.schema.json",
+  "title": "Scout Outcome",
+  "type": "object",
+  "required": ["action", "predictedMinutes", "actualSuccess", "actualMinutes"],
+  "properties": {
+    "action": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "category": { "type": ["string", "null"], "maxLength": 32 },
+    "mode": { "type": ["string", "null"], "maxLength": 32 },
+    "predictedP": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "predictedMinutes": { "type": "number", "exclusiveMinimum": 0 },
+    "actualSuccess": { "type": "boolean" },
+    "actualMinutes": { "type": "number", "exclusiveMinimum": 0 },
+    "reason": { "type": ["string", "null"], "maxLength": 1000 },
+    "lesson": { "type": ["string", "null"], "maxLength": 1000 },
+    "timestamp": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

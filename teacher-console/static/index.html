@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>悟理教师工作台</title>
+  <link rel="stylesheet" href="/vendor/katex.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-row">
+      <button id="sidebar-toggle" class="sidebar-toggle" aria-expanded="true" aria-label="收起或展开题库">题库</button>
+      <div>
+      <p class="eyebrow">LOCAL TEACHER WORKSPACE</p>
+      <h1>悟理教师工作台</h1>
+      </div>
+    </div>
+    <div class="health"><span id="health-dot"></span><span id="health-text">正在连接本地服务</span></div>
+  </header>
+
+  <main class="shell">
+    <aside class="sidebar">
+      <details class="upload-card">
+        <summary><span>＋</span> 上传新题目</summary>
+        <div class="upload-body">
+          <label class="dropzone" id="dropzone" for="file-input">
+            <strong>选择或拖入文件</strong>
+            <small>图片 / PDF · 最大 30 MB</small>
+          </label>
+          <input id="file-input" type="file" accept="image/*,.pdf" hidden>
+          <div id="upload-file" class="selected-file hidden"></div>
+          <button id="upload-run" class="primary wide" disabled>上传并开始处理</button>
+        </div>
+      </details>
+
+      <div class="list-heading">
+        <h2>题库文件夹</h2>
+        <button id="refresh" class="icon-button" aria-label="刷新题目">↻</button>
+      </div>
+      <div id="entry-list" class="entry-list"></div>
+    </aside>
+
+    <section class="workspace">
+      <div id="empty-state" class="empty-state">
+        <div class="empty-mark">物</div>
+        <h2>选择一道题开始</h2>
+        <p>上传、复核、生成解析、审批和下载都在同一个页面完成。</p>
+      </div>
+
+      <div id="entry-view" class="hidden">
+        <div class="entry-header">
+          <div>
+            <p id="entry-id" class="mono muted"></p>
+            <h2 id="entry-title"></h2>
+          </div>
+          <span id="state-badge" class="state-badge"></span>
+        </div>
+
+        <ol id="progress" class="progress"></ol>
+
+        <nav class="tabs" aria-label="题目处理阶段">
+          <button class="tab active" data-tab="source">1 题干复核</button>
+          <button class="tab" data-tab="answer">2 解析复核</button>
+          <button class="tab" data-tab="visualization">3 可视化（可选）</button>
+          <button class="tab" data-tab="delivery">4 交付下载</button>
+        </nav>
+
+        <section id="tab-source" class="tab-panel">
+          <div class="review-grid">
+            <div class="image-panel">
+              <div class="panel-title"><h3>题目原图</h3><span id="image-count" class="muted"></span></div>
+              <div class="image-stage" id="image-stage"><p class="muted">暂无图片</p></div>
+              <div class="zoom-row">
+                <button id="zoom-out" class="secondary">−</button>
+                <input id="zoom" type="range" min="50" max="250" value="100" aria-label="图片缩放">
+                <button id="zoom-in" class="secondary">＋</button>
+                <button id="zoom-reset" class="secondary">适合窗口</button>
+              </div>
+            </div>
+            <div class="editor-panel">
+              <div class="panel-title"><h3>正式题干</h3><span id="source-status" class="status-text"></span></div>
+              <div class="markdown-workbench source-markdown-workbench">
+                <section class="markdown-column">
+                  <div class="column-label"><strong>Markdown</strong><span>可直接编辑</span></div>
+                  <textarea id="problem-editor" class="markdown-editor" spellcheck="false"></textarea>
+                </section>
+                <section class="markdown-column preview-column">
+                  <div class="column-label"><strong>实时预览</strong><span class="live-dot">实时</span></div>
+                  <article id="problem-preview" class="markdown-preview"></article>
+                </section>
+              </div>
+              <div class="review-actions source-actions">
+                <label>复核人<input id="source-reviewer" value="teacher"></label>
+                <label>复核备注<input id="source-note" placeholder="例如：已核对公式、方向和全部小问"></label>
+                <button id="approve-source" class="primary">确认题干无误</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-answer" class="tab-panel hidden">
+          <div class="answer-toolbar">
+            <div>
+              <h3>解析生成与复核</h3>
+              <p id="agent-message" class="muted"></p>
+            </div>
+            <button id="run-analysis" class="primary">运行解析流程</button>
+          </div>
+          <div class="solution-bar">
+            <div class="solution-switch">
+              <button class="solution-tab active" data-solution="student">学生版</button>
+              <button class="solution-tab" data-solution="teacher">教师版</button>
+            </div>
+            <button id="save-answer" class="secondary">保存当前 Markdown</button>
+          </div>
+          <div class="markdown-workbench answer-markdown-workbench">
+            <section class="markdown-column">
+              <div class="column-label"><strong>Markdown 源文档</strong><span id="draft-status">已载入</span></div>
+              <textarea id="answer-editor" class="markdown-editor" spellcheck="false"></textarea>
+            </section>
+            <section class="markdown-column preview-column">
+              <div class="column-label"><strong>编译预览</strong><span class="live-dot">实时</span></div>
+              <article id="solution-view" class="markdown-preview"></article>
+            </section>
+          </div>
+          <div class="approval-box">
+            <label>复核人<input id="answer-reviewer" value="teacher"></label>
+            <label>修改意见（交给本地大模型）<input id="answer-note" placeholder="批准时可留空；修改时请明确指出公式、步骤或解释图问题"></label>
+            <div class="button-row">
+              <button id="request-revision" class="danger-secondary">交给大模型修改</button>
+              <button id="approve-answer" class="primary">答案正确，进入可视化复核</button>
+            </div>
+            <p class="revision-help">提交修改意见后，本地大模型会修改本题的解析或解释图；修改结果不会自动通过，仍需教师重新复核。</p>
+          </div>
+        </section>
+
+        <section id="tab-visualization" class="tab-panel hidden">
+          <div class="visualization-layout">
+            <section class="visualization-preview-card">
+              <div class="visualization-head">
+                <div>
+                  <h3>课堂可视化预览</h3>
+                  <p id="visualization-status" class="muted">等待生成预览</p>
+                </div>
+                <button id="build-visualization" class="secondary">调用 Skill 生成</button>
+              </div>
+              <div id="visualization-stage" class="visualization-stage">
+                <div id="visualization-empty" class="visualization-empty">
+                  <strong>尚未生成交互可视化</strong>
+                  <p>这不代表本题不适合。教师明确提出生成要求后，系统才会调用仿真 Skill。</p>
+                </div>
+                <iframe id="visualization-frame" class="hidden" title="物理仿真预览" sandbox="allow-scripts" loading="lazy"></iframe>
+              </div>
+              <div class="visualization-approval">
+                <label>复核人<input id="visualization-reviewer" value="teacher"></label>
+                <label>复核备注<input id="visualization-note" placeholder="例如：轨迹、方向、关键时刻和交互均已核对"></label>
+                <button id="approve-visualization" class="primary">可视化正确，批准</button>
+              </div>
+            </section>
+
+            <aside class="visualization-chat-card">
+              <div class="visualization-chat-head">
+                <div>
+                  <h3>生成或修正可视化</h3>
+                  <p class="muted">没有结果时说明想看到的过程；已有结果时描述需要修正的问题。</p>
+                </div>
+                <button id="clear-visualization-chat" class="secondary" type="button">清空聊天</button>
+              </div>
+              <div id="visualization-conversation" class="visualization-conversation" aria-live="polite"></div>
+              <label class="visualization-message-label" for="visualization-message">生成 / 修改要求</label>
+              <textarea id="visualization-message" class="visualization-message" rows="4" placeholder="例如：我想为这道题生成一个可交互可视化，完整展示第三次进入 III 区前的运动；已有结果时也可指出方向、时间轴或画面问题。"></textarea>
+              <div class="visualization-chat-actions">
+                <small>模型不会直接批准结果，修改后仍需教师复核。</small>
+                <button id="send-visualization-message" class="primary">发送并生成</button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section id="tab-delivery" class="tab-panel hidden">
+          <div class="delivery-head">
+            <div><h3>选择要交付的成品</h3><p class="muted">这里只显示适合阅读、编辑或发送给学生的必要文件。</p></div>
+            <button id="finish-entry" class="primary">生成最终文件</button>
+          </div>
+          <div id="download-list" class="download-list"></div>
+          <section class="delivery-guide" aria-labelledby="delivery-guide-title">
+            <div>
+              <p class="eyebrow">DELIVERY GUIDE</p>
+              <h3 id="delivery-guide-title">每个文件适合做什么</h3>
+            </div>
+            <div id="delivery-guide-list" class="delivery-guide-list"></div>
+          </section>
+          <section class="publication-panel" aria-labelledby="publication-title">
+            <div class="publication-head">
+              <div>
+                <p class="eyebrow">STUDENT SITE</p>
+                <h3 id="publication-title">学生端公开预览与确认</h3>
+                <p id="publication-status" class="muted">仅已交付题目可以生成公开预览。</p>
+              </div>
+              <button id="prepare-publication" class="secondary">生成公开预览</button>
+            </div>
+            <section id="publication-image-editor" class="publication-image-editor">
+              <div class="publication-image-head">
+                <div>
+                  <h4>公开题图裁剪与脱敏</h4>
+                  <p id="publication-image-status" class="muted">自动建议裁剪后，请检查姓名、学校、二维码和学生笔迹。</p>
+                </div>
+                <div class="publication-page-nav">
+                  <button id="publication-image-prev" class="secondary" type="button">上一页</button>
+                  <span id="publication-image-page">第 1 页</span>
+                  <button id="publication-image-next" class="secondary" type="button">下一页</button>
+                </div>
+              </div>
+              <div class="publication-image-workspace">
+                <div class="publication-canvas-stage">
+                  <canvas id="publication-image-canvas" aria-label="公开题图裁剪与遮挡预览"></canvas>
+                  <p>在图上拖拽即可添加不透明遮挡；最终公开副本不会修改原图。</p>
+                </div>
+                <div class="publication-image-controls">
+                  <label class="image-include"><input id="publication-image-include" type="checkbox">将这一页加入学生端</label>
+                  <fieldset>
+                    <legend>裁剪四边</legend>
+                    <label>上 <span id="crop-top-value">0%</span><input id="crop-top" type="range" min="0" max="45" step="1"></label>
+                    <label>右 <span id="crop-right-value">0%</span><input id="crop-right" type="range" min="0" max="45" step="1"></label>
+                    <label>下 <span id="crop-bottom-value">0%</span><input id="crop-bottom" type="range" min="0" max="45" step="1"></label>
+                    <label>左 <span id="crop-left-value">0%</span><input id="crop-left" type="range" min="0" max="45" step="1"></label>
+                  </fieldset>
+                  <div class="publication-image-buttons">
+                    <button id="undo-publication-redaction" class="secondary" type="button">撤销上个遮挡</button>
+                    <button id="reset-publication-image" class="secondary" type="button">恢复整图</button>
+                  </div>
+                  <label>题图复核人<input id="publication-image-reviewer" value="teacher"></label>
+                  <label>题图备注<input id="publication-image-note" placeholder="例如：已遮挡姓名和手写答案"></label>
+                  <label class="privacy-confirmation">
+                    <input id="publication-image-confirmed" type="checkbox">
+                    <span>我已检查全部页面的裁剪和遮挡范围。</span>
+                  </label>
+                  <button id="save-publication-images" class="primary" disabled>保存并确认公开题图</button>
+                </div>
+              </div>
+            </section>
+            <div class="publication-grid">
+              <div class="publication-preview">
+                <div id="publication-empty" class="publication-empty">
+                  <strong>尚未生成公开版</strong>
+                  <p>公开版会移除原始上传、教师版解析、内部记录和本地路径，只保留学生 Markdown、公开 PDF 与已批准的交互演示。</p>
+                </div>
+                <iframe id="publication-preview-frame" class="hidden" title="学生端公开页面预览" sandbox="allow-scripts allow-same-origin allow-popups allow-downloads" loading="lazy"></iframe>
+              </div>
+              <div class="publication-approval">
+                <label>复核人<input id="publication-reviewer" value="teacher"></label>
+                <label>公开备注<input id="publication-note" placeholder="例如：已检查姓名、学校、原图和教师内部内容"></label>
+                <label class="privacy-confirmation">
+                  <input id="publication-privacy-confirmed" type="checkbox">
+                  <span>我已查看公开预览，确认不含学生隐私、题目原始上传或教师内部材料。</span>
+                </label>
+                <button id="publish-publication" class="primary" disabled>确认并发布到本地学生站</button>
+                <a id="publication-local-link" class="secondary publication-link hidden" target="_blank" rel="noopener">打开本地学生端</a>
+                <p class="publication-help">此操作只更新本机 <code>student-site/</code>，不会自动推送 GitHub。确认无误后再将该目录作为独立公开仓库发布。</p>
+              </div>
+            </div>
+          </section>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/vendor/katex.min.js"></script>
+  <script src="/app.js" defer></script>
+</body>
+</html>

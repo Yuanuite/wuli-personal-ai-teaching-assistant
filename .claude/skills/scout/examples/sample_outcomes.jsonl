@@ -1,0 +1,2 @@
+{"schemaVersion":"scout.outcome.v1","action":"验证真实查询召回率","category":"quality","mode":"derisk","predictedP":0.4,"predictedMinutes":20,"actualSuccess":false,"actualMinutes":16,"reason":"同义词查询召回不足","lesson":"需要混合检索","timestamp":"2026-07-01T10:00:00.000Z"}
+{"schemaVersion":"scout.outcome.v1","action":"建立回归评测入口","category":"process","mode":"execute","predictedP":null,"predictedMinutes":45,"actualSuccess":true,"actualMinutes":52,"reason":null,"lesson":"JSONL 数据集便于版本对比","timestamp":"2026-07-02T10:00:00.000Z"}

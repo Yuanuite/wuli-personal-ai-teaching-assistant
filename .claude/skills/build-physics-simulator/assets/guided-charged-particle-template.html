@@ -1,0 +1,117 @@
+<section id="guided-particle-sim" class="guided-sim">
+  <script type="application/json" id="physics-model-data">__PHYSICS_MODEL_JSON__</script>
+  <div class="sim-head">
+    <div><b>第三次进入 III 区前经过 P</b><small id="case-note">答案、事件与轨迹均来自 physics-model.json</small></div>
+    <div class="case-buttons" id="case-buttons" aria-label="答案情形"></div>
+  </div>
+  <div class="viz-controls">
+    <button class="btn btn-primary" id="play-guided" type="button">播放</button>
+    <button class="btn" id="replay-guided" type="button">重播</button>
+    <label class="form-label" for="duration-guided">总时长 <b id="duration-label">24 秒</b></label>
+    <input class="form-range" id="duration-guided" type="range" min="8" max="90" value="24">
+    <label class="auto-pause"><input id="auto-pause-guided" type="checkbox" checked> 关键事件自动暂停</label>
+  </div>
+  <div class="viz-controls">
+    <button class="btn" id="previous-event-guided" type="button">← 上一事件</button>
+    <button class="btn" id="next-event-guided" type="button">下一事件 →</button>
+    <label class="form-label" for="progress-guided">进度 <b id="progress-label">0%</b></label>
+    <input class="form-range" id="progress-guided" type="range" min="0" max="1000" value="0">
+    <button class="btn" id="zoom-out-guided" type="button">−</button>
+    <button class="btn" id="fit-guided" type="button">适合窗口</button>
+    <button class="btn" id="zoom-in-guided" type="button">＋</button>
+  </div>
+  <div class="layer-tabs" role="group" aria-label="逐层显示">
+    <span>显示层：</span>
+    <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+    <button class="btn" data-layer="force" type="button">2 受力</button>
+    <button class="btn" data-layer="geometry" type="button">3 几何</button>
+  </div>
+  <canvas id="canvas-guided" role="img" aria-label="可逐层显示、在关键事件暂停、缩放和平移的带电粒子运动仿真"></canvas>
+  <div class="status-grid card" aria-live="polite">
+    <div><small>当前阶段</small><b id="phase-guided"></b></div>
+    <div><small>关键事件</small><b id="event-guided"></b></div>
+    <div><small>命中结论</small><b id="result-guided"></b></div>
+  </div>
+</section>
+<style>
+  #guided-particle-sim{display:grid;gap:10px;width:100%}
+  #guided-particle-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #guided-particle-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #guided-particle-sim .case-buttons,#guided-particle-sim .layer-tabs{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #guided-particle-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
+  #guided-particle-sim canvas:active{cursor:grabbing}
+  #guided-particle-sim .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #guided-particle-sim .status-grid small,#guided-particle-sim .status-grid b{display:block}
+  #guided-particle-sim .status-grid small{color:var(--muted-foreground)}
+  #guided-particle-sim .auto-pause{white-space:nowrap}
+  @media(max-width:680px){#guided-particle-sim .sim-head{display:grid}#guided-particle-sim .status-grid{grid-template-columns:1fr}}
+</style>
+<script>
+(() => {
+  const root=document.getElementById('guided-particle-sim');
+  const model=JSON.parse(root.querySelector('#physics-model-data').textContent);
+  const canvas=root.querySelector('#canvas-guided'),ctx=canvas.getContext('2d');
+  const cases=model.event_model.cases,timeline=model.event_model.timeline;
+  const pauseIds=new Set([...model.simulation.pause_event_ids,...cases.map(item=>item.first_p_event_id)]);
+  let activeCase=cases.find(item=>item.id===model.simulation.default_case_id)||cases[0];
+  let progress=0,playing=false,lastTime=0,layer=model.simulation.default_layer||'trajectory';
+  let zoom=1,panX=0,panY=0,lastPause=-1,drag=null;
+  const pointers=new Map(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const pointAt=(r,t)=>({x:r*Math.cos(t),y:-r*Math.sin(t)});
+  const rotate=(p,t)=>({x:p.x*Math.cos(t)+p.y*Math.sin(t),y:-p.x*Math.sin(t)+p.y*Math.cos(t)});
+  const line=(a,b,n=48)=>Array.from({length:n},(_,i)=>({x:a.x+(b.x-a.x)*i/(n-1),y:a.y+(b.y-a.y)*i/(n-1)}));
+  const arc=(c,r,a,b,n=120)=>Array.from({length:n},(_,i)=>{const t=a+(b-a)*i/(n-1);return{x:c.x+r*Math.cos(t),y:c.y-r*Math.sin(t)}});
+  const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#666',border:v('--border')||'#bbb',i:v('--viz-series-1')||'#2783c4',ii:v('--viz-series-2')||'#c87821',iii:v('--viz-series-3')||'#348c50',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
+
+  function buildScene(){
+    const R=72,outer=144,b3=activeCase.b3_ratio,delta=activeCase.delta_deg*Math.PI/180,r1=R/Math.sqrt(3);
+    const baseCenter={x:R,y:r1},baseI=arc(baseCenter,r1,Math.PI/2,7*Math.PI/6,96),segments=[];
+    const add=(points,zone,label,center,speed,eventId)=>segments.push({points,zone,label,center,speed,eventId});
+    const addI=(theta,index)=>{const center=rotate(baseCenter,theta);add(baseI.map(p=>rotate(p,theta)),'I',`I 区第 ${index} 段：偏转 −60°`,center,'v₀',`leave-I-${index}`);return theta-Math.PI/3};
+    const addOut=(theta,index)=>add(line(pointAt(R,theta),pointAt(outer,theta)),'II',`II 区向外：减速`,``, 'v₀→v₀/2',`enter-III-${index}`);
+    const addIII=(theta,index)=>{const entry=pointAt(outer,theta),r3=R/(2*Math.sqrt(3)*b3),n=pointAt(r3,theta+Math.PI/2),center={x:entry.x+n.x,y:entry.y+n.y};add(arc(center,r3,theta-Math.PI/2,theta+delta+Math.PI/2,180),'III',`III 区第 ${index} 段：偏转 +${activeCase.delta_deg}°`,center,'v₀/2',null);return theta+delta};
+    const addIn=(theta,index)=>add(line(pointAt(outer,theta),pointAt(R,theta)),'II',`II 区向内：加速`,null,'v₀/2→v₀',`return-I-${index}`);
+    let theta=0;
+    for(let index=1;index<=3;index++){theta=addI(theta,index);addOut(theta,index);if(index===3)break;theta=addIII(theta,index);addIn(theta,index)}
+    const lengths=segments.map(s=>s.points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p.x-s.points[i].x,p.y-s.points[i].y),0));
+    const total=lengths.reduce((a,b)=>a+b,0),boundaries=[];let sum=0;
+    segments.forEach((s,i)=>{sum+=lengths[i];boundaries.push({fraction:sum/total,eventId:s.eventId,segment:i})});
+    return{R,outer,b3,delta,segments,lengths,total,boundaries,p:pointAt(R,0)};
+  }
+
+  function current(scene){let remaining=progress*scene.total,state={point:scene.segments[0].points[0],tangent:{x:0,y:1},segment:0,local:0};for(let i=0;i<scene.segments.length;i++){const s=scene.segments[i],f=clamp(remaining/scene.lengths[i],0,1),k=clamp(Math.round((s.points.length-1)*f),0,s.points.length-1),a=s.points[Math.max(0,k-1)],b=s.points[Math.min(s.points.length-1,k+1)],d=Math.hypot(b.x-a.x,b.y-a.y)||1;if(f>=0)state={point:s.points[k],tangent:{x:(b.x-a.x)/d,y:(b.y-a.y)/d},segment:i,local:f};remaining-=scene.lengths[i];if(remaining<=0)break}return state}
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);return{w,h}}
+  function label(text,x,y,color,align='center'){ctx.fillStyle=color;ctx.font=`${Math.max(11,13/zoom)}px system-ui`;ctx.textAlign=align;ctx.fillText(text,x,y)}
+  function arrow(a,b,color,text=''){const t=Math.atan2(b.y-a.y,b.x-a.x),head=7/zoom;ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=2/zoom;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-head*Math.cos(t-.45),b.y-head*Math.sin(t-.45));ctx.lineTo(b.x-head*Math.cos(t+.45),b.y-head*Math.sin(t+.45));ctx.closePath();ctx.fill();if(text)label(text,b.x+5/zoom,b.y-5/zoom,color,'left')}
+  function stroke(points,color,width,f=1){const n=Math.max(2,Math.ceil(points.length*f));ctx.strokeStyle=color;ctx.lineWidth=width/zoom;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<n;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke()}
+  function fieldDot(x,y,color){ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=1/zoom;ctx.beginPath();ctx.arc(x,y,4/zoom,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,1.2/zoom,0,Math.PI*2);ctx.fill()}
+  function bounds(scene){let x0=-200,x1=200,y0=-200,y1=200;scene.segments.forEach(s=>s.points.forEach(p=>{x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}));return{x0:x0-25,x1:x1+25,y0:y0-25,y1:y1+25}}
+  function drawFields(scene,c){
+    ctx.save();ctx.globalAlpha=.09;ctx.fillStyle=c.i;ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.fill();ctx.fillStyle=c.ii;ctx.beginPath();ctx.arc(0,0,scene.outer,0,Math.PI*2);ctx.arc(0,0,scene.R,0,Math.PI*2,true);ctx.fill();ctx.restore();
+    for(let x=-scene.R+15;x<scene.R;x+=28)for(let y=-scene.R+15;y<scene.R;y+=28)if(Math.hypot(x,y)<scene.R-9)fieldDot(x,y,c.i);
+    for(let x=-260;x<=420;x+=55)for(let y=-260;y<=260;y+=55)if(Math.hypot(x,y)>scene.outer+16)fieldDot(x,y,c.iii);
+    for(let k=0;k<12;k++){const t=k*Math.PI/6;arrow(pointAt(scene.R*1.15,t),pointAt(scene.R*1.65,t),c.ii)}
+    label('B ⊙',0,-scene.R*.35,c.i);label('E 沿半径向外',0,-scene.R*1.35,c.ii);label('B₃ ⊙',scene.outer+20,-scene.outer*.45,c.iii,'left');
+  }
+  function drawGeometry(scene,state,c){const s=scene.segments[state.segment];if(s.center){ctx.setLineDash([5/zoom,4/zoom]);ctx.strokeStyle=c.force;ctx.lineWidth=1.4/zoom;ctx.beginPath();ctx.moveTo(s.center.x,s.center.y);ctx.lineTo(state.point.x,state.point.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c.force;ctx.beginPath();ctx.arc(s.center.x,s.center.y,3/zoom,0,Math.PI*2);ctx.fill();label('轨道圆心',s.center.x+5/zoom,s.center.y-6/zoom,c.force,'left')}
+    const ledger=timeline.filter(e=>e.order<=Math.ceil(progress*(timeline.length-1))).slice(-3);ledger.forEach((e,i)=>label(`${e.constant_deg}° ${e.delta_coefficient?`+ ${e.delta_coefficient}δ`:''}`, -scene.outer-58, -scene.outer+18+i*19,c.fg,'left'));
+  }
+  function drawParticle(scene,state,c){const s=scene.segments[state.segment],p=state.point;arrow(p,{x:p.x+state.tangent.x*28/zoom,y:p.y+state.tangent.y*28/zoom},c.i,s.speed);let f;if(s.center){const dx=s.center.x-p.x,dy=s.center.y-p.y,d=Math.hypot(dx,dy)||1;f={x:dx/d,y:dy/d}}else{const d=Math.hypot(p.x,p.y)||1;f={x:-p.x/d,y:-p.y/d}}arrow(p,{x:p.x+f.x*25/zoom,y:p.y+f.y*25/zoom},c.force,'F');ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(p.x,p.y,7/zoom,0,Math.PI*2);ctx.fill();label(model.facts.charge==='negative'?'−':'+',p.x,p.y+4/zoom,c.bg)}
+
+  function draw(){const scene=buildScene(),m=metrics(),c=colors(),b=bounds(scene),scale=Math.min((m.w-32)/(b.x1-b.x0),(m.h-32)/(b.y1-b.y0)),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,scale*zoom);ctx.translate(-cx,-cy);
+    ctx.strokeStyle=c.border;ctx.lineWidth=1.5/zoom;ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,scene.outer,0,Math.PI*2);ctx.stroke();label('I',0,-scene.R*.65,c.fg);label('II',0,-scene.R*1.55,c.fg);label('III',scene.outer+18,0,c.fg,'left');label('O',-6,14,c.fg,'right');label('P',scene.p.x+8,scene.p.y-8,c.fg,'left');
+    if(layer==='force')drawFields(scene,c);
+    scene.segments.forEach(s=>{ctx.save();ctx.globalAlpha=.13;stroke(s.points,c.muted,1.2);ctx.restore()});let remain=progress*scene.total;scene.segments.forEach((s,i)=>{const f=clamp(remain/scene.lengths[i],0,1);if(f>0)stroke(s.points,s.zone==='I'?c.i:s.zone==='II'?c.ii:c.iii,3,f);remain-=scene.lengths[i]});
+    const state=current(scene);if(layer==='geometry')drawGeometry(scene,state,c);if(layer==='force')drawParticle(scene,state,c);else{ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(state.point.x,state.point.y,7/zoom,0,Math.PI*2);ctx.fill();label(model.facts.charge==='negative'?'−':'+',state.point.x,state.point.y+4/zoom,c.bg)}ctx.restore();
+    const reached=[...scene.boundaries].reverse().find(e=>progress+1e-6>=e.fraction),event=reached&&timeline.find(e=>e.id===reached.eventId);root.querySelector('#phase-guided').textContent=scene.segments[state.segment].label;root.querySelector('#event-guided').textContent=event?event.label:'从 P 出发';root.querySelector('#result-guided').textContent=`${activeCase.b3_label}：${activeCase.first_p_timing}`;root.querySelector('#progress-guided').value=Math.round(progress*1000);root.querySelector('#progress-label').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label').textContent=`${root.querySelector('#duration-guided').value} 秒`;
+  }
+  function setPlaying(v){playing=v;lastTime=0;root.querySelector('#play-guided').textContent=v?'暂停':'播放'}
+  function eventStops(scene){return scene.boundaries.filter(e=>e.eventId&&pauseIds.has(e.eventId))}
+  function jump(direction){const stops=eventStops(buildScene()).map(e=>e.fraction),eps=.002;const target=direction>0?stops.find(v=>v>progress+eps):[...stops].reverse().find(v=>v<progress-eps);if(target!==undefined){progress=target;lastPause=stops.indexOf(target);setPlaying(false);draw()}}
+  function animate(t){if(playing){if(!lastTime)lastTime=t;const old=progress;progress+=(t-lastTime)/(Number(root.querySelector('#duration-guided').value)*1000);lastTime=t;const stops=eventStops(buildScene());if(root.querySelector('#auto-pause-guided').checked){const hit=stops.findIndex((e,i)=>i!==lastPause&&e.fraction>old+1e-5&&e.fraction<=progress);if(hit>=0){progress=stops[hit].fraction;lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
+  const caseBox=root.querySelector('#case-buttons');cases.forEach(item=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=item.b3_label;b.dataset.caseId=item.id;b.onclick=()=>{activeCase=item;progress=0;lastPause=-1;setPlaying(false);zoom=1;panX=panY=0;caseBox.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));draw()};caseBox.appendChild(b)});caseBox.querySelector(`[data-case-id="${activeCase.id}"]`).classList.add('active');
+  root.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===b));draw()});root.querySelector('#play-guided').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-guided').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-guided').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};root.querySelector('#duration-guided').oninput=draw;root.querySelector('#previous-event-guided').onclick=()=>jump(-1);root.querySelector('#next-event-guided').onclick=()=>jump(1);root.querySelector('#zoom-in-guided').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-guided').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-guided').onclick=()=>{zoom=1;panX=panY=0;draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;new ResizeObserver(draw).observe(root);draw();requestAnimationFrame(animate);
+})();
+</script>

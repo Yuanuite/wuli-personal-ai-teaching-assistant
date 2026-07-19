@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "physics-model.schema.json",
+  "title": "Physics teaching model",
+  "type": "object",
+  "required": ["schema_version", "model_type", "entry_id", "title", "source", "regions", "facts", "technique_ids", "event_model", "student_solution", "teacher_audit", "simulation"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "model_type": {"type": "string", "minLength": 1},
+    "entry_id": {"type": "string", "minLength": 1},
+    "title": {"type": "string", "minLength": 1},
+    "source": {
+      "type": "object",
+      "required": ["problem", "diagram"],
+      "properties": {
+        "problem": {"type": "string", "minLength": 1},
+        "original_image": {"type": "string"},
+        "diagram": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "regions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "field"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "field": {
+            "oneOf": [
+              {"type": "string", "minLength": 1},
+              {"type": "object"}
+            ]
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "facts": {"type": "object"},
+    "technique_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "event_model": {
+      "type": "object",
+      "required": ["stop_event_id", "timeline", "cases"],
+      "properties": {
+        "stop_event_id": {"type": "string"},
+        "timeline": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "order", "label", "region", "p_candidate"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1}, "order": {"type": "integer", "minimum": 0}, "label": {"type": "string", "minLength": 1}, "region": {"type": "string", "minLength": 1},
+              "constant_deg": {"type": "number"}, "delta_coefficient": {"type": "number"}, "p_candidate": {"type": "boolean"}
+            },
+            "additionalProperties": true
+          }
+        },
+        "cases": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "delta_deg": {"type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 180},
+              "b3_ratio": {"type": "number", "exclusiveMinimum": 0},
+              "b3_label": {"type": "string", "minLength": 1},
+              "first_p_event_id": {"type": "string", "minLength": 1},
+              "first_p_timing": {"type": "string"}
+            },
+            "additionalProperties": true
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "trajectory": {
+      "type": "object",
+      "properties": {
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "region", "start_event", "end_event", "geometry"],
+            "properties": {
+              "id": {"type": "string"}, "type": {"enum": ["line", "arc", "polyline"]}, "region": {"type": "string"},
+              "start_event": {"type": "string"}, "end_event": {"type": "string"}, "geometry": {"type": "object"}, "kinematics": {"type": "object"}
+            }
+          }
+        }
+      }
+    },
+    "student_solution": {"type": "object", "required": ["quick_answers", "recognition", "main_steps", "pitfalls", "self_check"], "additionalProperties": true},
+    "teacher_audit": {"type": "object", "required": ["checks"], "additionalProperties": true},
+    "simulation": {
+      "type": "object",
+      "required": ["default_duration_seconds", "layers", "default_layer"],
+      "properties": {
+        "default_duration_seconds": {"type": "number", "exclusiveMinimum": 0},
+        "layers": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+        "default_layer": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"model_type": {"const": "concentric-radial-multi-field"}}},
+      "then": {
+        "properties": {
+          "event_model": {
+            "properties": {
+              "cases": {
+                "items": {
+                  "required": ["id", "delta_deg", "b3_ratio", "b3_label", "first_p_event_id"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

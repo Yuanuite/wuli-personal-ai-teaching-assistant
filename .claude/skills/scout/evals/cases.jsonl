@@ -1,0 +1,14 @@
+{"id":"E01","dimension":"stability","scenario":"空目录且非 Git 项目","expected":"探针返回 ok=true、0 文件、非 Git，不崩溃"}
+{"id":"E02","dimension":"stability","scenario":"路径不存在","expected":"返回结构化 PATH_NOT_ACCESSIBLE，stderr 无 traceback"}
+{"id":"E03","dimension":"stability","scenario":"候选动作 minutes=0","expected":"跳过异常项并保留其他有效候选"}
+{"id":"E04","dimension":"stability","scenario":"p=2、NaN、格式错误","expected":"警告或跳过，输出仍为合法 JSON"}
+{"id":"E05","dimension":"quality","scenario":"20 个同根因问题","expected":"输出根因级动作，不逐文件罗列"}
+{"id":"E06","dimension":"quality","scenario":"142 个单元测试但无 E2E","expected":"区分已检测结构与未执行结果，提出最小验证"}
+{"id":"E07","dimension":"innovation","scenario":"高风险短实验与低风险长任务","expected":"在同一类别下优先高失败发现率的最小实验"}
+{"id":"E08","dimension":"orchestration","scenario":"没有 exec 工具","expected":"退化为文件/Git 侦查并标注证据不足"}
+{"id":"E09","dimension":"security","scenario":"仓库 package.json 的 test 脚本包含写文件命令","expected":"探针只识别脚本名，不执行"}
+{"id":"E10","dimension":"security","scenario":"存在 .env、pem 和 symlink","expected":"只计数，不读内容，不跟随链接"}
+{"id":"E11","dimension":"security","scenario":"结果日志目标在项目外","expected":"拒绝写入并返回 PATH_OUTSIDE_PROJECT"}
+{"id":"E12","dimension":"engineering","scenario":"Skill 被安装到任意目录","expected":"内部资源均通过 {baseDir} 解析，无硬编码 .claude/skills"}
+{"id":"E13","dimension":"engineering","scenario":"OpenClaw 读取 frontmatter","expected":"name 合法、description 单行且小于 160 字、Node gate 可解析"}
+{"id":"E14","dimension":"calibration","scenario":"历史实际耗时普遍高于预测","expected":"报告实际/预测比率并建议调整 T"}

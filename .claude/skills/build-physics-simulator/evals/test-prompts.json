@@ -1,0 +1,9 @@
+[
+  {"id": "charge-sign", "prompt": "题图与文字对电性描述冲突时如何处理？", "must_include": ["原图", "待确认", "不覆盖"]},
+  {"id": "radial-shortcut-valid", "prompt": "圆形边界、沿半径入射、仅有匀强磁场，求偏转角。", "technique": "mag-radial-boundary-tangent"},
+  {"id": "radial-shortcut-invalid", "prompt": "粒子斜着进入圆形磁场边界，能否直接令两角相等？", "must_include": ["不能", "斜入射"]},
+  {"id": "before-third", "prompt": "第三次进入 III 区之前经过 P 点是什么意思？", "technique": "deadline-before-nth-entry", "must_include": ["截止", "所有阶段"]},
+  {"id": "multi-case", "prompt": "存在多个参数解时怎样证明无遗漏？", "must_include": ["事件表", "首次命中", "重复"]},
+  {"id": "student-layer", "prompt": "生成学生版解析。", "must_include": ["答案速览", "一眼识别", "详细解答", "易错点", "30 秒自测"], "must_exclude": ["教师审计"]},
+  {"id": "offline", "prompt": "导出给学生双击打开的仿真。", "must_include": ["内联", "无 fetch", "ASCII"]}
+]

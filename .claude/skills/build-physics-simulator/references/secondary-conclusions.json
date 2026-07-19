@@ -1,0 +1,122 @@
+[
+  {
+    "id": "mag-lorentz-sign-double-check",
+    "module": "磁场",
+    "triggers": ["洛伦兹力方向", "正负电荷", "偏转方向", "左手定则"],
+    "conclusion": "先按正电荷用左手定则判断，再对负电荷反向；最后用圆心应位于洛伦兹力一侧复核。",
+    "conditions": ["速度不与磁场平行", "只判断磁场力方向"],
+    "forbidden": ["把右手定则当作带电粒子受力定则", "只看轨迹弯向而不核对电性"],
+    "prerequisites": ["F=qv×B", "洛伦兹力始终垂直速度"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "mag-radial-boundary-tangent",
+    "module": "磁场",
+    "triggers": ["圆形磁场边界", "沿半径进入", "同心圆", "切线", "弦"],
+    "conclusion": "若粒子沿圆形边界的半径方向进入匀强磁场，出射速度相对入射速度的偏转角等于出射半径相对入射半径的圆心角。",
+    "conditions": ["边界是圆", "入射速度沿边界半径", "区域内只有匀强磁场", "速率不变"],
+    "forbidden": ["斜入射仍直接令两角相等", "电场与磁场同时做功时直接套用"],
+    "prerequisites": ["磁场轨迹为圆弧", "圆的半径垂直切线"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "field-work-energy-sign",
+    "module": "电场",
+    "triggers": ["电势差", "电场加速", "动能", "正负电荷"],
+    "conclusion": "统一写 ΔEk=qU_ab，并先声明 U_ab=φa−φb；不要靠‘加速/减速’猜正负号。",
+    "conditions": ["只有静电力做功，或其余力不做功"],
+    "forbidden": ["未定义电势差下标", "把电荷量绝对值代替带符号的 q"],
+    "prerequisites": ["动能定理", "电场力做功 W=qU_ab"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "multi-region-angle-ledger",
+    "module": "复合场",
+    "triggers": ["多个区域", "多次进出", "圆周运动", "角度累计"],
+    "conclusion": "把每段轨迹压缩成带正负号的方向角增量，按时间顺序累加，比逐段求圆心坐标更省步骤。",
+    "conditions": ["每段的转向和偏转角可确定", "统一选定逆时针为正或顺时针为正"],
+    "forbidden": ["中途更换角度正方向", "漏记返回段", "把位置角和速度方向角混用"],
+    "prerequisites": ["圆周运动切线方向", "有向角"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "deadline-before-nth-entry",
+    "module": "审题",
+    "triggers": ["第n次进入之前", "首次经过", "在……之前", "截止事件"],
+    "conclusion": "‘第 n 次进入之前’是截止条件，包含从初始时刻到该事件前的所有阶段；应逐事件检查首次命中，而不是只看第 n−1 与第 n 次之间。",
+    "conditions": ["题目使用时间先后限定"],
+    "forbidden": ["把‘之前’误读为‘紧邻之前’", "只验证一个命中时刻"],
+    "prerequisites": ["按时间排列事件"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "magnetic-arc-time",
+    "module": "磁场",
+    "triggers": ["圆弧时间", "磁场运动时间", "偏转角"],
+    "conclusion": "匀强磁场中转过 φ 弧度所需时间 t=φm/(|q|B)，与速率和轨道半径无关。",
+    "conditions": ["区域内只有匀强磁场", "φ 使用弧度"],
+    "forbidden": ["φ 用角度数直接代入", "跨越不同 B 的圆弧合并计算"],
+    "prerequisites": ["T=2πm/(|q|B)"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "circular-chord-radius",
+    "module": "圆周运动",
+    "triggers": ["弦长", "偏转角", "轨道半径", "圆弧"],
+    "conclusion": "半径 r 的圆上，圆心角为 θ 的弦长 L=2r sin(θ/2)。",
+    "conditions": ["θ 是同一圆心对应的较小圆心角，或已明确所取弧"],
+    "forbidden": ["把速度偏转角与位置圆心角混淆后直接代入"],
+    "prerequisites": ["等腰三角形", "半角关系"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "graph-slope-area-meaning",
+    "module": "图像法",
+    "triggers": ["图像", "斜率", "面积", "物理意义"],
+    "conclusion": "先由纵横轴量纲判断：斜率对应 Δ纵/Δ横，面积对应 纵×横；只有量纲和定义都吻合才赋予物理意义。",
+    "conditions": ["坐标轴变量与单位明确"],
+    "forbidden": ["看到图像就机械套‘斜率/面积’", "忽略有向面积"],
+    "prerequisites": ["函数图像", "量纲"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "dimension-extreme-symmetry-check",
+    "module": "通用检验",
+    "triggers": ["检查答案", "量纲", "极限", "对称"],
+    "conclusion": "结果至少做一个低成本检查：单位是否正确、极端参数下趋势是否合理、对称情形是否恢复熟悉结论。",
+    "conditions": ["结果含物理量或可变参数"],
+    "forbidden": ["只复算同一条推导当作独立验证"],
+    "prerequisites": ["单位制", "函数趋势"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "velocity-selector-condition",
+    "module": "复合场",
+    "triggers": ["速度选择器", "电场磁场共存", "直线通过"],
+    "conclusion": "只有电场力与洛伦兹力方向相反且大小相等时才有 v=E/B；方向和电性决定能否平衡。",
+    "conditions": ["E、B、v 两两垂直", "粒子匀速直线通过"],
+    "forbidden": ["任何复合场都写 v=E/B", "不检查受力方向"],
+    "prerequisites": ["qE=qvB"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "projectile-time-by-axis",
+    "module": "运动学",
+    "triggers": ["平抛", "斜抛", "运动时间", "分解"],
+    "conclusion": "二维运动的时间是共同参数，优先在信息最充分、方程最简单的轴上求时间，再代入另一轴。",
+    "conditions": ["两方向运动可独立分解", "参考系为惯性系"],
+    "forbidden": ["两个方向分别设置不同时间", "忽略加速度方向"],
+    "prerequisites": ["运动独立性"],
+    "grade_band": "高中"
+  },
+  {
+    "id": "circuit-equivalent-boundary",
+    "module": "电路",
+    "triggers": ["等效电路", "滑动变阻器", "极值", "短路断路"],
+    "conclusion": "先标出电流的实际通路，再用滑片端点对应的短路/最大接入电阻作为边界检查。",
+    "conditions": ["稳恒直流电路", "元件模型与题设一致"],
+    "forbidden": ["只按图形远近判断串并联", "忽略电表内阻设定"],
+    "prerequisites": ["串并联", "欧姆定律"],
+    "grade_band": "高中"
+  }
+]
