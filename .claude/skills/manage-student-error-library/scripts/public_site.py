@@ -34,7 +34,10 @@ _JSON_SCRIPT_RE = re.compile(
     r'(<script\b[^>]*\btype=["\']application/json["\'][^>]*>)(.*?)(</script>)',
     re.IGNORECASE | re.DOTALL,
 )
-_ENTRY_ID_LINE_RE = re.compile(r'^题目编号：`[a-f0-9]{32,}[-][a-f0-9]+`\s*$', re.MULTILINE)
+_ENTRY_ID_LINE_RE = re.compile(
+    r"^\s*(?:题目编号|条目编号|Entry ID|entry_id)\s*[:：]\s*`?[^`\n]+`?\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 TEXT_EXTENSIONS = {".html", ".js", ".json", ".md", ".css", ".svg"}
 PUBLIC_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 FORBIDDEN_TEXT = (

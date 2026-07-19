@@ -1,7 +1,22 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-20T06:02:00+08:00",
+  "generated_at": "2026-07-20T06:31:30+08:00",
   "questions": [
+    {
+      "id": "question-fc379ca42475",
+      "title": "两同向分区磁场中带电粒子的运动与相遇",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动",
+        "分区域磁场轨迹",
+        "多粒子相遇",
+        "平均速度"
+      ],
+      "content": "questions/question-fc379ca42475/content.md",
+      "pdf": null,
+      "simulation": "questions/question-fc379ca42475/simulation.html",
+      "published_at": "2026-07-20T06:31:30+08:00"
+    },
     {
       "id": "question-1ffa341ff73a",
       "title": "内外反向圆形磁场中的周期轨迹",

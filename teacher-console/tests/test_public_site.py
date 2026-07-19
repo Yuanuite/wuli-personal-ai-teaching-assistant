@@ -40,7 +40,7 @@ class PublicSiteTest(unittest.TestCase):
             "source": {"stored_files": ["assets/original.png"]},
         })
         (self.entry / "problem.md").write_text(
-            "# 带电粒子在磁场中的运动\n\n![原始题图](assets/original.png)\n\n求粒子的运动半径。\n",
+            f"# 带电粒子在磁场中的运动\n\n题目编号：`{self.entry_id}`\n\n![原始题图](assets/original.png)\n\n求粒子的运动半径。\n",
             encoding="utf-8",
         )
         (self.entry / "student-solution.md").write_text(
@@ -133,6 +133,8 @@ class PublicSiteTest(unittest.TestCase):
         source.write_text(
             '<script type="application/json" id="physics-model-data">'
             + json.dumps({
+                "schema_version": 1,
+                "model_type": "planar-magnetic-multi-particle",
                 "entry_id": self.entry_id,
                 "source": {"original_image": "assets/original.png"},
                 "teacher_audit": {"note": "PRIVATE-TEACHER"},
