@@ -34,6 +34,7 @@ _JSON_SCRIPT_RE = re.compile(
     r'(<script\b[^>]*\btype=["\']application/json["\'][^>]*>)(.*?)(</script>)',
     re.IGNORECASE | re.DOTALL,
 )
+_ENTRY_ID_LINE_RE = re.compile(r'^题目编号：`[a-f0-9]{32,}[-][a-f0-9]+`\s*$', re.MULTILINE)
 TEXT_EXTENSIONS = {".html", ".js", ".json", ".md", ".css", ".svg"}
 PUBLIC_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 FORBIDDEN_TEXT = (
@@ -293,6 +294,8 @@ def _public_markdown(entry: Path) -> tuple[str, list[tuple[Path, str]]]:
             copied[source] = f"asset-{len(copied) + 1}{source.suffix.lower()}"
         return f"![{alt}](assets/{copied[source]}){width}"
 
+    problem = _ENTRY_ID_LINE_RE.sub("", problem)
+    answer = _ENTRY_ID_LINE_RE.sub("", answer)
     combined = f"{problem.rstrip()}\n\n---\n\n{answer.lstrip()}"
     combined = IMAGE_RE.sub(rewrite, combined)
     title = str(record.get("title") or entry.name).strip()
