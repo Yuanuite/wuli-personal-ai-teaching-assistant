@@ -128,6 +128,48 @@ class PublicSiteTest(unittest.TestCase):
         Image.new("RGB", (320, 220), "gray").save(self.entry / "assets" / "original.png")
         self.assertEqual(public_site.public_image_snapshot(self.entry)["status"], "stale")
 
+    def test_public_catalog_uses_student_answer_pdf_name(self):
+        self.approve_public_image()
+
+        def fake_generate_pdf(question_dir):
+            (question_dir / public_site.PUBLIC_PDF_NAME).write_bytes(b"%PDF-1.4\n%test\n")
+            return {"status": "generated", "file": public_site.PUBLIC_PDF_NAME, "size": 15}
+
+        with mock.patch.object(public_site, "_generate_pdf", side_effect=fake_generate_pdf):
+            prepared = public_site.prepare_publication(self.library, self.entry_id, self.site)
+        catalog = json.loads((self.entry / public_site.DRAFT_DIR / "catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(catalog["questions"][0]["pdf"], f"questions/{prepared['public_id']}/{public_site.PUBLIC_PDF_NAME}")
+        self.assertTrue((self.entry / public_site.DRAFT_DIR / "questions" / prepared["public_id"] / public_site.PUBLIC_PDF_NAME).is_file())
+
+    def test_public_pdf_falls_back_to_reportlab_for_webp_and_svg(self):
+        question_dir = self.entry / "public-question"
+        assets = question_dir / "assets"
+        assets.mkdir(parents=True)
+        Image.new("RGB", (320, 180), "white").save(assets / "question-1.webp")
+        (assets / "asset-1.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="120">'
+            '<rect width="320" height="120" fill="white"/>'
+            '<text x="20" y="60" font-size="24">洛伦兹力示意</text>'
+            "</svg>",
+            encoding="utf-8",
+        )
+        (question_dir / "content.md").write_text(
+            "# 带电粒子题\n\n![公开题图](assets/question-1.webp)\n\n## 详细解答\n\n由 $qvB=mv^2/r$ 得半径。\n\n![示意图](assets/asset-1.svg)\n",
+            encoding="utf-8",
+        )
+        with mock.patch.object(public_site.pdf_export, "_try_pandoc", return_value={"status": "skipped", "reason": "forced"}):
+            result = public_site._generate_pdf(question_dir)
+        self.assertEqual(result["status"], "generated")
+        self.assertEqual(result["engine"], "reportlab")
+        self.assertEqual(result["file"], public_site.PUBLIC_PDF_NAME)
+        self.assertTrue((question_dir / public_site.PUBLIC_PDF_NAME).is_file())
+        self.assertFalse((question_dir / "answer.pdf").exists())
+        self.assertGreater((question_dir / public_site.PUBLIC_PDF_NAME).stat().st_size, 1000)
+
+    def test_reportlab_fallback_preserves_latex_markdown(self):
+        text = public_site.pdf_export._clean_markdown_inline("由 $x=\\frac{mv_0}{qB}$ 得半径。")
+        self.assertIn("$x=\\frac{mv_0}{qB}$", text)
+
     def test_simulator_public_copy_removes_internal_model_metadata(self):
         source = self.entry / "approved-simulator.html"
         source.write_text(

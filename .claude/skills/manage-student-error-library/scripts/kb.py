@@ -20,6 +20,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
+import pdf_export
+
 
 SCHEMA_VERSION = 1
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".tif", ".tiff", ".bmp"}
@@ -863,10 +865,6 @@ def export_entry(root: Path, entry_id: str, output_base: Path | None = None) -> 
 
 
 def _generate_pdf(out_dir: Path, entry: Path, md_name: str, pdf_name: str) -> dict[str, Any]:
-    pandoc = shutil.which("pandoc")
-    xelatex = shutil.which("xelatex")
-    if not pandoc or not xelatex:
-        return {"status": "skipped", "reason": "pandoc or xelatex not found"}
     tmp_assets = out_dir / "assets"
     tmp_assets_created = False
     try:
@@ -877,29 +875,8 @@ def _generate_pdf(out_dir: Path, entry: Path, md_name: str, pdf_name: str) -> di
             for f in entry_assets.iterdir():
                 if f.is_file():
                     shutil.copy2(f, tmp_assets / f.name)
-        # Use temporary markdown with local paths for pandoc
-        import subprocess as _sp
         pdf_path = out_dir / pdf_name
-        last_error = ""
-        for font in ("STSong", "Heiti SC", "PingFang SC"):
-            result = _sp.run([
-                pandoc, md_name, "-o", pdf_name,
-                "--pdf-engine=xelatex",
-                "-V", f"mainfont={font}",
-                "-V", f"CJKmainfont={font}",
-                "-V", "geometry:margin=2cm",
-                "-V", "fontsize=11pt",
-                "-V", "linestretch=1.25",
-                "-V", "colorlinks=true",
-                "--from", "markdown+tex_math_dollars+raw_tex",
-                "--standalone",
-            ], text=True, capture_output=True, cwd=str(out_dir))
-            if result.returncode == 0 and pdf_path.exists():
-                return {"status": "ok", "path": str(pdf_path), "size": pdf_path.stat().st_size, "font": font}
-            last_error = result.stderr.strip()
-            if pdf_path.exists():
-                pdf_path.unlink()
-        return {"status": "error", "stderr": last_error[:500]}
+        return pdf_export.generate_markdown_pdf(out_dir / md_name, pdf_path, success_status="ok")
     except Exception as exc:
         return {"status": "error", "reason": str(exc)[:200]}
     finally:

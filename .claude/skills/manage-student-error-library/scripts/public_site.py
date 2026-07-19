@@ -8,12 +8,12 @@ import hashlib
 import json
 import re
 import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import kb
+import pdf_export
 import process_uploads
 from PIL import Image, ImageChops, ImageOps
 
@@ -27,6 +27,7 @@ DRAFT_RECORD = "publication-draft.json"
 REVIEW_RECORD = "publication-review.json"
 PUBLIC_IMAGE_DIR = "publication-assets"
 PUBLIC_IMAGE_RECORD = "publication-images.json"
+PUBLIC_PDF_NAME = "带答案错题.pdf"
 COMMON_FILES = ("index.html", "viewer.html", "assets/site.css", "assets/site.js")
 IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)(\{width=\d+%\})?')
 # Match any <script type="application/json"> tag — ID-agnostic, works with all templates
@@ -315,47 +316,7 @@ def _public_markdown(entry: Path) -> tuple[str, list[tuple[Path, str]]]:
 
 
 def _generate_pdf(question_dir: Path) -> dict[str, Any]:
-    pandoc = shutil.which("pandoc")
-    xelatex = shutil.which("xelatex")
-    if not pandoc or not xelatex:
-        return {"status": "skipped", "reason": "pandoc or xelatex not found"}
-    output = question_dir / "answer.pdf"
-    last_error = ""
-    for font in ("STSong", "Heiti SC", "PingFang SC"):
-        result = subprocess.run(
-            [
-                pandoc,
-                "content.md",
-                "-o",
-                "answer.pdf",
-                "--pdf-engine=xelatex",
-                "-V",
-                f"mainfont={font}",
-                "-V",
-                f"CJKmainfont={font}",
-                "-V",
-                "geometry:margin=2cm",
-                "-V",
-                "fontsize=11pt",
-                "-V",
-                "linestretch=1.25",
-                "-V",
-                "colorlinks=true",
-                "--from",
-                "markdown+tex_math_dollars+raw_tex",
-                "--standalone",
-            ],
-            cwd=question_dir,
-            capture_output=True,
-            text=True,
-            timeout=120,
-            check=False,
-        )
-        if result.returncode == 0 and output.is_file():
-            return {"status": "generated", "file": "answer.pdf", "size": output.stat().st_size}
-        last_error = (result.stderr or result.stdout or "PDF generation failed").strip()[-800:]
-    output.unlink(missing_ok=True)
-    return {"status": "skipped", "reason": last_error or "PDF generation failed"}
+    return pdf_export.generate_markdown_pdf(question_dir / "content.md", question_dir / PUBLIC_PDF_NAME, success_status="generated")
 
 
 def _approved_simulator(entry: Path) -> Path | None:
@@ -421,7 +382,7 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
         "subject": str(record.get("subject") or "高中物理"),
         "knowledge_points": list(record.get("knowledge_points", []))[:6],
         "content": f"questions/{identifier}/content.md",
-        "pdf": f"questions/{identifier}/answer.pdf" if pdf.get("status") == "generated" else None,
+        "pdf": f"questions/{identifier}/{PUBLIC_PDF_NAME}" if pdf.get("status") == "generated" else None,
         "simulation": f"questions/{identifier}/simulation.html" if simulator else None,
         "published_at": now_iso(),
     }
@@ -432,7 +393,7 @@ def audit_public_tree(root: Path, entry: Path) -> list[str]:
     errors: list[str] = []
     identifier = public_id(entry)
     question_root = root / "questions" / identifier
-    allowed_question_files = {"content.md", "answer.pdf", "simulation.html"}
+    allowed_question_files = {"content.md", PUBLIC_PDF_NAME, "answer.pdf", "simulation.html"}
     for path in sorted(item for item in question_root.rglob("*") if item.is_file()):
         relative = path.relative_to(question_root)
         if relative.parts[0] != "assets" and str(relative) not in allowed_question_files:

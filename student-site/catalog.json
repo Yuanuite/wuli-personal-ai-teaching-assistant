@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-20T06:31:30+08:00",
+  "generated_at": "2026-07-20T06:45:29+08:00",
   "questions": [
     {
       "id": "question-fc379ca42475",
@@ -13,9 +13,9 @@
         "平均速度"
       ],
       "content": "questions/question-fc379ca42475/content.md",
-      "pdf": null,
+      "pdf": "questions/question-fc379ca42475/带答案错题.pdf",
       "simulation": "questions/question-fc379ca42475/simulation.html",
-      "published_at": "2026-07-20T06:31:30+08:00"
+      "published_at": "2026-07-20T06:45:29+08:00"
     },
     {
       "id": "question-1ffa341ff73a",
