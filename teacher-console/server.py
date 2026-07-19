@@ -7,6 +7,7 @@ import argparse
 import json
 import mimetypes
 import os
+import shutil
 import sys
 import tempfile
 import threading
@@ -361,6 +362,17 @@ def source_asset_names(entry: Path) -> set[str]:
     return names
 
 
+def _safe_validation_copy(canonical_entry: Path, staging: Path, relative: str) -> None:
+    rel = Path(relative)
+    if rel.is_absolute() or ".." in rel.parts:
+        return
+    source = canonical_entry / rel
+    target = staging / rel
+    if source.is_file() and not target.exists():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+
+
 def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entry: Path | None = None) -> list[str]:
     errors: list[str] = []
     student = staging / "student-solution.md"
@@ -376,10 +388,15 @@ def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entr
         errors.append("solution.md must be identical to teacher-solution.md")
     if canonical_entry is not None:
         baseline = kb.load_json(canonical_entry / "record.json", {})
-        candidate = kb.load_json(staging / "record.json", {})
-        for field in sorted(PROTECTED_RECORD_FIELDS):
-            if candidate.get(field) != baseline.get(field):
-                errors.append(f"record.json protected field changed: {field}")
+        if "record.json" in _changed:
+            candidate = kb.load_json(staging / "record.json", {})
+            for field in sorted(PROTECTED_RECORD_FIELDS):
+                if candidate.get(field) != baseline.get(field):
+                    errors.append(f"record.json protected field changed: {field}")
+        else:
+            _safe_validation_copy(canonical_entry, staging, "record.json")
+        for relative in baseline.get("source", {}).get("stored_files", []):
+            _safe_validation_copy(canonical_entry, staging, str(relative))
     errors.extend(kb.validate_entry(LIBRARY, staging, ready_rules=True, require_answer_review=False))
     return sorted(set(errors))
 

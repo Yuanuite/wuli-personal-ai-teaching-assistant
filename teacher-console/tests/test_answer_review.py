@@ -206,6 +206,26 @@ class AnswerReviewGateTest(unittest.TestCase):
         kb.write_json(self.entry / "record.json", record)
         self.assertIn("assets/original.png", teacher_console_server.source_asset_names(self.entry))
 
+    def test_economy_answer_candidate_validates_without_record_context(self):
+        staging = Path(self.temp.name) / "economy-staging" / self.entry.name
+        staging.mkdir(parents=True)
+        shutil.copy2(self.entry / "problem.md", staging / "problem.md")
+        for name in ("solution.md", "student-solution.md", "teacher-solution.md"):
+            shutil.copy2(self.entry / name, staging / name)
+        (staging / "assets").mkdir()
+        shutil.copy2(self.entry / "assets" / "explanatory.svg", staging / "assets" / "explanatory.svg")
+
+        errors = teacher_console_server.validate_answer_candidate(
+            staging,
+            ["assets/explanatory.svg", "solution.md", "student-solution.md", "teacher-solution.md"],
+            self.entry,
+        )
+
+        self.assertNotIn("record.json protected field changed: id", errors)
+        self.assertNotIn("record.json: unsupported schema_version", errors)
+        self.assertNotIn("record.json: title is required", errors)
+        self.assertEqual(errors, [])
+
     def test_teacher_console_instance_lock_is_exclusive(self):
         first = teacher_console_server.acquire_instance_lock(self.library)
         try:

@@ -1,12 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440">
-  <rect width="760" height="440" fill="#fbfcff"/>
-  <line x1="80" y1="210" x2="710" y2="210" stroke="#234" stroke-width="3"/>
-  <line x1="110" y1="390" x2="110" y2="40" stroke="#234" stroke-width="3"/>
-  <path d="M110 70 Q270 75 365 210" fill="none" stroke="#1677ff" stroke-width="5"/>
-  <circle cx="365" cy="210" r="7" fill="#d33"/><text x="375" y="200" font-size="20">Q</text>
-  <circle cx="480" cy="277" r="135" fill="none" stroke="#d65" stroke-width="4" stroke-dasharray="8 6"/>
-  <line x1="365" y1="210" x2="480" y2="277" stroke="#555" stroke-width="3"/>
-  <line x1="110" y1="412" x2="710" y2="412" stroke="#777" stroke-width="3" stroke-dasharray="9 7"/>
-  <text x="620" y="405" font-size="20">y=-d（相切）</text><text x="125" y="65" font-size="20">P</text>
-  <text x="390" y="245" font-size="19">r，圆心纵坐标 -r/2</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" viewBox="0 0 760 460">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#234"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#e80"/>
+    </marker>
+  </defs>
+
+  <rect width="760" height="460" fill="#fbfcff"/>
+
+  <!-- Region backgrounds -->
+  <rect x="200" y="40" width="530" height="170" fill="#e8f0ff" opacity="0.35"/>
+  <rect x="60" y="210" width="670" height="150" fill="#fff2e8" opacity="0.35"/>
+
+  <!-- Coordinate axes -->
+  <line x1="60" y1="210" x2="730" y2="210" stroke="#234" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="200" y1="430" x2="200" y2="35" stroke="#234" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <text x="740" y="205" font-size="19" fill="#234" font-style="italic">x</text>
+  <text x="192" y="27" font-size="19" fill="#234" font-style="italic">y</text>
+  <text x="208" y="228" font-size="16" fill="#234">O</text>
+
+  <!-- Electric field arrows (quadrant I, downward) -->
+  <line x1="320" y1="70" x2="320" y2="140" stroke="#678" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="430" y1="80" x2="430" y2="150" stroke="#678" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="540" y1="70" x2="540" y2="140" stroke="#678" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="630" y1="80" x2="630" y2="150" stroke="#678" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="640" y="110" font-size="16" fill="#678">E↓</text>
+
+  <!-- Magnetic field out-of-page symbols (quadrant IV) -->
+  <circle cx="330" cy="260" r="9" fill="none" stroke="#888" stroke-width="1.5"/>
+  <circle cx="330" cy="260" r="2.5" fill="#888"/>
+  <circle cx="430" cy="280" r="9" fill="none" stroke="#888" stroke-width="1.5"/>
+  <circle cx="430" cy="280" r="2.5" fill="#888"/>
+  <circle cx="530" cy="255" r="9" fill="none" stroke="#888" stroke-width="1.5"/>
+  <circle cx="530" cy="255" r="2.5" fill="#888"/>
+  <circle cx="600" cy="290" r="9" fill="none" stroke="#888" stroke-width="1.5"/>
+  <circle cx="600" cy="290" r="2.5" fill="#888"/>
+  <circle cx="380" cy="310" r="9" fill="none" stroke="#888" stroke-width="1.5"/>
+  <circle cx="380" cy="310" r="2.5" fill="#888"/>
+
+  <!-- y = -d boundary (magnetic field bottom edge) -->
+  <line x1="60" y1="360" x2="710" y2="360" stroke="#e80" stroke-width="2.5" stroke-dasharray="10 6"/>
+  <text x="530" y="355" font-size="17" fill="#e80" font-weight="bold">y = −d（相切）</text>
+
+  <!-- ===== Electric field trajectory (parabolic, P → Q) ===== -->
+  <!-- P(0,h): horizontal initial velocity v₀; uniform downward E field → projectile motion -->
+  <path d="M 200 70 Q 281 70 362 210" fill="none" stroke="#1677ff" stroke-width="4.5"/>
+
+  <!-- P point -->
+  <circle cx="200" cy="70" r="6" fill="#d33"/>
+  <text x="130" y="65" font-size="18" fill="#d33" font-weight="bold">P(0, h)</text>
+
+  <!-- Q point (entry into magnetic field) -->
+  <circle cx="362" cy="210" r="6" fill="#d33"/>
+  <text x="372" y="200" font-size="18" fill="#d33" font-weight="bold">Q</text>
+
+  <!-- ===== Magnetic field trajectory (circular arc, Q → tangent) ===== -->
+  <!-- r = 100, center C at (275, 260). Q at angle −30°, bottom at +90°; sweep 120° clockwise -->
+  <circle cx="275" cy="260" r="100" fill="none" stroke="#999" stroke-width="2.5" stroke-dasharray="6 5"/>
+
+  <!-- Solid arc: Q → bottom tangent point, 120° clockwise -->
+  <path d="M 362 210 A 100 100 0 0 1 275 360" fill="none" stroke="#1677ff" stroke-width="4.5"/>
+
+  <!-- Tangency marker at bottom -->
+  <circle cx="275" cy="360" r="5" fill="#1677ff"/>
+
+  <!-- Center C -->
+  <circle cx="275" cy="260" r="4.5" fill="#555"/>
+  <text x="228" y="282" font-size="16" fill="#555" font-weight="bold">C</text>
+
+  <!-- Radius C→Q -->
+  <line x1="275" y1="260" x2="362" y2="210" stroke="#555" stroke-width="2" stroke-dasharray="5 4"/>
+  <text x="324" y="228" font-size="15" fill="#555">r</text>
+
+  <!-- Vertical drop from center to x-axis = r/2 -->
+  <line x1="275" y1="210" x2="275" y2="260" stroke="#888" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="248" y="193" font-size="14" fill="#888">r/2</text>
+
+  <!-- Vertical from center to bottom = r -->
+  <line x1="288" y1="260" x2="288" y2="360" stroke="#888" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="293" y="315" font-size="14" fill="#888">r</text>
+
+  <!-- Velocity vector at Q (v = 2v₀, 60° below x-axis) -->
+  <line x1="362" y1="210" x2="430" y2="328" stroke="#e80" stroke-width="2.8" marker-end="url(#arrow-orange)"/>
+  <text x="438" y="338" font-size="16" fill="#e80" font-weight="bold">v</text>
+
+  <!-- Angle arc θ = 60° at Q (between +x axis and velocity) -->
+  <path d="M 392 210 A 30 30 0 0 1 377 236" fill="none" stroke="#e80" stroke-width="2"/>
+  <text x="400" y="193" font-size="16" fill="#e80">θ = 60°</text>
+
+  <!-- Region labels -->
+  <text x="480" y="100" font-size="22" fill="#234" opacity="0.45" font-weight="bold">Ⅰ 匀强电场</text>
+  <text x="440" y="275" font-size="22" fill="#234" opacity="0.45" font-weight="bold">Ⅳ 匀强磁场 ⊙</text>
+
+  <!-- Key -->
+  <text x="60" y="445" font-size="14" fill="#555">圆心 C 在 Q 速度方向左侧（正电荷 + 磁场向外）。圆心纵坐标 = −r/2，相切条件 r + r/2 = d → r = 2d/3</text>
 </svg>
