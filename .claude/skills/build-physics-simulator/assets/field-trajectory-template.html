@@ -4,39 +4,54 @@
     <div><b id="field-title"></b><small id="field-note">轨迹、事件与结论均由 physics-model.json 驱动</small></div>
     <div class="case-buttons" id="case-buttons-field" aria-label="模型情形"></div>
   </div>
-  <div class="parameter-panel card" id="parameter-panel-field" hidden>
-    <label for="h-ratio-field">高度比 h/d <b id="h-ratio-label-field"></b></label>
-    <input class="form-range" id="h-ratio-field" type="range">
-    <label for="b-ratio-field">磁场比 B/B* <b id="b-ratio-label-field"></b></label>
-    <input class="form-range" id="b-ratio-field" type="range">
-  </div>
-  <div class="viz-controls">
-    <button class="btn btn-primary" id="play-field" type="button">播放</button>
-    <button class="btn" id="replay-field" type="button">重播</button>
-    <label class="form-label" for="duration-field">总时长 <b id="duration-label-field"></b></label>
-    <input class="form-range" id="duration-field" type="range" min="8" max="90">
-    <label class="auto-pause"><input id="auto-pause-field" type="checkbox" checked> 关键事件自动暂停</label>
-  </div>
-  <div class="viz-controls">
-    <button class="btn" id="previous-event-field" type="button">← 上一事件</button>
-    <button class="btn" id="next-event-field" type="button">下一事件 →</button>
-    <label class="form-label" for="progress-field">进度 <b id="progress-label-field">0%</b></label>
-    <input class="form-range" id="progress-field" type="range" min="0" max="1000" value="0">
-    <button class="btn" id="zoom-out-field" type="button" aria-label="缩小">−</button>
-    <button class="btn" id="fit-field" type="button">适合窗口</button>
-    <button class="btn" id="zoom-in-field" type="button" aria-label="放大">＋</button>
-  </div>
-  <div class="layer-tabs" role="group" aria-label="逐层显示">
-    <span>显示层：</span>
-    <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
-    <button class="btn" data-layer="force" type="button">2 场与受力</button>
-    <button class="btn" data-layer="geometry" type="button">3 几何关系</button>
-  </div>
-  <canvas id="canvas-field" role="img" aria-label="可播放、拖动进度、逐层显示、缩放和平移的带电粒子轨迹仿真"></canvas>
-  <div class="status-grid card" aria-live="polite">
-    <div><small>当前阶段</small><b id="phase-field"></b></div>
-    <div><small>关键事件</small><b id="event-field"></b></div>
-    <div><small>命中结论</small><b id="result-field"></b></div>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-field" role="img" aria-label="可播放、拖动进度、逐层显示、缩放和平移的带电粒子轨迹仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-field"></b></div>
+        <div><small>关键事件</small><b id="event-field"></b></div>
+        <div><small>命中结论</small><b id="result-field"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="parameter-panel" id="parameter-panel-field" hidden>
+        <label for="h-ratio-field">高度比 h/d <b id="h-ratio-label-field"></b></label>
+        <input class="form-range" id="h-ratio-field" type="range">
+        <label for="b-ratio-field">磁场比 B/B* <b id="b-ratio-label-field"></b></label>
+        <input class="form-range" id="b-ratio-field" type="range">
+      </div>
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-field" type="button">播放</button>
+        <button class="btn" id="replay-field" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-field" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-field">进度 <b id="progress-label-field">0%</b></label>
+        <input class="form-range" id="progress-field" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <span>显示层</span>
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="force" type="button">2 受力</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-field">总时长 <b id="duration-label-field"></b></label>
+          <input class="form-range" id="duration-field" type="range" min="8" max="90">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-field" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-field" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-field" type="button" aria-label="缩小">−</button>
+          <button class="btn" id="fit-field" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-field" type="button" aria-label="放大">＋</button>
+        </div>
+      </details>
+    </aside>
   </div>
 </section>
 <style>
@@ -44,8 +59,22 @@
   #field-trajectory-sim [hidden]{display:none!important}
   #field-trajectory-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
   #field-trajectory-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
-  #field-trajectory-sim .case-buttons,#field-trajectory-sim .layer-tabs{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
-  #field-trajectory-sim .parameter-panel{display:grid;grid-template-columns:auto minmax(140px,1fr);align-items:center;gap:8px 12px;padding:10px 12px}
+  #field-trajectory-sim .case-buttons{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #field-trajectory-sim .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #field-trajectory-sim .scene-pane{display:grid;gap:8px;min-width:0}
+  #field-trajectory-sim .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #field-trajectory-sim .parameter-panel{display:grid;gap:5px;border-bottom:1px solid var(--border);padding-bottom:9px}
+  #field-trajectory-sim .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #field-trajectory-sim .scrub-control,#field-trajectory-sim .control-group{display:grid;gap:5px}
+  #field-trajectory-sim .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center}
+  #field-trajectory-sim .layer-tabs span{grid-column:1/-1;color:var(--muted-foreground);font-size:12px}
+  #field-trajectory-sim .layer-tabs .btn{padding-inline:6px}
+  #field-trajectory-sim .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #field-trajectory-sim .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #field-trajectory-sim .more-controls[open] summary{margin-bottom:9px}
+  #field-trajectory-sim .more-controls .control-group+ .control-group{margin-top:9px}
+  #field-trajectory-sim .button-pair{grid-template-columns:1fr 1fr}
+  #field-trajectory-sim .zoom-controls{grid-template-columns:auto 1fr auto}
   #field-trajectory-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
   #field-trajectory-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
   #field-trajectory-sim canvas:active{cursor:grabbing}
@@ -53,7 +82,24 @@
   #field-trajectory-sim .status-grid small,#field-trajectory-sim .status-grid b{display:block}
   #field-trajectory-sim .status-grid small{color:var(--muted-foreground)}
   #field-trajectory-sim .auto-pause{white-space:nowrap}
-  @media(max-width:680px){#field-trajectory-sim .sim-head{display:grid}#field-trajectory-sim .status-grid{grid-template-columns:1fr}#field-trajectory-sim .parameter-panel{grid-template-columns:1fr}}
+  @media(max-width:760px){
+    #field-trajectory-sim{gap:8px}
+    #field-trajectory-sim .sim-head{display:grid;gap:6px}
+    #field-trajectory-sim .sim-head small{display:none}
+    #field-trajectory-sim .case-buttons{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+    #field-trajectory-sim .case-buttons .btn{flex:0 0 auto}
+    #field-trajectory-sim .sim-workspace{display:block}
+    #field-trajectory-sim .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #field-trajectory-sim .status-grid>div:last-child{grid-column:1/-1}
+    #field-trajectory-sim .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:58svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #field-trajectory-sim .parameter-panel{grid-template-columns:auto minmax(0,1fr);align-items:center;padding-bottom:7px;font-size:12px}
+    #field-trajectory-sim .primary-controls{flex-wrap:nowrap}
+    #field-trajectory-sim .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #field-trajectory-sim .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #field-trajectory-sim .scrub-control label{white-space:nowrap;font-size:12px}
+    #field-trajectory-sim .layer-tabs span{display:none}
+    #field-trajectory-sim .more-controls{padding-top:6px}
+  }
 </style>
 <script>
 (() => {
@@ -199,6 +245,7 @@
   root.querySelector('#play-field').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-field').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-field').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};duration.oninput=draw;root.querySelector('#previous-event-field').onclick=()=>jump(-1);root.querySelector('#next-event-field').onclick=()=>jump(1);root.querySelector('#zoom-in-field').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-field').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-field').onclick=()=>{zoom=1;panX=panY=0;draw()};
   canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
   if(model.model_type==='electric-to-bounded-magnetic'){root.querySelector('#h-ratio-label-field').textContent=Number(root.querySelector('#h-ratio-field').value).toFixed(2);root.querySelector('#b-ratio-label-field').textContent=Number(root.querySelector('#b-ratio-field').value).toFixed(2)}
+  const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
   rebuild(false);new ResizeObserver(draw).observe(root);requestAnimationFrame(animate);
 })();
 </script>

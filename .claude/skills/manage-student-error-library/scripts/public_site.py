@@ -30,7 +30,7 @@ PUBLIC_IMAGE_RECORD = "publication-images.json"
 COMMON_FILES = ("index.html", "viewer.html", "assets/site.css", "assets/site.js")
 IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)(\{width=\d+%\})?')
 MODEL_SCRIPT_RE = re.compile(
-    r'(<script\b[^>]*\bid=["\']physics-model-data["\'][^>]*>)(.*?)(</script>)',
+    r'(<script\b[^>]*\bid=["\'](?:physics-model-data|field-trajectory-model)["\'][^>]*>)(.*?)(</script>)',
     re.IGNORECASE | re.DOTALL,
 )
 TEXT_EXTENSIONS = {".html", ".js", ".json", ".md", ".css", ".svg"}

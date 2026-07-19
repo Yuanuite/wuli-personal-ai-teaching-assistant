@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="330" viewBox="0 0 760 330">
+  <rect width="760" height="330" fill="#fbfcff"/>
+  <rect x="70" y="55" width="260" height="180" rx="12" fill="#eaf2ff" stroke="#1677ff" stroke-width="3"/>
+  <text x="105" y="95" font-size="22">0～2t₀：B 向里增强</text><text x="115" y="140" font-size="22">I 逆时针</text><text x="115" y="180" font-size="22">F安培向上</text><text x="115" y="215" font-size="22">T&lt;mg</text>
+  <rect x="430" y="55" width="260" height="180" rx="12" fill="#fff0ed" stroke="#d65" stroke-width="3"/>
+  <text x="455" y="95" font-size="22">2t₀～3t₀：B 减小</text><text x="480" y="140" font-size="22">I 顺时针</text><text x="480" y="180" font-size="22">F安培向下</text><text x="480" y="215" font-size="22">T&gt;mg</text>
+  <text x="175" y="290" font-size="22">q=n|ΔΦ|/R，与过程快慢无关</text>
+</svg>

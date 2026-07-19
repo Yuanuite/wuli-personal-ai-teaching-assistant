@@ -20,6 +20,7 @@ await page.goto(baseUrl, { waitUntil: "networkidle" });
 await page.locator(".folder-group").first().waitFor();
 const folders = await page.locator(".folder-group").count();
 const entryCards = await page.locator(".entry-card").count();
+const agentHealthDetail = await page.locator("#agent-health-detail").textContent();
 
 const dynamicEntry = page.locator(".entry-card", { hasText: "带电粒子在同心圆复合场中的运动" });
 await dynamicEntry.click();
@@ -45,11 +46,16 @@ await page.screenshot({ path: visualizationScreenshot, fullPage: false });
 const staticEntry = page.locator(".entry-card", { hasText: "航拍直升机电池容量与能量转化" });
 await staticEntry.click();
 await page.waitForFunction(() => document.querySelector("#entry-title")?.textContent?.includes("航拍直升机电池容量与能量转化"));
+const staticState = await page.locator("#state-badge").textContent();
 const visualizationTabHidden = await page.locator('[data-tab="visualization"]').evaluate(element => element.classList.contains("hidden"));
 const staticGalleryElements = await page.locator("#visualization-static-gallery").count();
 await page.locator('[data-tab="delivery"]').click();
 const prerequisiteToast = await page.locator("#toast").textContent();
 const activeTabAfterBlockedClick = await page.locator(".tab.active").getAttribute("data-tab");
+const deliveryWasReady = ["可生成交付", "已交付"].includes(String(staticState || "").trim());
+const deliveryNavigationOk = deliveryWasReady
+  ? activeTabAfterBlockedClick === "delivery"
+  : prerequisiteToast?.includes("复核") && activeTabAfterBlockedClick !== "delivery";
 await page.waitForTimeout(1800);
 const shortToastHidden = await page.locator("#toast").evaluate(element => element.classList.contains("hidden"));
 const downloads = await page.locator(".download-card strong").allTextContents();
@@ -79,13 +85,17 @@ await page.screenshot({ path: screenshot, fullPage: false });
 await browser.close();
 
 const report = {
-  status: errors.length || folders < 2 || entryCards < 2 || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !prerequisiteToast?.includes("解析复核") || activeTabAfterBlockedClick !== "answer" || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
+  status: errors.length || folders < 2 || entryCards < 2 || !agentHealthDetail?.includes("Agent") || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !deliveryNavigationOk || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
   folders,
   entryCards,
+  agentHealthDetail,
   sandbox,
   simulator,
   visualizationTabHidden,
   staticGalleryElements,
+  staticState,
+  deliveryWasReady,
+  deliveryNavigationOk,
   prerequisiteToast,
   activeTabAfterBlockedClick,
   shortToastHidden,

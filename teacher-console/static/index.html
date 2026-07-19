@@ -17,7 +17,22 @@
       <h1>悟理教师工作台</h1>
       </div>
     </div>
-    <div class="health"><span id="health-dot"></span><span id="health-text">正在连接本地服务</span></div>
+    <div class="health">
+      <label class="agent-tier-control" for="agent-tier">
+        <span>模型</span>
+        <select id="agent-tier" title="选择本次及后续 Agent 任务的成本档位">
+          <option value="auto">自动</option>
+          <option value="economy">经济</option>
+          <option value="expert">深度</option>
+        </select>
+      </label>
+      <span id="health-dot"></span>
+      <span class="health-copy">
+        <strong id="health-text">正在连接本地服务</strong>
+        <small id="agent-health-detail">正在检查可用 Agent</small>
+      </span>
+      <button id="probe-agent" class="health-probe" type="button" title="执行一次不含学生数据的真实连通检测">检测 Agent</button>
+    </div>
   </header>
 
   <main class="shell">
@@ -55,7 +70,16 @@
             <p id="entry-id" class="mono muted"></p>
             <h2 id="entry-title"></h2>
           </div>
-          <span id="state-badge" class="state-badge"></span>
+          <div class="entry-header-status">
+            <div id="active-job" class="active-job hidden" role="status" aria-live="polite">
+              <span class="job-spinner" aria-hidden="true"></span>
+              <span class="active-job-copy">
+                <strong id="active-job-title">后台任务处理中</strong>
+                <small id="active-job-detail"></small>
+              </span>
+            </div>
+            <span id="state-badge" class="state-badge"></span>
+          </div>
         </div>
 
         <ol id="progress" class="progress"></ol>

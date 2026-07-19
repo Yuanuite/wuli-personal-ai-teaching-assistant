@@ -4,40 +4,69 @@
     <div><b>第三次进入 III 区前经过 P</b><small id="case-note">答案、事件与轨迹均来自 physics-model.json</small></div>
     <div class="case-buttons" id="case-buttons" aria-label="答案情形"></div>
   </div>
-  <div class="viz-controls">
-    <button class="btn btn-primary" id="play-guided" type="button">播放</button>
-    <button class="btn" id="replay-guided" type="button">重播</button>
-    <label class="form-label" for="duration-guided">总时长 <b id="duration-label">24 秒</b></label>
-    <input class="form-range" id="duration-guided" type="range" min="8" max="90" value="24">
-    <label class="auto-pause"><input id="auto-pause-guided" type="checkbox" checked> 关键事件自动暂停</label>
-  </div>
-  <div class="viz-controls">
-    <button class="btn" id="previous-event-guided" type="button">← 上一事件</button>
-    <button class="btn" id="next-event-guided" type="button">下一事件 →</button>
-    <label class="form-label" for="progress-guided">进度 <b id="progress-label">0%</b></label>
-    <input class="form-range" id="progress-guided" type="range" min="0" max="1000" value="0">
-    <button class="btn" id="zoom-out-guided" type="button">−</button>
-    <button class="btn" id="fit-guided" type="button">适合窗口</button>
-    <button class="btn" id="zoom-in-guided" type="button">＋</button>
-  </div>
-  <div class="layer-tabs" role="group" aria-label="逐层显示">
-    <span>显示层：</span>
-    <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
-    <button class="btn" data-layer="force" type="button">2 受力</button>
-    <button class="btn" data-layer="geometry" type="button">3 几何</button>
-  </div>
-  <canvas id="canvas-guided" role="img" aria-label="可逐层显示、在关键事件暂停、缩放和平移的带电粒子运动仿真"></canvas>
-  <div class="status-grid card" aria-live="polite">
-    <div><small>当前阶段</small><b id="phase-guided"></b></div>
-    <div><small>关键事件</small><b id="event-guided"></b></div>
-    <div><small>命中结论</small><b id="result-guided"></b></div>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-guided" role="img" aria-label="可逐层显示、在关键事件暂停、缩放和平移的带电粒子运动仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-guided"></b></div>
+        <div><small>关键事件</small><b id="event-guided"></b></div>
+        <div><small>命中结论</small><b id="result-guided"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-guided" type="button">播放</button>
+        <button class="btn" id="replay-guided" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-guided" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-guided">进度 <b id="progress-label">0%</b></label>
+        <input class="form-range" id="progress-guided" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <span>显示层</span>
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="force" type="button">2 受力</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-guided">总时长 <b id="duration-label">24 秒</b></label>
+          <input class="form-range" id="duration-guided" type="range" min="8" max="90" value="24">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-guided" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-guided" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-guided" type="button">−</button>
+          <button class="btn" id="fit-guided" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-guided" type="button">＋</button>
+        </div>
+      </details>
+    </aside>
   </div>
 </section>
 <style>
   #guided-particle-sim{display:grid;gap:10px;width:100%}
   #guided-particle-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
   #guided-particle-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
-  #guided-particle-sim .case-buttons,#guided-particle-sim .layer-tabs{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .case-buttons{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #guided-particle-sim .scene-pane{display:grid;gap:8px;min-width:0}
+  #guided-particle-sim .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #guided-particle-sim .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .scrub-control,#guided-particle-sim .control-group{display:grid;gap:5px}
+  #guided-particle-sim .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center}
+  #guided-particle-sim .layer-tabs span{grid-column:1/-1;color:var(--muted-foreground);font-size:12px}
+  #guided-particle-sim .layer-tabs .btn{padding-inline:6px}
+  #guided-particle-sim .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #guided-particle-sim .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #guided-particle-sim .more-controls[open] summary{margin-bottom:9px}
+  #guided-particle-sim .more-controls .control-group+ .control-group{margin-top:9px}
+  #guided-particle-sim .button-pair{grid-template-columns:1fr 1fr}
+  #guided-particle-sim .zoom-controls{grid-template-columns:auto 1fr auto}
   #guided-particle-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
   #guided-particle-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
   #guided-particle-sim canvas:active{cursor:grabbing}
@@ -45,7 +74,23 @@
   #guided-particle-sim .status-grid small,#guided-particle-sim .status-grid b{display:block}
   #guided-particle-sim .status-grid small{color:var(--muted-foreground)}
   #guided-particle-sim .auto-pause{white-space:nowrap}
-  @media(max-width:680px){#guided-particle-sim .sim-head{display:grid}#guided-particle-sim .status-grid{grid-template-columns:1fr}}
+  @media(max-width:760px){
+    #guided-particle-sim{gap:8px}
+    #guided-particle-sim .sim-head{display:grid;gap:6px}
+    #guided-particle-sim .sim-head small{display:none}
+    #guided-particle-sim .case-buttons{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+    #guided-particle-sim .case-buttons .btn{flex:0 0 auto}
+    #guided-particle-sim .sim-workspace{display:block}
+    #guided-particle-sim .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #guided-particle-sim .status-grid>div:last-child{grid-column:1/-1}
+    #guided-particle-sim .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:54svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #guided-particle-sim .primary-controls{flex-wrap:nowrap}
+    #guided-particle-sim .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #guided-particle-sim .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #guided-particle-sim .scrub-control label{white-space:nowrap;font-size:12px}
+    #guided-particle-sim .layer-tabs span{display:none}
+    #guided-particle-sim .more-controls{padding-top:6px}
+  }
 </style>
 <script>
 (() => {
@@ -112,6 +157,6 @@
   function animate(t){if(playing){if(!lastTime)lastTime=t;const old=progress;progress+=(t-lastTime)/(Number(root.querySelector('#duration-guided').value)*1000);lastTime=t;const stops=eventStops(buildScene());if(root.querySelector('#auto-pause-guided').checked){const hit=stops.findIndex((e,i)=>i!==lastPause&&e.fraction>old+1e-5&&e.fraction<=progress);if(hit>=0){progress=stops[hit].fraction;lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
   const caseBox=root.querySelector('#case-buttons');cases.forEach(item=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=item.b3_label;b.dataset.caseId=item.id;b.onclick=()=>{activeCase=item;progress=0;lastPause=-1;setPlaying(false);zoom=1;panX=panY=0;caseBox.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));draw()};caseBox.appendChild(b)});caseBox.querySelector(`[data-case-id="${activeCase.id}"]`).classList.add('active');
   root.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===b));draw()});root.querySelector('#play-guided').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-guided').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-guided').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};root.querySelector('#duration-guided').oninput=draw;root.querySelector('#previous-event-guided').onclick=()=>jump(-1);root.querySelector('#next-event-guided').onclick=()=>jump(1);root.querySelector('#zoom-in-guided').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-guided').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-guided').onclick=()=>{zoom=1;panX=panY=0;draw()};
-  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;new ResizeObserver(draw).observe(root);draw();requestAnimationFrame(animate);
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;new ResizeObserver(draw).observe(root);draw();requestAnimationFrame(animate);
 })();
 </script>

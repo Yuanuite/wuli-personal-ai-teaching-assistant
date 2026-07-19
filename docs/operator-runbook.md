@@ -10,11 +10,21 @@
 python3 teacher-console/server.py
 ```
 
-浏览器打开 <http://127.0.0.1:8787/>。它是本地服务而不是公网网站；终端关闭后服务也会停止。若 8787 被占用，可使用 `--port 8788` 并打开对应端口。为安全起见，非回环地址默认拒绝启动。
+浏览器打开 <http://127.0.0.1:8787/>。它是本地服务而不是公网网站；终端关闭后服务也会停止。若 8787 被占用，可使用 `--port 8788` 并打开对应端口。服务硬性拒绝非回环地址；学生端公开访问必须走独立静态站，不能把教师端开放到局域网或公网。
 
 需要用其他本地页面或脚本调用工作台时，接口清单、`X-Teacher-Console` 写操作请求头和流程顺序见 [`teacher-console-api.md`](teacher-console-api.md)。学生静态站不调用这些接口。
 
-“生成解析”会优先调用 `TEACHER_CONSOLE_AGENT_COMMAND`，否则自动检测 Codex、再检测 Claude Code。自定义命令中的 `{entry}` 与 `{entry_id}` 会替换为当前条目；按钮不会绕过来源复核，也不会替教师批准答案。未生成合格答案时，页面保持失败/待处理状态。
+“生成解析”、答案返修和可视化建模统一进入本机 Agent Gateway 后台队列。Gateway 优先使用 JSON adapter 和经授权的 OpenAI-compatible API，其次兼容旧命令、Codex 和 Claude Code。页面右上角可选“自动 / 经济 / 深度”：简单返修可主动选经济档，自动档对可视化优先使用已配置的深度模型。页面会显示请求档位、实际模型、token 用量、provider、排队/运行/完成状态和失败原因。按钮不会绕过来源复核，也不会替教师批准答案；候选未通过范围或内容校验时 canonical 条目保持原样。
+
+provider 配置、JSON 契约、隔离候选和远程隐私门禁见 [`agent-gateway.md`](agent-gateway.md)。快速检查：
+
+```bash
+curl -fsS http://127.0.0.1:8787/api/health
+curl -fsS http://127.0.0.1:8787/api/agent/providers
+curl -fsS -H 'X-Teacher-Console: 1' -H 'Content-Type: application/json' \
+  -d '{"provider":"codex","timeout_seconds":120}' \
+  http://127.0.0.1:8787/api/agent/providers/probe
+```
 
 题干和答案使用本地 Markdown + KaTeX 实时预览。答案编辑后按“保存当前 Markdown”或 `Cmd/Ctrl+S`；保存会撤销旧答案批准并自动重建检索。“交给大模型修改”会把意见限定在当前条目的分层答案和引用解释图内，完成后仍需教师重新批准。标准解析默认不生成交互仿真；答案批准后进入始终保留的“可视化（可选）”页面。没有模型时可直接输入“我想为这道题生成一个可视化结果”或点击“调用 Skill 生成”，之后 Agent 才调用仿真 Skill。新模型会使答案摘要失效，需要先重新复核答案，再批准 iframe 中的动态结果。静态 SVG 仍在解析复核中查看和修改。
 
@@ -137,9 +147,16 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 
 ## 依赖与降级
 
+- Agent Gateway：CLI 只在修改前失败时自动切换 provider；候选越权、验证失败或 canonical 并发变化后立即停止。实际运行失败会暂时熔断该 provider，单项默认超时 300 秒；主动 probe 不发送学生材料。作业记录位于私有 `.cache/agent-jobs/`，服务重启后重新提交失败任务。
+- 服务单实例：同一知识库不能同时启动两个教师工作台；关闭时若有 Agent 正在运行，终端会等待它安全结束后再释放锁。
+- 自定义 provider 环境：默认只传基础运行变量与该 provider 的认证变量；额外变量通过 `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` 显式加入。
+- 推理位置：Codex/Claude 是本机启动的 CLI，但底层推理可能远程执行；查看 health 中的 `execution_locality` 和 `data_locality`，不要把“本机进程”等同于“数据不离机”。
+- 远程模型 API：默认关闭。必须同时设置 `privacy.allow_remote_agent=true` 与 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`；密钥只放环境变量。
+- OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求，默认 300 秒；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。
 - OCR：优先 Apple Vision 本地识别；失败时保留可复核条目，不丢弃原图。远程 OCR 必须先取得授权。
 - 视觉复核：边车失败、返回不确定项或无可用边车时生成教师复核单；绝不以 OCR 置信度代替复核。
 - PDF：PDF 工具链不可用时，继续交付 Markdown，并在 manifest 的 `pdf` 字段记录跳过原因。
+- 公开 PDF：公开题图会重新参与 PDF 生成；字体或 WebP 支持缺失时允许记为 `skipped`，不阻断安全的 Markdown 页面发布，学生站不得展示不存在的下载链接。
 - JSON Schema：需要 Python `jsonschema`。缺失时模型验证失败，不把未校验模型标为成功。
 - 浏览器运行时：需要 Node.js、Playwright 和可启动的 Chromium。依赖不存在时 `runtime_check.status=skipped`；浏览器成功启动但页面或控件报错时为 `failed`，阻止交付。
 - 不支持的 `model_type`：仿真构建明确失败，不套用错误模板。
@@ -163,14 +180,17 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 1. 打开 PDF，确认分页、公式和图片可读；
 2. 确认 `answer-review.json` 的摘要仍对应当前答案和模型；
 3. 若存在 `physics-model.json`，在工作台查看预审动态仿真，确认 `visualization-review.json` 对应当前产物摘要；否则确认 manifest 把可视化记为 `not-generated` / `not-required`，页面入口仍保留；
-4. 对动态仿真查看条目 `visualization/simulation-build.json` 的模型、静态校验和运行时状态；
+4. 对动态仿真查看条目 `visualization/simulation-build.json` 的模型、静态校验和运行时状态；桌面端确认画布与控制栏并排，手机端确认无需滚动即可看到画布、当前结论、播放和进度，次要控制默认折叠；
 5. 确认 `delivery-manifest.json` 中答案、PDF、仿真和 `runtime_check` 状态；
 6. 解压 `student-package.zip`，确认文件名为 ASCII 且 HTML/PDF/Markdown 可打开；
-7. 优先向学生发送页面标记的 `student-package.zip` 或 PDF；内部 JSON/截图不会出现在下载区。
+7. 优先向学生发送页面标记的 `student-package.zip` 或可用的 PDF；内部 JSON/截图不会出现在下载区。
 8. 若发布学生端，检查公开预览不含姓名、学校、原题上传、教师版解析或本地路径，再执行公开确认；推送前只查看 `student-site/` 的 Git 变更。
 
 ## 常见故障
 
+- 页面显示 Agent 不可用：查看 `/api/agent/providers` 的版本、缺失参数或熔断原因，再执行带 provider 的 `POST /api/agent/providers/probe`；不要只用 `command -v` 判断。若提示模型要求新版 CLI，升级该 CLI，或显式切到结构化 API/另一个 provider。
+- Agent 作业失败但文件没变化：这是修改前安全失败，可修复 provider 后重试；若 `auto` 还有可用 provider，Gateway 会自动降级。
+- 显示“候选未通过范围或内容校验”：查看作业结果的 `unauthorized_changes`、`validation_errors`；canonical 未提升，不要手工伪造成功状态。
 - HTML 双击打不开：先查看静态校验错误，再检查是否含远程 URL、模块脚本或丢失资源。
 - HTML 能开但没有动画：查看 `runtime_check` 的控制交互和控制台错误。
 - 答案与仿真事件不同：不要手改 HTML；修正 `physics-model.json` 的对应所有者字段，重新校验和构建。

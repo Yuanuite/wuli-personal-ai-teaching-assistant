@@ -63,9 +63,19 @@ await setRange('#progress-field',1000);
 await page.locator('[data-layer="geometry"]').click();
 await page.screenshot({path:path.resolve(outputInput,'electric-magnetic.png'),fullPage:true});
 await page.setViewportSize({width:390,height:844});
-await page.screenshot({path:path.resolve(outputInput,'electric-magnetic-mobile.png'),fullPage:true});
+await page.reload();
+await page.waitForTimeout(150);
+const mobileLayout=await page.evaluate(()=>{
+  const rect=selector=>{const value=document.querySelector(selector)?.getBoundingClientRect();return value?{top:value.top,bottom:value.bottom,height:value.height}:null};
+  return{canvas:rect('#canvas-field'),play:rect('#play-field'),progress:rect('#progress-field'),detailsOpen:document.querySelector('.more-controls')?.open,viewport:window.innerHeight,documentHeight:document.documentElement.scrollHeight};
+});
+if(!mobileLayout.canvas||mobileLayout.canvas.bottom>mobileLayout.viewport)errors.push(`mobile canvas is not initially visible: ${JSON.stringify(mobileLayout.canvas)}`);
+if(!mobileLayout.play||mobileLayout.play.bottom>mobileLayout.viewport)errors.push(`mobile play control is not initially visible: ${JSON.stringify(mobileLayout.play)}`);
+if(!mobileLayout.progress||mobileLayout.progress.bottom>mobileLayout.viewport)errors.push(`mobile scrubber is not initially visible: ${JSON.stringify(mobileLayout.progress)}`);
+if(mobileLayout.detailsOpen)errors.push('mobile secondary controls should start collapsed');
+await page.screenshot({path:path.resolve(outputInput,'electric-magnetic-mobile.png'),fullPage:false});
 
-const report={status:errors.length?'failed':'passed',errors,canvas:await page.locator('canvas').count(),q2:path.resolve(q2Input),q7:path.resolve(q7Input)};
+const report={status:errors.length?'failed':'passed',errors,canvas:await page.locator('canvas').count(),q2:path.resolve(q2Input),q7:path.resolve(q7Input),mobileLayout};
 console.log(JSON.stringify(report,null,2));
 await browser.close();
 process.exit(errors.length?1:0);

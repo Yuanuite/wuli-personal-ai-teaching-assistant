@@ -16,9 +16,9 @@
 python3 teacher-console/server.py
 ```
 
-然后打开 <http://127.0.0.1:8787/>。工作台采用固定视口：左侧按“上传日期文件夹 → 具体题目”组织，文件夹可在网页改名并同步到 `student-error-library/folders/`；原图、编辑器和预览分别滚动。题干与学生版/教师版答案均支持 Markdown + KaTeX 边写边预览。解析意见可直接交给本地 Agent 修改当前答案及引用的解释 SVG/PNG，再由教师重新批准。“可视化（可选）”页面对所有题目保留：标准解析默认不生成交互仿真；教师输入“我想为这道题生成一个可视化结果”或点击“调用 Skill 生成”后，系统才调用 `build-physics-simulator`。没有模型只表示尚未生成，不代表题目不适合。交付页只显示适合发送或继续编辑的成品，并逐一解释用途；已交付题目还可对原题图进行自动建议裁剪、手动四边调整和拖拽遮挡，教师确认后生成独立公开副本，再制作学生端预览并复制到 `student-site/`。服务默认只监听本机，公开站也不会连接本地 API。
+然后打开 <http://127.0.0.1:8787/>。工作台采用固定视口：左侧按“上传日期文件夹 → 具体题目”组织，文件夹可在网页改名并同步到 `student-error-library/folders/`；原图、编辑器和预览分别滚动。题干与学生版/教师版答案均支持 Markdown + KaTeX 边写边预览。解析意见通过本机 Agent Gateway 进入后台任务，在隔离候选区修改答案及解释 SVG/PNG，通过范围和内容校验后才提升到真源，再由教师重新批准。“可视化（可选）”页面对所有题目保留：标准解析默认不生成交互仿真；教师输入“我想为这道题生成一个可视化结果”或点击“调用 Skill 生成”后，系统才调用 `build-physics-simulator`。没有模型只表示尚未生成，不代表题目不适合。交付页只显示适合发送或继续编辑的成品，并逐一解释用途；已交付题目还可对原题图进行自动建议裁剪、手动四边调整和拖拽遮挡，教师确认后生成独立公开副本，再制作学生端预览并复制到 `student-site/`。服务硬性只监听本机回环地址，公开站也不会连接本地 API。
 
-解析与可视化修复按钮会优先使用 `TEACHER_CONSOLE_AGENT_COMMAND`，否则自动检测本机 Codex，再检测 Claude Code。自定义命令可使用 `{entry}`、`{entry_id}`、`{prompt}` 和 `{request}` 占位符。没有任何可用 Agent 时会生成本地请求文件并保留在“待 Agent 处理”，不会伪造已完成；Agent 也不能替教师执行批准或交付。
+Gateway 默认依次尝试结构化 adapter、经授权的 OpenAI-compatible API、兼容旧命令、Codex 和 Claude Code；显式配置的结构化 provider 优先于通用 CLI。本机 CLI 不等于本地推理，页面会显示执行与数据位置属性。没有可用 provider 时保留本地请求，不伪造完成；Agent 也不能替教师执行批准或交付。可用无学生数据的主动探测验证真实连通性；运行失败的 provider 会短暂熔断并安全降级。完整协议见 [`docs/agent-gateway.md`](docs/agent-gateway.md)。
 
 ### 自然语言入口
 
@@ -55,8 +55,20 @@ python3 teacher-console/server.py
 | `VISUAL_REVIEW_ALLOW_REMOTE` | 远程需要 | 必须为 `true`；仍需同时打开项目隐私门禁 |
 | `PHYSICS_SIMULATOR_NODE` | 否 | 指定用于浏览器检查的 Node.js 可执行文件 |
 | `PHYSICS_SIMULATOR_NODE_MODULES` | 否 | 指定包含 Playwright 的 Node 模块目录 |
+| `TEACHER_CONSOLE_AGENT_PROVIDER` | 否 | `auto`、`adapter`、`codex`、`claude` 或 `openai-compatible` |
+| `TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND` | 否 | 推荐的新 provider JSON stdin/stdout 适配器命令 |
+| `TEACHER_CONSOLE_AGENT_API_BASE_URL` | API provider 需要 | OpenAI-compatible `/v1` 基地址 |
+| `TEACHER_CONSOLE_AGENT_API_MODEL` | API provider 需要 | 用于解析或模型候选的模型名 |
+| `TEACHER_CONSOLE_AGENT_API_ECONOMY_MODEL` | 否 | 页面“经济”档使用的低成本模型；未配置则明确降级到标准模型 |
+| `TEACHER_CONSOLE_AGENT_API_EXPERT_MODEL` | 否 | 页面“深度”档使用的强模型；自动档生成可视化时优先使用 |
+| `TEACHER_CONSOLE_AGENT_API_KEY` | 远程通常需要 | 只从安全环境读取，禁止写入项目 |
+| `TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` | 否 | OpenAI-compatible 单次请求超时，默认 300 秒 |
+| `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE` | 远程 API 需要 | 环境隐私门禁；还需项目配置同时授权 |
+| `TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` | 否 | 单个 provider 最长执行时间，默认 300 秒，范围 30–1800 秒 |
+| `TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS` | 否 | 运行失败后的 provider 熔断时间，默认 300 秒，范围 30–3600 秒 |
+| `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` | 否 | 自定义 provider 额外允许继承的环境变量名，逗号分隔 |
 
-模型端点和模型名来自环境变量，不写入 `student-error-library/config.json`；配置文件只保存适配器命令、local/remote 属性和隐私开关。
+模型端点和模型名来自环境变量，不写入 `student-error-library/config.json`；配置文件只保存适配器命令、local/remote 属性和隐私开关。教师可在页面选择“自动 / 经济 / 深度”，偏好只保存在当前浏览器；自动档的解析和答案返修使用标准模型，可视化建模在配置了深度模型时使用深度模型。Gateway 不把教师服务的完整环境交给子进程，额外变量必须显式进入 allowlist。
 
 工作台离线预览使用项目内固定版本的 Marked 17.0.5 与 KaTeX 0.16.22；授权文本位于 `teacher-console/static/vendor/`，运行时不访问 CDN。
 
@@ -87,7 +99,7 @@ output/<题目名称>/
 | “给我出 3 道变式题” | 生成可迁移训练题，并为每题配完整答案 |
 | “我想复习磁场部分” | 检索历史错题和到期复习项 |
 | “分析电磁学薄弱点” | 按知识点和可观察错误类型统计 |
-| “把这道题做成仿真” | 生成可播放、缩放、拖动、分层显示的离线 HTML |
+| “把这道题做成仿真” | 生成可播放、缩放、拖动、分层显示且适配手机紧凑布局的离线 HTML |
 | “导出这道题” | 生成 Markdown、可用时生成 PDF，并打包学生文件 |
 
 ## Skill 职责
@@ -113,8 +125,8 @@ student-error-library/     私有知识库、条目与检索索引
   folders/                 按上传日期建立的本地同步视图（条目真源仍在 entries/）
 output/                    可交付成品
 teacher-console/           本地教师工作台（日期文件夹、题干/答案复核、按需动态仿真复核、交付下载）
-student-site/              只读学生端静态站（Markdown 阅读、PDF 下载、已批准仿真入口）
-docs/                      架构和运行维护说明
+student-site/              只读学生端静态站（Markdown 阅读、可用时下载 PDF、已批准仿真入口）
+docs/                      文档入口、架构、API、Gateway、运维、竞赛材料
 .claude/skills/            Skill 唯一真源
 .agents/skills/            指向 .claude 真源的兼容软链接
 ```

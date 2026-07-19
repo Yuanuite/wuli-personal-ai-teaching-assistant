@@ -21,6 +21,21 @@ Read [references/responsibility-matrix.md](references/responsibility-matrix.md) 
 | 复习错题 / 薄弱点 | 说"复习错题" 或 "薄弱点分析" |
 | 查看统计 | `kb.py stats` + `kb.py due` |
 
+## Teacher-console Agent boundary
+
+When a teacher-console action asks a model to generate or revise an answer or `physics-model.json`, route it through `teacher-console/agent_gateway.py`; never construct provider-specific Codex, Claude, DeepSeek, or API arguments inside lifecycle code. The Gateway is an execution boundary, not a lifecycle owner:
+
+- it runs a persistent asynchronous job in a disposable, input-allowlisted candidate workspace;
+- it exposes only reviewed text, current scoped artifacts, necessary metadata, and copied rule context; source images, approvals, pipeline records, and publication files remain absent from answer/model providers;
+- it may promote only the task allowlist after scope and domain validation;
+- it must never write review approvals, advance `pipeline.json`, run `finish`, or publish student content;
+- a successful candidate always returns to the applicable teacher checkpoint.
+- `routing_tier` (`auto|economy|expert`) may select a cheaper or stronger provider model and a smaller task-specific rule bundle, but must not alter permissions or checkpoints. Record the requested/actual tier, model, honest fallback notice, and provider usage when available. If a stronger rerun is needed, start a fresh job; never layer it onto a candidate that already changed files.
+
+For a strict disclosure boundary, prefer a structured JSON/API provider without filesystem tools. CLI providers receive only the same allowlisted candidate, but any additional read capability is governed by that CLI runtime's sandbox and must not be described as an OS-sealed container.
+
+Use [../../../docs/agent-gateway.md](../../../docs/agent-gateway.md) for provider contracts and operations. A remote Agent requires both `privacy.allow_remote_agent=true` and the provider-specific environment gate. API keys belong only in environment variables. Persistent job records under `student-error-library/.cache/agent-jobs/` are private operational state, never delivery or public-site content.
+
 ## One natural-language entry point
 
 When the user says “处理现在新上传的题目” or equivalent, complete the whole lifecycle in one turn when the source is unambiguous:
@@ -43,7 +58,7 @@ For every returned work order:
 3. Search ready entries and retrieve relevant methods. Solve independently; do not treat handwriting as ground truth.
 4. Write the layered answer and a reasoning image. Keep the student main line normally within five steps; put alternate proofs and exhaustive checks in the teacher layer.
 5. During the default analysis pass, create a precise answer SVG but do not create `physics-model.json` or an interactive simulator. Keep the visualization page available as an optional teacher decision. Only after the teacher explicitly asks for an interactive visualization—such as “我想为这道题生成一个可视化结果”—invoke `build-physics-simulator` to create and validate the model. Do not build a second renderer here.
-6. Ask the teacher to review the generated student/teacher layers. Approval must record the reviewer and the current answer-artifact digest; a revision request returns the entry to analysis.
+6. Ask the teacher to review the generated student/teacher layers. Approval must record the reviewer and the current answer-artifact digest; a revision request returns the entry to analysis. In the workbench this request is asynchronous: display `queued`/`running`/`completed`/`failed`, keep the teacher's unsaved text intact, and reload canonical files only after a completed job. A completed Agent job is not an approval.
 
    🔴 **CHECKPOINT · 答案复核**：逐项确认——(a) 分层答案段落齐全（答案速览/详细解答/易错点/30秒自测），(b) 至少两重验证通过，(c) 所有图片引用指向存在的文件，(d) 无未解决标记。任一未通过 → 修复后再执行 `approve-answer`。
 7. Always retain the optional visualization page. When no model exists, label it “not generated” and accept a teacher generation request; do not infer that the question is unsuitable. After an explicit request creates `physics-model.json`, prepare the interactive visualization, show the exact staged HTML, and record a separate approval. Because the shared model is part of the answer digest, its creation or change requires answer re-review before visualization approval. A static SVG/PNG remains inside answer review. Never hand-edit generated HTML or let the model approve itself.
@@ -134,6 +149,7 @@ When the user asks for薄弱点分析 or 复习错题:
 - When no image-capable model or adapter exists, edit `problem.md` against `source-review.md`, then run `process_uploads.py approve-source <entry-id> --reviewer <role>` only after a human has checked the original.
 - Remote OCR is disabled unless the user explicitly authorizes uploading student material.
 - Remote visual review has a separate `privacy.allow_remote_visual_review` gate; OCR authorization does not imply visual-review authorization.
+- Remote answer/model Agents have another independent `privacy.allow_remote_agent` gate; neither OCR nor visual-review authorization implies it. Do not send original question images through this channel.
 - Preserve empty or failed OCR as a reviewable entry; never discard the source.
 - Split unrelated questions into atomic entries while retaining source provenance.
 
@@ -150,6 +166,7 @@ When the user asks for薄弱点分析 or 复习错题:
 | F7 | **Visual-review adapter unavailable and model cannot inspect images** | `process_uploads.py start --vision-capability unavailable` → state is `needs-source-review`; generate `source-review.md` | Human compares `source-review.md` with original, corrects `problem.md`, runs `approve-source` |
 | F8 | **Browser runtime check fails for simulator** | Rebuild simulator with corrected model; re-run `prepare-visualization --runtime-check auto` | Record as `skipped` with explicit reason in manifest; never equate static pass with runtime pass |
 | F9 | **process_uploads.py not found or incompatible** | Verify `<skill-dir>/scripts/process_uploads.py` exists and Python ≥ 3.10 | Fall back to manual `kb.py` step-by-step: ingest → validate → finalize → export; mark entry for later re-processing |
+| F10 | **Agent provider unavailable, times out, or fails candidate validation** | Inspect `/api/agent/providers`, run the no-student-data provider probe, then check the job's scope and validation errors; fix the adapter/model and resubmit after the cooldown | Keep canonical files unchanged and let the teacher edit manually; never treat provider output or job completion as review approval |
 
 ## Generated variants
 
@@ -169,6 +186,8 @@ Retrieve the parent error, identify the transferable misconception, change at le
 | A8 | **混用 `\(...\)` 和 `$...$` 数学分隔符** | 部分渲染器不识别 `\(...\)` | 统一用 `$...$`（行内）和 `$$...$$`（独立公式） |
 | A9 | **在 solution 中重复贴原题图** | `problem.md` 已展示原题；合并输出会出现同一张图两次 | solution 只放**新**的示意图（轨迹/受力分析 SVG），不放 `original.jpg` |
 | A10 | **用坐标法+多行代数展开推导几何关系** | 切线交点定理一行出结果；坐标法掩盖几何同构性 | 几何优先：$r=R_{边界}\tan(\theta/2)$，弦长公式，矢量图 |
+| A11 | **在 teacher-console 中直接拼某一家模型 CLI/API** | CLI 参数升级会同时击穿答案与可视化，且绕过候选校验和隐私门禁 | 统一提交 Agent Gateway 任务；provider 差异只存在于 adapter |
+| A12 | **让 Agent 修改 canonical 后再等待教师撤销** | 失败、越权或半成品会污染答案真源与检索 | 只在输入白名单候选区修改，通过范围与领域验证后在单题锁内批量提升，再回到教师复核 |
 
 ## Completion gate
 

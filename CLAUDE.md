@@ -40,6 +40,8 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 
 新条目必须由教师批准当前答案摘要；题干、答案、`physics-model.json` 或答案引用的解释图修改后批准自动失效。标准解析默认不创建交互仿真，但网页始终保留“可视化（可选）”入口；没有模型表示“尚未生成”，不能推断为不适合。教师明确说“我想为这道题生成一个可视化结果”或点击生成后，才调用 `build-physics-simulator`。生成模型后先重新复核答案，再批准可视化产物。最终交付复制教师实际预览并批准的仿真字节，不在 `finish` 时临时重建。
 
+教师端 Agent 任务统一经过 `teacher-console/agent_gateway.py`：provider 只能在输入文件白名单构造的系统临时候选区工作，候选通过允许路径、受保护记录字段、领域验证和 canonical 摘要检查后，才在单题事务锁内提升。CLI/API 参数不得重新散落进 `server.py`；Agent 永远不能调用 `approve-*`、`finish` 或发布。新 provider 优先实现 JSON stdin/stdout adapter，额外环境变量必须显式加入 allowlist。
+
 ## 深入文档
 
 - `docs/architecture.md`：生命周期、职责边界、共享模型与验证门禁。
@@ -50,3 +52,4 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 - `docs/competition-submission.md`：竞赛申报精简稿；事实与数字必须从代码和状态命令核验。
 - `docs/competition-project-description.md`：竞赛完整说明、价值定位、落地计划与演示脚本。
 - `docs/teacher-console-api.md`：本地教师端 HTTP 路由、动作协议和安全边界。
+- `docs/agent-gateway.md`：后台 Agent 作业、provider adapter、隔离候选、降级和远程隐私门禁。

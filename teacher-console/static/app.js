@@ -14,8 +14,26 @@ const state = {
   publicationImageDrafts: [],
   publicationImageObject: null,
   publicationRedactionStart: null,
+  agent: null,
+  activeJob: null,
+  jobPollTimer: null,
+  jobDismissTimer: null,
 };
 const $ = (id) => document.getElementById(id);
+const AGENT_TIER_KEY = "wuli.teacher-console.agent-tier";
+
+function selectedAgentTier() {
+  const value = $("agent-tier")?.value || "auto";
+  return ["auto", "economy", "expert"].includes(value) ? value : "auto";
+}
+
+function withRoutingTier(body = {}) {
+  return { ...body, routing_tier: selectedAgentTier() };
+}
+
+function agentTierLabel(value) {
+  return { auto: "自动", economy: "经济", expert: "深度", standard: "标准" }[value] || value || "";
+}
 
 const STATE_LABELS = {
   "needs-source-review": "待复核题干",
@@ -286,13 +304,119 @@ function enforceActiveTabPrerequisite() {
   activateTab(fallback, { force: true });
 }
 
+function normalizeAgentHealth(data) {
+  if (data.agent && typeof data.agent === "object") {
+    return {
+      available: Boolean(data.agent.available),
+      selected: String(data.agent.selected || "").trim(),
+      providers: Array.isArray(data.agent.providers) ? data.agent.providers : [],
+      mode: String(data.agent.mode || "").trim(),
+    };
+  }
+  return {
+    available: Boolean(data.agent_configured),
+    selected: data.agent_configured ? "本地 Agent" : "",
+    providers: [],
+    mode: "legacy",
+  };
+}
+
+function selectedAgentProvider(agent = state.agent) {
+  if (!agent) return null;
+  const selected = String(agent.selected || "").toLowerCase();
+  const exact = agent.providers.find(provider => String(provider.name || "").toLowerCase() === selected);
+  if (exact) return exact;
+  return agent.available ? (agent.providers.find(provider => provider.available) || null) : null;
+}
+
+function selectedAgentLabel(agent = state.agent) {
+  if (!agent) return "Agent 状态未知";
+  const provider = selectedAgentProvider(agent);
+  const name = agent.selected || provider?.name || (agent.available ? "自动选择" : "Agent 不可用");
+  const version = provider?.version ? ` ${provider.version}` : "";
+  return `${name}${version}`;
+}
+
+function selectedAgentLocality(agent = state.agent) {
+  const locality = selectedAgentProvider(agent)?.data_locality;
+  return {
+    local: "数据留在本机",
+    remote: "数据发送到远程 provider",
+    "provider-dependent": "数据位置取决于 provider",
+    "declared-by-adapter": "数据位置由 adapter 声明",
+  }[locality] || "数据位置未声明";
+}
+
+function unavailableAgentReason(agent = state.agent) {
+  if (!agent) return "尚未取得 Agent 状态";
+  const provider = selectedAgentProvider(agent);
+  if (provider?.reason) return provider.reason;
+  const reasons = agent.providers.map(item => item.reason).filter(Boolean);
+  return reasons.length ? [...new Set(reasons)].join("；") : "未检测到可调用的本地 Agent";
+}
+
+function renderAgentMessage() {
+  if (!state.current) return;
+  if (!state.agent) {
+    $("agent-message").textContent = state.current.agent_configured
+      ? "本地 Agent 已连接，点击后会在后台处理。"
+      : "尚未配置 Agent；任务会保留在页面中，待配置后再处理。";
+    return;
+  }
+  if (state.agent.available) {
+    const mode = state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode} 模式` : "";
+    $("agent-message").textContent = `当前 Agent：${selectedAgentLabel()}${mode}；${selectedAgentLocality()}。任务提交后可继续查看页面，完成时会自动刷新。`;
+  } else {
+    $("agent-message").textContent = `Agent 暂不可用：${unavailableAgentReason()}。`;
+  }
+}
+
 async function health() {
+  const element = document.querySelector(".health");
   try {
     const data = await api("/api/health");
-    document.querySelector(".health").classList.add("online");
-    $("health-text").textContent = data.agent_configured ? "本地服务与分析 Agent 已连接" : "本地服务已连接 · 分析 Agent 待配置";
+    state.agent = normalizeAgentHealth(data);
+    element.classList.add("online");
+    element.classList.toggle("agent-unavailable", !state.agent.available);
+    $("health-text").textContent = "本地服务已连接";
+    const detail = state.agent.available
+      ? `Agent：${selectedAgentLabel()}${state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode}` : ""} · ${selectedAgentLocality()}`
+      : `Agent 不可用：${unavailableAgentReason()}`;
+    $("agent-health-detail").textContent = detail;
+    $("agent-health-detail").title = detail;
+    renderAgentMessage();
   } catch {
+    state.agent = null;
+    element.classList.remove("online", "agent-unavailable");
     $("health-text").textContent = "本地服务未连接";
+    $("agent-health-detail").textContent = "请确认教师工作台服务正在运行";
+  }
+}
+
+async function probeAgent() {
+  const button = $("probe-agent");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "检测中…";
+  try {
+    const provider = String(state.agent?.selected || "");
+    const result = await api("/api/agent/providers/probe", {
+      method: "POST",
+      body: { provider: provider === "auto" ? "" : provider, timeout_seconds: 120 },
+    });
+    state.agent = normalizeAgentHealth({ agent: result });
+    await health();
+    if (result.live_probe?.status === "passed") {
+      toast(`${result.live_probe.provider} 真实连通检测通过`);
+    } else {
+      toast(`${result.live_probe?.provider || "Agent"} 连通失败，已暂时降级：${result.live_probe?.reason || "未知原因"}`, true);
+    }
+  } catch (error) {
+    toast(`Agent 检测失败：${error.message}`, true);
+    await health();
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
   }
 }
 
@@ -412,6 +536,19 @@ async function selectEntry(id) {
     if (!proceed) return;
   }
   state.current = await api(`/api/entries/${encodeURIComponent(id)}`);
+  const persistedJob = state.current.agent_job;
+  if ((!state.activeJob || ["completed", "failed"].includes(state.activeJob.status)) && persistedJob?.id && ["queued", "running", "failed"].includes(persistedJob.status)) {
+    clearTimeout(state.jobPollTimer);
+    state.activeJob = {
+      ...persistedJob,
+      action: persistedJob.kind,
+      entryId: persistedJob.entry_id || state.current.id,
+      pollErrors: 0,
+    };
+    if (["queued", "running"].includes(persistedJob.status)) {
+      state.jobPollTimer = setTimeout(() => pollActiveJob(String(persistedJob.id)), 450);
+    }
+  }
   state.solutionDrafts = {
     student: state.current.student_solution || "",
     teacher: state.current.teacher_solution || "",
@@ -431,10 +568,10 @@ async function selectEntry(id) {
   $("state-badge").textContent = STATE_LABELS[state.current.state] || state.current.state;
   $("problem-editor").value = state.current.problem;
   $("source-status").textContent = state.current.source_review.status === "passed" ? "已通过" : "等待教师确认";
-  $("agent-message").textContent = state.current.agent_configured ? "点击运行后由本地 Agent 处理。" : "尚未配置 Agent；点击后会生成待处理请求。";
+  renderAgentMessage();
   renderMarkdown(state.current.problem, $("problem-preview"));
   $("publication-privacy-confirmed").checked = false;
-  syncTabAvailability(); enforceActiveTabPrerequisite(); renderProgress(); renderImages(); showSolution(state.solution); renderVisualization(); renderDownloads(); renderPublicationImages(); renderPublication(); renderEntries();
+  syncTabAvailability(); enforceActiveTabPrerequisite(); renderProgress(); renderImages(); showSolution(state.solution); renderVisualization(); renderDownloads(); renderPublicationImages(); renderPublication(); renderEntries(); renderActiveJob();
 }
 
 function renderProgress() {
@@ -787,10 +924,195 @@ function humanFileSize(size) {
   return `${bytes} B`;
 }
 
+function isQueuedJobResponse(result) {
+  return result?.status === "queued" && Boolean(result.job?.id);
+}
+
+function jobActionLabel(action) {
+  return {
+    analyze: "生成学生版与教师版解析",
+    "analysis.generate": "生成学生版与教师版解析",
+    "request-revision": "按教师意见修改解析",
+    "answer.revise": "按教师意见修改解析",
+    "build-visualization": "调用仿真 Skill 生成可视化",
+    "visualization-chat": "按对话要求生成或修正可视化",
+    "visualization.model": "按要求生成或修正可视化",
+  }[action] || "后台 Agent 任务";
+}
+
+function jobFailureReason(job) {
+  if (!job) return "任务失败，未返回具体原因";
+  if (typeof job.error === "string" && job.error.trim()) return job.error;
+  if (job.error?.message) return job.error.message;
+  if (typeof job.result?.error === "string" && job.result.error.trim()) return job.result.error;
+  if (job.result?.error?.message) return job.result.error.message;
+  if (Array.isArray(job.errors) && job.errors.length) return job.errors.join("；");
+  return job.reason || job.message || "任务失败，请检查 Agent 状态后重试";
+}
+
+function jobApiUrl(job) {
+  const supplied = String(job?.url || "");
+  if (/^\/api\/jobs\/[A-Za-z0-9._~-]+(?:\?.*)?$/.test(supplied)) return supplied;
+  return `/api/jobs/${encodeURIComponent(job.id)}`;
+}
+
+function agentActionButtons() {
+  return [
+    "run-analysis", "save-answer", "request-revision", "approve-answer",
+    "build-visualization", "send-visualization-message", "approve-visualization", "finish-entry",
+  ].map($).filter(Boolean);
+}
+
+function syncJobControls() {
+  const busy = Boolean(state.activeJob && !["completed", "failed"].includes(state.activeJob.status));
+  for (const button of agentActionButtons()) {
+    if (busy) {
+      if (button.dataset.jobDisabled !== "1") {
+        button.dataset.jobDisabled = "1";
+        button.dataset.jobWasDisabled = button.disabled ? "1" : "0";
+      }
+      button.disabled = true;
+    } else if (!busy && button.dataset.jobDisabled === "1") {
+      button.disabled = button.dataset.jobWasDisabled === "1";
+      delete button.dataset.jobDisabled;
+      delete button.dataset.jobWasDisabled;
+    }
+  }
+}
+
+function renderActiveJob() {
+  const panel = $("active-job");
+  const job = state.activeJob;
+  if (!job) {
+    panel.className = "active-job hidden";
+    syncJobControls();
+    return;
+  }
+
+  const status = String(job.status || "queued");
+  const action = jobActionLabel(job.action);
+  const titles = {
+    queued: `${action} · 已排队`,
+    pending: `${action} · 等待执行`,
+    running: `${action} · 正在处理`,
+    completed: `${action} · 已完成`,
+    failed: `${action} · 失败`,
+  };
+  panel.className = `active-job${status === "completed" ? " completed" : ""}${status === "failed" ? " failed" : ""}`;
+  $("active-job-title").textContent = titles[status] || `${action} · ${status}`;
+  if (status === "failed") {
+    $("active-job-detail").textContent = jobFailureReason(job);
+  } else {
+    const providerValue = job.provider || job.agent || selectedAgentLabel();
+    const provider = typeof providerValue === "object"
+      ? (providerValue.name || providerValue.selected || "本地 Agent")
+      : providerValue;
+    const progress = job.progress_message || job.message || "";
+    const result = job.result || {};
+    const requestedTier = job.routing_tier || result.requested_tier;
+    const actualTier = result.model_tier;
+    const model = result.model;
+    const totalTokens = result.usage?.total_tokens;
+    const route = actualTier
+      ? `档位 ${agentTierLabel(requestedTier)}→${agentTierLabel(actualTier)}`
+      : (requestedTier && `档位 ${agentTierLabel(requestedTier)}`);
+    const id = String(job.id || "").slice(0, 12);
+    const entry = String(job.entryId || "").slice(0, 18);
+    $("active-job-detail").textContent = [provider && `Agent：${provider}`, route, model && `模型 ${model}`, Number.isInteger(totalTokens) && `Token ${totalTokens}`, progress, entry && `题目 ${entry}`, id && `任务 ${id}`].filter(Boolean).join(" · ");
+  }
+  syncJobControls();
+}
+
+function beginQueuedJob(job, { action, entryId, success }) {
+  clearTimeout(state.jobPollTimer);
+  clearTimeout(state.jobDismissTimer);
+  const jobId = String(job.id);
+  state.activeJob = {
+    ...job,
+    id: jobId,
+    status: job.status || "queued",
+    action,
+    entryId,
+    success,
+    pollErrors: 0,
+  };
+  renderActiveJob();
+  toast(`${jobActionLabel(action)}已进入后台队列，可继续查看页面`);
+  state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), 450);
+}
+
+async function refreshAfterJob(job) {
+  const currentMatches = state.current?.id === job.entryId;
+  const hasUnsavedWork = state.problemDirty || state.dirty.student || state.dirty.teacher;
+  if (currentMatches && !hasUnsavedWork) await loadEntries(job.entryId);
+  else {
+    await refreshCatalog();
+    if (currentMatches && hasUnsavedWork) {
+      toast("后台任务已结束；为保留未保存内容，请保存后手动刷新查看结果");
+    }
+  }
+}
+
+async function pollActiveJob(jobId) {
+  if (!state.activeJob || state.activeJob.id !== jobId) return;
+  const snapshot = state.activeJob;
+  try {
+    const response = await api(jobApiUrl(snapshot));
+    if (!state.activeJob || state.activeJob.id !== jobId) return;
+    const update = response.job && typeof response.job === "object" ? response.job : response;
+    const context = state.activeJob;
+    state.activeJob = {
+      ...context,
+      ...update,
+      id: String(update.id || jobId),
+      status: update.status || response.status || context.status,
+      action: context.action,
+      entryId: context.entryId,
+      success: context.success,
+      pollErrors: 0,
+    };
+  } catch (error) {
+    if (!state.activeJob || state.activeJob.id !== jobId) return;
+    state.activeJob.pollErrors = (state.activeJob.pollErrors || 0) + 1;
+    state.activeJob.progress_message = `暂时无法读取进度，正在重试（${state.activeJob.pollErrors}）`;
+    renderActiveJob();
+    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), Math.min(5000, 900 + state.activeJob.pollErrors * 600));
+    return;
+  }
+
+  renderActiveJob();
+  const status = state.activeJob.status;
+  if (!["completed", "failed"].includes(status)) {
+    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), status === "queued" ? 900 : 1400);
+    return;
+  }
+
+  const finished = state.activeJob;
+  await refreshAfterJob(finished);
+  if (!state.activeJob || state.activeJob.id !== jobId) return;
+  if (status === "completed") {
+    const message = typeof finished.success === "function" ? finished.success(finished) : finished.success;
+    toast(message || `${jobActionLabel(finished.action)}已完成，题目内容已刷新`);
+    state.jobDismissTimer = setTimeout(() => {
+      if (state.activeJob?.id === jobId && state.activeJob.status === "completed") {
+        state.activeJob = null;
+        renderActiveJob();
+      }
+    }, 5200);
+  } else {
+    toast(`${jobActionLabel(finished.action)}失败：${jobFailureReason(finished)}`, true);
+  }
+  renderActiveJob();
+}
+
 async function entryAction(action, body, success) {
   if (!state.current) return;
   try {
     const result = await api(`/api/entries/${encodeURIComponent(state.current.id)}/${action}`, { method: "POST", body });
+    if (isQueuedJobResponse(result)) {
+      beginQueuedJob(result.job, { action, entryId: state.current.id, success });
+      return result;
+    }
     const successMessage = typeof success === "function" ? success(result) : success;
     toast(successMessage || result.status, result.status === "failed");
     await loadEntries(state.current.id);
@@ -807,6 +1129,10 @@ async function visualizationAction(action, body, button, busyLabel, success) {
   button.textContent = busyLabel;
   try {
     const result = await api(`/api/entries/${encodeURIComponent(state.current.id)}/${action}`, { method: "POST", body });
+    if (isQueuedJobResponse(result)) {
+      beginQueuedJob(result.job, { action, entryId: state.current.id, success });
+      return result;
+    }
     const successMessage = typeof success === "function" ? success(result) : success;
     toast(successMessage || result.status);
     await loadEntries(state.current.id);
@@ -818,6 +1144,7 @@ async function visualizationAction(action, body, button, busyLabel, success) {
     button.disabled = false;
     button.textContent = original;
     if (state.current) renderVisualization();
+    syncJobControls();
   }
 }
 
@@ -907,7 +1234,10 @@ $("zoom").addEventListener("input", applyZoom);
 $("zoom-out").addEventListener("click", () => { $("zoom").value = Math.max(50, Number($("zoom").value) - 25); applyZoom(); });
 $("zoom-in").addEventListener("click", () => { $("zoom").value = Math.min(250, Number($("zoom").value) + 25); applyZoom(); });
 $("zoom-reset").addEventListener("click", () => { $("zoom").value = 100; applyZoom(); });
-$("refresh").addEventListener("click", () => loadEntries().catch(error => toast(error.message, true)));
+$("refresh").addEventListener("click", () => {
+  health();
+  loadEntries().catch(error => toast(error.message, true));
+});
 $("approve-source").addEventListener("click", async () => {
   const wasDirty = state.problemDirty;
   state.problemDirty = false;
@@ -917,7 +1247,7 @@ $("approve-source").addEventListener("click", async () => {
 });
 $("run-analysis").addEventListener("click", () => {
   if (!requirePrerequisite("answer")) return;
-  entryAction("analyze", {}, "解析流程已完成，请复核学生版和教师版");
+  entryAction("analyze", withRoutingTier(), "解析流程已完成，请复核学生版和教师版");
 });
 $("save-answer").addEventListener("click", () => {
   if (!requirePrerequisite("answer")) return;
@@ -942,7 +1272,7 @@ $("request-revision").addEventListener("click", async () => {
   try {
     await entryAction(
       "request-revision",
-      { reviewer: $("answer-reviewer").value, note },
+      withRoutingTier({ reviewer: $("answer-reviewer").value, note }),
       result => result.status === "awaiting-agent"
         ? "修改意见已记录，等待本地大模型处理"
         : "大模型已完成修改，请重新复核解析",
@@ -950,6 +1280,7 @@ $("request-revision").addEventListener("click", async () => {
   } finally {
     button.disabled = false;
     button.textContent = original;
+    syncJobControls();
   }
 });
 $("build-visualization").addEventListener("click", async () => {
@@ -957,10 +1288,10 @@ $("build-visualization").addEventListener("click", async () => {
   const isGenerating = !hasDynamicVisualization();
   const result = await visualizationAction(
     "build-visualization",
-    {
+    withRoutingTier({
       message: isGenerating ? "我想为这道题生成一个可交互的可视化结果。请完整展示关键物理过程，并提供播放、时间轴、关键事件与缩放控件。" : "",
       base_digest: state.current.visualization?.artifact_digest || "",
-    },
+    }),
     $("build-visualization"),
     isGenerating ? "正在调用 Skill 生成…" : "正在构建…",
     response => response.status === "awaiting-agent"
@@ -989,7 +1320,7 @@ $("send-visualization-message").addEventListener("click", async () => {
   const isGenerating = !hasDynamicVisualization();
   const result = await visualizationAction(
     "visualization-chat",
-    { message, base_digest: state.current.visualization?.artifact_digest || "" },
+    withRoutingTier({ message, base_digest: state.current.visualization?.artifact_digest || "" }),
     $("send-visualization-message"),
     isGenerating ? "正在调用 Skill 生成…" : "模型正在调整并重建…",
     response => response.status === "awaiting-agent"
@@ -1076,6 +1407,16 @@ $("publication-image-canvas").addEventListener("pointerup", event => {
 });
 $("publication-image-confirmed").addEventListener("change", () => {
   $("save-publication-images").disabled = !$("publication-image-confirmed").checked;
+});
+$("probe-agent").addEventListener("click", probeAgent);
+try {
+  const savedTier = localStorage.getItem(AGENT_TIER_KEY);
+  if (["auto", "economy", "expert"].includes(savedTier)) $("agent-tier").value = savedTier;
+} catch (_error) {
+  // Private browsing or a locked-down browser may disable local storage.
+}
+$("agent-tier").addEventListener("change", () => {
+  try { localStorage.setItem(AGENT_TIER_KEY, selectedAgentTier()); } catch (_error) { /* preference is optional */ }
 });
 $("save-publication-images").addEventListener("click", async () => {
   if (!$("publication-image-confirmed").checked) { toast("请先检查全部页面并勾选确认。", true); return; }

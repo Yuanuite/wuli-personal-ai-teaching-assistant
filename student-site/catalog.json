@@ -1,7 +1,111 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-19T23:58:02+08:00",
+  "generated_at": "2026-07-20T03:40:34+08:00",
   "questions": [
+    {
+      "id": "question-baa157722303",
+      "title": "交流发电机连接理想变压器",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "正弦式交变电流",
+        "交流发电机",
+        "理想变压器",
+        "含内阻电源"
+      ],
+      "content": "questions/question-baa157722303/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:40:34+08:00"
+    },
+    {
+      "id": "question-4b77c1556367",
+      "title": "可变磁场驱动的电磁天平",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "法拉第电磁感应定律",
+        "楞次定律",
+        "安培力",
+        "电磁天平"
+      ],
+      "content": "questions/question-4b77c1556367/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:35:39+08:00"
+    },
+    {
+      "id": "question-af67027e2f4e",
+      "title": "导体棒依次穿过两个磁场的速度图像",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "电磁感应中的导体棒",
+        "安培力与终端速度",
+        "速度—时间图像",
+        "感应电荷量"
+      ],
+      "content": "questions/question-af67027e2f4e/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:22:43+08:00"
+    },
+    {
+      "id": "question-b1625e7b2228",
+      "title": "正方形线框匀速穿越宽磁场",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "线框穿越有界磁场",
+        "动生电动势",
+        "安培力",
+        "焦耳热"
+      ],
+      "content": "questions/question-b1625e7b2228/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:22:16+08:00"
+    },
+    {
+      "id": "question-5a662eb6b6c7",
+      "title": "变化磁场中悬挂线框的电流与拉力",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "楞次定律",
+        "法拉第电磁感应定律",
+        "安培力",
+        "感应电荷量"
+      ],
+      "content": "questions/question-5a662eb6b6c7/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:18:21+08:00"
+    },
+    {
+      "id": "question-7c895bdfc8a3",
+      "title": "测电源电动势内阻与输出功率图像",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "测量电源电动势和内阻",
+        "U-I图像",
+        "电源输出功率"
+      ],
+      "content": "questions/question-7c895bdfc8a3/content.md",
+      "pdf": null,
+      "simulation": null,
+      "published_at": "2026-07-20T03:17:49+08:00"
+    },
+    {
+      "id": "question-212ecbad04d3",
+      "title": "带电粒子在同心圆复合场中的运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "洛伦兹力方向",
+        "带电粒子在匀强磁场中的圆周运动",
+        "电场力做功与动能定理",
+        "圆周运动几何关系"
+      ],
+      "content": "questions/question-212ecbad04d3/content.md",
+      "pdf": null,
+      "simulation": "questions/question-212ecbad04d3/simulation.html",
+      "published_at": "2026-07-20T02:20:06+08:00"
+    },
     {
       "id": "question-cf1c40d5261d",
       "title": "带电微粒在正交复合场中沿直线运动",
@@ -14,7 +118,7 @@
       "content": "questions/question-cf1c40d5261d/content.md",
       "pdf": null,
       "simulation": null,
-      "published_at": "2026-07-19T23:58:02+08:00"
+      "published_at": "2026-07-20T01:36:27+08:00"
     }
   ]
 }

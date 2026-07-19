@@ -158,7 +158,8 @@ class FolderAndVisualizationTest(unittest.TestCase):
     def test_visualization_chat_fails_closed_without_agent(self):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
-        with mock.patch.object(teacher_console_server, "visualization_command", return_value=None):
+        unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=unavailable):
             result = handler.run_visualization_chat(self.entry, {"message": "请补充关键事件暂停，并检查正电荷偏转方向"})
         self.assertEqual(result["status"], "awaiting-agent")
         conversation = kb.load_json(self.entry / "visualization-conversation.json", {})
@@ -196,7 +197,8 @@ class FolderAndVisualizationTest(unittest.TestCase):
         (self.entry / "physics-model.json").unlink()
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
-        with mock.patch.object(teacher_console_server, "visualization_command", return_value=None):
+        unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=unavailable):
             result = handler.run_visualization_chat(
                 self.entry,
                 {"message": "我想为这道题生成一个可交互的可视化结果"},
@@ -211,18 +213,26 @@ class FolderAndVisualizationTest(unittest.TestCase):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
 
-        def fake_agent_run(command, cwd, **_kwargs):
+        def fake_gateway_run(_task, _validator):
             kb.write_json(
-                Path(cwd) / "physics-model.json",
+                self.entry / "physics-model.json",
                 {"schema_version": 1, "model_type": "test", "source": {"answer_render_mode": "manual"}},
             )
-            return subprocess.CompletedProcess(command, 0, stdout="created physics model", stderr="")
+            return {
+                "status": "completed",
+                "provider": "fake-agent",
+                "returncode": 0,
+                "stdout": "created physics model",
+                "stderr": "",
+                "changed_files": ["physics-model.json"],
+                "unauthorized_changes": [],
+                "validation_errors": [],
+                "attempts": [],
+            }
 
-        with mock.patch.object(teacher_console_server, "visualization_command", return_value=["fake-agent"]), mock.patch.object(
-            teacher_console_server.subprocess,
-            "run",
-            side_effect=fake_agent_run,
-        ), mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build):
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", side_effect=fake_gateway_run), mock.patch.object(
+            process_uploads, "build_simulator", side_effect=self.fake_build
+        ):
             result = handler.run_visualization_chat(
                 self.entry,
                 {"message": "我想为这道题生成一个可交互的可视化结果"},

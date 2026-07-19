@@ -84,6 +84,36 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("后台还没有完整解析", script)
         self.assertIn("请先在“解析复核”确认答案正确", script)
 
+    def test_background_agent_job_and_health_contract(self):
+        html = (STATIC / "index.html").read_text(encoding="utf-8")
+        script = (STATIC / "app.js").read_text(encoding="utf-8")
+        css = (STATIC / "styles.css").read_text(encoding="utf-8")
+        for element_id in (
+            "agent-health-detail",
+            "agent-tier",
+            "probe-agent",
+            "active-job",
+            "active-job-title",
+            "active-job-detail",
+        ):
+            self.assertIn(f'id="{element_id}"', html)
+        self.assertIn('role="status" aria-live="polite"', html)
+        self.assertIn('result?.status === "queued"', script)
+        self.assertIn("function pollActiveJob(jobId)", script)
+        self.assertIn("`/api/jobs/${encodeURIComponent(job.id)}`", script)
+        self.assertIn('["completed", "failed"]', script)
+        self.assertIn("await refreshAfterJob(finished)", script)
+        self.assertIn("data.agent.providers", script)
+        self.assertIn("unavailableAgentReason()", script)
+        self.assertIn("selectedAgentLocality()", script)
+        self.assertIn("数据位置取决于 provider", script)
+        self.assertIn('"/api/agent/providers/probe"', script)
+        self.assertIn("真实连通检测", script)
+        self.assertIn("@keyframes job-spin", css)
+        self.assertIn("withRoutingTier", script)
+        self.assertIn("routing_tier", script)
+        self.assertIn("localStorage.setItem(AGENT_TIER_KEY", script)
+
     def test_publication_gate_and_static_student_site_contract(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")
         script = (STATIC / "app.js").read_text(encoding="utf-8")

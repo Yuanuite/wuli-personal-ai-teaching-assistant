@@ -7,11 +7,10 @@ import argparse
 import json
 import mimetypes
 import os
-import shlex
-import shutil
-import subprocess
 import sys
+import tempfile
 import threading
+import uuid
 from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -27,19 +26,27 @@ UPLOADS = PROJECT_ROOT / "error-collection"
 PUBLIC_SITE = PROJECT_ROOT / "student-site"
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SKILL_SCRIPTS))
+sys.path.insert(0, str(CONSOLE_DIR))
 
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
 import public_site  # noqa: E402
+
+from agent_gateway import AgentGateway  # noqa: E402
+from agent_jobs import AgentJobManager  # noqa: E402
 
 
 MAX_UPLOAD = 30 * 1024 * 1024
 MAX_JSON = 2 * 1024 * 1024
 ALLOWED_UPLOADS = kb.SUPPORTED_EXTENSIONS
 FOLDER_LOCK = threading.RLock()
-VISUALIZATION_LOCKS: dict[str, threading.Lock] = {}
+LIBRARY_INDEX_LOCK = threading.RLock()
+VISUALIZATION_LOCKS: dict[str, threading.RLock] = {}
 VISUALIZATION_LOCKS_GUARD = threading.Lock()
 PUBLICATION_LOCK = threading.RLock()
+AGENT_GATEWAY = AgentGateway()
+_JOB_MANAGER: AgentJobManager | None = None
+_JOB_MANAGER_LOCK = threading.Lock()
 DELIVERY_CATALOG = {
     "student-package.zip": {
         "kind": "student-package",
@@ -72,68 +79,176 @@ DELIVERY_CATALOG = {
         "order": 5,
     },
 }
+PROTECTED_RECORD_FIELDS = {
+    "schema_version", "id", "kind", "status", "answer_status", "created_at", "updated_at",
+    "library_folder", "source", "ocr", "source_review", "answer_review", "visualization_review",
+    "generated_from", "review",
+}
+
+
+def job_manager() -> AgentJobManager:
+    global _JOB_MANAGER
+    with _JOB_MANAGER_LOCK:
+        if _JOB_MANAGER is None:
+            _JOB_MANAGER = AgentJobManager(LIBRARY / ".cache" / "agent-jobs")
+        return _JOB_MANAGER
+
+
+def agent_health(*, force: bool = False) -> dict:
+    result = json.loads(json.dumps(AGENT_GATEWAY.health(force=force)))
+    if not remote_agent_allowed():
+        for provider in result.get("providers", []):
+            if provider.get("data_locality") == "remote":
+                provider["available"] = False
+                provider["reason"] = "项目 privacy.allow_remote_agent 尚未授权"
+        available = [item for item in result.get("providers", []) if item.get("available")]
+        if result.get("mode") == "auto":
+            priority = {name: index for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))}
+            available.sort(key=lambda item: priority.get(item.get("name"), 99))
+            result["selected"] = available[0]["name"] if available else None
+        elif not any(item.get("name") == result.get("selected") for item in available):
+            result["selected"] = None
+        result["available"] = result.get("selected") is not None
+        if not result["available"]:
+            result["reason"] = "没有通过项目隐私门禁的 provider"
+    return result
 
 
 def agent_available() -> bool:
-    return bool(
-        os.environ.get("TEACHER_CONSOLE_AGENT_COMMAND", "").strip()
-        or shutil.which("codex")
-        or shutil.which("claude")
+    return bool(agent_health()["available"])
+
+
+ROUTING_TIERS = {"auto", "economy", "expert"}
+
+
+def normalize_routing_tier(value) -> str:
+    tier = str(value or "auto").strip().lower()
+    if tier not in ROUTING_TIERS:
+        raise ValueError("routing_tier must be auto, economy, or expert")
+    return tier
+
+
+def gateway_routing_fields(gateway: dict) -> dict:
+    keys = ("routing_tier", "requested_tier", "model_tier", "model", "usage", "routing_notice")
+    return {key: gateway[key] for key in keys if key in gateway}
+
+
+def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto") -> dict:
+    def guarded_callback():
+        with visualization_lock(entry.name):
+            return callback()
+
+    return job_manager().submit(
+        kind, entry.name, guarded_callback,
+        metadata={"routing_tier": normalize_routing_tier(routing_tier)},
     )
 
 
-def visualization_lock(entry_id: str) -> threading.Lock:
+def visualization_lock(entry_id: str) -> threading.RLock:
     with VISUALIZATION_LOCKS_GUARD:
-        return VISUALIZATION_LOCKS.setdefault(entry_id, threading.Lock())
+        return VISUALIZATION_LOCKS.setdefault(entry_id, threading.RLock())
 
 
-def agent_command(entry: Path, prompt: str, request_path: Path | None = None, working_dir: Path | None = None) -> list[str] | None:
-    configured = os.environ.get("TEACHER_CONSOLE_AGENT_COMMAND", "").strip()
-    if configured:
-        replacements = {
-            "{entry}": str(entry.resolve()),
-            "{entry_id}": entry.name,
-            "{prompt}": prompt,
-            "{request}": str(request_path.resolve()) if request_path else "",
-        }
-        tokens = shlex.split(configured)
-        for source, target in replacements.items():
-            tokens = [token.replace(source, target) for token in tokens]
-        return tokens
-    codex = shutil.which("codex")
-    if codex:
-        return [
-            codex,
-            "exec",
-            "--skip-git-repo-check",
-            "--sandbox",
-            "workspace-write",
-            "--ask-for-approval",
-            "never",
-            "-C",
-            str((working_dir or PROJECT_ROOT).resolve()),
-            prompt,
-        ]
-    claude = shutil.which("claude")
-    if claude:
-        return [claude, "--print", "--permission-mode", "acceptEdits", "--no-session-persistence", prompt]
-    return None
+def _remote_agent_allowed(entry: Path) -> bool:
+    config = kb.load_json(entry.parent.parent / "config.json", {})
+    return config.get("privacy", {}).get("allow_remote_agent") is True
 
 
-def analysis_command(entry: Path, instruction: str) -> list[str] | None:
+def remote_agent_allowed() -> bool:
+    config = kb.load_json(LIBRARY / "config.json", {})
+    return config.get("privacy", {}).get("allow_remote_agent") is True
+
+
+def _agent_task(
+    entry: Path,
+    kind: str,
+    prompt: str,
+    allowed_paths: list[str],
+    *,
+    input_paths: list[str],
+    denied_paths: list[str] | None = None,
+    request_path: Path | None = None,
+    requires_change: bool = True,
+    routing_tier: str = "auto",
+) -> dict:
+    routing_tier = normalize_routing_tier(routing_tier)
+    context_files = {
+        ".agent-context/project-rules.md": str(PROJECT_ROOT / "CLAUDE.md"),
+        ".agent-context/responsibility-matrix.md": str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "references" / "responsibility-matrix.md"),
+    }
+    if kind in {"analysis.generate", "answer.revise"}:
+        context_files[".agent-context/answer-template.md"] = str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "references" / "answer-template.md")
+    if kind == "analysis.generate" and routing_tier != "economy":
+        context_files[".agent-context/secondary-conclusions.json"] = str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "references" / "secondary-conclusions.json")
+    if routing_tier == "expert":
+        context_files[".agent-context/library-skill.md"] = str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "SKILL.md")
+    if kind == "visualization.model":
+        context_files.update({
+            ".agent-context/simulator-skill.md": str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "SKILL.md"),
+            ".agent-context/physics-model.schema.json": str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "references" / "physics-model.schema.json"),
+        })
+    scoped_prompt = (
+        "先读取当前候选目录 .agent-context/ 中的项目规则、Skill 与职责边界；这些文件只读且不得作为输出。"
+        + prompt
+    )
+    return {
+        "schema_version": 1,
+        "id": uuid.uuid4().hex,
+        "kind": kind,
+        "entry_id": entry.name,
+        "entry_dir": str(entry.resolve()),
+        "working_dir": str(entry.resolve()),
+        "request_path": str(request_path.resolve()) if request_path else "",
+        "prompt": scoped_prompt,
+        "allowed_paths": allowed_paths,
+        "input_paths": input_paths,
+        "denied_paths": denied_paths or [],
+        "hidden_paths": sorted(source_asset_names(entry)),
+        "requires_change": requires_change,
+        "timeout_seconds": 1800,
+        "allow_remote": _remote_agent_allowed(entry),
+        "routing_tier": routing_tier,
+        "workspace_root": str(Path(tempfile.gettempdir()) / "wuli-agent-workspaces"),
+        "context_files": context_files,
+    }
+
+
+def answer_asset_names(entry: Path) -> set[str]:
+    names: set[str] = set()
+    for markdown_name in ("solution.md", "student-solution.md", "teacher-solution.md"):
+        markdown_path = entry / markdown_name
+        if not markdown_path.exists():
+            continue
+        for raw in kb.markdown_image_refs(markdown_path.read_text(encoding="utf-8")):
+            relative = raw.strip().strip("<>").split(maxsplit=1)[0]
+            if not relative.startswith(("http:", "https:", "data:")):
+                names.add(Path(relative).as_posix())
+    return names
+
+
+def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto") -> dict:
     prompt = (
         f"处理错题知识库条目 {entry.resolve()}。{instruction}。"
-        "必须遵循项目 CLAUDE.md 和 manage-student-error-library Skill；只处理这个条目。"
+        "必须遵循候选区提供的项目规则、答案模板与职责边界；只处理这个条目。"
         "来源题干已由教师复核后方可进入本步骤。检索已有方法，独立解题，更新 record.json，"
         "生成 student-solution.md、teacher-solution.md、同步的 solution.md 和至少一张本地解释图；"
         "标准解析阶段默认不要创建 physics-model.json 或交互仿真；教师在可视化页明确提出生成要求后，"
-        "再由专门入口调用 build-physics-simulator。执行适当校验和 kb.py rebuild。"
-        "不要替教师执行 approve-answer，也不要 finish 或交付；完成后必须让条目进入 needs-answer-review。"
+        "再由专门入口调用 build-physics-simulator。当前目录是 Gateway 隔离候选区，只做内容校验，不要重建 canonical 知识索引。"
+        "不要修改 pipeline 或复核记录，不要替教师执行 approve-answer，也不要 finish 或交付；"
+        "Gateway 提升候选后会统一重建索引并让条目进入 needs-answer-review。"
     )
-    return agent_command(entry, prompt)
+    return _agent_task(
+        entry,
+        "analysis.generate",
+        prompt,
+        ["record.json", "student-solution.md", "teacher-solution.md", "solution.md", "assets/**"],
+        input_paths=["problem.md", "record.json", "student-solution.md", "teacher-solution.md", "solution.md", *sorted(answer_asset_names(entry))],
+        denied_paths=sorted(source_asset_names(entry)),
+        routing_tier=routing_tier,
+    )
 
 
-def visualization_command(entry: Path, message: str, request_path: Path) -> list[str] | None:
+def visualization_task(entry: Path, message: str, request_path: Path, routing_tier: str = "auto") -> dict:
     has_model = (entry / "physics-model.json").exists()
     task = (
         "当前尚无 physics-model.json。教师已经明确请求生成可交互可视化；请调用 build-physics-simulator Skill，"
@@ -143,7 +258,7 @@ def visualization_command(entry: Path, message: str, request_path: Path) -> list
     )
     prompt = (
         f"你正在为错题条目 {entry.resolve()} 生成或修复教学可视化。教师要求：{message}\n"
-        "必须遵循项目 CLAUDE.md、manage-student-error-library 与 build-physics-simulator Skill。"
+        "必须遵循候选区提供的项目规则、职责边界与 build-physics-simulator Skill。"
         "只允许修改当前条目的 physics-model.json，以及当前条目 assets/ 中由可视化专用的素材；"
         "不要直接手改生成的 physics-simulator.html/zip，不要修改题干与答案 Markdown，不要改其他条目或全局 Skill。"
         "先读取已复核题干、答案、现有模型（如有）和构建记录。"
@@ -154,22 +269,61 @@ def visualization_command(entry: Path, message: str, request_path: Path) -> list
         "严禁替教师调用 approve-visualization、approve-answer 或 finish。"
         f"本轮请求的审计记录位于 {request_path.resolve()}。"
     )
-    return agent_command(entry, prompt, request_path, entry)
+    answer_assets = answer_asset_names(entry)
+    return _agent_task(
+        entry,
+        "visualization.model",
+        prompt,
+        ["physics-model.json", "assets/visualization-*", "assets/simulation-*"],
+        input_paths=[
+            "problem.md", "record.json", "student-solution.md", "teacher-solution.md", "solution.md",
+            "physics-model.json", request_path.name, "assets/visualization-*", "assets/simulation-*",
+            "visualization/simulation-build.json",
+        ],
+        denied_paths=sorted(source_asset_names(entry) | answer_assets),
+        request_path=request_path,
+        requires_change=not has_model,
+        routing_tier=routing_tier,
+    )
 
 
-def answer_revision_command(entry: Path, note: str, request_path: Path) -> list[str] | None:
+def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tier: str = "auto") -> dict:
+    routing_tier = normalize_routing_tier(routing_tier)
+    model_instruction = (
+        "若条目已有 physics-model.json 且教师意见涉及共同物理语义，可同步修正模型；"
+        if routing_tier != "economy" and (entry / "physics-model.json").exists()
+        else "本档位不读取或修改 physics-model.json；若意见确实涉及共同物理语义，请返回说明并由教师新建深度任务；"
+    )
     prompt = (
         f"你正在根据教师意见修订错题条目 {entry.resolve()} 的解析。教师意见：{note}\n"
-        "必须遵循项目 CLAUDE.md 与 manage-student-error-library Skill，并采用高中生应知的低认知负担解法。"
+        "必须遵循候选区提供的项目规则、答案模板与职责边界，并采用高中生应知的低认知负担解法。"
         "只处理当前条目：核对已批准题干，修改 student-solution.md、teacher-solution.md，并让 solution.md 与教师版同步；"
         "可修改或新增当前条目 assets/ 中被答案 Markdown 引用的解释 SVG/PNG。不要修改题目原图、problem.md、"
         "source-review.json、record.json、pipeline.json、任何复核批准文件、其他条目或全局 Skill。"
-        "若条目已有 physics-model.json 且教师意见涉及共同物理语义，可同步修正模型；不要仅为一张静态解释图新建模型，"
+        f"{model_instruction}不要仅为一张静态解释图新建模型，"
         "不要直接修改 visualization/ 中生成的 HTML/ZIP。完成后校验分层答案和本地图片引用。"
         "严禁替教师调用 approve-answer、approve-visualization 或 finish；修订后必须等待教师再次复核。"
         f"本轮请求记录位于 {request_path.resolve()}。"
     )
-    return agent_command(entry, prompt, request_path, entry)
+    allowed = ["solution.md", "student-solution.md", "teacher-solution.md", "assets/**"]
+    if routing_tier != "economy" and (entry / "physics-model.json").exists():
+        allowed.append("physics-model.json")
+    inputs = [
+        "problem.md", "student-solution.md", "teacher-solution.md", "solution.md",
+        request_path.name, *sorted(answer_asset_names(entry)),
+    ]
+    if routing_tier != "economy" and (entry / "physics-model.json").exists():
+        inputs.append("physics-model.json")
+    return _agent_task(
+        entry,
+        "answer.revise",
+        prompt,
+        allowed,
+        input_paths=inputs,
+        denied_paths=sorted(source_asset_names(entry)),
+        request_path=request_path,
+        routing_tier=routing_tier,
+    )
 
 
 def entry_file_digests(entry: Path) -> dict[str, str]:
@@ -187,7 +341,48 @@ def changed_entry_files(before: dict[str, str], after: dict[str, str]) -> list[s
 
 def source_asset_names(entry: Path) -> set[str]:
     record = kb.load_json(entry / "record.json", {})
-    return {str(Path(name)) for name in record.get("source", {}).get("stored_files", [])}
+    names = {str(Path(name)) for name in record.get("source", {}).get("stored_files", [])}
+    assets = entry / "assets"
+    if assets.is_dir():
+        names.update(
+            path.relative_to(entry).as_posix()
+            for path in assets.glob("original.*")
+            if path.is_file() and not path.is_symlink()
+        )
+    return names
+
+
+def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entry: Path | None = None) -> list[str]:
+    errors: list[str] = []
+    student = staging / "student-solution.md"
+    teacher = staging / "teacher-solution.md"
+    solution = staging / "solution.md"
+    if not student.is_file():
+        errors.append("student-solution.md is missing")
+    if not teacher.is_file():
+        errors.append("teacher-solution.md is missing")
+    if not solution.is_file():
+        errors.append("solution.md is missing")
+    if teacher.is_file() and solution.is_file() and teacher.read_bytes() != solution.read_bytes():
+        errors.append("solution.md must be identical to teacher-solution.md")
+    if canonical_entry is not None:
+        baseline = kb.load_json(canonical_entry / "record.json", {})
+        candidate = kb.load_json(staging / "record.json", {})
+        for field in sorted(PROTECTED_RECORD_FIELDS):
+            if candidate.get(field) != baseline.get(field):
+                errors.append(f"record.json protected field changed: {field}")
+    errors.extend(kb.validate_entry(LIBRARY, staging, ready_rules=True, require_answer_review=False))
+    return sorted(set(errors))
+
+
+def validate_visualization_candidate(staging: Path, _changed: list[str]) -> list[str]:
+    if not (staging / "physics-model.json").is_file():
+        return ["physics-model.json is missing"]
+    with tempfile.TemporaryDirectory(prefix=".agent-model-check-") as output_name:
+        report = process_uploads.build_simulator(staging, Path(output_name), "skip")
+    if report.get("status") == "ok":
+        return []
+    return report.get("errors") or [f"visualization model validation failed: {report.get('status', 'unknown')}"]
 
 
 def mark_answer_needs_review(library: Path, entry: Path, note: str) -> dict:
@@ -213,7 +408,8 @@ def mark_answer_needs_review(library: Path, entry: Path, note: str) -> dict:
     pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry.name})
     pipeline.update({"state": state["state"], "answer_review": review})
     kb.write_json(entry / "pipeline.json", pipeline)
-    kb.rebuild_index(library)
+    with LIBRARY_INDEX_LOCK:
+        kb.rebuild_index(library)
     return {"review": review, "state": state}
 
 
@@ -328,6 +524,7 @@ def entry_detail(entry: Path) -> dict:
     visualization.pop("html", None)
     publication = public_site.publication_snapshot(entry, PUBLIC_SITE)
     publication_images = public_site.public_image_snapshot(entry)
+    latest_job = job_manager().latest_for_entry(entry.name)
     for source in publication_images.get("sources", []):
         source["url"] = f"/api/entry-file/{quote(entry.name)}/{quote(source['relative'])}"
     if publication["preview_ready"]:
@@ -362,6 +559,7 @@ def entry_detail(entry: Path) -> dict:
         "publication": publication,
         "publication_images": publication_images,
         "agent_configured": agent_available(),
+        "agent_job": job_manager().public(latest_job) if latest_job else None,
     })
     return summary
 
@@ -409,7 +607,19 @@ class Handler(SimpleHTTPRequestHandler):
         path = parsed.path
         try:
             if path == "/api/health":
-                return self.json_response({"status": "ok", "project": str(PROJECT_ROOT), "agent_configured": agent_available()})
+                agent = agent_health()
+                return self.json_response({"status": "ok", "project": str(PROJECT_ROOT), "agent_configured": agent["available"], "agent": agent})
+            if path == "/api/agent/providers":
+                return self.json_response(agent_health())
+            if path == "/api/jobs":
+                entry_id = parse_qs(parsed.query).get("entry_id", [""])[0]
+                if not entry_id:
+                    raise ValueError("entry_id is required")
+                record = job_manager().latest_for_entry(unquote(entry_id))
+                return self.json_response({"job": job_manager().public(record) if record else None})
+            if path.startswith("/api/jobs/"):
+                job_id = unquote(path.removeprefix("/api/jobs/")).strip("/")
+                return self.json_response(job_manager().public(job_manager().get(job_id)))
             if path == "/api/entries":
                 kb.init_library(LIBRARY)
                 with FOLDER_LOCK:
@@ -451,7 +661,10 @@ class Handler(SimpleHTTPRequestHandler):
                 output = Path(delivery.get("output", ""))
                 if not output.exists():
                     raise FileNotFoundError("delivery output is unavailable")
-                return self.serve_file(safe_child(output, relative), inline=False)
+                normalized = unquote(relative)
+                if normalized not in DELIVERY_CATALOG or normalized not in delivery.get("files", []):
+                    raise FileNotFoundError("file is not in the delivery allowlist")
+                return self.serve_file(safe_child(output, normalized), inline=False)
             return self.serve_static(path)
         except FileNotFoundError as exc:
             self.error_response(exc, HTTPStatus.NOT_FOUND)
@@ -476,6 +689,13 @@ class Handler(SimpleHTTPRequestHandler):
                         str(data.get("new_name", "")),
                     )
                 return self.json_response(result)
+            if path == "/api/agent/providers/probe":
+                data = self.read_json_body()
+                return self.json_response(AGENT_GATEWAY.probe(
+                    str(data.get("provider", "")),
+                    timeout_seconds=int(data.get("timeout_seconds", 120)),
+                    allow_remote=remote_agent_allowed(),
+                ))
             if path.startswith("/api/entries/"):
                 rest = path.removeprefix("/api/entries/")
                 entry_id, action = rest.split("/", 1)
@@ -510,48 +730,65 @@ class Handler(SimpleHTTPRequestHandler):
         data = self.read_json_body()
         filename = Path(str(data.get("filename", ""))).name
         source = safe_child(UPLOADS, filename)
-        report = process_uploads.start(
-            LIBRARY,
-            source,
-            str(data.get("ocr", "auto")),
-            None,
-            str(data.get("subject", "高中物理")),
-            "auto",
-            str(data.get("vision_capability", "unavailable")),
-            None,
-            None,
-        )
+        with LIBRARY_INDEX_LOCK, FOLDER_LOCK:
+            report = process_uploads.start(
+                LIBRARY,
+                source,
+                str(data.get("ocr", "auto")),
+                None,
+                str(data.get("subject", "高中物理")),
+                "auto",
+                str(data.get("vision_capability", "unavailable")),
+                None,
+                None,
+            )
         self.json_response(report)
 
     def handle_entry_action(self, entry: Path, action: str, data: dict):
+        with visualization_lock(entry.name):
+            return self._handle_entry_action_locked(entry, action, data)
+
+    def _handle_entry_action_locked(self, entry: Path, action: str, data: dict):
         reviewer = str(data.get("reviewer", "teacher"))
         note = str(data.get("note", ""))
+        active = job_manager().active_for_entry(entry.name)
+        if active:
+            return self.json_response(
+                {"status": "blocked", "errors": ["这道题的 Agent 任务尚未结束"], "job": job_manager().public(active)},
+                HTTPStatus.CONFLICT,
+            )
         if action == "approve-source":
             problem = str(data.get("problem", ""))
             if len(problem.strip()) < 30:
                 raise ValueError("正式题干过短")
             kb.write_text(entry / "problem.md", problem)
-            result = process_uploads.approve_source(LIBRARY, entry.name, reviewer, note)
+            with LIBRARY_INDEX_LOCK:
+                result = process_uploads.approve_source(LIBRARY, entry.name, reviewer, note)
         elif action == "analyze":
-            result = self.run_analysis(entry, data)
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            result = queue_agent_job("analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier)
         elif action == "save-answer":
             if process_uploads.pipeline_state(entry)["state"] == "needs-source-review":
                 result = {"status": "blocked", "errors": ["请先确认正式题干，再编辑解析"]}
             else:
                 result = self.save_answer(entry, data)
         elif action == "approve-answer":
-            result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note)
+            with LIBRARY_INDEX_LOCK:
+                result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note)
         elif action == "request-revision":
-            result = self.run_answer_revision(entry, data)
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            result = queue_agent_job("answer.revise", entry, lambda: self.run_answer_revision(entry, data), routing_tier=tier)
         elif action == "build-visualization":
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
                 result = {"status": "blocked", "errors": ["请先生成并批准解析，再构建动态可视化"], "state": current_state}
             elif not (entry / "physics-model.json").exists():
-                result = self.run_visualization_chat(entry, {
+                request = {
                     "message": str(data.get("message", "")).strip() or "我想为这道题生成一个可交互的可视化结果。",
                     "base_digest": str(data.get("base_digest", "")),
-                })
+                }
+                request["routing_tier"] = normalize_routing_tier(data.get("routing_tier"))
+                result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, request), routing_tier=request["routing_tier"])
             else:
                 with visualization_lock(entry.name):
                     result = process_uploads.prepare_visualization(LIBRARY, entry.name, str(data.get("runtime_check", "auto")))
@@ -562,7 +799,8 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 result = process_uploads.approve_visualization(LIBRARY, entry.name, reviewer, note)
         elif action == "visualization-chat":
-            result = self.run_visualization_chat(entry, data)
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, data), routing_tier=tier)
         elif action == "clear-visualization-chat":
             result = self.clear_visualization_chat(entry)
         elif action == "prepare-publication":
@@ -581,16 +819,18 @@ class Handler(SimpleHTTPRequestHandler):
                 with PUBLICATION_LOCK:
                     result = public_site.publish_prepared(LIBRARY, entry.name, reviewer, note, PUBLIC_SITE)
         elif action == "finish":
-            result = process_uploads.finish(LIBRARY, entry.name, None, str(data.get("simulator", "auto")))
+            with LIBRARY_INDEX_LOCK:
+                result = process_uploads.finish(LIBRARY, entry.name, None, str(data.get("simulator", "auto")))
         else:
             raise ValueError(f"unknown entry action: {action}")
-        status = HTTPStatus.CONFLICT if result.get("status") == "blocked" else HTTPStatus.OK
+        status = HTTPStatus.CONFLICT if result.get("status") == "blocked" else (HTTPStatus.ACCEPTED if result.get("status") == "queued" else HTTPStatus.OK)
         self.json_response(result, status)
 
     def save_answer(self, entry: Path, data: dict):
         return save_answer_entry(LIBRARY, entry, data)
 
     def run_analysis(self, entry: Path, data: dict):
+        routing_tier = normalize_routing_tier(data.get("routing_tier"))
         current_state = process_uploads.pipeline_state(entry)
         if current_state["state"] == "needs-source-review":
             return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": current_state}
@@ -601,27 +841,41 @@ class Handler(SimpleHTTPRequestHandler):
             "status": "requested",
             "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "instruction": instruction,
+            "routing_tier": routing_tier,
         }
         kb.write_json(entry / "analysis-request.json", request)
-        command = analysis_command(entry, instruction)
-        if not command:
+        gateway = AGENT_GATEWAY.run(
+            analysis_task(entry, instruction, routing_tier),
+            lambda staging, changed: validate_answer_candidate(staging, changed, entry),
+        )
+        if gateway["status"] == "unavailable":
             request["status"] = "awaiting-agent"
-            request["message"] = "未配置页面可调用的 Agent；请在 Claude Code/Codex 中说：处理这个待分析条目。"
+            request["message"] = "没有可用的 Agent provider；请求已保留，可在配置 Gateway 后重试。"
+            request["gateway"] = gateway
             kb.write_json(entry / "analysis-request.json", request)
             return request
-        completed = subprocess.run(command, cwd=PROJECT_ROOT, text=True, capture_output=True, check=False, timeout=1800)
-        resulting_state = process_uploads.pipeline_state(entry)
-        succeeded = completed.returncode == 0 and resulting_state["state"] in {"needs-answer-review", "ready-to-finish", "delivered"}
+        succeeded = gateway["status"] == "completed"
+        if succeeded:
+            marked = mark_answer_needs_review(LIBRARY, entry, "Agent 已生成分层解析，等待教师复核")
+            resulting_state = marked["state"]
+        else:
+            resulting_state = process_uploads.pipeline_state(entry)
         request.update({
             "status": "completed" if succeeded else "failed",
             "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-            "returncode": completed.returncode,
-            "stdout": completed.stdout[-4000:],
-            "stderr": completed.stderr[-4000:],
+            "provider": gateway.get("provider"),
+            "returncode": gateway.get("returncode"),
+            "stdout": gateway.get("stdout", ""),
+            "stderr": gateway.get("stderr", ""),
+            "changed_files": gateway.get("changed_files", []),
+            "unauthorized_changes": gateway.get("unauthorized_changes", []),
+            "validation_errors": gateway.get("validation_errors", []),
+            "attempts": gateway.get("attempts", []),
             "resulting_state": resulting_state["state"],
+            **gateway_routing_fields(gateway),
         })
-        if completed.returncode == 0 and not succeeded:
-            request["message"] = "Agent 已退出，但条目尚未形成可复核答案；请查看输出后重试或手动处理。"
+        if not succeeded:
+            request["message"] = gateway.get("message", "Agent 未形成可复核答案")
         kb.write_json(entry / "analysis-request.json", request)
         pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry.name})
         pipeline["state"] = resulting_state["state"]
@@ -630,6 +884,7 @@ class Handler(SimpleHTTPRequestHandler):
         return request
 
     def run_answer_revision(self, entry: Path, data: dict):
+        routing_tier = normalize_routing_tier(data.get("routing_tier"))
         library = entry.parent.parent
         current_state = process_uploads.pipeline_state(entry)
         if current_state["state"] == "needs-source-review":
@@ -660,45 +915,23 @@ class Handler(SimpleHTTPRequestHandler):
                 "reviewer": reviewer,
                 "note": note,
                 "base_digest": requested.get("answer_review", {}).get("answer_digest", ""),
+                "routing_tier": routing_tier,
             }
             request_path = entry / "answer-revision-request.json"
             kb.write_json(request_path, request)
-            command = answer_revision_command(entry, note, request_path)
-            if not command:
+            gateway = AGENT_GATEWAY.run(
+                answer_revision_task(entry, note, request_path, routing_tier),
+                lambda staging, changed: validate_answer_candidate(staging, changed, entry),
+            )
+            if gateway["status"] == "unavailable":
                 request.update({
                     "status": "awaiting-agent",
-                    "message_to_teacher": "修改意见已记录，但当前未配置页面可调用的 Agent；请在 Claude Code/Codex 中处理 answer-revision-request.json。",
+                    "message_to_teacher": "修改意见已记录，但当前没有可用的 Agent provider；请配置 Gateway 后重试。",
+                    "gateway": gateway,
                 })
                 kb.write_json(request_path, request)
                 return {**request, "state": process_uploads.pipeline_state(entry)}
-
-            before = entry_file_digests(entry)
-            existing_model = (entry / "physics-model.json").exists()
-            source_assets = source_asset_names(entry)
-            completed = subprocess.run(command, cwd=entry, text=True, capture_output=True, check=False, timeout=1800)
-            after = entry_file_digests(entry)
-            changed = changed_entry_files(before, after)
-
-            def answer_change_allowed(relative: str) -> bool:
-                if relative in {"solution.md", "student-solution.md", "teacher-solution.md"}:
-                    return True
-                if relative == "physics-model.json":
-                    return existing_model
-                path = Path(relative)
-                return (
-                    path.parts[:1] == ("assets",)
-                    and relative not in source_assets
-                    and path.suffix.lower() in kb.IMAGE_EXTENSIONS | {".svg"}
-                )
-
-            unauthorized = [name for name in changed if not answer_change_allowed(name)]
-            validation_errors: list[str] = []
-            if completed.returncode == 0 and not unauthorized:
-                teacher_layer = entry / "teacher-solution.md"
-                if teacher_layer.exists():
-                    kb.write_text(entry / "solution.md", teacher_layer.read_text(encoding="utf-8"))
-                validation_errors = kb.validate_entry(library, entry, ready_rules=True, require_answer_review=False)
-            succeeded = completed.returncode == 0 and not unauthorized and not validation_errors
+            succeeded = gateway["status"] == "completed"
             resulting_state = process_uploads.pipeline_state(entry)
             if succeeded:
                 marked = mark_answer_needs_review(library, entry, "大模型已按教师意见修订，等待教师重新复核")
@@ -706,37 +939,28 @@ class Handler(SimpleHTTPRequestHandler):
             request.update({
                 "status": "completed" if succeeded else "failed",
                 "completed_at": kb.now_iso(),
-                "returncode": completed.returncode,
-                "stdout": completed.stdout[-4000:],
-                "stderr": completed.stderr[-2000:],
-                "changed_files": changed,
-                "unauthorized_changes": unauthorized,
-                "validation_errors": validation_errors,
+                "provider": gateway.get("provider"),
+                "returncode": gateway.get("returncode"),
+                "stdout": gateway.get("stdout", ""),
+                "stderr": gateway.get("stderr", ""),
+                "changed_files": gateway.get("changed_files", []),
+                "unauthorized_changes": gateway.get("unauthorized_changes", []),
+                "validation_errors": gateway.get("validation_errors", []),
+                "attempts": gateway.get("attempts", []),
                 "resulting_state": resulting_state["state"],
+                **gateway_routing_fields(gateway),
             })
-            if unauthorized:
-                request["message_to_teacher"] = f"检测到超出当前解析范围的修改：{', '.join(unauthorized)}；本轮未通过范围审计。"
-            elif validation_errors:
-                request["message_to_teacher"] = "修订后的解析未通过校验：" + "；".join(validation_errors)
-            elif completed.returncode != 0:
-                request["message_to_teacher"] = "大模型任务执行失败，请查看错误后重试。"
-            else:
-                request["message_to_teacher"] = "解析和引用解释图已按意见修订，请重新复核后再批准。"
+            request["message_to_teacher"] = (
+                "解析和引用解释图已按意见修订，请重新复核后再批准。"
+                if succeeded else gateway.get("message", "大模型任务执行失败，请查看错误后重试。")
+            )
             kb.write_json(request_path, request)
             return {**request, "state": resulting_state}
-        except subprocess.TimeoutExpired:
-            request = read_json(entry / "answer-revision-request.json", {})
-            request.update({
-                "status": "failed",
-                "completed_at": kb.now_iso(),
-                "message_to_teacher": "大模型运行超过 30 分钟，已停止本轮任务。",
-            })
-            kb.write_json(entry / "answer-revision-request.json", request)
-            return {"status": "blocked", "errors": ["解析修订 Agent 运行超时"], "request": request}
         finally:
             lock.release()
 
     def run_visualization_chat(self, entry: Path, data: dict):
+        routing_tier = normalize_routing_tier(data.get("routing_tier"))
         library = entry.parent.parent
         message = str(data.get("message", "")).strip()
         if not message:
@@ -765,56 +989,31 @@ class Handler(SimpleHTTPRequestHandler):
                 "requested_at": timestamp,
                 "message": message,
                 "base_digest": current["artifact_digest"],
+                "routing_tier": routing_tier,
             }
             request_path = entry / "visualization-request.json"
             kb.write_json(request_path, request)
             kb.write_json(conversation_path, conversation)
-            command = visualization_command(entry, message, request_path)
-            if not command:
-                assistant = "未配置页面可调用的 Agent。请求已保存在 visualization-request.json；请在 Claude Code/Codex 中处理后，再回到页面点击“构建 / 刷新预览”。"
+            gateway = AGENT_GATEWAY.run(visualization_task(entry, message, request_path, routing_tier), validate_visualization_candidate)
+            if gateway["status"] == "unavailable":
+                assistant = "没有可用的 Agent provider。请求已保存在 visualization-request.json；配置 Gateway 后可以重新提交。"
                 conversation["messages"].append({"role": "assistant", "at": kb.now_iso(), "content": assistant, "status": "awaiting-agent"})
                 kb.write_json(conversation_path, conversation)
-                request.update({"status": "awaiting-agent", "message_to_teacher": assistant})
+                request.update({"status": "awaiting-agent", "message_to_teacher": assistant, "gateway": gateway})
                 kb.write_json(request_path, request)
                 return {"status": "awaiting-agent", "conversation": conversation, "visualization": current}
-
-            before = entry_file_digests(entry)
-            source_assets = source_asset_names(entry)
-            answer_assets: set[str] = set()
-            for markdown_name in ("solution.md", "student-solution.md", "teacher-solution.md"):
-                markdown_path = entry / markdown_name
-                if not markdown_path.exists():
-                    continue
-                for raw in kb.markdown_image_refs(markdown_path.read_text(encoding="utf-8")):
-                    relative = raw.strip().strip("<>").split(maxsplit=1)[0]
-                    if not relative.startswith(("http:", "https:", "data:")):
-                        answer_assets.add(str(Path(relative)))
-            completed = subprocess.run(command, cwd=entry, text=True, capture_output=True, check=False, timeout=1800)
-            changed = changed_entry_files(before, entry_file_digests(entry))
-
-            def visualization_change_allowed(relative: str) -> bool:
-                path = Path(relative)
-                return relative == "physics-model.json" or (
-                    path.parts[:1] == ("assets",)
-                    and relative not in source_assets
-                    and relative not in answer_assets
-                )
-
-            unauthorized = [name for name in changed if not visualization_change_allowed(name)]
             build_result = None
-            if completed.returncode == 0 and not unauthorized:
-                build_result = process_uploads.prepare_visualization(library, entry.name, "auto")
+            if gateway["status"] == "completed":
+                with LIBRARY_INDEX_LOCK:
+                    build_result = process_uploads.prepare_visualization(library, entry.name, "auto")
             resulting = process_uploads.visualization_snapshot(entry)
             succeeded = (
-                completed.returncode == 0
-                and not unauthorized
+                gateway["status"] == "completed"
                 and build_result is not None
                 and build_result.get("status") == "ok"
             )
-            output = completed.stdout.strip()[-4000:]
-            if unauthorized:
-                output = f"检测到 Agent 修改了不允许的文件：{', '.join(unauthorized)}。本轮不能进入可视化批准。\n{output}"
-            elif not output:
+            output = gateway.get("message") or gateway.get("stdout", "").strip()[-4000:]
+            if not output:
                 output = "Agent 已完成模型生成或修改，工作台已重新构建可视化。" if succeeded else "Agent 已退出，但未形成可通过构建的交互可视化。"
             status = "completed" if succeeded else "failed"
             conversation["messages"].append({
@@ -828,10 +1027,14 @@ class Handler(SimpleHTTPRequestHandler):
             request.update({
                 "status": status,
                 "completed_at": kb.now_iso(),
-                "returncode": completed.returncode,
-                "stderr": completed.stderr[-2000:],
-                "unauthorized_changes": unauthorized,
-                "changed_files": changed,
+                "provider": gateway.get("provider"),
+                "returncode": gateway.get("returncode"),
+                "stderr": gateway.get("stderr", ""),
+                "unauthorized_changes": gateway.get("unauthorized_changes", []),
+                "validation_errors": gateway.get("validation_errors", []),
+                "changed_files": gateway.get("changed_files", []),
+                **gateway_routing_fields(gateway),
+                "attempts": gateway.get("attempts", []),
                 "build_status": build_result.get("status") if build_result else None,
                 "resulting_state": process_uploads.pipeline_state(entry)["state"],
             })
@@ -843,16 +1046,6 @@ class Handler(SimpleHTTPRequestHandler):
                 "visualization": resulting,
                 "state": process_uploads.pipeline_state(entry),
             }
-        except subprocess.TimeoutExpired:
-            conversation = read_json(entry / "visualization-conversation.json", {"messages": []})
-            conversation.setdefault("messages", []).append({
-                "role": "assistant",
-                "at": kb.now_iso(),
-                "content": "Agent 运行超过 30 分钟，已停止本轮任务。请缩小修改范围后重试。",
-                "status": "failed",
-            })
-            kb.write_json(entry / "visualization-conversation.json", conversation)
-            return {"status": "blocked", "errors": ["可视化 Agent 运行超时"], "conversation": conversation}
         finally:
             lock.release()
 
@@ -889,24 +1082,87 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(data)
 
 
+def acquire_instance_lock(library: Path):
+    directory = library / ".cache"
+    directory.mkdir(parents=True, exist_ok=True)
+    try:
+        directory.chmod(0o700)
+    except OSError:
+        pass
+    path = directory / "teacher-console.lock"
+    handle = path.open("a+", encoding="utf-8")
+    try:
+        path.chmod(0o600)
+    except OSError:
+        pass
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0)
+            if not handle.read(1):
+                handle.seek(0)
+                handle.write("0")
+                handle.flush()
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (BlockingIOError, OSError):
+        handle.close()
+        raise RuntimeError("已有教师工作台正在使用这个知识库；请关闭旧服务后再启动") from None
+    handle.seek(0)
+    handle.truncate()
+    handle.write(f"pid={os.getpid()}\nstarted_at={kb.now_iso()}\n")
+    handle.flush()
+    return handle
+
+
+def release_instance_lock(handle) -> None:
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            handle.seek(0)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+    finally:
+        handle.close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     args = parser.parse_args()
-    if args.host not in {"127.0.0.1", "localhost", "::1"} and os.environ.get("TEACHER_CONSOLE_ALLOW_NETWORK") != "true":
-        raise SystemExit("non-loopback binding requires TEACHER_CONSOLE_ALLOW_NETWORK=true")
-    kb.init_library(LIBRARY)
-    with FOLDER_LOCK:
-        kb.sync_library_folders(LIBRARY)
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
-    print(f"教师工作台已启动：http://{args.host}:{args.port}", flush=True)
+    if args.host not in {"127.0.0.1", "localhost", "::1"}:
+        raise SystemExit("教师工作台只允许监听本机回环地址")
     try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
+        instance_lock = acquire_instance_lock(LIBRARY)
+    except RuntimeError as exc:
+        raise SystemExit(str(exc)) from None
+    try:
+        kb.init_library(LIBRARY)
+        with FOLDER_LOCK:
+            kb.sync_library_folders(LIBRARY)
+        server = ThreadingHTTPServer((args.host, args.port), Handler)
+        print(f"教师工作台已启动：http://{args.host}:{args.port}", flush=True)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
+            if _JOB_MANAGER is not None:
+                print("正在等待后台 Agent 安全结束…", flush=True)
+                _JOB_MANAGER.shutdown(wait=True)
     finally:
-        server.server_close()
+        release_instance_lock(instance_lock)
     return 0
 
 

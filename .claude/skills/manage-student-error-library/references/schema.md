@@ -5,6 +5,7 @@
 ```text
 student-error-library/
 ├── config.json
+├── .cache/agent-jobs/            # private operational job state; never deliver or publish
 ├── folders/<display-name>/<entry-id>  # rebuildable relative link/pointer view
 ├── entries/<entry-id>/
 │   ├── record.json
@@ -40,6 +41,8 @@ student-error-library/
 `pipeline.json` is owned by `process_uploads.py`; do not hand-advance its state. `delivery.json` is written only after entry validation and all selected specialist builds succeed.
 
 Keep source artifacts and student data outside the Skill directory.
+
+`config.json` privacy flags are independent capabilities. `privacy.allow_remote_agent` authorizes sending reviewed textual answer/model context to a non-loopback Agent provider only when its environment gate is also enabled; it does not authorize OCR, visual review, source-image upload, delivery, or publication. Agent job JSON is private, rebuildable operational evidence and must not be referenced by student artifacts.
 
 ## `record.json`
 

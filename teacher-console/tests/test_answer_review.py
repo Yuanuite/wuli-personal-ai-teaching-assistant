@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -125,7 +126,8 @@ class AnswerReviewGateTest(unittest.TestCase):
 
     def test_answer_revision_records_request_when_agent_is_unavailable(self):
         handler = object.__new__(teacher_console_server.Handler)
-        with mock.patch.object(teacher_console_server, "answer_revision_command", return_value=None):
+        unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=unavailable):
             result = handler.run_answer_revision(
                 self.entry,
                 {"reviewer": "teacher", "note": "请把第二步拆开，并同步修正解释 SVG 中的方向箭头"},
@@ -135,19 +137,48 @@ class AnswerReviewGateTest(unittest.TestCase):
         self.assertEqual(request["status"], "awaiting-agent")
         self.assertEqual(kb.load_json(self.entry / "answer-review.json", {})["status"], "revision-requested")
 
+    def test_economy_revision_uses_minimum_context(self):
+        kb.write_json(self.entry / "physics-model.json", {"schema_version": 1})
+        request_path = self.entry / "answer-revision-request.json"
+        kb.write_json(request_path, {"note": "简化步骤"})
+        task = teacher_console_server.answer_revision_task(self.entry, "简化步骤", request_path, "economy")
+        self.assertEqual(task["routing_tier"], "economy")
+        self.assertNotIn("record.json", task["input_paths"])
+        self.assertNotIn("physics-model.json", task["input_paths"])
+        self.assertNotIn("physics-model.json", task["allowed_paths"])
+        self.assertIn("assets/explanatory.svg", task["input_paths"])
+        self.assertNotIn(".agent-context/library-skill.md", task["context_files"])
+        self.assertIn(".agent-context/answer-template.md", task["context_files"])
+
+    def test_expert_revision_can_share_existing_model(self):
+        kb.write_json(self.entry / "physics-model.json", {"schema_version": 1})
+        request_path = self.entry / "answer-revision-request.json"
+        kb.write_json(request_path, {"note": "复核共同语义"})
+        task = teacher_console_server.answer_revision_task(self.entry, "复核共同语义", request_path, "expert")
+        self.assertIn("physics-model.json", task["input_paths"])
+        self.assertIn("physics-model.json", task["allowed_paths"])
+        self.assertIn(".agent-context/library-skill.md", task["context_files"])
+
     def test_answer_revision_agent_result_returns_to_teacher_review(self):
         handler = object.__new__(teacher_console_server.Handler)
 
-        def fake_agent_run(command, cwd, **_kwargs):
-            teacher = Path(cwd) / "teacher-solution.md"
+        def fake_gateway_run(_task, _validator):
+            teacher = self.entry / "teacher-solution.md"
             teacher.write_text(teacher.read_text(encoding="utf-8") + "\n按教师意见补充分步说明。\n", encoding="utf-8")
-            return subprocess.CompletedProcess(command, 0, stdout="updated answer", stderr="")
+            (self.entry / "solution.md").write_bytes(teacher.read_bytes())
+            return {
+                "status": "completed",
+                "provider": "fake-agent",
+                "returncode": 0,
+                "stdout": "updated answer",
+                "stderr": "",
+                "changed_files": ["solution.md", "teacher-solution.md"],
+                "unauthorized_changes": [],
+                "validation_errors": [],
+                "attempts": [],
+            }
 
-        with mock.patch.object(teacher_console_server, "answer_revision_command", return_value=["fake-agent"]), mock.patch.object(
-            teacher_console_server.subprocess,
-            "run",
-            side_effect=fake_agent_run,
-        ):
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", side_effect=fake_gateway_run):
             result = handler.run_answer_revision(
                 self.entry,
                 {"reviewer": "teacher", "note": "请将第二步拆分为两个高中生容易跟上的步骤"},
@@ -160,6 +191,28 @@ class AnswerReviewGateTest(unittest.TestCase):
             (self.entry / "solution.md").read_text(encoding="utf-8"),
             (self.entry / "teacher-solution.md").read_text(encoding="utf-8"),
         )
+
+    def test_agent_candidate_cannot_change_source_provenance(self):
+        staging = Path(self.temp.name) / "staging"
+        shutil.copytree(self.entry, staging)
+        record = kb.load_json(staging / "record.json", {})
+        record["source"]["stored_files"] = []
+        kb.write_json(staging / "record.json", record)
+        errors = teacher_console_server.validate_answer_candidate(staging, ["record.json"], self.entry)
+        self.assertIn("record.json protected field changed: source", errors)
+
+        record = kb.load_json(self.entry / "record.json", {})
+        record["source"]["stored_files"] = []
+        kb.write_json(self.entry / "record.json", record)
+        self.assertIn("assets/original.png", teacher_console_server.source_asset_names(self.entry))
+
+    def test_teacher_console_instance_lock_is_exclusive(self):
+        first = teacher_console_server.acquire_instance_lock(self.library)
+        try:
+            with self.assertRaisesRegex(RuntimeError, "已有教师工作台"):
+                teacher_console_server.acquire_instance_lock(self.library)
+        finally:
+            teacher_console_server.release_instance_lock(first)
 
 
 if __name__ == "__main__":
