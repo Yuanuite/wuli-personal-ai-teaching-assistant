@@ -47,6 +47,12 @@ PUBLICATION_LOCK = threading.RLock()
 AGENT_GATEWAY = AgentGateway()
 _JOB_MANAGER: AgentJobManager | None = None
 _JOB_MANAGER_LOCK = threading.Lock()
+SUPPORTED_SIMULATOR_MODEL_TYPES = [
+    "concentric-radial-multi-field",
+    "opposite-circular-magnetic",
+    "electric-to-bounded-magnetic",
+    "planar-magnetic-multi-particle",
+]
 DELIVERY_CATALOG = {
     "student-package.zip": {
         "kind": "student-package",
@@ -250,6 +256,7 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto") -> 
 
 def visualization_task(entry: Path, message: str, request_path: Path, routing_tier: str = "auto") -> dict:
     has_model = (entry / "physics-model.json").exists()
+    supported_types = ", ".join(SUPPORTED_SIMULATOR_MODEL_TYPES)
     task = (
         "当前尚无 physics-model.json。教师已经明确请求生成可交互可视化；请调用 build-physics-simulator Skill，"
         "从已复核题干和答案独立建立完整物理模型，写入 physics-model.json，并执行模型校验。"
@@ -263,7 +270,9 @@ def visualization_task(entry: Path, message: str, request_path: Path, routing_ti
         "不要直接手改生成的 physics-simulator.html/zip，不要修改题干与答案 Markdown，不要改其他条目或全局 Skill。"
         "先读取已复核题干、答案、现有模型（如有）和构建记录。"
         f"{task}"
-        "若当前 builder 确实不支持所需过程，必须明确说明，不能套用错误模板或假装已生成。"
+        f"当前 deterministic builder 只支持这些 model_type：{supported_types}。"
+        "必须选择其中一个可构建类型；严禁自创 model_type。"
+        "若这些类型确实不支持所需过程，必须明确说明缺少的 renderer，不要写入无法构建的 physics-model.json。"
         "静态解释 SVG 属于解析复核，不在这里修改。"
         "执行模型校验即可，确定性 HTML 构建将由教师工作台在你退出后完成。"
         "严禁替教师调用 approve-visualization、approve-answer 或 finish。"
@@ -382,7 +391,37 @@ def validate_visualization_candidate(staging: Path, _changed: list[str]) -> list
         report = process_uploads.build_simulator(staging, Path(output_name), "skip")
     if report.get("status") == "ok":
         return []
-    return report.get("errors") or [f"visualization model validation failed: {report.get('status', 'unknown')}"]
+    if report.get("errors"):
+        return report["errors"]
+    if report.get("status") == "unsupported":
+        supported = ", ".join(str(item) for item in report.get("supported", [])) or ", ".join(SUPPORTED_SIMULATOR_MODEL_TYPES)
+        return [f"unsupported model_type: {report.get('model_type')}; supported: {supported}"]
+    validation = report.get("validation")
+    if isinstance(validation, dict):
+        details = validation.get("stderr") or validation.get("stdout")
+        if details:
+            return [f"visualization model validation failed: {report.get('status')}: {str(details)[:800]}"]
+    return [f"visualization model validation failed: {report.get('status', 'unknown')}"]
+
+
+def gateway_failure_detail(gateway: dict, fallback: str) -> str:
+    parts: list[str] = []
+    message = str(gateway.get("message") or "").strip()
+    if message:
+        parts.append(message)
+    validation = gateway.get("validation_errors")
+    if isinstance(validation, list) and validation:
+        parts.append("校验原因：" + "；".join(str(item) for item in validation[:5]))
+    unauthorized = gateway.get("unauthorized_changes")
+    if isinstance(unauthorized, list) and unauthorized:
+        parts.append("越权文件：" + "、".join(str(item) for item in unauthorized[:8]))
+    changed = gateway.get("changed_files")
+    if isinstance(changed, list) and changed:
+        parts.append("候选改动：" + "、".join(str(item) for item in changed[:8]))
+    provider = gateway.get("provider")
+    if provider:
+        parts.append(f"provider：{provider}")
+    return "\n".join(parts) if parts else fallback
 
 
 def mark_answer_needs_review(library: Path, entry: Path, note: str) -> dict:
@@ -1015,6 +1054,8 @@ class Handler(SimpleHTTPRequestHandler):
             output = gateway.get("message") or gateway.get("stdout", "").strip()[-4000:]
             if not output:
                 output = "Agent 已完成模型生成或修改，工作台已重新构建可视化。" if succeeded else "Agent 已退出，但未形成可通过构建的交互可视化。"
+            if not succeeded:
+                output = gateway_failure_detail(gateway, output)
             status = "completed" if succeeded else "failed"
             conversation["messages"].append({
                 "role": "assistant",

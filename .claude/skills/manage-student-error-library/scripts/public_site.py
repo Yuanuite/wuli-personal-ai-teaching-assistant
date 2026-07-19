@@ -29,8 +29,9 @@ PUBLIC_IMAGE_DIR = "publication-assets"
 PUBLIC_IMAGE_RECORD = "publication-images.json"
 COMMON_FILES = ("index.html", "viewer.html", "assets/site.css", "assets/site.js")
 IMAGE_RE = re.compile(r'!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)(\{width=\d+%\})?')
-MODEL_SCRIPT_RE = re.compile(
-    r'(<script\b[^>]*\bid=["\'](?:physics-model-data|field-trajectory-model)["\'][^>]*>)(.*?)(</script>)',
+# Match any <script type="application/json"> tag — ID-agnostic, works with all templates
+_JSON_SCRIPT_RE = re.compile(
+    r'(<script\b[^>]*\btype=["\']application/json["\'][^>]*>)(.*?)(</script>)',
     re.IGNORECASE | re.DOTALL,
 )
 TEXT_EXTENSIONS = {".html", ".js", ".json", ".md", ".css", ".svg"}
@@ -367,13 +368,20 @@ def _approved_simulator(entry: Path) -> Path | None:
 
 def _copy_public_simulator(source: Path, destination: Path, identifier: str) -> None:
     html = source.read_text(encoding="utf-8")
-    match = MODEL_SCRIPT_RE.search(html)
+    # Find the first JSON script tag that contains a physics model (schema_version + model_type)
+    match = None
+    model = None
+    for m in _JSON_SCRIPT_RE.finditer(html):
+        try:
+            candidate = json.loads(m.group(2))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(candidate, dict) and "schema_version" in candidate and "model_type" in candidate:
+            match = m
+            model = candidate
+            break
     if not match:
         raise ValueError("approved simulator has no sanitizable physics model")
-    try:
-        model = json.loads(match.group(2))
-    except json.JSONDecodeError as exc:
-        raise ValueError("approved simulator contains invalid embedded physics model") from exc
     model["entry_id"] = identifier
     model["source"] = {"publication": "student-site"}
     model.pop("teacher_audit", None)

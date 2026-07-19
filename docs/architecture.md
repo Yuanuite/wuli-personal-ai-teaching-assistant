@@ -114,6 +114,8 @@ Gateway 不拥有 OCR、答案或物理语义，也不得调用任何 `approve-*
 
 机器结构由 `.claude/skills/build-physics-simulator/references/physics-model.schema.json` 校验；跨字段物理关系由 `validate_physics_model.py` 校验。两层都通过后才能构建仿真。
 
+当前确定性仿真器支持四类 `model_type`：同心圆多区场、反向圆形磁场、电场入有界磁场，以及平面分界磁场多粒子轨迹。新增类型必须同时补 renderer、模型校验、Skill 文档和浏览器检查；不得只让 Agent 自创 `model_type`。
+
 ## 验证与交付
 
 完整交付依次通过：

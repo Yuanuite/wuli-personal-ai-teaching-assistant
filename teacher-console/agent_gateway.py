@@ -195,6 +195,19 @@ class AgentGateway:
                 "version": item.version,
                 "execution_locality": "local-process",
                 "data_locality": data_locality,
+                "model": item.version if item.name == "openai-compatible" else "",
+                "routing_models": (
+                    {
+                        "standard": self.environ.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip(),
+                        "economy": self.environ.get("TEACHER_CONSOLE_AGENT_API_ECONOMY_MODEL", "").strip(),
+                        "expert": self.environ.get("TEACHER_CONSOLE_AGENT_API_EXPERT_MODEL", "").strip(),
+                    }
+                    if item.name == "openai-compatible" else {}
+                ),
+                "required_env": (
+                    ["TEACHER_CONSOLE_AGENT_API_BASE_URL", "TEACHER_CONSOLE_AGENT_API_MODEL"]
+                    if item.name == "openai-compatible" else []
+                ),
                 "capabilities": {
                     "task_types": ["analysis.generate", "answer.revise", "visualization.model"],
                     "filesystem": item.mode != "json-adapter",

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="400" viewBox="0 0 720 400">
+  <rect width="720" height="400" fill="#fbfcff"/>
+  <circle cx="330" cy="205" r="140" fill="none" stroke="#234" stroke-width="3"/>
+  <circle cx="190" cy="275" r="90" fill="none" stroke="#d65" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="330" y1="205" x2="190" y2="205" stroke="#234" stroke-width="3"/>
+  <line x1="330" y1="205" x2="226" y2="112" stroke="#234" stroke-width="3"/>
+  <path d="M260 205 A70 70 0 0 0 278 159" fill="none" stroke="#1677ff" stroke-width="4"/>
+  <text x="270" y="178" font-size="22">δ</text><text x="315" y="230" font-size="20">O</text>
+  <text x="155" y="195" font-size="20">P</text><text x="215" y="100" font-size="20">下一边界点</text>
+  <text x="32" y="360" font-size="21">δ=2π/(n+1)，r=R tan(δ/2)</text>
+</svg>

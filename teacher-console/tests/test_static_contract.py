@@ -113,6 +113,20 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("withRoutingTier", script)
         self.assertIn("routing_tier", script)
         self.assertIn("localStorage.setItem(AGENT_TIER_KEY", script)
+        self.assertIn("validation_errors", script)
+        self.assertIn("required_env", script)
+
+    def test_planar_magnetic_renderer_is_registered(self):
+        simulator = ROOT / ".claude" / "skills" / "build-physics-simulator"
+        builder = (simulator / "scripts" / "build_simulator.py").read_text(encoding="utf-8")
+        validator = (simulator / "scripts" / "validate_physics_model.py").read_text(encoding="utf-8")
+        skill = (simulator / "SKILL.md").read_text(encoding="utf-8")
+        template = simulator / "assets" / "planar-magnetic-template.html"
+        self.assertTrue(template.exists())
+        self.assertIn('"planar-magnetic-multi-particle"', builder)
+        self.assertIn("planar-magnetic-template.html", builder)
+        self.assertIn('model_type == "planar-magnetic-multi-particle"', validator)
+        self.assertIn("planar-magnetic-multi-particle", skill)
 
     def test_publication_gate_and_static_student_site_contract(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")

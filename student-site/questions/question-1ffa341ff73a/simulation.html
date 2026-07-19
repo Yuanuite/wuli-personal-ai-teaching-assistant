@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内外反向圆形磁场中的周期轨迹</title>
+<style>
+:root{color-scheme:light;--background:#fff;--foreground:#1a1c1f;--card:#f5f6f7;--card-foreground:#1a1c1f;--primary:#277fbd;--primary-foreground:#fff;--muted-foreground:#5f6670;--border:#cfd5dc;--ring:#277fbd;--destructive:#d6531d;--viz-series-1:#277fbd;--viz-series-2:#c87821;--viz-series-3:#348c50;--viz-series-4:#a53b78}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#181818;--foreground:#f7f7f7;--card:#292929;--card-foreground:#f7f7f7;--primary:#82c2f0;--primary-foreground:#101010;--muted-foreground:#b3b6ba;--border:#4a4d50;--ring:#82c2f0;--destructive:#ff925c;--viz-series-1:#82c2f0;--viz-series-2:#efaa65;--viz-series-3:#7bd092;--viz-series-4:#e58cba}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground)}body{padding:16px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(100%,1100px);margin:0 auto}.viz-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.form-label{display:inline-flex;align-items:center;gap:5px}.form-range{flex:1 1 180px;min-width:120px;accent-color:var(--primary)}.btn{appearance:none;border:1px solid var(--border);border-radius:8px;padding:7px 11px;background:var(--card);color:var(--card-foreground);font:inherit;cursor:pointer}.btn:focus-visible,.form-range:focus-visible{outline:3px solid var(--ring);outline-offset:2px}.btn-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.card{border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--card-foreground)}@media(max-width:520px){body{padding:10px}.viz-controls{align-items:stretch}.form-label,.form-range{flex-basis:100%}}
+</style>
+</head>
+<body><main>
+<section id="field-trajectory-sim" class="field-sim">
+  <script type="application/json" id="field-trajectory-model">{"schema_version":1,"model_type":"opposite-circular-magnetic","entry_id":"question-1ffa341ff73a","title":"内外反向圆形磁场中的周期轨迹","source":{"publication":"student-site"},"regions":[{"id":"inside","field":{"type":"magnetic","direction":"into-page","magnitude":"B","boundary":"rho<R"}},{"id":"outside","field":{"type":"magnetic","direction":"out-of-page","magnitude":"B","boundary":"rho>R"}}],"facts":{"charge":"positive","boundary_radius":"R","gyro_angular_speed":"qB/m","delta_formula":"2π/(n+1)","orbit_radius_formula":"R tan(δ/2)","inside_sweep_formula":"π-δ","outside_sweep_formula":"π+δ"},"technique_ids":["magnetic-arc-time","multi-region-angle-ledger","mag-lorentz-sign-double-check"],"event_model":{"stop_event_id":"return-p","timeline":[{"id":"start-p","order":0,"label":"从 P 点沿直径方向射入","region":"inside","p_candidate":false},{"id":"boundary-crossing","order":1,"label":"穿越圆形边界","region":"boundary","p_candidate":false},{"id":"return-p","order":2,"label":"最后一段结束并回到 P","region":"boundary","p_candidate":true}],"cases":[{"id":"n2","label":"n=2","n":2,"segment_count":3,"delta_deg":120,"delta_label":"120°","valid":true,"orbit_radius_ratio":1.7320508075688772,"radius_label":"√3","total_gyro_angle_rad":7.330382858376184,"total_angle_label":"7π/3","first_p_event_id":"return-p"},{"id":"n3","label":"n=3","n":3,"segment_count":4,"delta_deg":90,"delta_label":"90°","valid":true,"orbit_radius_ratio":1,"radius_label":"1","total_gyro_angle_rad":12.566370614359172,"total_angle_label":"4π","first_p_event_id":"return-p"},{"id":"n4","label":"n=4（题设）","n":4,"segment_count":5,"delta_deg":72,"delta_label":"72°","valid":true,"orbit_radius_ratio":0.7265425280053609,"radius_label":"tan36°","total_gyro_angle_rad":14.451326206513048,"total_angle_label":"23π/5","first_p_event_id":"return-p"},{"id":"n5","label":"n=5","n":5,"segment_count":6,"delta_deg":60,"delta_label":"60°","valid":true,"orbit_radius_ratio":0.5773502691896257,"radius_label":"1/√3","total_gyro_angle_rad":18.84955592153876,"total_angle_label":"6π","first_p_event_id":"return-p"},{"id":"wrong-n4","label":"错误计数 2π/n","n":4,"segment_count":5,"delta_deg":90,"delta_label":"90°","valid":false,"orbit_radius_ratio":1,"radius_label":"1","total_gyro_angle_rad":14.137166941154069,"total_angle_label":"9π/2","first_p_event_id":"none"}]},"student_solution":{"quick_answers":["正确选项 A、C","δ=2π/(n+1)","n=4 时 t=23πm/(5qB)"],"recognition":"磁场方向在圆内外反向，轨迹曲率交替；先数轨迹段，再列圆心角账本。","main_steps":[{"title":"次数计数","formulae":["(n+1)δ=2π","δ=2π/(n+1)"]},{"title":"两圆相交几何","formulae":["r=R tan(δ/2)","v=qBr/m"]},{"title":"n=4 计时","formulae":["Θ=3(π-δ)+2(π+δ)=23π/5","t=Θ/(qB/m)=23πm/(5qB)"]}],"pitfalls":["穿越 n 次不等于只有 n 段轨迹","圆外弧是 π+δ，不是 π-δ"],"self_check":["n=2 时 δ=120°<180° 且 r=√3R","n=1 会令 r 发散，因此不成立"]},"simulation":{"default_duration_seconds":24,"layers":["trajectory","force","geometry"],"default_layer":"trajectory","default_case_id":"n4","pause_event_ids":["boundary-crossing","return-p"]}}</script>
+  <div class="sim-head">
+    <div><b id="field-title"></b><small id="field-note">轨迹、事件与结论均由 统一物理模型 驱动</small></div>
+    <div class="case-buttons" id="case-buttons-field" aria-label="模型情形"></div>
+  </div>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-field" role="img" aria-label="可播放、拖动进度、逐层显示、缩放和平移的带电粒子轨迹仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-field"></b></div>
+        <div><small>关键事件</small><b id="event-field"></b></div>
+        <div><small>命中结论</small><b id="result-field"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="parameter-panel" id="parameter-panel-field" hidden>
+        <label for="h-ratio-field">高度比 h/d <b id="h-ratio-label-field"></b></label>
+        <input class="form-range" id="h-ratio-field" type="range">
+        <label for="b-ratio-field">磁场比 B/B* <b id="b-ratio-label-field"></b></label>
+        <input class="form-range" id="b-ratio-field" type="range">
+      </div>
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-field" type="button">播放</button>
+        <button class="btn" id="replay-field" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-field" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-field">进度 <b id="progress-label-field">0%</b></label>
+        <input class="form-range" id="progress-field" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <span>显示层</span>
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="force" type="button">2 受力</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-field">总时长 <b id="duration-label-field"></b></label>
+          <input class="form-range" id="duration-field" type="range" min="8" max="90">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-field" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-field" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-field" type="button" aria-label="缩小">−</button>
+          <button class="btn" id="fit-field" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-field" type="button" aria-label="放大">＋</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</section>
+<style>
+  #field-trajectory-sim{display:grid;gap:10px;width:100%}
+  #field-trajectory-sim [hidden]{display:none!important}
+  #field-trajectory-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #field-trajectory-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #field-trajectory-sim .case-buttons{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #field-trajectory-sim .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #field-trajectory-sim .scene-pane{display:grid;gap:8px;min-width:0}
+  #field-trajectory-sim .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #field-trajectory-sim .parameter-panel{display:grid;gap:5px;border-bottom:1px solid var(--border);padding-bottom:9px}
+  #field-trajectory-sim .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #field-trajectory-sim .scrub-control,#field-trajectory-sim .control-group{display:grid;gap:5px}
+  #field-trajectory-sim .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center}
+  #field-trajectory-sim .layer-tabs span{grid-column:1/-1;color:var(--muted-foreground);font-size:12px}
+  #field-trajectory-sim .layer-tabs .btn{padding-inline:6px}
+  #field-trajectory-sim .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #field-trajectory-sim .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #field-trajectory-sim .more-controls[open] summary{margin-bottom:9px}
+  #field-trajectory-sim .more-controls .control-group+ .control-group{margin-top:9px}
+  #field-trajectory-sim .button-pair{grid-template-columns:1fr 1fr}
+  #field-trajectory-sim .zoom-controls{grid-template-columns:auto 1fr auto}
+  #field-trajectory-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #field-trajectory-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
+  #field-trajectory-sim canvas:active{cursor:grabbing}
+  #field-trajectory-sim .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #field-trajectory-sim .status-grid small,#field-trajectory-sim .status-grid b{display:block}
+  #field-trajectory-sim .status-grid small{color:var(--muted-foreground)}
+  #field-trajectory-sim .auto-pause{white-space:nowrap}
+  @media(max-width:760px){
+    #field-trajectory-sim{gap:8px}
+    #field-trajectory-sim .sim-head{display:grid;gap:6px}
+    #field-trajectory-sim .sim-head small{display:none}
+    #field-trajectory-sim .case-buttons{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+    #field-trajectory-sim .case-buttons .btn{flex:0 0 auto}
+    #field-trajectory-sim .sim-workspace{display:block}
+    #field-trajectory-sim .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #field-trajectory-sim .status-grid>div:last-child{grid-column:1/-1}
+    #field-trajectory-sim .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:58svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #field-trajectory-sim .parameter-panel{grid-template-columns:auto minmax(0,1fr);align-items:center;padding-bottom:7px;font-size:12px}
+    #field-trajectory-sim .primary-controls{flex-wrap:nowrap}
+    #field-trajectory-sim .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #field-trajectory-sim .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #field-trajectory-sim .scrub-control label{white-space:nowrap;font-size:12px}
+    #field-trajectory-sim .layer-tabs span{display:none}
+    #field-trajectory-sim .more-controls{padding-top:6px}
+  }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('field-trajectory-sim');
+  const model=JSON.parse(root.querySelector('#field-trajectory-model').textContent);
+  const canvas=root.querySelector('#canvas-field'),ctx=canvas.getContext('2d');
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rad=d=>d*Math.PI/180;
+  const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#667',border:v('--border')||'#bbb',one:v('--viz-series-1')||'#2783c4',two:v('--viz-series-2')||'#c87821',three:v('--viz-series-3')||'#348c50',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
+  let activeCase=model.event_model.cases.find(x=>x.id===model.simulation.default_case_id)||model.event_model.cases[0];
+  let progress=0,playing=false,lastTime=0,lastPause=-1,layer=model.simulation.default_layer||'trajectory';
+  let zoom=1,panX=0,panY=0,drag=null,scene=null,viewScale=1;
+  const pointers=new Map();
+  const px=value=>value/(viewScale*zoom);
+
+  function arcSegment(start,heading,radius,signedSweep,samples,meta){
+    const sign=Math.sign(signedSweep)||1;
+    const center={x:start.x-sign*Math.sin(heading)*radius,y:start.y+sign*Math.cos(heading)*radius};
+    const rx=start.x-center.x,ry=start.y-center.y,points=[];
+    for(let i=0;i<samples;i++){const a=signedSweep*i/(samples-1),ca=Math.cos(a),sa=Math.sin(a);points.push({x:center.x+rx*ca-ry*sa,y:center.y+rx*sa+ry*ca})}
+    return{...meta,points,center,radius,weight:Math.abs(signedSweep),end:points[points.length-1],endHeading:heading+signedSweep,signedSweep};
+  }
+  function lineSegment(points,weight,meta){return{...meta,points,weight,end:points[points.length-1]}}
+  function linePoints(a,b,n=90){return Array.from({length:n},(_,i)=>({x:a.x+(b.x-a.x)*i/(n-1),y:a.y+(b.y-a.y)*i/(n-1)}))}
+
+  function buildOpposite(){
+    const R=1,delta=rad(activeCase.delta_deg),r=activeCase.orbit_radius_ratio||Math.tan(delta/2);
+    const innerSweep=-(Math.PI-delta),outerSweep=Math.PI+delta,segments=[];
+    let point={x:-R,y:0},heading=0;
+    for(let i=0;i<activeCase.segment_count;i++){
+      const inside=i%2===0,sweep=inside?innerSweep:outerSweep;
+      const segment=arcSegment(point,heading,r,sweep,130,{region:inside?'inside':'outside',label:`第 ${i+1} 段：${inside?'圆内 B⊗':'圆外 B⊙'}`,eventId:i===activeCase.segment_count-1?(activeCase.valid?'return-p':'counting-check'):`cross-${i+1}`});
+      segments.push(segment);point=segment.end;heading=segment.endHeading;
+    }
+    const result=activeCase.valid
+      ? `n=${activeCase.n}：δ=${activeCase.delta_label}，r/R=${activeCase.radius_label}，总回旋角 ${activeCase.total_angle_label}`
+      : `错误计数：走完 ${activeCase.segment_count} 段后未回到 P（不能写 δ=2π/n）`;
+    return finalize({kind:'opposite',segments,result,bounds:{x0:-2.45,x1:2.45,y0:-2.25,y1:2.25},R,delta,r,start:{x:-R,y:0},end:point});
+  }
+
+  function buildElectric(){
+    const h=Number(root.querySelector('#h-ratio-field').value),ratio=Number(root.querySelector('#b-ratio-field').value),d=1;
+    const xq=2*Math.sqrt(3)*h/3,Q={x:xq,y:0},P={x:0,y:-h};
+    const electric=lineSegment(Array.from({length:150},(_,i)=>{const s=i/149;return{x:xq*s,y:-h*(1-s*s)}}),2*Math.sqrt(3)*h/3,{region:'electric',label:'电场段：类平抛',eventId:'enter-q'});
+    const r=2/(3*ratio),heading=rad(60),startAngle=-rad(30),touch=ratio<1-1e-8,tangent=Math.abs(ratio-1)<1e-8;
+    let sweep;
+    if(touch){const sinAngle=clamp(1/r-.5,-1,1);sweep=Math.asin(sinAngle)-startAngle}else{sweep=rad(120)}
+    const magnetic=arcSegment(Q,heading,r,sweep,180,{region:'magnetic',label:'磁场段：匀速圆周运动',eventId:'lower-boundary'});
+    magnetic.weight=sweep*r/2;
+    const result=tangent
+      ? 'B/B*=1：轨迹与 y=−d 恰好相切，B*=3mv₀/(qd)'
+      : touch?`B/B*=${ratio.toFixed(2)}：轨迹提前穿出下边界`:`B/B*=${ratio.toFixed(2)}：最低点仍高于 y=−d，未触及下边界`;
+    const x0=Math.min(-.35,magnetic.center.x-r-.25),x1=Math.max(xq+.35,magnetic.center.x+r+.35),y1=Math.max(1.3,magnetic.center.y+r+.2);
+    return finalize({kind:'electric',segments:[electric,magnetic],result,bounds:{x0,x1,y0:-h-.25,y1},h,d,xq,P,Q,r,ratio,tangent,touch,magneticSweep:sweep});
+  }
+
+  function finalize(value){
+    const total=value.segments.reduce((sum,s)=>sum+s.weight,0);let sum=0;
+    value.boundaries=value.segments.map((s,index)=>{sum+=s.weight;return{fraction:sum/total,eventId:s.eventId,segment:index}});
+    value.total=total;return value;
+  }
+  function rebuild(reset=true){scene=model.model_type==='opposite-circular-magnetic'?buildOpposite():buildElectric();if(reset){progress=0;lastPause=-1;setPlaying(false);zoom=1;panX=panY=0}draw()}
+
+  function stateAt(){
+    let remaining=progress*scene.total,state={point:scene.segments[0].points[0],tangent:{x:1,y:0},segment:0,local:0};
+    for(let i=0;i<scene.segments.length;i++){
+      const s=scene.segments[i],f=clamp(remaining/s.weight,0,1),k=clamp(Math.round((s.points.length-1)*f),0,s.points.length-1),a=s.points[Math.max(0,k-1)],b=s.points[Math.min(s.points.length-1,k+1)],length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+      state={point:s.points[k],tangent:{x:(b.x-a.x)/length,y:(b.y-a.y)/length},segment:i,local:f};remaining-=s.weight;if(remaining<=0)break;
+    }
+    return state;
+  }
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);return{w,h}}
+  function label(text,x,y,color,align='center'){ctx.fillStyle=color;ctx.font=`${px(13)}px system-ui`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.fillText(text,x,y)}
+  function stroke(points,color,width,f=1,dash=[]){const n=Math.max(2,Math.ceil(points.length*f));ctx.strokeStyle=color;ctx.lineWidth=px(width);ctx.setLineDash(dash.map(px));ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<n;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke();ctx.setLineDash([])}
+  function arrow(a,b,color,text=''){const angle=Math.atan2(b.y-a.y,b.x-a.x),head=px(7);ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(2);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-head*Math.cos(angle-.45),b.y-head*Math.sin(angle-.45));ctx.lineTo(b.x-head*Math.cos(angle+.45),b.y-head*Math.sin(angle+.45));ctx.closePath();ctx.fill();if(text)label(text,b.x+px(6),b.y-px(7),color,'left')}
+  function fieldSymbol(x,y,type,color){ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(1.2);ctx.beginPath();ctx.arc(x,y,px(4),0,Math.PI*2);ctx.stroke();if(type==='out'){ctx.beginPath();ctx.arc(x,y,px(1.3),0,Math.PI*2);ctx.fill()}else{ctx.beginPath();ctx.moveTo(x-px(2.6),y-px(2.6));ctx.lineTo(x+px(2.6),y+px(2.6));ctx.moveTo(x+px(2.6),y-px(2.6));ctx.lineTo(x-px(2.6),y+px(2.6));ctx.stroke()}}
+  function drawOppositeBase(c){
+    ctx.save();ctx.globalAlpha=.08;ctx.fillStyle=c.one;ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.strokeStyle=c.border;ctx.lineWidth=px(1.5);ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.stroke();
+    label('O',0,px(12),c.fg);label('P',scene.start.x-px(7),scene.start.y-px(12),c.fg,'right');
+    if(layer==='force'){
+      for(let x=-.75;x<=.75;x+=.38)for(let y=-.75;y<=.75;y+=.38)if(Math.hypot(x,y)<.86)fieldSymbol(x,y,'in',c.one);
+      for(let x=-2.1;x<=2.1;x+=.48)for(let y=-1.85;y<=1.85;y+=.48)if(Math.hypot(x,y)>1.16)fieldSymbol(x,y,'out',c.two);
+      label('圆内 B ⊗',0,-.43,c.one);label('圆外 B ⊙',1.35,-1.75,c.two);
+    }
+  }
+  function drawElectricBase(c){
+    const bottom=scene.d;
+    ctx.save();ctx.globalAlpha=.07;ctx.fillStyle=c.one;ctx.fillRect(scene.bounds.x0,-scene.h,scene.bounds.x1-scene.bounds.x0,scene.h);ctx.fillStyle=c.two;ctx.fillRect(scene.bounds.x0,0,scene.bounds.x1-scene.bounds.x0,bottom);ctx.restore();
+    ctx.strokeStyle=c.border;ctx.lineWidth=px(1.4);ctx.beginPath();ctx.moveTo(scene.bounds.x0,0);ctx.lineTo(scene.bounds.x1,0);ctx.moveTo(scene.bounds.x0,bottom);ctx.lineTo(scene.bounds.x1,bottom);ctx.stroke();
+    label('x',scene.bounds.x1-.04,-.07,c.fg,'right');label('y=−d',scene.bounds.x0+.04,bottom-.08,c.fg,'left');label('P',scene.P.x-.06,scene.P.y-.08,c.fg,'right');label('Q',scene.Q.x+.06,scene.Q.y-.08,c.fg,'left');
+    if(layer==='force'){
+      for(let x=scene.bounds.x0+.2;x<scene.bounds.x1;x+=.5)for(let y=-scene.h+.16;y<-.08;y+=.42)arrow({x,y:y-.09},{x,y:y+.09},c.one);
+      for(let x=scene.bounds.x0+.2;x<scene.bounds.x1;x+=.42)for(let y=.18;y<bottom-.06;y+=.34)fieldSymbol(x,y,'out',c.two);
+      label('E 向下',scene.bounds.x0+.12,-scene.h+.08,c.one,'left');label('B ⊙',scene.bounds.x1-.15,.15,c.two,'right');
+    }
+  }
+  function drawGeometry(state,c){
+    if(scene.kind==='opposite'){
+      scene.segments.forEach((s,i)=>{if(i!==state.segment&&i>1)return;ctx.strokeStyle=c.force;ctx.lineWidth=px(1);ctx.setLineDash([px(5),px(4)]);ctx.beginPath();ctx.arc(s.center.x,s.center.y,s.radius,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(s.center.x,s.center.y);ctx.lineTo(s.points[0].x,s.points[0].y);ctx.stroke();ctx.setLineDash([])});
+      label(`δ=${activeCase.delta_label}`,0,-1.17,c.force);label(`r/R=${activeCase.radius_label}`,0,-1.38,c.force);
+    }else{
+      const s=scene.segments[1];ctx.strokeStyle=c.force;ctx.lineWidth=px(1.2);ctx.setLineDash([px(5),px(4)]);ctx.beginPath();ctx.arc(s.center.x,s.center.y,s.radius,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.moveTo(s.center.x,s.center.y);ctx.lineTo(scene.Q.x,scene.Q.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c.force;ctx.beginPath();ctx.arc(s.center.x,s.center.y,px(3),0,Math.PI*2);ctx.fill();label('C',s.center.x-.04,s.center.y-.09,c.force,'right');label(`r=${(scene.r).toFixed(3)}d`,s.center.x,s.center.y+.18,c.force);label(`转角 ${(scene.magneticSweep*180/Math.PI).toFixed(1)}°`,scene.Q.x+.12,.2,c.force,'left');
+    }
+  }
+  function drawParticle(state,c){
+    const s=scene.segments[state.segment],p=state.point;
+    arrow(p,{x:p.x+state.tangent.x*px(34),y:p.y+state.tangent.y*px(34)},c.one,'v');
+    let fx=0,fy=1;
+    if(s.region==='magnetic'||scene.kind==='opposite'){const dx=s.center.x-p.x,dy=s.center.y-p.y,length=Math.hypot(dx,dy)||1;fx=dx/length;fy=dy/length}
+    arrow(p,{x:p.x+fx*px(32),y:p.y+fy*px(32)},c.force,'F');
+    ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(p.x,p.y,px(7),0,Math.PI*2);ctx.fill();label('+',p.x,p.y+px(1),c.bg);
+  }
+  function draw(){
+    if(!scene)return;const m=metrics(),c=colors(),b=scene.bounds,scale=Math.min((m.w-34)/(b.x1-b.x0),(m.h-34)/(b.y1-b.y0)),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;viewScale=scale;
+    ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,scale*zoom);ctx.translate(-cx,-cy);
+    scene.kind==='opposite'?drawOppositeBase(c):drawElectricBase(c);
+    scene.segments.forEach(s=>{ctx.save();ctx.globalAlpha=.18;stroke(s.points,c.muted,1.3);ctx.restore()});
+    let remaining=progress*scene.total;scene.segments.forEach(s=>{const f=clamp(remaining/s.weight,0,1);if(f>0)stroke(s.points,s.region==='inside'||s.region==='electric'?c.one:c.two,3.2,f);remaining-=s.weight});
+    const state=stateAt();if(layer==='geometry')drawGeometry(state,c);if(layer==='force')drawParticle(state,c);else{ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(state.point.x,state.point.y,px(7),0,Math.PI*2);ctx.fill();label('+',state.point.x,state.point.y+px(1),c.bg)}ctx.restore();
+    const reached=[...scene.boundaries].reverse().find(e=>progress+1e-6>=e.fraction),eventId=reached?.eventId;
+    let eventLabel='从 P 出发';if(eventId==='enter-q')eventLabel='到达 Q，进入磁场';else if(eventId==='lower-boundary')eventLabel=scene.tangent?'首次到达下边界（相切）':scene.touch?'首次穿出下边界':'到达最低点';else if(eventId==='return-p')eventLabel='回到 P';else if(eventId==='counting-check')eventLabel='错误计数未闭合';else if(eventId?.startsWith('cross-'))eventLabel=`第 ${eventId.slice(6)} 次穿越边界`;
+    root.querySelector('#phase-field').textContent=scene.segments[state.segment].label;root.querySelector('#event-field').textContent=eventLabel;root.querySelector('#result-field').textContent=scene.result;root.querySelector('#progress-field').value=Math.round(progress*1000);root.querySelector('#progress-label-field').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label-field').textContent=`${root.querySelector('#duration-field').value} 秒`;
+  }
+  function setPlaying(value){playing=value;lastTime=0;root.querySelector('#play-field').textContent=value?'暂停':'播放'}
+  function stops(){return scene.boundaries.map(x=>x.fraction)}
+  function jump(direction){const values=stops(),eps=.002,target=direction>0?values.find(x=>x>progress+eps):[...values].reverse().find(x=>x<progress-eps);if(target!==undefined){progress=target;lastPause=values.indexOf(target);setPlaying(false);draw()}}
+  function animate(time){if(playing){if(!lastTime)lastTime=time;const old=progress;progress+=(time-lastTime)/(Number(root.querySelector('#duration-field').value)*1000);lastTime=time;const values=stops();if(root.querySelector('#auto-pause-field').checked){const hit=values.findIndex((x,i)=>i!==lastPause&&x>old+1e-5&&x<=progress);if(hit>=0){progress=values[hit];lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
+
+  root.querySelector('#field-title').textContent=model.title;
+  const duration=root.querySelector('#duration-field');duration.value=String(model.simulation.default_duration_seconds);
+  const caseBox=root.querySelector('#case-buttons-field');
+  if(model.model_type==='opposite-circular-magnetic'){
+    model.event_model.cases.forEach(item=>{const button=document.createElement('button');button.type='button';button.className='btn';button.dataset.caseId=item.id;button.textContent=item.label;button.onclick=()=>{activeCase=item;caseBox.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===button));rebuild(true)};caseBox.appendChild(button)});
+    caseBox.querySelector(`[data-case-id="${activeCase.id}"]`).classList.add('active');
+  }else{
+    caseBox.hidden=true;const panel=root.querySelector('#parameter-panel-field');panel.hidden=false;
+    const hp=model.simulation.parameters.h_over_d,bp=model.simulation.parameters.b_ratio,hInput=root.querySelector('#h-ratio-field'),bInput=root.querySelector('#b-ratio-field');
+    Object.assign(hInput,{min:hp.min,max:hp.max,step:hp.step,value:hp.default});Object.assign(bInput,{min:bp.min,max:bp.max,step:bp.step,value:bp.default});
+    const updateParameters=()=>{root.querySelector('#h-ratio-label-field').textContent=Number(hInput.value).toFixed(2);root.querySelector('#b-ratio-label-field').textContent=Number(bInput.value).toFixed(2);rebuild(true)};
+    hInput.oninput=updateParameters;bInput.oninput=updateParameters;
+  }
+  root.querySelectorAll('[data-layer]').forEach(button=>button.onclick=()=>{layer=button.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===button));draw()});
+  root.querySelector('#play-field').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-field').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-field').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};duration.oninput=draw;root.querySelector('#previous-event-field').onclick=()=>jump(-1);root.querySelector('#next-event-field').onclick=()=>jump(1);root.querySelector('#zoom-in-field').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-field').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-field').onclick=()=>{zoom=1;panX=panY=0;draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
+  if(model.model_type==='electric-to-bounded-magnetic'){root.querySelector('#h-ratio-label-field').textContent=Number(root.querySelector('#h-ratio-field').value).toFixed(2);root.querySelector('#b-ratio-label-field').textContent=Number(root.querySelector('#b-ratio-field').value).toFixed(2)}
+  const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
+  rebuild(false);new ResizeObserver(draw).observe(root);requestAnimationFrame(animate);
+})();
+</script>
+
+</main></body>
+</html>

@@ -16,6 +16,7 @@ RENDERERS = {
     "concentric-radial-multi-field": SKILL_DIR / "assets" / "guided-charged-particle-template.html",
     "opposite-circular-magnetic": SKILL_DIR / "assets" / "field-trajectory-template.html",
     "electric-to-bounded-magnetic": SKILL_DIR / "assets" / "field-trajectory-template.html",
+    "planar-magnetic-multi-particle": SKILL_DIR / "assets" / "planar-magnetic-template.html",
 }
 
 

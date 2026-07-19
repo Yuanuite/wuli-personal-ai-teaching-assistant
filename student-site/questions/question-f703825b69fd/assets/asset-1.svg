@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440">
+  <rect width="760" height="440" fill="#fbfcff"/>
+  <line x1="80" y1="210" x2="710" y2="210" stroke="#234" stroke-width="3"/>
+  <line x1="110" y1="390" x2="110" y2="40" stroke="#234" stroke-width="3"/>
+  <path d="M110 70 Q270 75 365 210" fill="none" stroke="#1677ff" stroke-width="5"/>
+  <circle cx="365" cy="210" r="7" fill="#d33"/><text x="375" y="200" font-size="20">Q</text>
+  <circle cx="480" cy="277" r="135" fill="none" stroke="#d65" stroke-width="4" stroke-dasharray="8 6"/>
+  <line x1="365" y1="210" x2="480" y2="277" stroke="#555" stroke-width="3"/>
+  <line x1="110" y1="412" x2="710" y2="412" stroke="#777" stroke-width="3" stroke-dasharray="9 7"/>
+  <text x="620" y="405" font-size="20">y=-d（相切）</text><text x="125" y="65" font-size="20">P</text>
+  <text x="390" y="245" font-size="19">r，圆心纵坐标 -r/2</text>
+</svg>

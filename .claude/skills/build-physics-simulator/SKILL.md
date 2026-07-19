@@ -70,6 +70,13 @@ Auto-fit after model changes. Do not reset user pan/zoom during normal playback.
 
 Supported model types must use the deterministic builder:
 
+| `model_type` | Renderer | Use when |
+|---|---|---|
+| `concentric-radial-multi-field` | guided charged-particle renderer | concentric/circular multi-region fields with repeated region crossings |
+| `opposite-circular-magnetic` | field trajectory renderer | circular magnetic regions with opposite field directions and return/closure questions |
+| `electric-to-bounded-magnetic` | field trajectory renderer | electric-field acceleration followed by bounded magnetic circular motion |
+| `planar-magnetic-multi-particle` | planar magnetic multi-particle renderer | adjacent half-plane magnetic regions, multiple charged particles, circular-arc ledgers, and meeting events |
+
 ```bash
 python3 <skill-dir>/scripts/build_simulator.py \
   <entry>/physics-model.json \
@@ -78,7 +85,7 @@ python3 <skill-dir>/scripts/build_simulator.py \
   --name physics-simulator --zip --runtime-check auto
 ```
 
-The builder selects the renderer by `model_type`, embeds the model, exports offline files, runs JSON Schema and physics validation, HTML/JavaScript checks, ZIP integrity checks, and a browser runtime check when available. An unsupported `model_type` must fail explicitly rather than silently using the wrong template. Use `--runtime-check required` when browser validation is a hard gate, or `skip` only when the caller explicitly requests a static preflight.
+The builder selects the renderer by `model_type`, embeds the model, exports offline files, runs JSON Schema and physics validation, HTML/JavaScript checks, ZIP integrity checks, and a browser runtime check when available. Do not invent new `model_type` values inside an Agent task. If none of the supported types can represent the requested process, return `unsupported` with the supported list and the missing renderer requirement instead of writing a plausible but unbuildable model. Use `--runtime-check required` when browser validation is a hard gate, or `skip` only when the caller explicitly requests a static preflight.
 
 When invoked by the error-library lifecycle, the lifecycle owner chooses the staging directory, records the teacher's artifact-digest approval, and copies the approved bytes into delivery. This Skill must not rebuild a different last-minute version during `finish`, edit the teacher approval record, or approve itself.
 

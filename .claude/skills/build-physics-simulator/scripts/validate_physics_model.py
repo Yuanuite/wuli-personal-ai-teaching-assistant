@@ -130,6 +130,64 @@ def validate_electric_magnetic(data: dict, errors: list[str]) -> None:
         errors.append("electric-to-bounded-magnetic: Q and lower-boundary must be pause events")
 
 
+def validate_planar_magnetic(data: dict, errors: list[str]) -> None:
+    facts = data.get("facts", {})
+    particles = facts.get("particles", [])
+    if not isinstance(particles, list) or len(particles) < 1:
+        errors.append("planar-magnetic-multi-particle: facts.particles must contain at least one particle")
+    particle_ids = {str(item.get("id")) for item in particles if isinstance(item, dict) and item.get("id")}
+    if len(particle_ids) != len(particles):
+        errors.append("planar-magnetic-multi-particle: every particle needs a unique id")
+    regions = data.get("regions", [])
+    if len(regions) < 2:
+        errors.append("planar-magnetic-multi-particle: at least two magnetic regions are required")
+    if str(facts.get("boundary", {}).get("type", "")) != "horizontal-line":
+        errors.append("planar-magnetic-multi-particle: facts.boundary.type must be horizontal-line")
+
+    timeline = data.get("event_model", {}).get("timeline", [])
+    event_ids = {event.get("id") for event in timeline}
+    event_times = []
+    for event in timeline:
+        try:
+            event_times.append(float(event.get("time_tau")))
+        except (TypeError, ValueError):
+            errors.append(f"{event.get('id', '<event>')}: timeline event needs numeric time_tau")
+    if event_times != sorted(event_times):
+        errors.append("planar-magnetic-multi-particle: timeline time_tau must be nondecreasing")
+
+    segments = data.get("trajectory", {}).get("segments", [])
+    if not segments:
+        errors.append("planar-magnetic-multi-particle: trajectory.segments is required")
+    for segment in segments:
+        segment_id = segment.get("id", "<segment>")
+        particle_id = str(segment.get("particle_id", ""))
+        if particle_id not in particle_ids:
+            errors.append(f"{segment_id}: particle_id is unknown")
+        if segment.get("type") != "arc":
+            errors.append(f"{segment_id}: only arc segments are supported")
+        if segment.get("start_event") not in event_ids:
+            errors.append(f"{segment_id}: start_event is not in timeline")
+        if segment.get("end_event") not in event_ids:
+            errors.append(f"{segment_id}: end_event is not in timeline")
+        geometry = segment.get("geometry", {})
+        center = geometry.get("center")
+        if not (isinstance(center, list) and len(center) == 2 and all(isinstance(value, (int, float)) for value in center)):
+            errors.append(f"{segment_id}: geometry.center must be [x, y]")
+        for key in ("radius", "start_deg", "end_deg"):
+            if not isinstance(geometry.get(key), (int, float)):
+                errors.append(f"{segment_id}: geometry.{key} must be numeric")
+        if isinstance(geometry.get("radius"), (int, float)) and float(geometry.get("radius")) <= 0:
+            errors.append(f"{segment_id}: geometry.radius must be positive")
+        duration = segment.get("kinematics", {}).get("duration_tau")
+        if not isinstance(duration, (int, float)) or float(duration) <= 0:
+            errors.append(f"{segment_id}: kinematics.duration_tau must be positive")
+
+    pause_ids = set(data.get("simulation", {}).get("pause_event_ids", []))
+    stop_id = data.get("event_model", {}).get("stop_event_id")
+    if stop_id and stop_id not in pause_ids:
+        errors.append("planar-magnetic-multi-particle: stop_event_id should be a pause event")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("model", type=Path)
@@ -165,6 +223,8 @@ def main() -> None:
         validate_opposite_circular(data, errors)
     elif model_type == "electric-to-bounded-magnetic":
         validate_electric_magnetic(data, errors)
+    elif model_type == "planar-magnetic-multi-particle":
+        validate_planar_magnetic(data, errors)
     else:
         errors.append(f"unsupported model_type: {model_type}")
 

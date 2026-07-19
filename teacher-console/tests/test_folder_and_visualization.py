@@ -197,8 +197,14 @@ class FolderAndVisualizationTest(unittest.TestCase):
         (self.entry / "physics-model.json").unlink()
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
+        captured = {}
         unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
-        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=unavailable):
+
+        def fake_run(task, _validator):
+            captured["prompt"] = task["prompt"]
+            return unavailable
+
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", side_effect=fake_run):
             result = handler.run_visualization_chat(
                 self.entry,
                 {"message": "我想为这道题生成一个可交互的可视化结果"},
@@ -207,6 +213,33 @@ class FolderAndVisualizationTest(unittest.TestCase):
         request = kb.load_json(self.entry / "visualization-request.json", {})
         self.assertEqual(request["status"], "awaiting-agent")
         self.assertIn("生成一个可交互", request["message"])
+        self.assertIn("concentric-radial-multi-field", captured["prompt"])
+        self.assertIn("严禁自创 model_type", captured["prompt"])
+
+    def test_visualization_failure_exposes_validation_reason_to_teacher(self):
+        process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
+        handler = object.__new__(teacher_console_server.Handler)
+        failed = {
+            "status": "failed",
+            "provider": "claude",
+            "message": "Agent 候选未通过范围或内容校验，canonical 条目未提升本轮候选。",
+            "changed_files": ["physics-model.json"],
+            "unauthorized_changes": [],
+            "validation_errors": [
+                "unsupported model_type: split-uniform-magnetic-two-particle; supported: concentric-radial-multi-field"
+            ],
+            "attempts": [],
+        }
+        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=failed):
+            result = handler.run_visualization_chat(
+                self.entry,
+                {"message": "我想为这道题生成一个可交互的可视化结果"},
+            )
+        self.assertEqual(result["status"], "failed")
+        request = kb.load_json(self.entry / "visualization-request.json", {})
+        conversation = kb.load_json(self.entry / "visualization-conversation.json", {})
+        self.assertIn("unsupported model_type", request["validation_errors"][0])
+        self.assertIn("校验原因：unsupported model_type", conversation["messages"][-1]["content"])
 
     def test_explicit_request_can_create_model_and_build_preview(self):
         (self.entry / "physics-model.json").unlink()

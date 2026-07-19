@@ -347,6 +347,27 @@ function selectedAgentLocality(agent = state.agent) {
   }[locality] || "数据位置未声明";
 }
 
+function selectedAgentModelInfo(agent = state.agent) {
+  const provider = selectedAgentProvider(agent);
+  if (!provider || provider.name !== "openai-compatible") return "";
+  const models = provider.routing_models || {};
+  const parts = [];
+  if (models.standard) parts.push(`标准 ${models.standard}`);
+  if (models.economy) parts.push(`经济 ${models.economy}`);
+  if (models.expert) parts.push(`深度 ${models.expert}`);
+  const missing = [];
+  if (!models.standard) missing.push("标准模型");
+  if (!models.economy) missing.push("经济模型");
+  if (!models.expert) missing.push("深度模型");
+  const configured = parts.length ? parts.join(" / ") : "未配置模型";
+  return `${configured}${missing.length ? `；缺 ${missing.join("、")}` : ""}`;
+}
+
+function selectedAgentEnvInfo(agent = state.agent) {
+  const required = selectedAgentProvider(agent)?.required_env || [];
+  return required.length ? `接口变量 ${required.join("、")}` : "";
+}
+
 function unavailableAgentReason(agent = state.agent) {
   if (!agent) return "尚未取得 Agent 状态";
   const provider = selectedAgentProvider(agent);
@@ -365,7 +386,9 @@ function renderAgentMessage() {
   }
   if (state.agent.available) {
     const mode = state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode} 模式` : "";
-    $("agent-message").textContent = `当前 Agent：${selectedAgentLabel()}${mode}；${selectedAgentLocality()}。任务提交后可继续查看页面，完成时会自动刷新。`;
+    const modelInfo = selectedAgentModelInfo();
+    const envInfo = selectedAgentEnvInfo();
+    $("agent-message").textContent = `当前 Agent：${selectedAgentLabel()}${mode}；${selectedAgentLocality()}${modelInfo ? `；模型：${modelInfo}` : ""}${envInfo ? `；${envInfo}` : ""}。任务提交后可继续查看页面，完成时会自动刷新。`;
   } else {
     $("agent-message").textContent = `Agent 暂不可用：${unavailableAgentReason()}。`;
   }
@@ -379,8 +402,10 @@ async function health() {
     element.classList.add("online");
     element.classList.toggle("agent-unavailable", !state.agent.available);
     $("health-text").textContent = "本地服务已连接";
+    const modelInfo = selectedAgentModelInfo();
+    const envInfo = selectedAgentEnvInfo();
     const detail = state.agent.available
-      ? `Agent：${selectedAgentLabel()}${state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode}` : ""} · ${selectedAgentLocality()}`
+      ? `Agent：${selectedAgentLabel()}${state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode}` : ""} · ${selectedAgentLocality()}${modelInfo ? ` · 模型：${modelInfo}` : ""}${envInfo ? ` · ${envInfo}` : ""}`
       : `Agent 不可用：${unavailableAgentReason()}`;
     $("agent-health-detail").textContent = detail;
     $("agent-health-detail").title = detail;
@@ -946,6 +971,10 @@ function jobFailureReason(job) {
   if (job.error?.message) return job.error.message;
   if (typeof job.result?.error === "string" && job.result.error.trim()) return job.result.error;
   if (job.result?.error?.message) return job.result.error.message;
+  if (Array.isArray(job.result?.validation_errors) && job.result.validation_errors.length) return `校验原因：${job.result.validation_errors.join("；")}`;
+  if (Array.isArray(job.validation_errors) && job.validation_errors.length) return `校验原因：${job.validation_errors.join("；")}`;
+  if (Array.isArray(job.result?.unauthorized_changes) && job.result.unauthorized_changes.length) return `越权文件：${job.result.unauthorized_changes.join("、")}`;
+  if (Array.isArray(job.unauthorized_changes) && job.unauthorized_changes.length) return `越权文件：${job.unauthorized_changes.join("、")}`;
   if (Array.isArray(job.errors) && job.errors.length) return job.errors.join("；");
   return job.reason || job.message || "任务失败，请检查 Agent 状态后重试";
 }
