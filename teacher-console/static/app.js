@@ -35,6 +35,18 @@ function agentTierLabel(value) {
   return { auto: "自动", economy: "经济", expert: "深度", standard: "标准" }[value] || value || "";
 }
 
+function syncAgentTierLabels(agent = state.agent) {
+  const provider = selectedAgentProvider(agent);
+  const models = provider?.routing_models || {};
+  const mapping = { auto: models.standard, economy: models.economy, expert: models.expert };
+  for (const [tier, model] of Object.entries(mapping)) {
+    const option = document.querySelector(`#agent-tier option[value="${tier}"]`);
+    if (option) {
+      option.textContent = model ? `${agentTierLabel(tier)} · ${model}` : agentTierLabel(tier);
+    }
+  }
+}
+
 const STATE_LABELS = {
   "needs-source-review": "待复核题干",
   "needs-analysis-and-answer": "待生成解析",
@@ -399,6 +411,7 @@ async function health() {
   try {
     const data = await api("/api/health");
     state.agent = normalizeAgentHealth(data);
+    syncAgentTierLabels();
     element.classList.add("online");
     element.classList.toggle("agent-unavailable", !state.agent.available);
     $("health-text").textContent = "本地服务已连接";
@@ -412,6 +425,7 @@ async function health() {
     renderAgentMessage();
   } catch {
     state.agent = null;
+    syncAgentTierLabels();
     element.classList.remove("online", "agent-unavailable");
     $("health-text").textContent = "本地服务未连接";
     $("agent-health-detail").textContent = "请确认教师工作台服务正在运行";
