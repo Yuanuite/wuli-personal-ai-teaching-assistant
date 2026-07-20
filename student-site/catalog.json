@@ -1,7 +1,21 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-20T07:15:30+08:00",
+  "generated_at": "2026-07-20T19:07:10+08:00",
   "questions": [
+    {
+      "id": "question-1ffa341ff73a",
+      "title": "内外反向圆形磁场中的周期轨迹",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动",
+        "圆形有界磁场",
+        "交替磁场轨迹几何"
+      ],
+      "content": "questions/question-1ffa341ff73a/content.md",
+      "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
+      "simulation": "questions/question-1ffa341ff73a/simulation.html",
+      "published_at": "2026-07-20T19:07:10+08:00"
+    },
     {
       "id": "question-fc379ca42475",
       "title": "两同向分区磁场中带电粒子的运动与相遇",
@@ -147,20 +161,6 @@
       "pdf": "questions/question-7c895bdfc8a3/带答案错题.pdf",
       "simulation": null,
       "published_at": "2026-07-20T07:14:48+08:00"
-    },
-    {
-      "id": "question-1ffa341ff73a",
-      "title": "内外反向圆形磁场中的周期轨迹",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "带电粒子在匀强磁场中的圆周运动",
-        "圆形有界磁场",
-        "交替磁场轨迹几何"
-      ],
-      "content": "questions/question-1ffa341ff73a/content.md",
-      "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
-      "simulation": "questions/question-1ffa341ff73a/simulation.html",
-      "published_at": "2026-07-20T07:14:43+08:00"
     },
     {
       "id": "question-cf1c40d5261d",
