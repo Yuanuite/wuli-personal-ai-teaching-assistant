@@ -69,6 +69,12 @@ def select_model(task: dict, environ: dict[str, str] | None = None) -> tuple[str
     requested = str(task.get("routing_tier", "auto")).strip().lower() or "auto"
     if requested not in ROUTING_TIERS:
         raise ValueError("routing_tier must be auto, economy, or expert")
+    config = task.get("model_config")
+    if isinstance(config, dict) and str(config.get("provider", "")).strip() == "openai-compatible":
+        direct_model = str(config.get("model", "")).strip()
+        if direct_model:
+            tier = str(config.get("model_tier", "selected")).strip() or "selected"
+            return direct_model, tier, requested, ""
     standard = env.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip()
     economy = env.get("TEACHER_CONSOLE_AGENT_API_ECONOMY_MODEL", "").strip()
     expert = env.get("TEACHER_CONSOLE_AGENT_API_EXPERT_MODEL", "").strip()

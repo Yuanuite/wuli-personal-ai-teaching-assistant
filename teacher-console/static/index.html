@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light">
   <title>悟理教师工作台</title>
   <link rel="stylesheet" href="/vendor/katex.min.css">
+  <link rel="stylesheet" href="/vendor/neat-annotations.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -19,11 +20,18 @@
     </div>
     <div class="health">
       <label class="agent-tier-control" for="agent-tier">
-        <span>模型</span>
+        <span>模式</span>
         <select id="agent-tier" title="选择本次及后续 Agent 任务的成本档位">
           <option value="auto">自动</option>
           <option value="economy">经济</option>
           <option value="expert">深度</option>
+          <option value="custom">自定义</option>
+        </select>
+      </label>
+      <label id="agent-model-control" class="agent-tier-control hidden" for="agent-model">
+        <span>模型</span>
+        <select id="agent-model" title="选择本次及后续 Agent 任务使用的具体模型">
+          <option value="auto">自动选择</option>
         </select>
       </label>
       <span id="health-dot"></span>
@@ -32,8 +40,49 @@
         <small id="agent-health-detail">正在检查可用 Agent</small>
       </span>
       <button id="probe-agent" class="health-probe" type="button" title="执行一次不含学生数据的真实连通检测">检测 Agent</button>
+      <button id="open-agent-settings" class="health-probe" type="button" title="配置本地模型注册表和默认模型策略">设置</button>
     </div>
   </header>
+
+  <div id="agent-settings-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="agent-settings-title">
+    <section class="settings-modal">
+      <header class="settings-head">
+        <div>
+          <p class="eyebrow">MODEL ROUTING</p>
+          <h2 id="agent-settings-title">模型与 Agent 设置</h2>
+        </div>
+        <button id="close-agent-settings" class="secondary" type="button">关闭</button>
+      </header>
+      <div class="settings-grid">
+        <section class="settings-card">
+          <h3>默认模式</h3>
+          <p class="muted">教师平时只选模式；这里决定各模式背后默认使用哪个模型。</p>
+          <label>经济模式<select id="settings-default-economy"></select></label>
+          <label>深度模式<select id="settings-default-expert"></select></label>
+          <label>自动 · 生成解析<select id="settings-default-analysis"></select></label>
+          <label>自动 · 修改解析<select id="settings-default-revision"></select></label>
+          <label>自动 · 可视化建模<select id="settings-default-visualization"></select></label>
+        </section>
+        <section class="settings-card model-editor-card">
+          <div class="settings-row">
+            <div>
+              <h3>可选模型</h3>
+              <p class="muted">每行一个模型；API Key 可本地保存且不会回显，测试通过后才参与默认调用。</p>
+            </div>
+            <div class="settings-actions">
+              <button id="add-codex-visualization-preset" class="secondary" type="button">添加 Codex 可视化预设</button>
+              <button id="add-agent-model" class="secondary" type="button">新增模型</button>
+            </div>
+          </div>
+          <div id="agent-model-editor-list" class="model-editor-list"></div>
+        </section>
+      </div>
+      <footer class="settings-footer">
+        <small id="agent-settings-path" class="muted"></small>
+        <button id="save-agent-settings" class="primary" type="button">保存设置</button>
+      </footer>
+    </section>
+  </div>
 
   <main class="shell">
     <aside class="sidebar">

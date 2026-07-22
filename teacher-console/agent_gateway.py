@@ -129,26 +129,63 @@ class AgentGateway:
             self._provider_failures.pop(provider, None)
             self._health_cache = None
 
-    def providers(self, *, include_versions: bool = False, ignore_runtime_failures: bool = False) -> list[Provider]:
+    def _task_environ(self, task: dict | None = None) -> dict[str, str]:
+        env = dict(self.environ)
+        config = task.get("model_config") if isinstance(task, dict) else None
+        if not isinstance(config, dict):
+            return env
+        provider = str(config.get("provider", "")).strip()
+        if provider:
+            env["TEACHER_CONSOLE_AGENT_PROVIDER"] = provider
+        if provider == "openai-compatible":
+            for key, target in (
+                ("base_url", "TEACHER_CONSOLE_AGENT_API_BASE_URL"),
+                ("model", "TEACHER_CONSOLE_AGENT_API_MODEL"),
+                ("timeout_seconds", "TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"),
+            ):
+                value = str(config.get(key, "")).strip()
+                if value:
+                    env[target] = value
+            api_key = str(config.get("api_key", "")).strip()
+            if api_key:
+                env["TEACHER_CONSOLE_AGENT_API_KEY"] = api_key
+                return env
+            api_key_env = str(config.get("api_key_env", "")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
+            if api_key_env in self.environ:
+                env["TEACHER_CONSOLE_AGENT_API_KEY"] = self.environ[api_key_env]
+        return env
+
+    @staticmethod
+    def _task_without_secrets(task: dict) -> dict:
+        safe = dict(task)
+        config = safe.get("model_config")
+        if isinstance(config, dict):
+            safe_config = dict(config)
+            safe_config.pop("api_key", None)
+            safe["model_config"] = safe_config
+        return safe
+
+    def providers(self, *, include_versions: bool = False, ignore_runtime_failures: bool = False, environ: dict[str, str] | None = None) -> list[Provider]:
+        env = self.environ if environ is None else environ
         providers: list[Provider] = []
-        adapter = self.environ.get("TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND", "").strip()
+        adapter = env.get("TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND", "").strip()
         if adapter:
             tokens = tuple(shlex.split(adapter))
             available = bool(tokens) and _command_exists(tokens[0], self.which)
             providers.append(Provider("adapter", "json-adapter", tokens, available, "" if available else "适配器命令不存在"))
 
-        legacy = self.environ.get("TEACHER_CONSOLE_AGENT_COMMAND", "").strip()
+        legacy = env.get("TEACHER_CONSOLE_AGENT_COMMAND", "").strip()
         if legacy:
             tokens = tuple(shlex.split(legacy))
             available = bool(tokens) and _command_exists(tokens[0], self.which)
             providers.append(Provider("legacy-command", "legacy-command", tokens, available, "" if available else "自定义命令不存在"))
 
-        api_base = self.environ.get("TEACHER_CONSOLE_AGENT_API_BASE_URL", "").strip()
-        api_model = self.environ.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip()
+        api_base = env.get("TEACHER_CONSOLE_AGENT_API_BASE_URL", "").strip()
+        api_model = env.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip()
         if api_base or api_model:
             ready = bool(api_base and api_model and OPENAI_ADAPTER.is_file())
             reason = "" if ready else "API provider 需要同时配置 BASE_URL 与 MODEL"
-            if ready and not _is_loopback_url(api_base) and self.environ.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true":
+            if ready and not _is_loopback_url(api_base) and env.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true":
                 ready, reason = False, "远程 API 尚未通过环境变量隐私门禁"
             providers.append(Provider("openai-compatible", "json-adapter", (sys.executable, str(OPENAI_ADAPTER)), ready, reason, api_model))
 
@@ -236,10 +273,12 @@ class AgentGateway:
         priority = {name: index for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))}
         return sorted(providers, key=lambda item: priority.get(item.name, 99))
 
-    def probe(self, provider_name: str = "", *, timeout_seconds: int = 120, allow_remote: bool = False) -> dict:
+    def probe(self, provider_name: str = "", *, timeout_seconds: int = 120, allow_remote: bool = False, model_config: dict | None = None) -> dict:
         """Run an explicit no-student-data connectivity probe for one provider."""
-        requested = provider_name.strip() or self.environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
-        providers = self.providers(include_versions=True, ignore_runtime_failures=True)
+        base_task = {"model_config": model_config or {}}
+        task_environ = self._task_environ(base_task)
+        requested = provider_name.strip() or task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
+        providers = self.providers(include_versions=True, ignore_runtime_failures=True, environ=task_environ)
         candidates = [item for item in self._ordered(providers, requested) if item.available]
         if not candidates:
             health = self.health(force=True)
@@ -266,18 +305,20 @@ class AgentGateway:
                 "requires_change": False,
                 "allow_remote": allow_remote,
                 "probe": True,
+                "model_config": model_config or {},
             }
+            safe_task = self._task_without_secrets(task)
             command = self._command(provider, task)
             try:
                 completed = self.run_process(
                     command,
                     cwd=directory,
                     text=True,
-                    input=json.dumps(task, ensure_ascii=False) if provider.mode == "json-adapter" else "",
+                    input=json.dumps(safe_task, ensure_ascii=False) if provider.mode == "json-adapter" else "",
                     capture_output=True,
                     check=False,
                     timeout=timeout,
-                    env=self._provider_environment(provider),
+                        env=self._provider_environment(provider, task_environ),
                 )
                 if provider.mode == "json-adapter":
                     try:
@@ -355,7 +396,8 @@ class AgentGateway:
             return tokens
         return list(provider.command)
 
-    def _provider_environment(self, provider: Provider) -> dict[str, str]:
+    def _provider_environment(self, provider: Provider, environ: dict[str, str] | None = None) -> dict[str, str]:
+        env_source = self.environ if environ is None else environ
         keys = set(BASE_ENV_KEYS)
         if provider.name == "codex":
             prefixes = ("CODEX_", "OPENAI_")
@@ -365,10 +407,10 @@ class AgentGateway:
             prefixes = ("TEACHER_CONSOLE_AGENT_API_", "TEACHER_CONSOLE_AGENT_ALLOW_REMOTE")
         else:
             prefixes = ("TEACHER_CONSOLE_AGENT_ADAPTER_",)
-        keys.update(name for name in self.environ if any(name.startswith(prefix) for prefix in prefixes))
-        extra = self.environ.get("TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST", "")
+        keys.update(name for name in env_source if any(name.startswith(prefix) for prefix in prefixes))
+        extra = env_source.get("TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST", "")
         keys.update(name.strip() for name in extra.split(",") if name.strip())
-        return {name: str(self.environ[name]) for name in keys if name in self.environ}
+        return {name: str(env_source[name]) for name in keys if name in env_source}
 
     @staticmethod
     def _snapshot(entry: Path) -> dict[str, str]:
@@ -528,6 +570,12 @@ class AgentGateway:
             raise ValueError(f"unsupported routing tier: {routing_tier}")
         task = dict(task)
         task["routing_tier"] = routing_tier
+        model_config = task.get("model_config") if isinstance(task.get("model_config"), dict) else {}
+        model_metadata = {
+            key: str(model_config.get(source, "")).strip()
+            for key, source in (("model_id", "id"), ("model_display_name", "display_name"))
+            if str(model_config.get(source, "")).strip()
+        }
         entry = Path(task["entry_dir"]).resolve()
         if not entry.is_dir():
             raise FileNotFoundError(entry)
@@ -535,9 +583,10 @@ class AgentGateway:
         denied = [str(item) for item in task.get("denied_paths", [])]
         hidden = [str(item) for item in task.get("hidden_paths", [])]
         input_paths = [str(item) for item in task["input_paths"]]
-        requested = self.environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
-        candidates = [item for item in self._ordered(self.providers(), requested) if item.available]
-        api_base = self.environ.get("TEACHER_CONSOLE_AGENT_API_BASE_URL", "").strip()
+        task_environ = self._task_environ(task)
+        requested = task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
+        candidates = [item for item in self._ordered(self.providers(environ=task_environ), requested) if item.available]
+        api_base = task_environ.get("TEACHER_CONSOLE_AGENT_API_BASE_URL", "").strip()
         if api_base and not _is_loopback_url(api_base) and task.get("allow_remote") is not True:
             candidates = [item for item in candidates if item.name != "openai-compatible"]
         if not candidates:
@@ -549,6 +598,7 @@ class AgentGateway:
                 "changed_files": [],
                 "unauthorized_changes": [],
                 "message": "没有可用的 Agent provider；任务可保留为人工处理。",
+                **model_metadata,
             }
 
         canonical_before = self._snapshot(entry)
@@ -576,10 +626,11 @@ class AgentGateway:
                     runtime_task["request_path"] = str(staging / request_path.relative_to(entry))
                 except ValueError:
                     runtime_task["request_path"] = str(request_path)
+            runtime_task_for_child = self._task_without_secrets(runtime_task)
             before = self._snapshot(staging)
             for provider in candidates:
                 self._hide_paths(staging, hidden)
-                command = self._command(provider, runtime_task)
+                command = self._command(provider, runtime_task_for_child)
                 try:
                     completed = self.run_process(
                         command,
@@ -590,11 +641,11 @@ class AgentGateway:
                         # teacher-console terminal after accepting the positional
                         # prompt, which can leave a background job apparently
                         # running forever.
-                        input=json.dumps(runtime_task, ensure_ascii=False) if provider.mode == "json-adapter" else "",
+                        input=json.dumps(runtime_task_for_child, ensure_ascii=False) if provider.mode == "json-adapter" else "",
                         capture_output=True,
                         check=False,
                         timeout=timeout,
-                        env=self._provider_environment(provider),
+                        env=self._provider_environment(provider, task_environ),
                     )
                 except (OSError, subprocess.TimeoutExpired) as exc:
                     self._mark_runtime_failure(provider.name, str(exc))
@@ -659,6 +710,7 @@ class AgentGateway:
                         "unauthorized_changes": [],
                         "validation_errors": [],
                         "attempts": attempts,
+                        **model_metadata,
                     }
                     if payload:
                         metadata = self._adapter_metadata(payload)
@@ -681,6 +733,7 @@ class AgentGateway:
                         "unauthorized_changes": unauthorized,
                         "validation_errors": validation_errors,
                         "attempts": attempts,
+                        **model_metadata,
                     }
 
         last = attempts[-1] if attempts else {}
@@ -695,6 +748,7 @@ class AgentGateway:
             "changed_files": [],
             "unauthorized_changes": [],
             "attempts": attempts,
+            **model_metadata,
         }
 
     @staticmethod

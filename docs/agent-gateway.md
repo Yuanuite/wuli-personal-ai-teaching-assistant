@@ -127,12 +127,44 @@ export TEACHER_CONSOLE_AGENT_PROVIDER=openai-compatible
 
 页面提供 `auto`、`economy`、`expert` 三种任务档位。`auto` 对解析与答案返修使用标准模型，对 `visualization.model` 在配置存在时使用深度模型；显式档位缺少对应模型时使用标准模型，并在作业结果记录 `routing_notice`。档位只影响 provider 模型与最小上下文，不改变范围校验、教师批准或生命周期门禁。使用更强模型重跑必须创建新作业，不在已经产生候选修改的任务上叠加重试。
 
+## 本地模型注册表
+
+教师端右上角“设置”界面读写 `student-error-library/config/model-registry.json`。该文件是本地私有配置，可从 `docs/model-registry.example.json` 复制：
+
+```json
+{
+  "schema_version": 1,
+  "models": [
+    {
+      "id": "wuli-expert",
+      "display_name": "悟理深度模型（LiteLLM）",
+      "provider": "openai-compatible",
+      "base_url": "http://127.0.0.1:4000/v1",
+      "model": "wuli-expert",
+      "api_key_env": "LITELLM_API_KEY",
+      "remote": false,
+      "model_tier": "expert",
+      "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
+      "tags": ["LiteLLM", "深度", "网关"]
+    }
+  ]
+}
+```
+
+顶部“模式”包含“自动 / 经济 / 深度 / 自定义”。自动、经济和深度使用注册表 `defaults` 中的默认模型映射；自动模式按任务类型读取 `analysis.generate`、`answer.revise` 或 `visualization.model`，经济/深度模式读取 `economy` 或 `expert`。只有选择“自定义”时，页面才展开真实模型下拉框并在任务请求中携带具体 `model_id`。`model_id=auto` 保持原有 provider 顺序和档位路由；指定注册模型时，Gateway 会把该模型配置作为本次任务的 provider/model 覆盖，并继续执行输入白名单、远程隐私门禁、候选范围校验和教师批准流程。
+
+`student-error-library/config/model-registry.json` 是本机私有文件，已被 `.gitignore` 排除。教师端设置页允许为每个 OpenAI-compatible 模型填写 API Key；后端保存到该私有注册表，但 `GET /api/agent/model-registry` 只返回 `api_key_saved/api_key_configured` 状态，不回显明文。运行任务时 Gateway 把本地 key 注入到子进程环境变量 `TEACHER_CONSOLE_AGENT_API_KEY`，并从传给 Agent/adapter 的任务 JSON 中剔除明文 key。若不想保存 key，也可继续使用 `api_key_env` 引用当前服务进程环境变量。远程模型仍必须同时满足 `privacy.allow_remote_agent=true` 与 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`。
+
+每个注册模型还有独立连通测试状态。设置页的“测试”按钮会先保存当前模型配置，再运行一次不含学生数据的 `gateway.probe`；通过后写入本地 `probe.status=passed` 与配置摘要。只有当前配置与上次通过测试的摘要一致时，模型才会出现在可用路由里；未测试、测试失败或修改过地址/模型名/API Key 的模型会置灰，并且不会被自动/默认路由调用。
+
+高级部署可以把多供应商、回退、限流和成本统计交给本机 LiteLLM Proxy，再把 `wuli-economy`、`wuli-standard`、`wuli-expert` 三个稳定别名暴露给悟理。教师端不内置启动 LiteLLM，也不默认创建这些别名；需要时在设置页用“新增模型”手动添加，或复制 `docs/model-registry.example.json`。详见 [litellm-gateway.md](litellm-gateway.md)。
+
 本机回环服务不需要远程授权。非回环服务必须同时满足：
 
 1. `student-error-library/config.json` 中 `privacy.allow_remote_agent=true`；
 2. 进程环境中 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`。
 
-远程密钥只放在 `TEACHER_CONSOLE_AGENT_API_KEY` 环境变量中，禁止写进项目、任务记录或日志。`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制该 HTTP 请求的超时，默认 300 秒；它与 Gateway 对整个 provider 尝试设置的 `TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 是两层限制。该 provider 只接收已复核文本和规则上下文，不接收原始题图。
+远程密钥可以放在 `TEACHER_CONSOLE_AGENT_API_KEY` 环境变量中，也可以由教师端设置页写入被忽略的本地注册表；禁止写入示例配置、任务记录、日志、公开站或可提交文件。`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制该 HTTP 请求的超时，默认 300 秒；它与 Gateway 对整个 provider 尝试设置的 `TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 是两层限制。该 provider 只接收已复核文本和规则上下文，不接收原始题图。
 
 ## 作业状态与恢复
 

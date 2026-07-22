@@ -90,7 +90,9 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         css = (STATIC / "styles.css").read_text(encoding="utf-8")
         for element_id in (
             "agent-health-detail",
+            "agent-model",
             "agent-tier",
+            "add-codex-visualization-preset",
             "probe-agent",
             "active-job",
             "active-job-title",
@@ -108,10 +110,21 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("selectedAgentLocality()", script)
         self.assertIn("数据位置取决于 provider", script)
         self.assertIn('"/api/agent/providers/probe"', script)
+        self.assertIn('"/api/agent/model-registry/test"', script)
         self.assertIn("真实连通检测", script)
+        self.assertIn("model-probe-status", css)
+        self.assertIn("model-untested", css)
         self.assertIn("@keyframes job-spin", css)
         self.assertIn("withRoutingTier", script)
+        self.assertIn("selectedAgentModelId", script)
+        self.assertIn("applyCodexVisualizationPreset", script)
+        self.assertIn("testAgentModel", script)
+        self.assertIn("mergeReturnedModelSettings", script)
+        self.assertIn("明文 API Key 不回灌到页面", script)
+        self.assertIn("codex-visualization", script)
+        self.assertIn("model_id", script)
         self.assertIn("routing_tier", script)
+        self.assertIn("localStorage.setItem(AGENT_MODEL_KEY", script)
         self.assertIn("localStorage.setItem(AGENT_TIER_KEY", script)
         self.assertIn("validation_errors", script)
         self.assertIn("required_env", script)

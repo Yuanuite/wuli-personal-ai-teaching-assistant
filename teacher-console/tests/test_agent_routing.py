@@ -24,6 +24,17 @@ class AgentRoutingTest(unittest.TestCase):
         selected = adapter.select_model({"kind": "answer.revise", "routing_tier": "economy"}, self.env)
         self.assertEqual(selected, ("cheap-model", "economy", "economy", ""))
 
+    def test_direct_model_config_overrides_tier_mapping(self):
+        selected = adapter.select_model(
+            {
+                "kind": "answer.revise",
+                "routing_tier": "economy",
+                "model_config": {"provider": "openai-compatible", "model": "teacher-picked-model", "model_tier": "custom"},
+            },
+            self.env,
+        )
+        self.assertEqual(selected, ("teacher-picked-model", "custom", "economy", ""))
+
     def test_auto_visualization_prefers_expert(self):
         selected = adapter.select_model({"kind": "visualization.model", "routing_tier": "auto"}, self.env)
         self.assertEqual(selected, ("expert-model", "expert", "auto", ""))

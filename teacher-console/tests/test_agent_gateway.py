@@ -133,6 +133,56 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertEqual(result["provider"], "adapter")
         self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "adapter result")
 
+    def test_task_model_config_can_select_openai_compatible_provider(self):
+        payload = {
+            "status": "completed",
+            "message": "picked model",
+            "model": "picked-model",
+            "files": {"solution.md": "openai-compatible result"},
+        }
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            self.assertIn("openai_compatible_agent_adapter.py", command[-1])
+            self.assertEqual(env["TEACHER_CONSOLE_AGENT_API_BASE_URL"], "http://127.0.0.1:9000/v1")
+            self.assertEqual(env["TEACHER_CONSOLE_AGENT_API_MODEL"], "picked-model")
+            self.assertEqual(json.loads(input)["model_config"]["id"], "picked")
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        gateway = AgentGateway(environ={}, which=self.which, run=runner)
+        result = gateway.run(self.task(model_config={
+            "id": "picked",
+            "display_name": "教师选择模型",
+            "provider": "openai-compatible",
+            "base_url": "http://127.0.0.1:9000/v1",
+            "model": "picked-model",
+            "api_key": "picked-key",
+            "model_tier": "custom",
+        }))
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["provider"], "openai-compatible")
+        self.assertEqual(result["model_id"], "picked")
+        self.assertEqual(result["model_display_name"], "教师选择模型")
+        self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "openai-compatible result")
+
+    def test_direct_model_api_key_is_environment_only_not_task_stdin(self):
+        payload = {"status": "completed", "message": "picked model", "files": {"solution.md": "openai-compatible result"}}
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            self.assertEqual(env["TEACHER_CONSOLE_AGENT_API_KEY"], "picked-key")
+            self.assertNotIn("picked-key", input)
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        gateway = AgentGateway(environ={}, which=self.which, run=runner)
+        result = gateway.run(self.task(model_config={
+            "id": "picked",
+            "display_name": "教师选择模型",
+            "provider": "openai-compatible",
+            "base_url": "http://127.0.0.1:9000/v1",
+            "model": "picked-model",
+            "api_key": "picked-key",
+        }))
+        self.assertEqual(result["status"], "completed")
+
     def test_live_probe_quarantines_unresponsive_provider_without_student_data(self):
         seen = []
 

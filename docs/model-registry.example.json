@@ -1,0 +1,107 @@
+{
+  "schema_version": 1,
+  "defaults": {
+    "economy": "wuli-economy",
+    "expert": "wuli-expert",
+    "analysis.generate": "wuli-standard",
+    "answer.revise": "wuli-economy",
+    "visualization.model": "codex-visualization"
+  },
+  "models": [
+    {
+      "id": "wuli-economy",
+      "display_name": "悟理经济模型（LiteLLM）",
+      "provider": "openai-compatible",
+      "base_url": "http://127.0.0.1:4000/v1",
+      "model": "wuli-economy",
+      "api_key_env": "LITELLM_API_KEY",
+      "remote": false,
+      "model_tier": "economy",
+      "tags": ["LiteLLM", "经济", "网关"],
+      "capabilities": ["answer.revise"],
+      "recommended_for": ["answer.revise"],
+      "description": "通过本机 LiteLLM Proxy 路由到低成本模型；适合小修解析、解释图和轻量改写。"
+    },
+    {
+      "id": "wuli-standard",
+      "display_name": "悟理标准模型（LiteLLM）",
+      "provider": "openai-compatible",
+      "base_url": "http://127.0.0.1:4000/v1",
+      "model": "wuli-standard",
+      "api_key_env": "LITELLM_API_KEY",
+      "remote": false,
+      "model_tier": "standard",
+      "tags": ["LiteLLM", "标准", "网关"],
+      "capabilities": ["analysis.generate", "answer.revise"],
+      "recommended_for": ["analysis.generate", "answer.revise"],
+      "description": "通过本机 LiteLLM Proxy 路由到常规质量模型；适合大多数题目解析与返修。"
+    },
+    {
+      "id": "wuli-expert",
+      "display_name": "悟理深度模型（LiteLLM）",
+      "provider": "openai-compatible",
+      "base_url": "http://127.0.0.1:4000/v1",
+      "model": "wuli-expert",
+      "api_key_env": "LITELLM_API_KEY",
+      "remote": false,
+      "model_tier": "expert",
+      "tags": ["LiteLLM", "深度", "网关"],
+      "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
+      "recommended_for": ["visualization.model", "analysis.generate"],
+      "description": "通过本机 LiteLLM Proxy 路由到强推理模型；适合复杂解析和可视化模型生成。"
+    },
+    {
+      "id": "codex-visualization",
+      "display_name": "Codex 可视化 Agent",
+      "provider": "codex",
+      "enabled": true,
+      "model_tier": "expert",
+      "tags": ["Codex", "可视化", "Agent"],
+      "capabilities": ["visualization.model"],
+      "recommended_for": ["visualization.model"],
+      "description": "调用本机 Codex CLI 生成或修正交互可视化；适合复杂运动过程和 HTML 仿真建模。"
+    },
+    {
+      "id": "qwen3-max",
+      "display_name": "Qwen3-Max",
+      "provider": "openai-compatible",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "model": "qwen3-max",
+      "api_key_env": "TEACHER_CONSOLE_AGENT_API_KEY",
+      "remote": true,
+      "model_tier": "expert",
+      "tags": ["深度", "推理", "通用"],
+      "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
+      "recommended_for": ["analysis.generate", "visualization.model"],
+      "description": "适合复杂物理解析、长链路推理和可视化模型生成。"
+    },
+    {
+      "id": "qwen3-small",
+      "display_name": "Qwen3 端侧/小尺寸版",
+      "provider": "openai-compatible",
+      "base_url": "http://127.0.0.1:8000/v1",
+      "model": "qwen3-small",
+      "api_key_env": "TEACHER_CONSOLE_AGENT_API_KEY",
+      "remote": false,
+      "model_tier": "economy",
+      "tags": ["经济", "快速", "本地"],
+      "capabilities": ["answer.revise"],
+      "recommended_for": ["answer.revise"],
+      "description": "适合小修解析、调整解释图、补充步骤等低成本任务。"
+    },
+    {
+      "id": "gpt-4.1",
+      "display_name": "GPT-4.1",
+      "provider": "openai-compatible",
+      "base_url": "https://api.openai.com/v1",
+      "model": "gpt-4.1",
+      "api_key_env": "OPENAI_API_KEY",
+      "remote": true,
+      "model_tier": "expert",
+      "tags": ["GPT", "深度", "通用"],
+      "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
+      "recommended_for": ["analysis.generate", "answer.revise"],
+      "description": "OpenAI-compatible 示例；需要在环境变量 OPENAI_API_KEY 中提供密钥。"
+    }
+  ]
+}

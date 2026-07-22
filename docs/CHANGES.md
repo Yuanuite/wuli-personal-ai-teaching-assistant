@@ -1,5 +1,14 @@
 # 变更记录
 
+## 2026-07-22
+
+- 新增可审查的 Archify 系统架构图与错题处理 Pipeline：JSON 作为布局和语义真源，单文件 HTML 提供主题、搜索、语义聚焦和分章节 Story 导览；Story Follow Camera 现在以当前执行模块为优先锚点，在图表只部分进入浏览器视口时自适应留白并保证模块完整可见，同时保留前后步骤上下文，不接管页面滚动。
+- 新增基于 graphify 的架构治理与 AI 入口地图：`.graphifyignore` 排除生成物、公开题库内容和 vendor/minified 依赖，`docs/ai-editing-map.md` 指导 AI 按任务类型选择最小上下文，`docs/architecture-governance.md` 成为功能归位、复杂度删减和变更影响分析的根规则触发文档。
+- 教师端模型设置改为可插拔注册表 UI：支持“自动 / 经济 / 深度 / 自定义”模式，自定义时选择具体模型；本地默认可把可视化建模路由到 `Codex 可视化 Agent`。
+- OpenAI-compatible 模型可在设置页填写 API 地址、真实模型名和 API Key；Key 仅保存到已忽略的本地 `student-error-library/config/model-registry.json`，接口不回显明文，Agent 子进程只通过环境变量接收。
+- 每个可选模型新增独立“测试”按钮；测试请求不含学生题目数据，只有测试通过且当前配置未变化的模型才会参与自动/默认路由，未测试、失败或改过配置的模型置灰。
+- LiteLLM 推荐接入方式明确为本机 Proxy 模型网关：悟理继续通过 Agent Gateway 管理候选隔离、教师复核和交付门禁，LiteLLM 只负责多供应商别名、回退、限流和成本统计。
+
 ## 2026-07-20
 
 - 项目添加 MIT License。

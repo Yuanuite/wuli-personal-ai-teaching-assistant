@@ -22,8 +22,10 @@ X-Teacher-Console: 1
 
 | 方法与路径 | 作用 |
 |---|---|
-| `GET /api/health` | 服务状态、项目位置、选中 provider、版本、能力和数据位置 |
+| `GET /api/health` | 服务状态、项目位置、选中 provider、版本、能力、数据位置和本地模型注册表 |
 | `GET /api/agent/providers` | 当前 Gateway provider 探测快照 |
+| `GET /api/agent/model-registry` | 读取本地模型注册表设置（不回显 API Key 明文） |
+| `POST /api/agent/model-registry/test` | 保存当前本地模型设置，并对指定 `model_id` 做不含学生数据的连通测试 |
 | `GET /api/jobs/<job-id>` | 轮询后台 Agent 作业 |
 | `GET /api/jobs?entry_id=<entry-id>` | 找回某题最新后台作业 |
 | `GET /api/entries` | 条目摘要及本地文件夹分组 |
@@ -44,6 +46,16 @@ POST /api/agent/providers/probe
 ```
 
 该写操作同样要求 `X-Teacher-Console: 1`。请求体可含 `provider` 和 `timeout_seconds`（10–120 秒）；探测使用空临时目录与固定提示，不发送学生材料，也不允许读写文件。返回值新增 `live_probe.status`、provider、原因和 `student_data_sent=false`。失败会让该 provider 暂时熔断，`auto` 改选下一项；它比只检查版本/help 更能发现认证、模型版本或网络问题。
+
+保存本地模型注册表：
+
+```bash
+curl -fsS -H 'X-Teacher-Console: 1' -H 'Content-Type: application/json' \
+  -d @student-error-library/config/model-registry.json \
+  http://127.0.0.1:8787/api/agent/model-registry
+```
+
+该接口只保存 provider、base URL、模型名、用途标签、能力声明和默认模式映射；不得提交 API key 明文。
 
 ## 上传与文件夹接口
 
@@ -81,7 +93,11 @@ POST /api/entries/<entry-id>/<action>
 
 教师批准与隐私确认必须来自实际页面使用者或明确的人工操作。Agent 可以生成和返修，但不得代填批准或绕过 `409 blocked`。
 
-`routing_tier` 可取 `auto`、`economy`、`expert`，省略时为 `auto`。后台作业公开结果可包含 `requested_tier`、`model_tier`、`model`、`usage` 与诚实降级说明 `routing_notice`；这些是成本审计信息，不代表内容已获批准。
+`routing_tier` 可取 `auto`、`economy`、`expert`，省略时为 `auto`；页面里的“自定义”会转换为 `routing_tier=auto` 并携带具体 `model_id`。请求也可携带 `model_id`：`auto` 表示沿用 Gateway 自动 provider/档位路由，或按注册表默认模式解析；其他值必须存在于 `student-error-library/config/model-registry.json`，且能力声明支持当前任务。后台作业公开结果可包含 `requested_tier`、`model_tier`、`model_id`、`model_display_name`、`model`、`usage` 与诚实降级说明 `routing_notice`；这些是成本审计信息，不代表内容已获批准。
+
+模型注册表是本地私有配置。`POST /api/agent/model-registry` 可以为 OpenAI-compatible 模型提交 `api_key`，后端会写入已忽略的 `student-error-library/config/model-registry.json`；再次读取时只返回 `api_key_saved` 和 `api_key_configured`，不会返回明文。提交空 `api_key` 会保留旧 key，提交 `clear_api_key=true` 才会清除旧 key。
+
+可选模型默认不会仅因存在配置而被调用。`POST /api/agent/model-registry/test` 接收 `{model_id, settings, timeout_seconds}`，先保存 `settings`，再以 `gateway.probe` 做不含学生数据的真实连通测试；测试通过后保存 `probe.status=passed`。后续解析、修改和可视化任务只会调用测试通过且配置未变化的模型。
 
 ### 后台作业响应
 

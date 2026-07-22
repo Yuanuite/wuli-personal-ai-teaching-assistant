@@ -18,21 +18,39 @@ const state = {
   activeJob: null,
   jobPollTimer: null,
   jobDismissTimer: null,
+  modelSettings: null,
 };
 const $ = (id) => document.getElementById(id);
 const AGENT_TIER_KEY = "wuli.teacher-console.agent-tier";
+const AGENT_MODEL_KEY = "wuli.teacher-console.agent-model";
 
 function selectedAgentTier() {
   const value = $("agent-tier")?.value || "auto";
-  return ["auto", "economy", "expert"].includes(value) ? value : "auto";
+  return ["auto", "economy", "expert", "custom"].includes(value) ? value : "auto";
+}
+
+function selectedAgentModelId() {
+  const value = $("agent-model")?.value || "auto";
+  return value || "auto";
+}
+
+function selectedRegisteredModel(agent = state.agent) {
+  const modelId = selectedAgentModelId();
+  if (!agent || modelId === "auto") return null;
+  return (agent.model_registry?.models || []).find(model => model.id === modelId) || null;
 }
 
 function withRoutingTier(body = {}) {
-  return { ...body, routing_tier: selectedAgentTier() };
+  const tier = selectedAgentTier();
+  return {
+    ...body,
+    routing_tier: tier === "custom" ? "auto" : tier,
+    model_id: tier === "custom" ? selectedAgentModelId() : "auto",
+  };
 }
 
 function agentTierLabel(value) {
-  return { auto: "自动", economy: "经济", expert: "深度", standard: "标准" }[value] || value || "";
+  return { auto: "自动", economy: "经济", expert: "深度", custom: "自定义", standard: "标准" }[value] || value || "";
 }
 
 function syncAgentTierLabels(agent = state.agent) {
@@ -45,6 +63,53 @@ function syncAgentTierLabels(agent = state.agent) {
       option.textContent = model ? `${agentTierLabel(tier)} · ${model}` : agentTierLabel(tier);
     }
   }
+}
+
+function syncAgentModelVisibility() {
+  const custom = selectedAgentTier() === "custom";
+  $("agent-model-control")?.classList.toggle("hidden", !custom);
+}
+
+function syncAgentModelOptions(agent = state.agent) {
+  const select = $("agent-model");
+  if (!select) return;
+  let previous = select.value || "auto";
+  try { previous = localStorage.getItem(AGENT_MODEL_KEY) || previous; } catch (_error) { /* optional preference */ }
+  select.replaceChildren(new Option("自动选择可用模型", "auto"));
+  const models = agent?.model_registry?.models || [];
+  for (const model of models) {
+    const label = [
+      model.display_name || model.id,
+      Array.isArray(model.tags) && model.tags.length ? model.tags.join("/") : "",
+      model.available ? "" : "不可用",
+    ].filter(Boolean).join(" · ");
+    const option = new Option(label, model.id);
+    option.disabled = !model.enabled || !model.available;
+    option.title = model.reason || model.description || "";
+    select.append(option);
+  }
+  select.value = [...select.options].some(option => option.value === previous && !option.disabled) ? previous : "auto";
+  syncAgentModelVisibility();
+}
+
+function ensureAgentRoutingReady() {
+  if (selectedAgentTier() !== "custom") return true;
+  if (selectedAgentModelId() !== "auto") return true;
+  toast("自定义模式下请先选择一个具体模型。", true);
+  return false;
+}
+
+function registryModels(agent = state.agent) {
+  return agent?.model_registry?.models || [];
+}
+
+function registryModelOptions({ includeAuto = true } = {}) {
+  const options = [];
+  if (includeAuto) options.push({ id: "auto", label: "自动匹配" });
+  for (const model of registryModels()) {
+    options.push({ id: model.id, label: model.display_name || model.id });
+  }
+  return options;
 }
 
 const STATE_LABELS = {
@@ -135,7 +200,8 @@ function sanitizeRenderedHtml(html, imageSpecs) {
       const keep =
         (node.tagName === "A" && ["href", "title"].includes(attribute.name)) ||
         (node.tagName === "IMG" && ["src", "alt", "title"].includes(attribute.name)) ||
-        (["data-math", "data-display", "data-image-index"].includes(attribute.name));
+        (["data-math", "data-display", "data-image-index", "data-note"].includes(attribute.name)) ||
+        (["class", "style"].includes(attribute.name));
       if (!keep) node.removeAttribute(attribute.name);
     }
     if (node.tagName === "A") {
@@ -323,6 +389,7 @@ function normalizeAgentHealth(data) {
       selected: String(data.agent.selected || "").trim(),
       providers: Array.isArray(data.agent.providers) ? data.agent.providers : [],
       mode: String(data.agent.mode || "").trim(),
+      model_registry: data.agent.model_registry && typeof data.agent.model_registry === "object" ? data.agent.model_registry : { models: [] },
     };
   }
   return {
@@ -330,6 +397,7 @@ function normalizeAgentHealth(data) {
     selected: data.agent_configured ? "本地 Agent" : "",
     providers: [],
     mode: "legacy",
+    model_registry: { models: [] },
   };
 }
 
@@ -350,7 +418,7 @@ function selectedAgentLabel(agent = state.agent) {
 }
 
 function selectedAgentLocality(agent = state.agent) {
-  const locality = selectedAgentProvider(agent)?.data_locality;
+  const locality = selectedRegisteredModel(agent)?.data_locality || selectedAgentProvider(agent)?.data_locality;
   return {
     local: "数据留在本机",
     remote: "数据发送到远程 provider",
@@ -360,6 +428,11 @@ function selectedAgentLocality(agent = state.agent) {
 }
 
 function selectedAgentModelInfo(agent = state.agent) {
+  const selectedModel = selectedRegisteredModel(agent);
+  if (selectedModel) {
+    const tags = Array.isArray(selectedModel.tags) && selectedModel.tags.length ? `（${selectedModel.tags.join(" / ")}）` : "";
+    return `${selectedModel.display_name || selectedModel.id}${tags}`;
+  }
   const provider = selectedAgentProvider(agent);
   if (!provider || provider.name !== "openai-compatible") return "";
   const models = provider.routing_models || {};
@@ -400,7 +473,9 @@ function renderAgentMessage() {
     const mode = state.agent.mode && state.agent.mode !== "legacy" ? ` · ${state.agent.mode} 模式` : "";
     const modelInfo = selectedAgentModelInfo();
     const envInfo = selectedAgentEnvInfo();
-    $("agent-message").textContent = `当前 Agent：${selectedAgentLabel()}${mode}；${selectedAgentLocality()}${modelInfo ? `；模型：${modelInfo}` : ""}${envInfo ? `；${envInfo}` : ""}。任务提交后可继续查看页面，完成时会自动刷新。`;
+    const selectedModel = selectedRegisteredModel();
+    const support = selectedModel?.description ? `；${selectedModel.description}` : "";
+    $("agent-message").textContent = `当前 Agent：${selectedAgentLabel()}${mode}；${selectedAgentLocality()}${modelInfo ? `；模型：${modelInfo}` : ""}${envInfo ? `；${envInfo}` : ""}${support}。任务提交后可继续查看页面，完成时会自动刷新。`;
   } else {
     $("agent-message").textContent = `Agent 暂不可用：${unavailableAgentReason()}。`;
   }
@@ -411,6 +486,7 @@ async function health() {
   try {
     const data = await api("/api/health");
     state.agent = normalizeAgentHealth(data);
+    syncAgentModelOptions();
     syncAgentTierLabels();
     element.classList.add("online");
     element.classList.toggle("agent-unavailable", !state.agent.available);
@@ -425,6 +501,7 @@ async function health() {
     renderAgentMessage();
   } catch {
     state.agent = null;
+    syncAgentModelOptions();
     syncAgentTierLabels();
     element.classList.remove("online", "agent-unavailable");
     $("health-text").textContent = "本地服务未连接";
@@ -441,7 +518,7 @@ async function probeAgent() {
     const provider = String(state.agent?.selected || "");
     const result = await api("/api/agent/providers/probe", {
       method: "POST",
-      body: { provider: provider === "auto" ? "" : provider, timeout_seconds: 120 },
+      body: { provider: provider === "auto" ? "" : provider, model_id: selectedAgentModelId(), timeout_seconds: 120 },
     });
     state.agent = normalizeAgentHealth({ agent: result });
     await health();
@@ -457,6 +534,322 @@ async function probeAgent() {
     button.disabled = false;
     button.textContent = original;
   }
+}
+
+function fillSelect(select, value, options) {
+  select.replaceChildren();
+  for (const option of options) {
+    select.append(new Option(option.label, option.id));
+  }
+  select.value = options.some(option => option.id === value) ? value : (options[0]?.id || "auto");
+}
+
+function modelSettingTemplate() {
+  return {
+    id: `model-${Date.now()}`,
+    display_name: "新模型",
+    provider: "openai-compatible",
+    base_url: "http://127.0.0.1:8000/v1",
+    model: "",
+    api_key_env: "TEACHER_CONSOLE_AGENT_API_KEY",
+    api_key: "",
+    clear_api_key: false,
+    model_tier: "selected",
+    tags: [],
+    capabilities: ["analysis.generate", "answer.revise", "visualization.model"],
+    recommended_for: [],
+    description: "",
+    enabled: true,
+    remote: false,
+  };
+}
+
+function codexVisualizationPreset() {
+  return {
+    id: "codex-visualization",
+    display_name: "Codex 可视化 Agent",
+    provider: "codex",
+    model_tier: "expert",
+    tags: ["Codex", "可视化", "Agent"],
+    capabilities: ["visualization.model"],
+    recommended_for: ["visualization.model"],
+    description: "调用本机 Codex CLI 生成或修正交互可视化；适合复杂运动过程和 HTML 仿真建模。",
+    enabled: true,
+    remote: false,
+  };
+}
+
+function applyCodexVisualizationPreset() {
+  state.modelSettings ||= { schema_version: 1, defaults: {}, models: [] };
+  state.modelSettings.defaults ||= {};
+  state.modelSettings.models ||= [];
+  const preset = codexVisualizationPreset();
+  const index = state.modelSettings.models.findIndex(model => model.id === preset.id);
+  if (index >= 0) state.modelSettings.models[index] = { ...state.modelSettings.models[index], ...preset };
+  else state.modelSettings.models.push(preset);
+  state.modelSettings.defaults["visualization.model"] = preset.id;
+  renderSettingsDefaults();
+  renderModelEditors();
+  toast("已将可视化建模默认设置为 Codex，保存后生效");
+}
+
+function modelProbeLabel(model) {
+  if (model.probe_passed) return "已测试";
+  if (model.probe_status === "failed") return "测试失败";
+  return "未测试";
+}
+
+function modelProbeTitle(model) {
+  const parts = [modelProbeLabel(model)];
+  if (model.probe_checked_at) parts.push(model.probe_checked_at);
+  if (model.probe_message) parts.push(model.probe_message);
+  return parts.join(" · ");
+}
+
+function settingField(labelText, input) {
+  const label = document.createElement("label");
+  label.append(labelText, input);
+  return label;
+}
+
+function textInput(value, placeholder = "") {
+  const input = document.createElement("input");
+  input.value = value || "";
+  input.placeholder = placeholder;
+  return input;
+}
+
+function selectInput(value, options) {
+  const select = document.createElement("select");
+  for (const [id, label] of options) select.append(new Option(label, id));
+  select.value = value || options[0]?.[0] || "";
+  return select;
+}
+
+function renderModelEditors() {
+  const list = $("agent-model-editor-list");
+  list.replaceChildren();
+  const settings = state.modelSettings || { models: [] };
+  for (const [index, model] of (settings.models || []).entries()) {
+    const card = document.createElement("article");
+    card.className = "model-editor";
+    const head = document.createElement("div");
+    head.className = "model-editor-head";
+    const title = document.createElement("strong");
+    title.textContent = model.display_name || model.id || "未命名模型";
+    const status = document.createElement("span");
+    status.className = `model-probe-status ${model.probe_passed ? "passed" : model.probe_status === "failed" ? "failed" : "untested"}`;
+    status.textContent = modelProbeLabel(model);
+    status.title = modelProbeTitle(model);
+    const headTitle = document.createElement("div");
+    headTitle.className = "model-editor-title";
+    headTitle.append(title, status);
+    const test = document.createElement("button");
+    test.type = "button";
+    test.className = "secondary model-test";
+    test.textContent = "测试";
+    test.addEventListener("click", () => {
+      testAgentModel(index, test).catch(error => toast(`模型测试失败：${error.message}`, true));
+    });
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "model-editor-remove";
+    remove.textContent = "删除";
+    remove.addEventListener("click", () => {
+      settings.models.splice(index, 1);
+      renderModelEditors();
+      renderSettingsDefaults();
+    });
+    const actions = document.createElement("div");
+    actions.className = "model-editor-actions";
+    actions.append(test, remove);
+    head.append(headTitle, actions);
+    card.classList.toggle("model-untested", !model.probe_passed);
+
+    const grid = document.createElement("div");
+    grid.className = "model-editor-grid";
+    const id = textInput(model.id, "如 gpt-4.1");
+    const display = textInput(model.display_name, "教师看到的名称");
+    const provider = selectInput(model.provider, [["openai-compatible", "OpenAI-compatible API"], ["codex", "Codex CLI"], ["claude", "Claude Code"], ["adapter", "JSON Adapter"]]);
+    const base = textInput(model.base_url, "https://.../v1 或 http://127.0.0.1:.../v1");
+    const apiModel = textInput(model.model, "真实模型名");
+    const keyEnv = textInput(model.api_key_env || "TEACHER_CONSOLE_AGENT_API_KEY", "环境变量名，不是 key 本身");
+    const apiKey = textInput("", model.api_key_saved || model.api_key_configured ? "已保存；留空表示继续使用原 Key" : "粘贴 API Key，本地保存");
+    apiKey.type = "password";
+    apiKey.autocomplete = "off";
+    const clearApiKey = document.createElement("input");
+    clearApiKey.type = "checkbox";
+    clearApiKey.checked = false;
+    const tier = selectInput(model.model_tier || "selected", [["economy", "经济"], ["standard", "标准"], ["expert", "深度"], ["selected", "自定义"]]);
+    const tags = textInput((model.tags || []).join(", "), "如 经济, 快速, GPT");
+    const capabilities = textInput((model.capabilities || []).join(", "), "analysis.generate, answer.revise, visualization.model");
+    const recommended = textInput((model.recommended_for || []).join(", "), "推荐任务，可留空");
+    const description = document.createElement("textarea");
+    description.value = model.description || "";
+    description.placeholder = "什么时候适合用这个模型";
+    const enabled = document.createElement("input");
+    enabled.type = "checkbox";
+    enabled.checked = model.enabled !== false;
+    const remote = document.createElement("input");
+    remote.type = "checkbox";
+    remote.checked = Boolean(model.remote);
+
+    grid.append(
+      settingField("ID", id),
+      settingField("显示名称", display),
+      settingField("Provider", provider),
+      settingField("模式标签", tier),
+      settingField("API 地址", base),
+      settingField("真实模型名", apiModel),
+      settingField("API Key（本地保存）", apiKey),
+      settingField("清除已保存 Key", clearApiKey),
+      settingField("Key 环境变量", keyEnv),
+      settingField("标签（逗号分隔）", tags),
+      settingField("能力（逗号分隔）", capabilities),
+      settingField("推荐任务（逗号分隔）", recommended),
+      settingField("启用", enabled),
+      settingField("远程模型", remote),
+      settingField("说明", description),
+    );
+    grid.lastElementChild.classList.add("wide-field");
+    card.append(head, grid);
+    list.append(card);
+
+    const sync = () => {
+      model.id = id.value.trim();
+      model.display_name = display.value.trim();
+      model.provider = provider.value;
+      model.base_url = base.value.trim();
+      model.model = apiModel.value.trim();
+      model.api_key = apiKey.value.trim();
+      model.clear_api_key = clearApiKey.checked;
+      model.api_key_env = keyEnv.value.trim();
+      model.model_tier = tier.value;
+      model.tags = tags.value.split(",").map(item => item.trim()).filter(Boolean);
+      model.capabilities = capabilities.value.split(",").map(item => item.trim()).filter(Boolean);
+      model.recommended_for = recommended.value.split(",").map(item => item.trim()).filter(Boolean);
+      model.description = description.value.trim();
+      model.enabled = enabled.checked;
+      model.remote = remote.checked;
+      title.textContent = model.display_name || model.id || "未命名模型";
+      delete model.probe_passed;
+      model.probe_status = "untested";
+      model.probe_message = "配置已修改，请重新测试";
+      status.className = "model-probe-status untested";
+      status.textContent = modelProbeLabel(model);
+      status.title = modelProbeTitle(model);
+      card.classList.add("model-untested");
+      renderSettingsDefaults();
+    };
+    for (const input of [id, display, provider, base, apiModel, apiKey, clearApiKey, keyEnv, tier, tags, capabilities, recommended, description, enabled, remote]) {
+      input.addEventListener("input", sync);
+      input.addEventListener("change", sync);
+    }
+  }
+}
+
+function currentModelSettingsPayload() {
+  const settings = state.modelSettings || { schema_version: 1, defaults: {}, models: [] };
+  settings.defaults = {
+    economy: $("settings-default-economy")?.value || settings.defaults?.economy || "auto",
+    expert: $("settings-default-expert")?.value || settings.defaults?.expert || "auto",
+    "analysis.generate": $("settings-default-analysis")?.value || settings.defaults?.["analysis.generate"] || "auto",
+    "answer.revise": $("settings-default-revision")?.value || settings.defaults?.["answer.revise"] || "auto",
+    "visualization.model": $("settings-default-visualization")?.value || settings.defaults?.["visualization.model"] || "auto",
+  };
+  return settings;
+}
+
+function mergeReturnedModelSettings(returnedSettings, submittedSettings) {
+  const merged = returnedSettings && typeof returnedSettings === "object" ? returnedSettings : submittedSettings;
+  merged.defaults ||= submittedSettings.defaults || {};
+  merged.models = Array.isArray(merged.models) ? merged.models : [];
+  const submittedById = new Map((submittedSettings.models || []).map(model => [model.id, model]));
+  merged.models = merged.models.map(model => {
+    const submitted = submittedById.get(model.id);
+    if (!submitted) return model;
+    const next = { ...model };
+    for (const key of [
+      "base_url", "model", "api_key_env", "timeout_seconds", "provider", "model_tier",
+      "tags", "capabilities", "recommended_for", "description", "enabled", "remote",
+    ]) {
+      if ((next[key] === undefined || next[key] === "" || (Array.isArray(next[key]) && !next[key].length)) && submitted[key] !== undefined) {
+        next[key] = submitted[key];
+      }
+    }
+    // 明文 API Key 不回灌到页面；如果这次填写了 key，只同步“已保存”状态。
+    if (submitted.api_key) {
+      next.api_key = "";
+      next.clear_api_key = false;
+      next.api_key_saved = true;
+      next.api_key_configured = true;
+    }
+    return next;
+  });
+  return merged;
+}
+
+async function testAgentModel(index, button) {
+  const settings = currentModelSettingsPayload();
+  const model = settings.models?.[index];
+  if (!model?.id) {
+    toast("请先填写模型 ID。", true);
+    return;
+  }
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "测试中…";
+  try {
+    const result = await api("/api/agent/model-registry/test", {
+      method: "POST",
+      body: { model_id: model.id, settings, timeout_seconds: 120 },
+    });
+    state.modelSettings = mergeReturnedModelSettings(result.settings, settings);
+    renderSettingsDefaults();
+    renderModelEditors();
+    await health();
+    if (result.status === "passed") toast(`${model.display_name || model.id} 测试通过`);
+    else toast(`${model.display_name || model.id} 测试失败，默认不会调用`, true);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+function renderSettingsDefaults() {
+  const settings = state.modelSettings || { defaults: {}, models: [] };
+  const models = (settings.models || []).map(model => ({ id: model.id, label: model.display_name || model.id })).filter(item => item.id);
+  const options = [{ id: "auto", label: "自动匹配" }, ...models];
+  const defaults = settings.defaults || {};
+  fillSelect($("settings-default-economy"), defaults.economy || "auto", options);
+  fillSelect($("settings-default-expert"), defaults.expert || "auto", options);
+  fillSelect($("settings-default-analysis"), defaults["analysis.generate"] || "auto", options);
+  fillSelect($("settings-default-revision"), defaults["answer.revise"] || "auto", options);
+  fillSelect($("settings-default-visualization"), defaults["visualization.model"] || "auto", options);
+}
+
+async function openAgentSettings() {
+  state.modelSettings = await api("/api/agent/model-registry");
+  state.modelSettings.defaults ||= {};
+  state.modelSettings.models ||= [];
+  $("agent-settings-path").textContent = `本地配置：${state.modelSettings.path || "student-error-library/config/model-registry.json"}`;
+  renderSettingsDefaults();
+  renderModelEditors();
+  $("agent-settings-backdrop").classList.remove("hidden");
+}
+
+function closeAgentSettings() {
+  $("agent-settings-backdrop").classList.add("hidden");
+}
+
+async function saveAgentSettings() {
+  const settings = currentModelSettingsPayload();
+  const saved = await api("/api/agent/model-registry", { method: "POST", body: settings });
+  toast("模型设置已保存");
+  closeAgentSettings();
+  await health();
+  state.agent.model_registry = saved;
+  syncAgentModelOptions();
 }
 
 async function loadEntries(selectId = null) {
@@ -1054,7 +1447,8 @@ function renderActiveJob() {
     const result = job.result || {};
     const requestedTier = job.routing_tier || result.requested_tier;
     const actualTier = result.model_tier;
-    const model = result.model;
+    const selectedModel = result.model_display_name || result.model_id || job.model_id;
+    const model = result.model || selectedModel;
     const totalTokens = result.usage?.total_tokens;
     const route = actualTier
       ? `档位 ${agentTierLabel(requestedTier)}→${agentTierLabel(actualTier)}`
@@ -1290,6 +1684,7 @@ $("approve-source").addEventListener("click", async () => {
 });
 $("run-analysis").addEventListener("click", () => {
   if (!requirePrerequisite("answer")) return;
+  if (!ensureAgentRoutingReady()) return;
   entryAction("analyze", withRoutingTier(), "解析流程已完成，请复核学生版和教师版");
 });
 $("save-answer").addEventListener("click", () => {
@@ -1306,6 +1701,7 @@ $("approve-answer").addEventListener("click", async () => {
 $("request-revision").addEventListener("click", async () => {
   if (!requirePrerequisite("answer")) return;
   if (!hasGeneratedAnswers()) { toast("后台还没有完整解析，请先运行解析流程。", true); return; }
+  if (!ensureAgentRoutingReady()) return;
   const note = $("answer-note").value.trim();
   if (!note) { toast("请先写明需要大模型修改的内容。", true); return; }
   const button = $("request-revision");
@@ -1328,6 +1724,7 @@ $("request-revision").addEventListener("click", async () => {
 });
 $("build-visualization").addEventListener("click", async () => {
   if (!requirePrerequisite("visualization")) return;
+  if (!ensureAgentRoutingReady()) return;
   const isGenerating = !hasDynamicVisualization();
   const result = await visualizationAction(
     "build-visualization",
@@ -1358,6 +1755,7 @@ $("approve-visualization").addEventListener("click", async () => {
 });
 $("send-visualization-message").addEventListener("click", async () => {
   if (!requirePrerequisite("visualization")) return;
+  if (!ensureAgentRoutingReady()) return;
   const message = $("visualization-message").value.trim();
   if (!message) { toast("请先写下要调整的问题", true); return; }
   const isGenerating = !hasDynamicVisualization();
@@ -1452,14 +1850,39 @@ $("publication-image-confirmed").addEventListener("change", () => {
   $("save-publication-images").disabled = !$("publication-image-confirmed").checked;
 });
 $("probe-agent").addEventListener("click", probeAgent);
+$("open-agent-settings").addEventListener("click", () => {
+  openAgentSettings().catch(error => toast(`打开模型设置失败：${error.message}`, true));
+});
+$("close-agent-settings").addEventListener("click", closeAgentSettings);
+$("agent-settings-backdrop").addEventListener("click", event => {
+  if (event.target === $("agent-settings-backdrop")) closeAgentSettings();
+});
+$("add-agent-model").addEventListener("click", () => {
+  state.modelSettings ||= { schema_version: 1, defaults: {}, models: [] };
+  state.modelSettings.models ||= [];
+  state.modelSettings.models.push(modelSettingTemplate());
+  renderModelEditors();
+  renderSettingsDefaults();
+});
+$("add-codex-visualization-preset").addEventListener("click", applyCodexVisualizationPreset);
+$("save-agent-settings").addEventListener("click", () => {
+  saveAgentSettings().catch(error => toast(`保存模型设置失败：${error.message}`, true));
+});
 try {
   const savedTier = localStorage.getItem(AGENT_TIER_KEY);
-  if (["auto", "economy", "expert"].includes(savedTier)) $("agent-tier").value = savedTier;
+  if (["auto", "economy", "expert", "custom"].includes(savedTier)) $("agent-tier").value = savedTier;
 } catch (_error) {
   // Private browsing or a locked-down browser may disable local storage.
 }
+syncAgentModelVisibility();
 $("agent-tier").addEventListener("change", () => {
   try { localStorage.setItem(AGENT_TIER_KEY, selectedAgentTier()); } catch (_error) { /* preference is optional */ }
+  syncAgentModelVisibility();
+  renderAgentMessage();
+});
+$("agent-model").addEventListener("change", () => {
+  try { localStorage.setItem(AGENT_MODEL_KEY, selectedAgentModelId()); } catch (_error) { /* preference is optional */ }
+  renderAgentMessage();
 });
 $("save-publication-images").addEventListener("click", async () => {
   if (!$("publication-image-confirmed").checked) { toast("请先检查全部页面并勾选确认。", true); return; }

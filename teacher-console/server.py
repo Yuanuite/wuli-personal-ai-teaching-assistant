@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import mimetypes
 import os
@@ -26,6 +27,7 @@ LIBRARY = PROJECT_ROOT / "student-error-library"
 UPLOADS = PROJECT_ROOT / "error-collection"
 PUBLIC_SITE = PROJECT_ROOT / "student-site"
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
+MODEL_REGISTRY_PATH = LIBRARY / "config" / "model-registry.json"
 sys.path.insert(0, str(SKILL_SCRIPTS))
 sys.path.insert(0, str(CONSOLE_DIR))
 
@@ -118,6 +120,7 @@ def agent_health(*, force: bool = False) -> dict:
         result["available"] = result.get("selected") is not None
         if not result["available"]:
             result["reason"] = "没有通过项目隐私门禁的 provider"
+    result["model_registry"] = model_registry_public()
     return result
 
 
@@ -126,6 +129,7 @@ def agent_available() -> bool:
 
 
 ROUTING_TIERS = {"auto", "economy", "expert"}
+MODEL_ID_MAX = 80
 
 
 def normalize_routing_tier(value) -> str:
@@ -135,19 +139,28 @@ def normalize_routing_tier(value) -> str:
     return tier
 
 
+def normalize_model_id(value) -> str:
+    model_id = str(value or "auto").strip()
+    if not model_id or model_id == "auto":
+        return "auto"
+    if len(model_id) > MODEL_ID_MAX or any(ch in model_id for ch in "/\\\0"):
+        raise ValueError("model_id contains unsupported characters")
+    return model_id
+
+
 def gateway_routing_fields(gateway: dict) -> dict:
-    keys = ("routing_tier", "requested_tier", "model_tier", "model", "usage", "routing_notice")
+    keys = ("routing_tier", "requested_tier", "model_tier", "model", "model_id", "model_display_name", "usage", "routing_notice")
     return {key: gateway[key] for key in keys if key in gateway}
 
 
-def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto") -> dict:
+def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto", model_id: str = "auto") -> dict:
     def guarded_callback():
         with visualization_lock(entry.name):
             return callback()
 
     return job_manager().submit(
         kind, entry.name, guarded_callback,
-        metadata={"routing_tier": normalize_routing_tier(routing_tier)},
+        metadata={"routing_tier": normalize_routing_tier(routing_tier), "model_id": normalize_model_id(model_id)},
     )
 
 
@@ -166,6 +179,300 @@ def remote_agent_allowed() -> bool:
     return config.get("privacy", {}).get("allow_remote_agent") is True
 
 
+def _registry_path() -> Path:
+    return LIBRARY / "config" / "model-registry.json"
+
+
+def _stored_api_key(raw: dict) -> str:
+    return str(raw.get("api_key", "")).strip()
+
+
+def _model_probe_digest(raw: dict) -> str:
+    provider = str(raw.get("provider", "")).strip()
+    api_key_env = str(raw.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
+    payload = {
+        "provider": provider,
+        "base_url": str(raw.get("base_url", "")).strip() if provider == "openai-compatible" else "",
+        "model": str(raw.get("model", "")).strip() if provider == "openai-compatible" else "",
+        "api_key_env": api_key_env if provider == "openai-compatible" else "",
+        "api_key_digest": hashlib.sha256(_stored_api_key(raw).encode("utf-8")).hexdigest() if _stored_api_key(raw) else "",
+        "remote": bool(raw.get("remote", False)) if provider == "openai-compatible" else False,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def _model_probe(raw: dict) -> dict:
+    probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
+    current_digest = _model_probe_digest(raw)
+    status = str(probe.get("status", "")).strip()
+    passed = status == "passed" and str(probe.get("config_digest", "")) == current_digest
+    return {
+        "status": "passed" if passed else (status or "untested"),
+        "passed": passed,
+        "message": str(probe.get("message", "")).strip(),
+        "checked_at": str(probe.get("checked_at", "")).strip(),
+        "provider": str(probe.get("provider", "")).strip(),
+        "config_digest": str(probe.get("config_digest", "")).strip(),
+        "current_digest": current_digest,
+    }
+
+
+def _public_model_entry(raw: dict, *, kind: str = "") -> dict:
+    model_id = normalize_model_id(raw.get("id"))
+    provider = str(raw.get("provider", "")).strip()
+    capabilities = [str(item) for item in raw.get("capabilities", []) if str(item).strip()]
+    base_url = str(raw.get("base_url", "")).strip()
+    remote = bool(raw.get("remote", False))
+    if provider == "openai-compatible" and base_url and (urlparse(base_url).hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}:
+        remote = True
+    api_key_env = str(raw.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
+    api_key_configured = bool(_stored_api_key(raw) or os.environ.get(api_key_env))
+    probe = _model_probe(raw)
+    errors: list[str] = []
+    if provider not in {"openai-compatible", "adapter", "codex", "claude"}:
+        errors.append("unsupported provider")
+    if provider == "openai-compatible":
+        if not base_url:
+            errors.append("missing base_url")
+        if not str(raw.get("model", "")).strip():
+            errors.append("missing model")
+    if kind and kind != "gateway.probe" and capabilities and kind not in capabilities:
+        errors.append(f"unsupported task {kind}")
+    if remote and not remote_agent_allowed():
+        errors.append("project remote privacy gate is off")
+    if remote and os.environ.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true":
+        errors.append("environment remote gate is off")
+    if provider == "openai-compatible" and remote and not api_key_configured:
+        errors.append("missing API key")
+    if kind != "gateway.probe" and raw.get("enabled") is not False and not probe["passed"]:
+        errors.append("model has not passed connection test")
+    return {
+        "id": model_id,
+        "display_name": str(raw.get("display_name") or raw.get("name") or raw.get("model") or model_id),
+        "provider": provider,
+        "model": str(raw.get("model", "")).strip(),
+        "model_tier": str(raw.get("model_tier", raw.get("tier", "selected"))).strip() or "selected",
+        "tags": [str(item) for item in raw.get("tags", []) if str(item).strip()],
+        "capabilities": capabilities,
+        "recommended_for": [str(item) for item in raw.get("recommended_for", []) if str(item).strip()],
+        "description": str(raw.get("description", "")).strip(),
+        "remote": remote,
+        "data_locality": "remote" if remote else str(raw.get("data_locality", "local")).strip() or "local",
+        "api_key_env": api_key_env if provider == "openai-compatible" else "",
+        "api_key_configured": api_key_configured if provider == "openai-compatible" else None,
+        "api_key_saved": bool(_stored_api_key(raw)) if provider == "openai-compatible" else None,
+        "probe_status": probe["status"],
+        "probe_passed": probe["passed"],
+        "probe_message": probe["message"],
+        "probe_checked_at": probe["checked_at"],
+        "enabled": raw.get("enabled") is not False,
+        "available": raw.get("enabled") is not False and not errors,
+        "reason": "；".join(errors),
+    }
+
+
+def model_registry_public(*, kind: str = "") -> dict:
+    path = _registry_path()
+    registry = kb.load_json(path, {"schema_version": 1, "models": [], "defaults": {}})
+    raw_models = registry.get("models", []) if isinstance(registry.get("models"), list) else []
+    models = []
+    for raw in raw_models:
+        if isinstance(raw, dict):
+            try:
+                models.append(_public_model_entry(raw, kind=kind))
+            except ValueError:
+                continue
+    return {
+        "schema_version": 1,
+        "path": str(path),
+        "exists": path.exists(),
+        "models": models,
+        "defaults": registry.get("defaults", {}) if isinstance(registry.get("defaults"), dict) else {},
+    }
+
+
+def model_registry_settings() -> dict:
+    path = _registry_path()
+    registry = kb.load_json(path, {"schema_version": 1, "models": [], "defaults": {}})
+    if registry.get("schema_version") != 1:
+        registry["schema_version"] = 1
+    registry.setdefault("defaults", {})
+    registry.setdefault("models", [])
+    sanitized_models = []
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict):
+            continue
+        item = dict(raw)
+        item.pop("api_key", None)
+        probe = _model_probe(raw)
+        item["probe_status"] = probe["status"]
+        item["probe_passed"] = probe["passed"]
+        item["probe_message"] = probe["message"]
+        item["probe_checked_at"] = probe["checked_at"]
+        if str(item.get("provider", "")).strip() == "openai-compatible":
+            api_key_env = str(item.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
+            item["api_key_configured"] = bool(_stored_api_key(raw) or os.environ.get(api_key_env))
+            item["api_key_saved"] = bool(_stored_api_key(raw))
+        sanitized_models.append(item)
+    registry["models"] = sanitized_models
+    registry["path"] = str(path)
+    registry["exists"] = path.exists()
+    return registry
+
+
+def _clean_string_list(values) -> list[str]:
+    if isinstance(values, str):
+        values = [item.strip() for item in values.split(",")]
+    if not isinstance(values, list):
+        return []
+    return [str(item).strip() for item in values if str(item).strip()]
+
+
+def save_model_registry_settings(data: dict) -> dict:
+    defaults = data.get("defaults", {}) if isinstance(data.get("defaults"), dict) else {}
+    previous = kb.load_json(_registry_path(), {"models": []})
+    previous_by_id = {
+        str(item.get("id", "")).strip(): item
+        for item in previous.get("models", [])
+        if isinstance(item, dict) and str(item.get("id", "")).strip()
+    }
+    cleaned = {
+        "schema_version": 1,
+        "defaults": {
+            str(key).strip(): normalize_model_id(value)
+            for key, value in defaults.items()
+            if str(key).strip() in {"economy", "expert", "analysis.generate", "answer.revise", "visualization.model"}
+        },
+        "models": [],
+    }
+    seen: set[str] = set()
+    for raw in data.get("models", []):
+        if not isinstance(raw, dict):
+            continue
+        model_id = normalize_model_id(raw.get("id"))
+        if model_id == "auto" or model_id in seen:
+            continue
+        seen.add(model_id)
+        provider = str(raw.get("provider", "openai-compatible")).strip() or "openai-compatible"
+        if provider not in {"openai-compatible", "adapter", "codex", "claude"}:
+            raise ValueError(f"unsupported provider for {model_id}: {provider}")
+        entry = {
+            "id": model_id,
+            "display_name": str(raw.get("display_name") or raw.get("name") or raw.get("model") or model_id).strip(),
+            "provider": provider,
+            "enabled": raw.get("enabled") is not False,
+            "model_tier": str(raw.get("model_tier", raw.get("tier", "selected"))).strip() or "selected",
+            "tags": _clean_string_list(raw.get("tags", [])),
+            "capabilities": _clean_string_list(raw.get("capabilities", [])),
+            "recommended_for": _clean_string_list(raw.get("recommended_for", [])),
+            "description": str(raw.get("description", "")).strip(),
+        }
+        if provider == "openai-compatible":
+            api_key = str(raw.get("api_key", "")).strip()
+            previous_key = _stored_api_key(previous_by_id.get(model_id, {}))
+            entry.update({
+                "base_url": str(raw.get("base_url", "")).strip(),
+                "model": str(raw.get("model", "")).strip(),
+                "api_key_env": str(raw.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY",
+                "remote": bool(raw.get("remote", False)),
+            })
+            if api_key:
+                entry["api_key"] = api_key
+            elif raw.get("clear_api_key") is True:
+                pass
+            elif previous_key:
+                entry["api_key"] = previous_key
+            timeout = str(raw.get("timeout_seconds", "")).strip()
+            if timeout:
+                entry["timeout_seconds"] = timeout
+        previous_probe = previous_by_id.get(model_id, {}).get("probe")
+        if isinstance(previous_probe, dict) and previous_probe.get("config_digest") == _model_probe_digest(entry):
+            entry["probe"] = previous_probe
+        cleaned["models"].append(entry)
+    path = _registry_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    kb.write_json(path, cleaned)
+    return model_registry_public()
+
+
+def resolve_model_id_for_task(kind: str, routing_tier: str, model_id: str) -> str:
+    if model_id is None:
+        return "auto"
+    model_id = normalize_model_id(model_id)
+    if model_id != "auto":
+        return model_id
+    defaults = kb.load_json(_registry_path(), {"defaults": {}}).get("defaults", {})
+    if not isinstance(defaults, dict):
+        return "auto"
+    tier = normalize_routing_tier(routing_tier)
+    if tier in {"economy", "expert"}:
+        return normalize_model_id(defaults.get(tier))
+    return normalize_model_id(defaults.get(kind))
+
+
+def model_config_for_task(kind: str, model_id: str, routing_tier: str = "auto") -> dict | None:
+    model_id = resolve_model_id_for_task(kind, routing_tier, model_id)
+    if model_id == "auto":
+        return None
+    registry = kb.load_json(_registry_path(), {"models": []})
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict):
+            continue
+        try:
+            public = _public_model_entry(raw, kind=kind)
+        except ValueError:
+            continue
+        if public["id"] != model_id:
+            continue
+        if not public["enabled"]:
+            raise ValueError(f"模型 {public['display_name']} 已禁用")
+        if not public["available"]:
+            raise ValueError(f"模型 {public['display_name']} 暂不可用：{public['reason']}")
+        config = {
+            "id": public["id"],
+            "display_name": public["display_name"],
+            "provider": public["provider"],
+            "model": public["model"],
+            "model_tier": public["model_tier"],
+            "remote": public["remote"],
+            "data_locality": public["data_locality"],
+        }
+        if public["provider"] == "openai-compatible":
+            config.update({
+                "base_url": str(raw.get("base_url", "")).strip(),
+                "api_key_env": public["api_key_env"],
+                "api_key": _stored_api_key(raw),
+                "timeout_seconds": str(raw.get("timeout_seconds", "")).strip(),
+            })
+        return config
+    raise ValueError(f"未找到模型配置：{model_id}")
+
+
+def update_model_probe_result(model_id: str, result: dict) -> dict:
+    model_id = normalize_model_id(model_id)
+    if model_id == "auto":
+        raise ValueError("model_id is required")
+    registry = kb.load_json(_registry_path(), {"schema_version": 1, "defaults": {}, "models": []})
+    found = False
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict) or normalize_model_id(raw.get("id")) != model_id:
+            continue
+        found = True
+        passed = result.get("live_probe", {}).get("status") == "passed"
+        raw["probe"] = {
+            "status": "passed" if passed else "failed",
+            "provider": str(result.get("live_probe", {}).get("provider", "")).strip(),
+            "message": str(result.get("live_probe", {}).get("reason", "") or ("连通检测通过" if passed else "连通检测失败")).strip(),
+            "checked_at": datetime.now().isoformat(timespec="seconds"),
+            "config_digest": _model_probe_digest(raw),
+        }
+        break
+    if not found:
+        raise ValueError(f"未找到模型配置：{model_id}")
+    kb.write_json(_registry_path(), registry)
+    return model_registry_settings()
+
+
 def _agent_task(
     entry: Path,
     kind: str,
@@ -177,6 +484,7 @@ def _agent_task(
     request_path: Path | None = None,
     requires_change: bool = True,
     routing_tier: str = "auto",
+    model_config: dict | None = None,
 ) -> dict:
     routing_tier = normalize_routing_tier(routing_tier)
     context_files = {
@@ -215,6 +523,7 @@ def _agent_task(
         "timeout_seconds": 1800,
         "allow_remote": _remote_agent_allowed(entry),
         "routing_tier": routing_tier,
+        "model_config": model_config or {},
         "workspace_root": str(Path(tempfile.gettempdir()) / "wuli-agent-workspaces"),
         "context_files": context_files,
     }
@@ -233,7 +542,7 @@ def answer_asset_names(entry: Path) -> set[str]:
     return names
 
 
-def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto") -> dict:
+def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
     prompt = (
         f"处理错题知识库条目 {entry.resolve()}。{instruction}。"
         "必须遵循候选区提供的项目规则、答案模板与职责边界；只处理这个条目。"
@@ -252,10 +561,11 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto") -> 
         input_paths=["problem.md", "record.json", "student-solution.md", "teacher-solution.md", "solution.md", *sorted(answer_asset_names(entry))],
         denied_paths=sorted(source_asset_names(entry)),
         routing_tier=routing_tier,
+        model_config=model_config,
     )
 
 
-def visualization_task(entry: Path, message: str, request_path: Path, routing_tier: str = "auto") -> dict:
+def visualization_task(entry: Path, message: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
     has_model = (entry / "physics-model.json").exists()
     supported_types = ", ".join(SUPPORTED_SIMULATOR_MODEL_TYPES)
     task = (
@@ -294,10 +604,11 @@ def visualization_task(entry: Path, message: str, request_path: Path, routing_ti
         request_path=request_path,
         requires_change=not has_model,
         routing_tier=routing_tier,
+        model_config=model_config,
     )
 
 
-def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tier: str = "auto") -> dict:
+def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
     routing_tier = normalize_routing_tier(routing_tier)
     model_instruction = (
         "若条目已有 physics-model.json 且教师意见涉及共同物理语义，可同步修正模型；"
@@ -333,6 +644,7 @@ def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tie
         denied_paths=sorted(source_asset_names(entry)),
         request_path=request_path,
         routing_tier=routing_tier,
+        model_config=model_config,
     )
 
 
@@ -667,6 +979,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response({"status": "ok", "project": str(PROJECT_ROOT), "agent_configured": agent["available"], "agent": agent})
             if path == "/api/agent/providers":
                 return self.json_response(agent_health())
+            if path == "/api/agent/model-registry":
+                return self.json_response(model_registry_settings())
             if path == "/api/jobs":
                 entry_id = parse_qs(parsed.query).get("entry_id", [""])[0]
                 if not entry_id:
@@ -747,11 +1061,29 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(result)
             if path == "/api/agent/providers/probe":
                 data = self.read_json_body()
+                model_id = normalize_model_id(data.get("model_id"))
                 return self.json_response(AGENT_GATEWAY.probe(
                     str(data.get("provider", "")),
                     timeout_seconds=int(data.get("timeout_seconds", 120)),
                     allow_remote=remote_agent_allowed(),
+                    model_config=model_config_for_task("gateway.probe", model_id, "auto"),
                 ))
+            if path == "/api/agent/model-registry/test":
+                data = self.read_json_body()
+                model_id = normalize_model_id(data.get("model_id"))
+                if isinstance(data.get("settings"), dict):
+                    save_model_registry_settings(data["settings"])
+                config = model_config_for_task("gateway.probe", model_id, "auto")
+                result = AGENT_GATEWAY.probe(
+                    str(config.get("provider", "")),
+                    timeout_seconds=int(data.get("timeout_seconds", 120)),
+                    allow_remote=remote_agent_allowed(),
+                    model_config=config,
+                )
+                settings = update_model_probe_result(model_id, result)
+                return self.json_response({"status": result.get("live_probe", {}).get("status", "failed"), "agent": result, "settings": settings})
+            if path == "/api/agent/model-registry":
+                return self.json_response(save_model_registry_settings(self.read_json_body()))
             if path.startswith("/api/entries/"):
                 rest = path.removeprefix("/api/entries/")
                 entry_id, action = rest.split("/", 1)
@@ -822,7 +1154,11 @@ class Handler(SimpleHTTPRequestHandler):
                 result = process_uploads.approve_source(LIBRARY, entry.name, reviewer, note)
         elif action == "analyze":
             tier = normalize_routing_tier(data.get("routing_tier"))
-            result = queue_agent_job("analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier)
+            raw_model_id = data.get("model_id")
+            model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
+            if raw_model_id is not None:
+                model_config_for_task("analysis.generate", model_id, tier)
+            result = queue_agent_job("analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id)
         elif action == "save-answer":
             if process_uploads.pipeline_state(entry)["state"] == "needs-source-review":
                 result = {"status": "blocked", "errors": ["请先确认正式题干，再编辑解析"]}
@@ -833,7 +1169,11 @@ class Handler(SimpleHTTPRequestHandler):
                 result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note)
         elif action == "request-revision":
             tier = normalize_routing_tier(data.get("routing_tier"))
-            result = queue_agent_job("answer.revise", entry, lambda: self.run_answer_revision(entry, data), routing_tier=tier)
+            raw_model_id = data.get("model_id")
+            model_id = resolve_model_id_for_task("answer.revise", tier, raw_model_id)
+            if raw_model_id is not None:
+                model_config_for_task("answer.revise", model_id, tier)
+            result = queue_agent_job("answer.revise", entry, lambda: self.run_answer_revision(entry, data), routing_tier=tier, model_id=model_id)
         elif action == "build-visualization":
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
@@ -844,7 +1184,11 @@ class Handler(SimpleHTTPRequestHandler):
                     "base_digest": str(data.get("base_digest", "")),
                 }
                 request["routing_tier"] = normalize_routing_tier(data.get("routing_tier"))
-                result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, request), routing_tier=request["routing_tier"])
+                raw_model_id = data.get("model_id")
+                request["model_id"] = resolve_model_id_for_task("visualization.model", request["routing_tier"], raw_model_id)
+                if raw_model_id is not None:
+                    model_config_for_task("visualization.model", request["model_id"], request["routing_tier"])
+                result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, request), routing_tier=request["routing_tier"], model_id=request["model_id"])
             else:
                 with visualization_lock(entry.name):
                     result = process_uploads.prepare_visualization(LIBRARY, entry.name, str(data.get("runtime_check", "auto")))
@@ -856,7 +1200,11 @@ class Handler(SimpleHTTPRequestHandler):
                 result = process_uploads.approve_visualization(LIBRARY, entry.name, reviewer, note)
         elif action == "visualization-chat":
             tier = normalize_routing_tier(data.get("routing_tier"))
-            result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, data), routing_tier=tier)
+            raw_model_id = data.get("model_id")
+            model_id = resolve_model_id_for_task("visualization.model", tier, raw_model_id)
+            if raw_model_id is not None:
+                model_config_for_task("visualization.model", model_id, tier)
+            result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, data), routing_tier=tier, model_id=model_id)
         elif action == "clear-visualization-chat":
             result = self.clear_visualization_chat(entry)
         elif action == "prepare-publication":
@@ -887,6 +1235,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def run_analysis(self, entry: Path, data: dict):
         routing_tier = normalize_routing_tier(data.get("routing_tier"))
+        raw_model_id = data.get("model_id")
+        model_id = resolve_model_id_for_task("analysis.generate", routing_tier, raw_model_id)
+        model_config = model_config_for_task("analysis.generate", model_id, routing_tier) if raw_model_id is not None else None
         current_state = process_uploads.pipeline_state(entry)
         if current_state["state"] == "needs-source-review":
             return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": current_state}
@@ -898,10 +1249,12 @@ class Handler(SimpleHTTPRequestHandler):
             "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "instruction": instruction,
             "routing_tier": routing_tier,
+            "model_id": model_id,
+            "model_display_name": model_config.get("display_name") if model_config else "",
         }
         kb.write_json(entry / "analysis-request.json", request)
         gateway = AGENT_GATEWAY.run(
-            analysis_task(entry, instruction, routing_tier),
+            analysis_task(entry, instruction, routing_tier, model_config),
             lambda staging, changed: validate_answer_candidate(staging, changed, entry),
         )
         if gateway["status"] == "unavailable":
@@ -941,6 +1294,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def run_answer_revision(self, entry: Path, data: dict):
         routing_tier = normalize_routing_tier(data.get("routing_tier"))
+        raw_model_id = data.get("model_id")
+        model_id = resolve_model_id_for_task("answer.revise", routing_tier, raw_model_id)
+        model_config = model_config_for_task("answer.revise", model_id, routing_tier) if raw_model_id is not None else None
         library = entry.parent.parent
         current_state = process_uploads.pipeline_state(entry)
         if current_state["state"] == "needs-source-review":
@@ -972,11 +1328,13 @@ class Handler(SimpleHTTPRequestHandler):
                 "note": note,
                 "base_digest": requested.get("answer_review", {}).get("answer_digest", ""),
                 "routing_tier": routing_tier,
+                "model_id": model_id,
+                "model_display_name": model_config.get("display_name") if model_config else "",
             }
             request_path = entry / "answer-revision-request.json"
             kb.write_json(request_path, request)
             gateway = AGENT_GATEWAY.run(
-                answer_revision_task(entry, note, request_path, routing_tier),
+                answer_revision_task(entry, note, request_path, routing_tier, model_config),
                 lambda staging, changed: validate_answer_candidate(staging, changed, entry),
             )
             if gateway["status"] == "unavailable":
@@ -1017,6 +1375,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def run_visualization_chat(self, entry: Path, data: dict):
         routing_tier = normalize_routing_tier(data.get("routing_tier"))
+        raw_model_id = data.get("model_id")
+        model_id = resolve_model_id_for_task("visualization.model", routing_tier, raw_model_id)
+        model_config = model_config_for_task("visualization.model", model_id, routing_tier) if raw_model_id is not None else None
         library = entry.parent.parent
         message = str(data.get("message", "")).strip()
         if not message:
@@ -1046,11 +1407,13 @@ class Handler(SimpleHTTPRequestHandler):
                 "message": message,
                 "base_digest": current["artifact_digest"],
                 "routing_tier": routing_tier,
+                "model_id": model_id,
+                "model_display_name": model_config.get("display_name") if model_config else "",
             }
             request_path = entry / "visualization-request.json"
             kb.write_json(request_path, request)
             kb.write_json(conversation_path, conversation)
-            gateway = AGENT_GATEWAY.run(visualization_task(entry, message, request_path, routing_tier), validate_visualization_candidate)
+            gateway = AGENT_GATEWAY.run(visualization_task(entry, message, request_path, routing_tier, model_config), validate_visualization_candidate)
             if gateway["status"] == "unavailable":
                 assistant = "没有可用的 Agent provider。请求已保存在 visualization-request.json；配置 Gateway 后可以重新提交。"
                 conversation["messages"].append({"role": "assistant", "at": kb.now_iso(), "content": assistant, "status": "awaiting-agent"})
