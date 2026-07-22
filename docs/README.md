@@ -6,10 +6,14 @@
 
 | 文档 | 用途 |
 |---|---|
+| [ai-editing-map.md](ai-editing-map.md) | AI 修改入口地图：按任务类型选择最小上下文，减少误读和 token 浪费 |
 | [architecture.md](architecture.md) | 生命周期、组件职责、信任边界、`physics-model.json` 真源关系 |
+| [architecture-governance.md](architecture-governance.md) | 基于 graphify 的项目治理协议：功能归位、复杂度删减、变更影响分析 |
+| [diagrams/README.md](diagrams/README.md) | Archify 架构图与 Pipeline 的 JSON 真源、渲染命令和 Story 对焦验收契约 |
 | [operator-runbook.md](operator-runbook.md) | 本地启动、人工命令、复核门禁、发布学生端、故障排查 |
 | [teacher-console-api.md](teacher-console-api.md) | 教师工作台本地 HTTP 路由、写操作请求头、状态码和调用顺序 |
 | [agent-gateway.md](agent-gateway.md) | Agent Gateway provider、隔离候选、成本档位、隐私门禁和作业恢复 |
+| [litellm-gateway.md](litellm-gateway.md) | 用 LiteLLM Proxy 作为悟理上游模型网关的配置与职责边界 |
 | [visual-review-integration.md](visual-review-integration.md) | OCR 后视觉复核边车、OpenAI-compatible 多模态接入和隐私门禁 |
 | [high-school-physics-techniques.md](high-school-physics-techniques.md) | 高中物理解题技巧速查；自动采用二级结论时仍以 JSON 条件库为准 |
 

@@ -14,7 +14,9 @@ python3 teacher-console/server.py
 
 需要用其他本地页面或脚本调用工作台时，接口清单、`X-Teacher-Console` 写操作请求头和流程顺序见 [`teacher-console-api.md`](teacher-console-api.md)。学生静态站不调用这些接口。
 
-“生成解析”、答案返修和可视化建模统一进入本机 Agent Gateway 后台队列。Gateway 优先使用 JSON adapter 和经授权的 OpenAI-compatible API，其次兼容旧命令、Codex 和 Claude Code。页面右上角可选“自动 / 经济 / 深度”：简单返修可主动选经济档，自动档对可视化优先使用已配置的深度模型。页面会显示请求档位、实际模型、token 用量、provider、排队/运行/完成状态和失败原因。按钮不会绕过来源复核，也不会替教师批准答案；候选未通过范围或内容校验时 canonical 条目保持原样。
+“生成解析”、答案返修和可视化建模统一进入本机 Agent Gateway 后台队列。Gateway 优先使用 JSON adapter 和经授权的 OpenAI-compatible API，其次兼容旧命令、Codex 和 Claude Code。页面右上角可选“自动 / 经济 / 深度 / 自定义”：简单返修可主动选经济档，自动档按设置页的默认模型策略匹配任务，自定义档才展开具体模型下拉框。页面会显示请求档位、实际模型、token 用量、provider、排队/运行/完成状态和失败原因。按钮不会绕过来源复核，也不会替教师批准答案；候选未通过范围或内容校验时 canonical 条目保持原样。
+
+模型设置位于右上角“设置”。每个 OpenAI-compatible 模型可填写 API 地址、真实模型名和 API Key；Key 只保存到已被 `.gitignore` 排除的 `student-error-library/config/model-registry.json`，再次打开页面只显示“已保存/已配置”，不回显明文。每个可选模型必须点击该行“测试”并通过不含学生数据的连通探测后，才会被自动/默认路由调用；未测试、测试失败或修改过地址/模型名/API Key 的模型会置灰。提交 GitHub 前不要使用 `git add -f student-error-library/config/model-registry.json`。
 
 provider 配置、JSON 契约、隔离候选和远程隐私门禁见 [`agent-gateway.md`](agent-gateway.md)。快速检查：
 
@@ -24,6 +26,14 @@ curl -fsS http://127.0.0.1:8787/api/agent/providers
 curl -fsS -H 'X-Teacher-Console: 1' -H 'Content-Type: application/json' \
   -d '{"provider":"codex","timeout_seconds":120}' \
   http://127.0.0.1:8787/api/agent/providers/probe
+```
+
+测试单个注册模型时优先使用网页设置页的“测试”按钮；脚本调用可用：
+
+```bash
+curl -fsS -H 'X-Teacher-Console: 1' -H 'Content-Type: application/json' \
+  -d '{"model_id":"<model-id>","timeout_seconds":120}' \
+  http://127.0.0.1:8787/api/agent/model-registry/test
 ```
 
 题干和答案使用本地 Markdown + KaTeX 实时预览。答案编辑后按“保存当前 Markdown”或 `Cmd/Ctrl+S`；保存会撤销旧答案批准并自动重建检索。“交给大模型修改”会把意见限定在当前条目的分层答案和引用解释图内，完成后仍需教师重新批准。标准解析默认不生成交互仿真；答案批准后进入始终保留的“可视化（可选）”页面。没有模型时可直接输入“我想为这道题生成一个可视化结果”或点击“调用 Skill 生成”，之后 Agent 才调用仿真 Skill。新模型会使答案摘要失效，需要先重新复核答案，再批准 iframe 中的动态结果。静态 SVG 仍在解析复核中查看和修改。
@@ -151,7 +161,7 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 - 服务单实例：同一知识库不能同时启动两个教师工作台；关闭时若有 Agent 正在运行，终端会等待它安全结束后再释放锁。
 - 自定义 provider 环境：默认只传基础运行变量与该 provider 的认证变量；额外变量通过 `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` 显式加入。
 - 推理位置：Codex/Claude 是本机启动的 CLI，但底层推理可能远程执行；查看 health 中的 `execution_locality` 和 `data_locality`，不要把“本机进程”等同于“数据不离机”。
-- 远程模型 API：默认关闭。必须同时设置 `privacy.allow_remote_agent=true` 与 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`；密钥只放环境变量。
+- 远程模型 API：默认关闭。必须同时设置 `privacy.allow_remote_agent=true` 与 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`；密钥可放环境变量，也可通过设置页保存到已忽略的本地模型注册表，禁止写入示例配置、公开站、日志或可提交文件。
 - OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求，默认 300 秒；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。
 - OCR：优先 Apple Vision 本地识别；失败时保留可复核条目，不丢弃原图。远程 OCR 必须先取得授权。
 - 视觉复核：边车失败、返回不确定项或无可用边车时生成教师复核单；绝不以 OCR 置信度代替复核。
@@ -189,6 +199,8 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 ## 常见故障
 
 - 页面显示 Agent 不可用：查看 `/api/agent/providers` 的版本、缺失参数或熔断原因，再执行带 provider 的 `POST /api/agent/providers/probe`；不要只用 `command -v` 判断。若提示模型要求新版 CLI，升级该 CLI，或显式切到结构化 API/另一个 provider。
+- 某个模型灰色不可选：在设置页检查该行状态。未测试、测试失败或修改过 API 地址/真实模型名/API Key 后，模型都会置灰并且默认不调用；重新点击该行“测试”，通过后再保存。
+- API Key 看起来消失：这是正常脱敏。设置页不会回显明文；若显示已保存/已配置或测试通过，说明本地私有注册表仍有 key。只有勾选“清除已保存 Key”并保存才会删除。
 - Agent 作业失败但文件没变化：这是修改前安全失败，可修复 provider 后重试；若 `auto` 还有可用 provider，Gateway 会自动降级。
 - 显示“候选未通过范围或内容校验”：查看作业结果的 `unauthorized_changes`、`validation_errors`；canonical 未提升，不要手工伪造成功状态。
 - HTML 双击打不开：先查看静态校验错误，再检查是否含远程 URL、模块脚本或丢失资源。
