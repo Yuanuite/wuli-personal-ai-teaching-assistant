@@ -44,6 +44,7 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 
 ## 深入文档
 
+- `docs/ai-editing-map.md`：AI 修改入口地图；不确定该读哪些文件时先看它，按任务类型选择最小上下文。
 - `docs/architecture.md`：生命周期、职责边界、共享模型与验证门禁。
 - `docs/operator-runbook.md`：手动命令、依赖降级、排障与交付检查。
 - `docs/visual-review-integration.md`：视觉边车协议、环境变量、隐私门禁和接入测试。
@@ -53,3 +54,16 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 - `docs/competition-project-description.md`：竞赛完整说明、价值定位、落地计划与演示脚本。
 - `docs/teacher-console-api.md`：本地教师端 HTTP 路由、动作协议和安全边界。
 - `docs/agent-gateway.md`：后台 Agent 作业、provider adapter、隔离候选、降级和远程隐私门禁。
+- `docs/architecture-governance.md`：基于 graphify 的项目治理协议；功能归位、复杂度删减、变更影响分析时必须先读。
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- When the user asks about feature placement, module responsibility, complexity reduction, architecture drift, change impact, whole-project optimization, competition narrative, or whether an entry/Skill/UI is redundant, first read `docs/architecture-governance.md`, then use graphify for structural evidence before proposing or editing.
+- When unsure which files to inspect, first read `docs/ai-editing-map.md` and load only the task-specific docs/scripts it names.
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

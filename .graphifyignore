@@ -1,0 +1,31 @@
+# 悟理 graphify 输入瘦身规则
+#
+# 目标：保留架构、业务代码、测试、Skill 和核心文档；排除生成物、公开题库内容、
+# vendor/minified 依赖和本地私有数据，减少图谱噪声与 AI 查询 token。
+
+graphify-out/
+output/
+tmp/
+error-collection/
+student-error-library/
+
+# 公开站题目内容是发布产物，架构治理时只需要站点代码和发布协议。
+student-site/questions/
+student-site/vendor/
+shared/vendor/
+
+# 教师端/学生端离线依赖，代码关系价值低且会产生大量 minified 函数节点。
+teacher-console/static/vendor/
+**/*.min.js
+**/*.min.css
+
+# 生成图、截图、归档和二进制产物。
+docs/diagrams/*.html
+*.zip
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.DS_Store
