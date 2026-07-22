@@ -5,7 +5,7 @@
 当前以高中物理为完整 MVP：本地接收图片/PDF，完成 OCR、人工核对、知识检索、分层解析、按需交互仿真、入库、PDF 与学生交付包，并把一次错题处理沉淀为可持续复用的教学资源。
 
 <p align="center">
-  <a href="docs/diagrams/pipeline.workflow.html">
+  <a href="https://yuanuite.github.io/wuli-personal-ai-teaching-assistant/diagrams/pipeline.workflow.html">
     <img src="docs/diagrams/pipeline.workflow.png" alt="错题处理管道图" width="85%">
   </a>
   <br>
@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/diagrams/system.architecture.html">
+  <a href="https://yuanuite.github.io/wuli-personal-ai-teaching-assistant/diagrams/system.architecture.html">
     <img src="docs/diagrams/system.architecture.png" alt="系统架构图" width="75%">
   </a>
   <br>

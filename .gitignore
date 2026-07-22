@@ -12,4 +12,6 @@ output/
 tmp/
 .skill-backups/
 docs/diagrams/*.html
+!docs/diagrams/pipeline.workflow.html
+!docs/diagrams/system.architecture.html
 graphify-out/

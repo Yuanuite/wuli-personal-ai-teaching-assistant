@@ -23,6 +23,10 @@ node .agents/skills/archify/bin/archify.mjs check \
 更新系统架构图时，把 `workflow` 替换为 `architecture`，输入改为
 `system.architecture.json`。HTML 是生成物，不应手工修改；布局、文案和路径都在 JSON 真源中维护。
 
+两个 HTML 生成物会纳入版本控制，并由 `.github/workflows/deploy.yml` 明确复制到
+GitHub Pages 的 `diagrams/` 路径。Pages 发布使用临时 `pages-dist/`，不会把架构图写入
+`student-site/` 源目录，也不会把 `docs/` 中的其他文件公开。
+
 ## Story Follow 对焦契约
 
 带 `meta.views` 的图表会把有序 `focus` 列表变成可播放的 Story。每一步以当前节点为优先锚点，同时保留前一步和下一步作为上下文。相机不要求把节点放到正中央，但必须把当前节点完整放进浏览器实际可见的图表区域；当图表容器只露出较小切片时，可以自适应缩小上下留白，不应通过页面级 `scrollIntoView()` 抢走读者的滚动控制。
