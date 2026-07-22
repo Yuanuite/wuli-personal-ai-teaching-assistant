@@ -179,7 +179,12 @@ def start(
     kb.init_library(root)
     review_options = resolve_review_options(root, review_mode, vision_capability, visual_review_command, adapter_locality)
     inputs = kb.discover_inputs(input_path)
-    results = [kb.ingest_one(root, item, ocr, ocr_command, subject, None) for item in inputs]
+    results: list[dict] = []
+    for item in inputs:
+        if item.suffix.lower() == ".pdf":
+            results.extend(kb.ingest_pdf_pages(root, item, ocr, ocr_command, subject))
+        else:
+            results.append(kb.ingest_one(root, item, ocr, ocr_command, subject, None))
     orders = []
     for result in results:
         entry_id = result.get("entry_id")

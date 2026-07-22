@@ -445,6 +445,71 @@ def solution_draft(image_refs: list[str]) -> str:
     )
 
 
+def _ingest_image(
+    root: Path,
+    stored_image: Path,
+    entry: Path,
+    entry_id: str,
+    title: str,
+    subject: str,
+    provider: str,
+    command_text: str | None,
+    cache_dir: Path,
+    *,
+    original_name: str | None = None,
+    source_type: str | None = None,
+) -> dict[str, Any]:
+    """OCR a single stored image and write entry files (ocr/record/problem/solution).
+
+    The entry directory and stored_image must already exist at their final
+    location (e.g. entry/assets/page-1.png).
+    """
+    ocr = ocr_image(stored_image, provider, command_text, cache_dir)
+    write_json(entry / "ocr.json", ocr)
+
+    original_name = original_name or stored_image.name
+    source_type = source_type or stored_image.suffix.lower().lstrip(".")
+    image_ref = f"assets/{stored_image.name}"
+    source_hash = sha256_file(stored_image)
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "id": entry_id,
+        "kind": "error",
+        "status": "needs-review",
+        "answer_status": "pending",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+        "library_folder": str(date.today()),
+        "title": title,
+        "subject": subject,
+        "grade": "",
+        "knowledge_points": [],
+        "error_types": ["待确认"],
+        "student_error": "未提供；需结合学生原答确认。",
+        "difficulty": "",
+        "source": {
+            "original_name": original_name,
+            "sha256": source_hash,
+            "stored_files": [f"assets/{stored_image.name}"],
+            "source_type": source_type,
+        },
+        "ocr": {
+            "engine": ocr.get("engine", "unknown"),
+            "average_confidence": ocr.get("average_confidence", 0.0),
+            "review_required": True,
+        },
+        "source_review": {"status": "needs-review", "method": "pending"},
+        "answer_review": {"status": "not-ready"},
+        "visualization_review": {"status": "not-ready"},
+        "generated_from": [],
+        "review": {"mastery": 0, "next_review": str(date.today()), "history": []},
+    }
+    write_json(entry / "record.json", record)
+    write_text(entry / "problem.md", problem_draft(entry_id, [image_ref], str(ocr.get("text", ""))))
+    write_text(entry / "solution.md", solution_draft([image_ref]))
+    return {"input": str(stored_image), "status": "ingested", "entry_id": entry_id, "entry": str(entry)}
+
+
 def ingest_one(root: Path, source: Path, provider: str, command_text: str | None,
                subject: str, title: str | None) -> dict[str, Any]:
     source_hash = sha256_file(source)
@@ -459,58 +524,71 @@ def ingest_one(root: Path, source: Path, provider: str, command_text: str | None
     stored_source = assets / f"original{source.suffix.lower()}"
     shutil.copy2(source, stored_source)
 
-    ocr_results: list[dict[str, Any]] = []
-    image_refs: list[str] = []
-    if source.suffix.lower() == ".pdf":
-        pages = render_pdf(stored_source, assets)
-        for page in pages:
-            ocr_results.append(ocr_image(page, provider, command_text, root / ".cache"))
-            image_refs.append(f"assets/{page.name}")
-    else:
-        ocr_results.append(ocr_image(stored_source, provider, command_text, root / ".cache"))
-        image_refs.append(f"assets/{stored_source.name}")
-    ocr = combine_ocr(ocr_results)
-    write_json(entry / "ocr.json", ocr)
+    return _ingest_image(
+        root=root,
+        stored_image=stored_source,
+        entry=entry,
+        entry_id=entry_id,
+        title=title or source.stem.replace("_", " "),
+        subject=subject,
+        provider=provider,
+        command_text=command_text,
+        cache_dir=root / ".cache",
+        original_name=source.name,
+        source_type=source.suffix.lower().lstrip("."),
+   )
 
-    stored_files = [f"assets/{stored_source.name}"]
-    stored_files.extend(ref for ref in image_refs if ref not in stored_files)
-    record = {
-        "schema_version": SCHEMA_VERSION,
-        "id": entry_id,
-        "kind": "error",
-        "status": "needs-review",
-        "answer_status": "pending",
-        "created_at": now_iso(),
-        "updated_at": now_iso(),
-        "library_folder": str(date.today()),
-        "title": title or source.stem.replace("_", " "),
-        "subject": subject,
-        "grade": "",
-        "knowledge_points": [],
-        "error_types": ["待确认"],
-        "student_error": "未提供；需结合学生原答确认。",
-        "difficulty": "",
-        "source": {
-            "original_name": source.name,
-            "sha256": source_hash,
-            "stored_files": stored_files,
-            "source_type": source.suffix.lower().lstrip("."),
-        },
-        "ocr": {
-            "engine": ocr.get("engine", "unknown"),
-            "average_confidence": ocr.get("average_confidence", 0.0),
-            "review_required": True,
-        },
-        "source_review": {"status": "needs-review", "method": "pending"},
-        "answer_review": {"status": "not-ready"},
-        "visualization_review": {"status": "not-ready"},
-        "generated_from": [],
-        "review": {"mastery": 0, "next_review": str(date.today()), "history": []},
-    }
-    write_json(entry / "record.json", record)
-    write_text(entry / "problem.md", problem_draft(entry_id, image_refs, str(ocr.get("text", ""))))
-    write_text(entry / "solution.md", solution_draft(image_refs))
-    return {"input": str(source), "status": "ingested", "entry_id": entry_id, "entry": str(entry)}
+
+def ingest_pdf_pages(
+    root: Path,
+    pdf_source: Path,
+    provider: str,
+    command_text: str | None,
+    subject: str,
+) -> list[dict[str, Any]]:
+    """Render a multi-page PDF and ingest each page as a separate entry."""
+    pdf_slug = safe_slug(pdf_source.stem)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        stored_pdf = tmp_path / "original.pdf"
+        shutil.copy2(pdf_source, stored_pdf)
+        pages = render_pdf(stored_pdf, tmp_path)
+
+        results: list[dict[str, Any]] = []
+        for index, page_path in enumerate(pages, 1):
+            page_hash = sha256_file(page_path)
+            duplicate = find_duplicate(root, page_hash)
+            if duplicate:
+                results.append({
+                    "input": str(pdf_source), "status": "duplicate",
+                    "entry_id": duplicate, "page": index,
+                })
+                continue
+
+            entry_id = f"{date.today():%Y%m%d}-{pdf_slug}-p{index}-{page_hash[:8]}"
+            entry = root / "entries" / entry_id
+            entry_assets = entry / "assets"
+            entry_assets.mkdir(parents=True, exist_ok=False)
+            stored_image = entry_assets / f"page-{index}.png"
+            shutil.copy2(page_path, stored_image)
+
+            result = _ingest_image(
+                root=root,
+                stored_image=stored_image,
+                entry=entry,
+                entry_id=entry_id,
+                title=f"{pdf_source.stem} 第{index}页",
+                subject=subject,
+                provider=provider,
+                command_text=command_text,
+                cache_dir=root / ".cache",
+                original_name=f"{pdf_source.name} (第{index}页)",
+                source_type="png",
+            )
+            results.append(result)
+
+    return results
 
 
 def copy_assets(asset_paths: list[Path], destination: Path) -> list[str]:
@@ -961,10 +1039,15 @@ def main() -> int:
         if not inputs:
             print_json({"error": "No supported image or PDF input found"})
             return 2
-        results = [
-            ingest_one(root, item, args.ocr, args.ocr_command, args.subject, args.title if len(inputs) == 1 else None)
-            for item in inputs
-        ]
+        results: list[dict] = []
+        for item in inputs:
+            if item.suffix.lower() == ".pdf":
+                results.extend(ingest_pdf_pages(root, item, args.ocr, args.ocr_command, args.subject))
+            else:
+                results.append(
+                    ingest_one(root, item, args.ocr, args.ocr_command, args.subject,
+                               args.title if len(inputs) == 1 else None)
+                )
         rebuild_index(root)
         print_json(results)
     elif args.command == "create":
