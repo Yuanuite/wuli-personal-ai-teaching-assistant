@@ -11,8 +11,14 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Assemble GitHub Pages bundle
+        run: |
+          mkdir -p pages-dist/diagrams
+          cp -R student-site/. pages-dist/
+          cp docs/diagrams/pipeline.workflow.html pages-dist/diagrams/
+          cp docs/diagrams/system.architecture.html pages-dist/diagrams/
       - uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./student-site
+          publish_dir: ./pages-dist
           force_orphan: true
