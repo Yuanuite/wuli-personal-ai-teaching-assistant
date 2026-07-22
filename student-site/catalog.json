@@ -1,7 +1,21 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-20T19:07:10+08:00",
+  "generated_at": "2026-07-22T00:42:34+08:00",
   "questions": [
+    {
+      "id": "question-f703825b69fd",
+      "title": "带电粒子先过电场再进入有界磁场",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强电场中的类平抛",
+        "带电粒子在匀强磁场中的圆周运动",
+        "有界磁场相切条件"
+      ],
+      "content": "questions/question-f703825b69fd/content.md",
+      "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
+      "simulation": "questions/question-f703825b69fd/simulation.html",
+      "published_at": "2026-07-22T00:42:34+08:00"
+    },
     {
       "id": "question-1ffa341ff73a",
       "title": "内外反向圆形磁场中的周期轨迹",
@@ -58,20 +72,6 @@
       "pdf": "questions/question-74ea50e28b41/带答案错题.pdf",
       "simulation": null,
       "published_at": "2026-07-20T07:15:21+08:00"
-    },
-    {
-      "id": "question-f703825b69fd",
-      "title": "带电粒子先过电场再进入有界磁场",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "带电粒子在匀强电场中的类平抛",
-        "带电粒子在匀强磁场中的圆周运动",
-        "有界磁场相切条件"
-      ],
-      "content": "questions/question-f703825b69fd/content.md",
-      "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
-      "simulation": "questions/question-f703825b69fd/simulation.html",
-      "published_at": "2026-07-20T07:15:17+08:00"
     },
     {
       "id": "question-baa157722303",

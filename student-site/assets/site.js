@@ -14,7 +14,7 @@ function safeFragment(html, contentUrl) {
   for(const node of [...template.content.querySelectorAll("*")]){
     if(!tags.has(node.tagName)){ node.remove(); continue; }
     for(const attr of [...node.attributes]){
-      const keep=(node.tagName==="A"&&["href","title"].includes(attr.name))||(node.tagName==="IMG"&&["src","alt","title"].includes(attr.name))||["data-math","data-display"].includes(attr.name);
+      const keep=(node.tagName==="A"&&["href","title"].includes(attr.name))||(node.tagName==="IMG"&&["src","alt","title"].includes(attr.name))||["data-math","data-display","data-note"].includes(attr.name)||["class","style"].includes(attr.name);
       if(!keep)node.removeAttribute(attr.name);
     }
     if(node.tagName==="A"){
