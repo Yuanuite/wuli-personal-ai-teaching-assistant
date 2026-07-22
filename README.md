@@ -53,6 +53,14 @@ python3 -m http.server 8080 -d student-site
 
 独立启动时只能看到已复制到 `student-site/` 的已发布内容，无法使用教师工作台的题目管理与发布功能。
 
+**在线学生站**（GitHub Pages，自动部署 `main` 分支）：
+
+- [悟理学习站](https://yuanuite.github.io/wuli-personal-ai-teaching-assistant/) — 只读公开题库
+- [管道流程图（交互版）](https://yuanuite.github.io/wuli-personal-ai-teaching-assistant/diagrams/pipeline.workflow.html)
+- [系统架构图（交互版）](https://yuanuite.github.io/wuli-personal-ai-teaching-assistant/diagrams/system.architecture.html)
+
+内容经教师复核后发布，推送 `main` 分支后 Actions 自动更新。
+
 ### 自然语言入口
 
 1. 把待处理的 JPG、PNG 或 PDF 放进 [`error-collection/`](error-collection/)。
