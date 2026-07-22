@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "悟理平台系统架构",
+    "subtitle": "本地可信教学闭环 · 受控 Agent 执行 · 显式隐私发布",
+    "visual_preset": "blueprint",
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "trusted-lifecycle",
+        "label": "本地可信闭环",
+        "focus": ["teacher", "error-collection", "teacher-console", "lifecycle-core", "knowledge-base", "private-output"],
+        "note": "从原始题目进入规范条目，到教师批准后按 delivery-manifest 交付。"
+      },
+      {
+        "id": "agent-execution",
+        "label": "受控 Agent 执行",
+        "focus": ["teacher-console", "model-registry", "agent-gateway", "providers", "lifecycle-core", "simulator", "knowledge-base"],
+        "note": "Provider 只能在隔离候选区工作；网关完成白名单、领域校验和事务提升，Agent 没有审批权。"
+      },
+      {
+        "id": "safe-publication",
+        "label": "隐私发布门禁",
+        "focus": ["private-output", "publication-gate", "teacher", "student-site"],
+        "note": "公开发布发生在交付之后，只复制教师确认过的白名单副本到静态学生站。"
+      }
+    ],
+    "output": "system.architecture.html",
+    "viewBox": [1180, 790]
+  },
+  "components": [
+    { "id": "teacher", "type": "external", "label": "教师", "sublabel": "复核 · 批准 · 发布确认", "pos": [30, 270], "size": [150, 64], "tag": "最终决策者" },
+    { "id": "error-collection", "type": "frontend", "label": "error-collection/", "sublabel": "原始图片 / PDF", "pos": [480, 70], "size": [160, 64], "tag": "本地输入" },
+    { "id": "teacher-console", "type": "frontend", "label": "teacher-console/", "sublabel": "本地教师工作台", "pos": [250, 270], "size": [170, 64], "tag": "127.0.0.1" },
+    { "id": "lifecycle-core", "type": "backend", "label": "Lifecycle Core", "sublabel": "OCR · 分析 · 校验 · finish", "pos": [480, 270], "size": [160, 64], "tag": "总控 Skill" },
+    { "id": "knowledge-base", "type": "database", "label": "student-error-library/", "sublabel": "entries 真源 + 可重建索引", "pos": [710, 270], "size": [180, 64], "tag": "Canonical" },
+    { "id": "private-output", "type": "cloud", "label": "output/", "sublabel": "私有交付包与 manifest", "pos": [950, 270], "size": [170, 64], "tag": "交付真值" },
+    { "id": "model-registry", "type": "database", "label": "Model Registry", "sublabel": "本地模型配置与探测", "pos": [250, 500], "size": [170, 64], "tag": "密钥不回显" },
+    { "id": "agent-gateway", "type": "security", "label": "Agent Gateway", "sublabel": "作业 · 隔离候选 · 事务提升", "pos": [475, 500], "size": [170, 64], "tag": "无审批权" },
+    { "id": "providers", "type": "external", "label": "Agent Providers", "sublabel": "Adapter / Codex / Claude / API", "pos": [710, 500], "size": [180, 64], "tag": "最小上下文" },
+    { "id": "simulator", "type": "backend", "label": "Simulator Skill", "sublabel": "按需 physics-model + 离线 HTML", "pos": [710, 660], "size": [180, 64], "tag": "教师显式请求" },
+    { "id": "publication-gate", "type": "security", "label": "Publication Gate", "sublabel": "裁剪遮挡 · 草稿扫描 · 隐私确认", "pos": [940, 500], "size": [190, 64], "tag": "白名单复制" },
+    { "id": "student-site", "type": "frontend", "label": "student-site/", "sublabel": "独立只读静态站", "pos": [950, 680], "size": [170, 64], "tag": "No local API" }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "本机私有核心", "wraps": ["teacher-console", "lifecycle-core", "knowledge-base", "private-output"] },
+    { "kind": "region", "label": "受控 Agent 执行边界", "wraps": ["model-registry", "agent-gateway", "providers", "simulator"] },
+    { "kind": "security-group", "label": "交付后的隐私门禁", "wraps": ["publication-gate"] },
+    { "kind": "region", "label": "公开只读边界", "wraps": ["student-site"] }
+  ],
+  "connections": [
+    { "id": "teacher-console-review", "from": "teacher", "to": "teacher-console", "label": "复核 / 批准", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "uploads-lifecycle", "from": "error-collection", "to": "lifecycle-core", "label": "OCR / 去重", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [560, 154] },
+    { "id": "console-lifecycle", "from": "teacher-console", "to": "lifecycle-core", "label": "受控动作", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "lifecycle-library", "from": "lifecycle-core", "to": "knowledge-base", "label": "校验后写入", "variant": "emphasis", "fromSide": "right", "toSide": "left" },
+    { "id": "library-output", "from": "knowledge-base", "to": "private-output", "label": "finish + manifest", "variant": "emphasis", "fromSide": "right", "toSide": "left", "labelAt": [920, 352] },
+    { "id": "console-gateway", "from": "teacher-console", "to": "agent-gateway", "label": "后台作业", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "via": [[335, 420], [560, 420]] },
+    { "id": "registry-gateway", "from": "model-registry", "to": "agent-gateway", "label": "路由配置", "variant": "dashed", "fromSide": "right", "toSide": "left" },
+    { "id": "gateway-providers", "from": "agent-gateway", "to": "providers", "label": "白名单上下文", "variant": "security", "fromSide": "right", "toSide": "left", "labelAt": [680, 582] },
+    { "id": "gateway-promote", "from": "agent-gateway", "to": "lifecycle-core", "label": "验证 / 提升", "variant": "security", "fromSide": "top", "toSide": "bottom" },
+    { "id": "gateway-simulator", "from": "agent-gateway", "to": "simulator", "label": "可视化候选", "variant": "dashed", "fromSide": "bottom", "toSide": "left", "via": [[560, 610], [675, 610], [675, 692]] },
+    { "id": "output-publication", "from": "private-output", "to": "publication-gate", "label": "交付后发起", "variant": "security", "fromSide": "bottom", "toSide": "top", "labelAt": [1035, 407] },
+    { "id": "publication-site", "from": "publication-gate", "to": "student-site", "label": "确认后的公开副本", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "labelAt": [1035, 620] }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "可信闭环",
+      "items": [
+        "entries/ 是规范真源；folders/ 与检索索引均可重建",
+        "新答案、题干或 physics-model 变化都会使既有批准失效",
+        "最终完成状态只认 delivery-manifest.json"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "不可跨越的边界",
+      "items": [
+        "Agent 不能 approve、finish 或发布，只能提交待验证候选",
+        "远程 Provider 只接收输入白名单允许的最小上下文",
+        "student-site/ 不访问本地 API，也不接收教师版或原始私有文件"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "开发治理层（不在运行时数据链）",
+      "items": [
+        "graphify-out/ 用于架构导航、变更影响分析与职责治理",
+        "ai-editing-map.md 为不同修改选择最小代码与文档上下文",
+        "两个工具都不读取或发布学生站运行时数据"
+      ]
+    }
+  ]
+}

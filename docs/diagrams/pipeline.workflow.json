@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "悟理 · 错题可信处理 Pipeline",
+    "subtitle": "本地优先 · 教师门禁 · 可选仿真 · 脱敏发布",
+    "animation": "trace",
+    "visual_preset": "signal-flow",
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "standard-path",
+        "label": "标准交付路径",
+        "focus": ["upload", "ingest", "source-review", "analysis", "answer-review", "finish", "deliver"],
+        "note": "从本地上传、题干复核到教师批准答案与生成交付清单。"
+      },
+      {
+        "id": "visualization-path",
+        "label": "可选仿真路径",
+        "focus": ["answer-review", "vis-model", "answer-rereview", "vis-review", "finish"],
+        "note": "教师明确请求后才生成模型；模型改变联合摘要，因此必须重新批准答案，再复核动态产物。"
+      },
+      {
+        "id": "publication-path",
+        "label": "脱敏发布路径",
+        "focus": ["deliver", "publication-assets", "publication-draft", "publish"],
+        "note": "交付后独立执行题图裁剪与遮挡、公开草稿安全扫描、教师隐私确认和只读发布。"
+      }
+    ],
+    "output": "pipeline.workflow.html"
+  },
+  "lanes": [
+    { "id": "input", "label": "本地输入" },
+    { "id": "system", "label": "生命周期总控" },
+    { "id": "teacher", "label": "教师复核门禁" },
+    { "id": "visualization", "label": "交互可视化（按需）", "variant": "exception" },
+    { "id": "delivery", "label": "私有交付" },
+    { "id": "privacy", "label": "公开前隐私门禁", "variant": "exception" },
+    { "id": "public", "label": "只读学生端" }
+  ],
+  "phases": [
+    { "id": "intake", "label": "01 · 录入", "fromCol": 0, "toCol": 1 },
+    { "id": "reasoning", "label": "02 · 解析与复核", "fromCol": 2, "toCol": 3, "variant": "security" },
+    { "id": "delivery", "label": "03 · 交付与发布", "fromCol": 4, "toCol": 5, "variant": "emphasis" }
+  ],
+  "groups": [
+    { "id": "teacher-gates", "label": "人工批准不可由 Agent 代行", "lane": "teacher", "fromCol": 1, "toCol": 5, "variant": "security" },
+    { "id": "optional-simulation", "label": "教师明确请求才进入", "lane": "visualization", "fromCol": 3, "toCol": 5, "variant": "dashed" },
+    { "id": "publication-gates", "label": "交付后的独立公开门禁", "lane": "privacy", "fromCol": 3, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["upload", "ingest", "source-review", "analysis", "answer-review", "finish", "deliver"],
+  "nodes": [
+    { "id": "upload", "lane": "input", "col": 0, "type": "external", "label": "上传错题", "sublabel": "图片 / PDF · 本地" },
+    { "id": "ingest", "lane": "system", "col": 0, "type": "backend", "label": "OCR 与去重", "sublabel": "建立 canonical 条目" },
+    { "id": "source-review", "lane": "teacher", "col": 1, "type": "security", "label": "题干复核", "sublabel": "对照原图", "tag": "approve-source" },
+    { "id": "analysis", "lane": "system", "col": 2, "type": "backend", "label": "生成分层解析", "sublabel": "隔离候选 → 校验提升" },
+    { "id": "answer-review", "lane": "teacher", "col": 3, "type": "security", "label": "答案复核", "sublabel": "联合摘要", "tag": "approve-answer" },
+    { "id": "vis-model", "lane": "visualization", "col": 3, "type": "messagebus", "label": "生成物理模型", "sublabel": "physics-model.json" },
+    { "id": "answer-rereview", "lane": "teacher", "col": 5, "type": "security", "label": "重新复核答案", "sublabel": "模型使旧批准失效" },
+    { "id": "vis-review", "lane": "visualization", "col": 5, "type": "security", "label": "构建并复核仿真", "sublabel": "HTML / ZIP / 运行证据", "tag": "approve-visualization" },
+    { "id": "finish", "lane": "system", "col": 4, "type": "cloud", "label": "校验并导出", "sublabel": "Markdown / PDF / 学生包" },
+    { "id": "deliver", "lane": "delivery", "col": 4, "type": "database", "label": "私有交付完成", "sublabel": "delivery-manifest.json" },
+    { "id": "publication-assets", "lane": "privacy", "col": 3, "type": "security", "label": "公开题图", "sublabel": "裁剪 / 遮挡 / 摘要确认" },
+    { "id": "publication-draft", "lane": "privacy", "col": 5, "type": "security", "label": "公开草稿复核", "sublabel": "安全扫描 + 隐私确认" },
+    { "id": "publish", "lane": "public", "col": 5, "type": "frontend", "label": "发布学生站", "sublabel": "白名单产物 · 只读" }
+  ],
+  "edges": [
+    { "id": "upload-ingest", "from": "upload", "to": "ingest", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "ingest-source", "from": "ingest", "to": "source-review", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "source-analysis", "from": "source-review", "to": "analysis", "variant": "emphasis", "fromSide": "top", "toSide": "bottom", "route": "up-channel", "channelY": 174 },
+    { "id": "analysis-answer", "from": "analysis", "to": "answer-review", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "answer-finish", "from": "answer-review", "to": "finish", "variant": "emphasis", "role": "main", "fromSide": "top", "toSide": "bottom", "route": "up-channel", "channelY": 286 },
+    { "id": "finish-deliver", "from": "finish", "to": "deliver", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "answer-vis-model", "from": "answer-review", "to": "vis-model", "label": "教师请求", "variant": "dashed", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelDy": 12 },
+    { "id": "model-rereview", "from": "vis-model", "to": "answer-rereview", "label": "模型使旧批准失效", "variant": "security", "role": "return", "fromSide": "top", "toSide": "bottom", "route": "up-channel", "channelY": 407, "labelAt": [548, 407] },
+    { "id": "rereview-vis", "from": "answer-rereview", "to": "vis-review", "variant": "dashed", "fromSide": "bottom", "toSide": "top", "route": "drop" },
+    { "id": "vis-finish", "from": "vis-review", "to": "finish", "label": "批准后交付", "variant": "dashed", "role": "return", "fromSide": "right", "toSide": "bottom", "via": [[690, 481], [690, 286], [500, 286]], "labelAt": [640, 278] },
+    { "id": "deliver-public-assets", "from": "deliver", "to": "publication-assets", "label": "交付后另行发布", "variant": "security", "role": "branch", "fromSide": "bottom", "toSide": "top", "route": "drop", "labelDy": 12 },
+    { "id": "assets-draft", "from": "publication-assets", "to": "publication-draft", "variant": "security" },
+    { "id": "draft-publish", "from": "publication-draft", "to": "publish", "variant": "emphasis", "fromSide": "bottom", "toSide": "top", "route": "drop" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "本地可信闭环",
+      "items": [
+        "原始学生材料默认留在本机",
+        "Agent 只在隔离候选区生成内容",
+        "delivery-manifest.json 是交付完成真源"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "四类人工门禁",
+      "items": [
+        "题干、答案、动态仿真分别绑定当前摘要",
+        "模型或答案变化会自动撤销旧批准",
+        "公开发布还需独立隐私确认"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "公开边界",
+      "items": [
+        "只复制教师确认过的白名单副本",
+        "不公开教师版、内部 JSON 与私有 PDF",
+        "student-site 不连接本地教师 API"
+      ]
+    }
+  ]
+}

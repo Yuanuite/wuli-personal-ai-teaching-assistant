@@ -11,3 +11,5 @@ student-error-library/
 output/
 tmp/
 .skill-backups/
+docs/diagrams/*.html
+graphify-out/

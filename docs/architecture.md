@@ -15,6 +15,14 @@ uploaded → ingested → source-reviewed → analyzed → answered → answer-r
 
 `manage-student-error-library` 是唯一生命周期总控。它发现上传、建立条目、推进状态、生成答案、维护索引并交付结果。`build-physics-simulator` 只在教师明确请求交互可视化时被调用；若确定性渲染器无法正确表达该过程，必须返回 `unsupported` 及理由。
 
+> **交互式管道图**：[点击查看](diagrams/pipeline.workflow.html)（可缩放、搜索节点、切换暗色/亮色主题）
+>
+> <img src="diagrams/pipeline.workflow.png" alt="管道图预览" width="80%">
+>
+> **系统架构图**：[点击查看](diagrams/system.architecture.html)（展示组件关系与信任边界）
+>
+> <img src="diagrams/system.architecture.png" alt="架构图预览" width="70%">
+
 ## 文本模型与视觉边车
 
 主推理模型不必具备视觉能力。输入规范化分为三层：
