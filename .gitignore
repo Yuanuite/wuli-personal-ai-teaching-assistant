@@ -15,3 +15,5 @@ docs/diagrams/*.html
 !docs/diagrams/pipeline.workflow.html
 !docs/diagrams/system.architecture.html
 graphify-out/
+
+# evolve 实验模块（已纳入版本控制，不再排除）
