@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
+from log import logger
+
 
 CONSOLE_DIR = Path(__file__).resolve().parent
 OPENAI_ADAPTER = CONSOLE_DIR / "providers" / "openai_compatible_agent_adapter.py"
@@ -28,6 +30,52 @@ BASE_ENV_KEYS = {
     "SSL_CERT_FILE", "SSL_CERT_DIR", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
     "http_proxy", "https_proxy", "no_proxy",
 }
+
+
+def classify_agent_failure(result: dict) -> str:
+    """Return a stable, low-cardinality failure code for one Gateway result/attempt."""
+    status = str(result.get("status", "")).strip().lower()
+    if status == "completed":
+        return ""
+
+    unauthorized = result.get("unauthorized_changes")
+    unauthorized = unauthorized if isinstance(unauthorized, list) else []
+    if any(str(item).startswith("canonical:") for item in unauthorized):
+        return "canonical_changed"
+    if unauthorized:
+        return "unauthorized_change"
+
+    validation = result.get("validation_errors")
+    validation = validation if isinstance(validation, list) else []
+    attempts = result.get("attempts")
+    attempts = attempts if isinstance(attempts, list) else []
+    text_parts = [
+        result.get("message"), result.get("error"), result.get("stderr"),
+        *validation,
+    ]
+    for attempt in attempts:
+        if isinstance(attempt, dict):
+            text_parts.extend((attempt.get("error"), attempt.get("stderr")))
+    text = " ".join(str(value) for value in text_parts if value).lower()
+
+    if "timeout" in text or "timed out" in text or "超时" in text:
+        return "provider_timeout"
+    if "rate limit" in text or "rate_limit" in text or "429" in text or "限流" in text:
+        return "provider_rate_limited"
+    if "truncated" in text or "截断" in text:
+        return "output_truncated"
+    if validation:
+        return "candidate_validation_failed"
+    if status == "unavailable" or "没有可用" in text:
+        return "provider_unavailable"
+    if result.get("parse_error") or "adapter output" in text or "adapter 输出" in text:
+        return "adapter_protocol_error"
+    if result.get("requires_change") and not result.get("changed_files"):
+        return "candidate_no_change"
+    returncode = result.get("returncode")
+    if isinstance(returncode, int) and returncode != 0:
+        return "provider_execution_failed"
+    return "provider_failed"
 
 
 @dataclass(frozen=True)
@@ -153,11 +201,22 @@ class AgentGateway:
             api_key_env = str(config.get("api_key_env", "")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
             if api_key_env in self.environ:
                 env["TEACHER_CONSOLE_AGENT_API_KEY"] = self.environ[api_key_env]
+        elif provider == "claude":
+            api_key = str(config.get("api_key", "")).strip()
+            if api_key:
+                env["ANTHROPIC_API_KEY"] = api_key
+                return env
+            api_key_env = str(config.get("api_key_env", "")).strip() or "ANTHROPIC_API_KEY"
+            if api_key_env in self.environ:
+                env["ANTHROPIC_API_KEY"] = self.environ[api_key_env]
         return env
 
     @staticmethod
     def _task_without_secrets(task: dict) -> dict:
         safe = dict(task)
+        # Inline context is materialized as a read-only staging file before the
+        # child starts. Do not duplicate it in adapter stdin or CLI metadata.
+        safe.pop("context_payloads", None)
         config = safe.get("model_config")
         if isinstance(config, dict):
             safe_config = dict(config)
@@ -373,7 +432,7 @@ class AgentGateway:
                 prompt,
             ]
         if provider.name == "claude":
-            return [
+            tokens = [
                 provider.command[0],
                 "--print",
                 "--permission-mode",
@@ -381,8 +440,14 @@ class AgentGateway:
                 "--no-session-persistence",
                 "--safe-mode",
                 "--strict-mcp-config",
-                prompt,
             ]
+            model_config = task.get("model_config")
+            if isinstance(model_config, dict):
+                model = str(model_config.get("model", "")).strip()
+                if model:
+                    tokens.extend(["--model", model])
+            tokens.append(prompt)
+            return tokens
         if provider.mode == "legacy-command":
             replacements = {
                 "{entry}": str(entry),
@@ -504,6 +569,25 @@ class AgentGateway:
                 raise FileNotFoundError(f"Agent context file unavailable: {source}")
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
+        for relative, payload in task.get("context_payloads", {}).items():
+            if not str(relative).startswith(".agent-context/"):
+                raise PermissionError(f"inline Agent context must stay under .agent-context/: {relative}")
+            context_root = (staging / ".agent-context").resolve()
+            target = (staging / str(relative)).resolve()
+            try:
+                target.relative_to(context_root)
+            except ValueError as exc:
+                raise PermissionError(f"inline Agent context escaped .agent-context/: {relative}") from exc
+            if isinstance(payload, str):
+                content = payload
+            elif isinstance(payload, (dict, list)):
+                content = json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
+            else:
+                raise TypeError(f"unsupported inline Agent context payload: {relative}")
+            if len(content) > 100_000:
+                raise ValueError(f"inline Agent context exceeds 100000 characters: {relative}")
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(content, encoding="utf-8")
 
     @staticmethod
     def _hide_paths(staging: Path, hidden: list[str]) -> None:
@@ -570,12 +654,25 @@ class AgentGateway:
             raise ValueError(f"unsupported routing tier: {routing_tier}")
         task = dict(task)
         task["routing_tier"] = routing_tier
+        route_id = task.get("id", "?")
+        logger.info("gateway task=%s kind=%s entry=%s routing=%s", route_id, task.get("kind"), task.get("entry_id"), routing_tier)
         model_config = task.get("model_config") if isinstance(task.get("model_config"), dict) else {}
         model_metadata = {
             key: str(model_config.get(source, "")).strip()
             for key, source in (("model_id", "id"), ("model_display_name", "display_name"))
             if str(model_config.get(source, "")).strip()
         }
+        evidence_context = task.get("evidence_context")
+        if isinstance(evidence_context, dict):
+            try:
+                reference_count = int(evidence_context.get("reference_count", 0))
+            except (TypeError, ValueError):
+                reference_count = 0
+            model_metadata["evidence_context"] = {
+                "status": str(evidence_context.get("status", "unavailable"))[:40],
+                "reference_count": max(0, min(reference_count, 20)),
+                "task_type": str(evidence_context.get("task_type", task.get("kind", "")))[:80],
+            }
         entry = Path(task["entry_dir"]).resolve()
         if not entry.is_dir():
             raise FileNotFoundError(entry)
@@ -590,7 +687,7 @@ class AgentGateway:
         if api_base and not _is_loopback_url(api_base) and task.get("allow_remote") is not True:
             candidates = [item for item in candidates if item.name != "openai-compatible"]
         if not candidates:
-            return {
+            result = {
                 "status": "unavailable",
                 "provider": None,
                 "routing_tier": routing_tier,
@@ -600,16 +697,21 @@ class AgentGateway:
                 "message": "没有可用的 Agent provider；任务可保留为人工处理。",
                 **model_metadata,
             }
+            result["failure_type"] = classify_agent_failure(result)
+            logger.info("gateway task=%s status=unavailable providers=0", route_id)
+            return result
 
+        provider_names = [p.name for p in candidates]
+        logger.info("gateway task=%s status=routing candidates=%s", route_id, provider_names)
         canonical_before = self._snapshot(entry)
         workspace_parent = Path(task.get("workspace_root") or entry.parent.parent / ".cache" / "agent-workspaces")
         workspace_parent.mkdir(parents=True, exist_ok=True)
         attempts: list[dict] = []
         task_timeout = max(10, min(int(task.get("timeout_seconds", 1800)), 1800))
         try:
-            configured_timeout = int(self.environ.get("TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "300"))
+            configured_timeout = int(self.environ.get("TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "600"))
         except ValueError:
-            configured_timeout = 300
+            configured_timeout = 600
         timeout = min(task_timeout, max(30, min(configured_timeout, 1800)))
         with tempfile.TemporaryDirectory(prefix=f"{task['id']}-", dir=workspace_parent) as workspace_name:
             staging = Path(workspace_name) / entry.name
@@ -649,7 +751,9 @@ class AgentGateway:
                     )
                 except (OSError, subprocess.TimeoutExpired) as exc:
                     self._mark_runtime_failure(provider.name, str(exc))
-                    attempts.append({"provider": provider.name, "status": "failed", "error": str(exc)[:1000]})
+                    attempt = {"provider": provider.name, "status": "failed", "error": str(exc)[:1000]}
+                    attempt["failure_type"] = classify_agent_failure(attempt)
+                    attempts.append(attempt)
                     continue
 
                 payload: dict = {}
@@ -689,12 +793,34 @@ class AgentGateway:
                     "changed_files": changed,
                     "unauthorized_changes": unauthorized,
                     "validation_errors": validation_errors,
+                    "requires_change": bool(task.get("requires_change")),
                 }
                 if parse_error:
                     attempt["error"] = parse_error
+                    attempt["parse_error"] = True
                 if deleted:
                     attempt["error"] = "Agent 不得删除文件：" + ", ".join(deleted)
+                attempt["failure_type"] = classify_agent_failure(attempt)
                 attempts.append(attempt)
+
+                # --- zero-token script repair for correctable failures ---
+                if not succeeded and changed and not canonical_changed and validation_errors:
+                    from script_repair import apply_script_repairs  # noqa: E402
+
+                    fix_descriptions = apply_script_repairs(staging, entry, validation_errors, attempt)
+                    if fix_descriptions:
+                        after_fix = self._snapshot(staging)
+                        fix_changed = self._changed(before, after_fix)
+                        re_errors = validator(staging, fix_changed) if validator else []
+                        if not re_errors:
+                            succeeded = True
+                            changed = fix_changed
+                            attempt["status"] = "completed"
+                            attempt["validation_errors"] = []
+                            attempt["script_repair"] = fix_descriptions
+                            attempt.pop("failure_type", None)
+                # --- end script repair ---
+
                 if succeeded:
                     self._clear_runtime_failure(provider.name)
                     self._promote(entry, staging, changed)
@@ -721,7 +847,7 @@ class AgentGateway:
                 elif completed.returncode != 0 and not changed:
                     self._mark_runtime_failure(provider.name, completed.stderr or completed.stdout or f"退出码 {completed.returncode}")
                 if changed or canonical_changed:
-                    return {
+                    result = {
                         "status": "failed",
                         "provider": provider.name,
                         "routing_tier": routing_tier,
@@ -735,9 +861,12 @@ class AgentGateway:
                         "attempts": attempts,
                         **model_metadata,
                     }
+                    result["failure_type"] = classify_agent_failure(result)
+                    logger.info("gateway task=%s status=failed reason=validation changed=%s unauthorized=%s", route_id, len(changed), len(unauthorized))
+                    return result
 
         last = attempts[-1] if attempts else {}
-        return {
+        result = {
             "status": "failed",
             "provider": last.get("provider"),
             "routing_tier": routing_tier,
@@ -750,6 +879,9 @@ class AgentGateway:
             "attempts": attempts,
             **model_metadata,
         }
+        result["failure_type"] = str(last.get("failure_type") or classify_agent_failure(result))
+        logger.info("gateway task=%s status=failed reason=exhausted attempts=%d", route_id, len(attempts))
+        return result
 
     @staticmethod
     def _adapter_metadata(payload: dict) -> dict:
