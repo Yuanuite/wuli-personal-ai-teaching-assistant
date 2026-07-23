@@ -15,12 +15,3 @@ docs/diagrams/*.html
 !docs/diagrams/pipeline.workflow.html
 !docs/diagrams/system.architecture.html
 graphify-out/
-
-# evolve 实验文档（暂不追踪）
-docs/agent-scheduler.md
-docs/candidate-archive.md
-docs/evaluator.md
-docs/evolve-roadmap.md
-docs/failure-intelligence.md
-docs/knowledge-store.md
-docs/retrieval-eval.example.jsonl
