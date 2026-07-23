@@ -140,6 +140,26 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
   --library student-error-library status <entry-id>
 ```
 
+### 质量检查
+
+```bash
+# Lint 检查
+ruff check teacher-console/ .claude/skills/manage-student-error-library/scripts/
+
+# 自动格式化
+ruff format teacher-console/ .claude/skills/manage-student-error-library/scripts/
+
+# 类型检查
+python3 -m mypy teacher-console/server.py teacher-console/model_registry.py \
+  teacher-console/agent_gateway.py teacher-console/agent_jobs.py
+
+# 运行全部测试
+python3 -m pytest teacher-console/tests/ -v --tb=short
+
+# 测试加覆盖率
+python3 -m pytest teacher-console/tests/ --cov=teacher-console
+```
+
 在完成原图核对、记录分类、分层答案和解释图后先批准答案：
 
 ```bash

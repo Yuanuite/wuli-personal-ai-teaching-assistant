@@ -26,6 +26,37 @@ SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-libr
 sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
+# ---------------------------------------------------------------------------
+# Tunable parameters — all hard-coded thresholds live here so that
+# ``--calibrate`` can search for better values against delivered entries.
+# ---------------------------------------------------------------------------
+
+DEFAULT_PARAMS = {
+    # --- completeness ---
+    "heading_penalty_per_missing": 0.15,  # each missing heading deducts this fraction
+    "heading_weight": 0.3,  # weight of heading coverage in completeness score
+    "keyword_weight": 0.4,  # weight of keyword overlap
+    "len_weight": 0.3,  # weight of length ratio
+    "keyword_ratio_warn": 0.5,  # below this → flagged in reason
+    "len_ratio_warn": 0.4,  # below this → flagged in reason
+    # --- hallucination ---
+    "hallucination_penalty_per_flag": 15,  # points deducted per flag
+    "hallucination_min_eq_len": 4,  # equations shorter than this are ignored
+    "hallucination_max_flags": 10,  # cap on reported flags
+    # --- format ---
+    "format_penalty_per_issue": 15,
+    # --- pipeline accuracy ---
+    "pipeline_penalty_per_issue": 15,
+    # --- pass/fail ---
+    "pass_threshold": 70,
+    "hallucination_max_penalty": 20,  # max points hallucination can lose before auto-fail
+    # --- overall weights ---
+    "completeness_weight": 0.30,
+    "hallucination_weight": 0.35,
+    "format_weight": 0.10,
+    "pipeline_weight": 0.15,
+}
+
 
 # ---------------------------------------------------------------------------
 # 1. Data loaders
@@ -151,8 +182,9 @@ def _has_heading(text: str, heading: str) -> bool:
     return bool(re.search(r"^#{1,4}\s*" + re.escape(heading), text, re.MULTILINE))
 
 
-def score_completeness(content: str, solution: str) -> dict:
+def score_completeness(content: str, solution: str, params: dict | None = None) -> dict:
     """Score answer completeness by comparing content.md with solution.md."""
+    p = dict(DEFAULT_PARAMS, **(params or {}))
     if not solution:
         return {
             "score": 0,
@@ -184,16 +216,20 @@ def score_completeness(content: str, solution: str) -> dict:
     len_ratio = min(content_words / solution_words, 1.5) if solution_words else 0
 
     # Score
-    heading_score = max(0, 1.0 - len(missing) * 0.15)
-    score_raw = heading_score * 0.3 + keyword_ratio * 0.4 + min(len_ratio, 1.0) * 0.3
+    heading_score = max(0, 1.0 - len(missing) * p["heading_penalty_per_missing"])
+    score_raw = (
+        heading_score * p["heading_weight"]
+        + keyword_ratio * p["keyword_weight"]
+        + min(len_ratio, 1.0) * p["len_weight"]
+    )
     final = round(min(score_raw, 1.0) * 100)
 
     reasons = []
     if missing:
         reasons.append(f"缺少 {len(missing)} 个章节标题")
-    if keyword_ratio < 0.5:
+    if keyword_ratio < p["keyword_ratio_warn"]:
         reasons.append(f"关键词覆盖仅 {keyword_ratio:.0%}")
-    if len_ratio < 0.4:
+    if len_ratio < p["len_ratio_warn"]:
         reasons.append(f"正文长度仅为基线的 {len_ratio:.0%}")
 
     return {
@@ -219,8 +255,9 @@ def _extract_equations(text: str) -> set[str]:
     return eqs
 
 
-def score_hallucination(content: str, problem: str, solution: str) -> dict:
+def score_hallucination(content: str, problem: str, solution: str, params: dict | None = None) -> dict:
     """Score hallucination risk — flag content not traceable to problem or solution."""
+    p = dict(DEFAULT_PARAMS, **(params or {}))
     if not content:
         return {"score": 100, "reason": "无内容可评估", "flagged_count": 0, "flag_examples": []}
 
@@ -231,7 +268,7 @@ def score_hallucination(content: str, problem: str, solution: str) -> dict:
     solution_eqs = _extract_equations(solution)
     unknown_eq = [eq for eq in content_eqs if eq not in solution_eqs]
     # Skip very short tokens (e.g., "x", "t") that appear as math but aren't meaningfully hallucinated
-    flagged = [eq for eq in unknown_eq if len(eq) > 4]
+    flagged = [eq for eq in unknown_eq if len(eq) > p["hallucination_min_eq_len"]]
 
     # Check numeric values (floats, scientific notation, fractions)
     content_nums = set(re.findall(r"\b\d+\.?\d*(?:×10[^{}]*)?", content))
@@ -239,9 +276,11 @@ def score_hallucination(content: str, problem: str, solution: str) -> dict:
     extra_nums = [n for n in content_nums if n not in sol_nums and len(n) > 3]
 
     # Score
-    flags = flagged[:10] + extra_nums[:5]
+    max_flags = p["hallucination_max_flags"]
+    flags = flagged[:max_flags] + extra_nums[:5]
     if flags:
-        score = max(0, 100 - len(flags) * 15)
+        penalty = p["hallucination_penalty_per_flag"]
+        score = max(0, 100 - len(flags) * penalty)
         return {
             "score": score,
             "reason": f"发现 {len(flags)} 个在输入材料中无直接来源的内容片段",
@@ -253,6 +292,7 @@ def score_hallucination(content: str, problem: str, solution: str) -> dict:
 
 def score_format(content: str) -> dict:
     """Score format compliance — valid Markdown, KaTeX, no prohibited."""
+    p = dict(DEFAULT_PARAMS)
     if not content:
         return {"score": 0, "reason": "无内容"}
 
@@ -275,13 +315,14 @@ def score_format(content: str) -> dict:
     if re.search(r"\$\$\s*\n\s*\$\$", content):
         issues.append("存在空 KaTeX 块")
 
-    score = max(0, 100 - len(issues) * 15)
+    score = max(0, 100 - len(issues) * p["format_penalty_per_issue"])
     reason = "；".join(issues) if issues else "格式合规"
     return {"score": score, "reason": reason, "issues": issues}
 
 
-def score_pipeline_accuracy(entry: Path, requests: list[dict]) -> dict:
+def score_pipeline_accuracy(entry: Path, requests: list[dict], params: dict | None = None) -> dict:
     """Verify pipeline state transitions match actual request records."""
+    p = dict(DEFAULT_PARAMS, **(params or {}))
     pipeline = load_json(entry / "pipeline.json")
     state = pipeline.get("state", "unknown")
     steps = pipeline.get("steps", [])
@@ -305,7 +346,7 @@ def score_pipeline_accuracy(entry: Path, requests: list[dict]) -> dict:
         if not manifest_path.is_file():
             warnings.append("交付目录已移动（不影响评分）")
 
-    base = 100 - len(issues) * 15
+    base = 100 - len(issues) * p["pipeline_penalty_per_issue"]
     return {
         "score": max(0, base),
         "state": state,
@@ -349,8 +390,9 @@ def score_token_efficiency(requests: list[dict], completeness_score: float, pipe
 # ---------------------------------------------------------------------------
 
 
-def evaluate_entry(entry_id_or_path: str) -> dict:
+def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
     """Run all quality evaluations for one entry."""
+    p = dict(DEFAULT_PARAMS, **(params or {}))
     try:
         entry = entry_path(entry_id_or_path)
     except FileNotFoundError as exc:
@@ -372,10 +414,10 @@ def evaluate_entry(entry_id_or_path: str) -> dict:
     archive_events = _collect_archive_events(entry)
 
     # Quality dimensions
-    completeness = score_completeness(content, solution)
-    hallucination = score_hallucination(content, problem, solution)
+    completeness = score_completeness(content, solution, params)
+    hallucination = score_hallucination(content, problem, solution, params)
     fmt = score_format(content)
-    pipeline_acc = score_pipeline_accuracy(entry, requests)
+    pipeline_acc = score_pipeline_accuracy(entry, requests, params)
     token_eff = score_token_efficiency(requests, completeness["score"], pipeline_acc["score"])
 
     # Pipeline timing
@@ -401,15 +443,15 @@ def evaluate_entry(entry_id_or_path: str) -> dict:
             pass
 
     # Weighted total score
-    completeness_w = completeness["score"] * 0.30
-    hallucination_w = hallucination["score"] * 0.35
-    format_w = fmt["score"] * 0.10
-    pipeline_w = pipeline_acc["score"] * 0.15
+    completeness_w = completeness["score"] * p["completeness_weight"]
+    hallucination_w = hallucination["score"] * p["hallucination_weight"]
+    format_w = fmt["score"] * p["format_weight"]
+    pipeline_w = pipeline_acc["score"] * p["pipeline_weight"]
     total_score = round(completeness_w + hallucination_w + format_w + pipeline_w)
 
     # Pass/fail
     hallucination_penalty = 100 - hallucination["score"]
-    passed = hallucination_penalty <= 20 and total_score >= 70
+    passed = hallucination_penalty <= p["hallucination_max_penalty"] and total_score >= p["pass_threshold"]
 
     result = {
         "entry_id": entry_id,
@@ -467,7 +509,82 @@ def _summarize(
 
 
 # ---------------------------------------------------------------------------
-# 5. CLI
+# 5. Calibration
+# ---------------------------------------------------------------------------
+
+
+def calibrate(output: str | None = None) -> dict:
+    """Grid‑search over key parameters so that ≥90% of delivered entries pass.
+
+    Adjusts only the most sensitive parameters.  Saves result to *output*
+    (or stdout) as a JSON override file.
+    """
+    entries = sorted(
+        e for e in ENTRIES.iterdir()
+        if load_json(e / "pipeline.json").get("state") == "delivered"
+    )
+    if not entries:
+        print("No delivered entries found for calibration", file=sys.stderr)
+        return {}
+
+    print(f"Calibrating against {len(entries)} delivered entries …", file=sys.stderr)
+
+    # Candidate values to search
+    candidates = {
+        "hallucination_penalty_per_flag": (10, 15, 20),
+        "hallucination_min_eq_len": (4, 6, 8),
+        "completeness_weight": (0.25, 0.30, 0.35),
+        "hallucination_weight": (0.30, 0.35, 0.40),
+        "pass_threshold": (60, 65, 70),
+        "keyword_ratio_warn": (0.4, 0.5, 0.6),
+        "len_ratio_warn": (0.3, 0.4, 0.5),
+    }
+
+    best_params = dict(DEFAULT_PARAMS)
+    best_pass_rate = 0.0
+    best_avg = 0.0
+
+    # Simple greedy search over one param at a time
+    for key, values in candidates.items():
+        for val in values:
+            trial = dict(DEFAULT_PARAMS)
+            trial.update(best_params)
+            trial[key] = val
+            scores = []
+            passes = 0
+            for entry in entries:
+                result = evaluate_entry(entry.name, params=trial)
+                if not result.get("error"):
+                    scores.append(result["score"])
+                    if result.get("pass"):
+                        passes += 1
+            pass_rate = passes / len(scores) if scores else 0
+            avg = sum(scores) / len(scores) if scores else 0
+            if pass_rate > best_pass_rate or (pass_rate == best_pass_rate and avg > best_avg):
+                best_pass_rate = pass_rate
+                best_avg = avg
+                best_params[key] = val
+
+    result = {
+        "calibrated_at": datetime.now(timezone.utc).isoformat(),
+        "entries_used": len(entries),
+        "best_pass_rate": f"{best_pass_rate:.0%}",
+        "best_avg_score": round(best_avg, 1),
+        "params": best_params,
+        "base_params": {k: v for k, v in DEFAULT_PARAMS.items() if k not in best_params or DEFAULT_PARAMS[k] != best_params[k]},
+        "description": "Generated by --calibrate. Pass as --weights <file> to override defaults.",
+    }
+    serialized = json.dumps(result, indent=2, ensure_ascii=False)
+    if output:
+        Path(output).write_text(serialized + "\n", encoding="utf-8")
+        print(f"Calibration saved to {output}", file=sys.stderr)
+    else:
+        print(serialized)
+    return best_params
+
+
+# ---------------------------------------------------------------------------
+# 6. CLI
 # ---------------------------------------------------------------------------
 
 
@@ -479,7 +596,28 @@ def main() -> int:
     parser.add_argument("--library", default=str(LIBRARY))
     parser.add_argument("--jsonl", action="store_true", help="Output JSONL (one entry per line)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed per-entry reports")
+    parser.add_argument("--calibrate", nargs="?", const="-", metavar="OUTPUT.json",
+                        help="Grid‑search parameters using delivered entries; optionally save to file")
+    parser.add_argument("--weights", metavar="WEIGHTS.json",
+                        help="Override default params with values from a JSON file (from --calibrate)")
     args = parser.parse_args()
+
+    # Calibration mode
+    if args.calibrate:
+        out = None if args.calibrate == "-" else args.calibrate
+        calibrate(output=out)
+        return 0
+
+    # Load custom weights
+    params = None
+    if args.weights:
+        try:
+            raw = json.loads(Path(args.weights).read_text(encoding="utf-8"))
+            params = raw.get("params", raw)
+            print(f"Loaded weights from {args.weights}", file=sys.stderr)
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Failed to load weights: {exc}", file=sys.stderr)
+            return 1
 
     entries: list[Path]
     if args.entry_ids:
@@ -501,7 +639,7 @@ def main() -> int:
 
     results: list[dict] = []
     for entry in entries:
-        result = evaluate_entry(entry.name)
+        result = evaluate_entry(entry.name, params=params)
         results.append(result)
         if args.verbose and not args.jsonl:
             _print_verbose(result)

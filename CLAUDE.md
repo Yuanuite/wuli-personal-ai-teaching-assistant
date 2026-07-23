@@ -8,7 +8,7 @@
 error-collection/     ← 放入待处理的错题图片/PDF
 student-error-library/ ← 错题知识库（entries + indexes）
 output/               ← 导出成品（Markdown/PDF/仿真/学生包/交付清单）
-teacher-console/      ← 本地教师工作台（日期文件夹、题干/答案复核、按需动态仿真复核、交付下载）
+teacher-console/      ← 本地教师工作台（日期文件夹、题干/答案复核、按需动态仿真复核、交付下载、模型注册）
 student-site/         ← 独立只读公开站；只接收教师确认后的白名单产物，不访问本地 API
 ```
 

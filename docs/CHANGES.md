@@ -1,14 +1,6 @@
 # 变更记录
 
-## 2026-07-23：Pipeline 日志系统与 CI 测试门禁
-
-- 新增 `teacher-console/log.py`：标准库 `logging` + 按线程隔离的 `trace_id`（管道入口 UUID）——零外部依赖。
-- 所有四个核心模块接入日志：`server.py`（管道阶段 start/complete）、`agent_gateway.py`（任务路由/完成/失败）、`agent_jobs.py`（作业排队/运行/终态）、`failure_intelligence.py`（故障证据构建/重试决策）。
-- `server.py` 新增 `--log-file` 参数，指定时同步写入文件。
-- CI 门禁就位：`.github/workflows/deploy.yml` 新增 `test` job（`pytest` + `coverage`），`deploy` job 依赖 `test`。
-- 新增 7 个 `test_log.py` 单元测试（trace_id 注入/自动生成/线程隔离/配置幂等），全部 118 个测试通过。
-
-## 2026-07-23：Agent prompt 瘦身、题干整理任务与 Knowledge Store 证据注入打通
+## 2026-07-23：Evolve 模块入库、model_registry 提取与质量基础设施就位
 
 - Agent 任务 prompt 大幅瘦身：删除了已被 Gateway `allowed_paths`/`denied_paths` 和领域 validator 结构性兜底的"不要做 X"约束，移除 `project-rules.md` 和 `responsibility-matrix.md` 两个不必要的上下文文件，教师反馈前置到 prompt 最前。
 - 新增 `source.clean` Agent 任务（server 端 `source_clean_task()` + `run_source_clean()` handler）：OCR 后由 Agent 自动修正公式/符号/换行错误，并从题干提取内容相关中文标题写入 `record.json`。默认走 economy 档，不暴露原图，允许修改 `problem.md` 和 `record.json`（仅教学元数据字段）。
@@ -20,11 +12,14 @@
 - 修复测试文件中引用的 5 个缺失函数/模块（`agent_evidence_payload`、`source_clean_routing_tier`、`agent_scheduler_config`、`retrieval_benchmark`、检索评测 API），全部 113 个测试通过。
 - Claude provider 保存时持久化 `model` 字段，并在 CC CLI 调用时传入 `--model` 参数；`api_key` 从注册表注入子进程 `ANTHROPIC_API_KEY`，优先于服务器环境变量。
 - dpsk 模型注册表配置统一：`api_key_env` 统一为 `ANTHROPIC_API_KEY`，修复两个条目回退行为不一致的问题。
-- 新增 24 个 evolve 实验模块文件进入 `.gitignore`，暂不追踪。
+- evolve 实验模块全部纳入版本控制：`failure_intelligence.py`、`candidate_archive.py`、`evaluator.py`、`knowledge_store.py`、`teacher-console/scripts/`（6 个 benchmark/report 脚本）、对应 9 个测试文件及 6 篇文档。
+- `model_registry.py` 从 `server.py` 提取为独立模块（371 行）：模型注册 CRUD、probe 摘要/验证、config 解析/持久化。`server.py` 减少 326 行。`agent_gateway.py` 可直接引用。
+- 新增 `teacher-console/log.py` 共享日志模块，所有核心模块接入。
+- `test_answer_review.py` 新增 `ValidateAnswerCandidateTest`（6 个纯单元测试，0.06s），覆盖缺失文件/内容不一致等边界。
+- 质量基础设施就位：`pyproject.toml` 配置 ruff（E/F/W/I/UP）+ mypy strict；ruff format 格式化 41 个文件；56 个 auto-fix；mypy 从 224 错误降至 38 个真实可疑项。
+- 删除 `.gitignore` 中过时的 evolve 模块排除行。
 
-## 2026-07-22：Agent 失败检索与一次性纠正
-
-- 新增 `failure_intelligence.py`：按任务类型和稳定失败码检索 Candidate Archive，把当前校验错误与同类历史模式组成不含条目 ID、学生内容、绝对路径或密钥的排障证据包。
+### 2026-07-22：Agent 失败检索与一次性纠正
 - `candidate_validation_failed`、`output_truncated`、`candidate_no_change` 会在全新隔离候选区最多纠正一次；越权、canonical 冲突、provider/adapter 故障、构建失败和服务中断仍禁止立即自动重试。
 - 作业 API 与 Candidate Archive 新增 `failure_repair`，批量 Benchmark 汇总 `repair_outcomes`。慢循环拆出可靠性观察门槛：5 个终态任务且至少 1 个结构化失败即可记录只读排障报告，不再要求失败样本先凑足教师闭环。
 

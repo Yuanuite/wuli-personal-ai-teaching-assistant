@@ -15,6 +15,7 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
@@ -812,6 +813,8 @@ class AgentGateway:
             for provider in candidates:
                 self._hide_paths(staging, hidden)
                 command = self._command(provider, runtime_task_for_child)
+                attempt_started_at = datetime.now().astimezone().isoformat(timespec="seconds")
+                t_start = time.monotonic()
                 try:
                     completed = self.run_process(
                         command,
@@ -831,11 +834,19 @@ class AgentGateway:
                         env=self._provider_environment(provider, task_environ),
                     )
                 except (OSError, subprocess.TimeoutExpired) as exc:
+                    attempt_duration = round(time.monotonic() - t_start, 3)
                     self._mark_runtime_failure(provider.name, str(exc))
-                    attempt = {"provider": provider.name, "status": "failed", "error": str(exc)[:1000]}
+                    attempt = {
+                        "provider": provider.name,
+                        "status": "failed",
+                        "error": str(exc)[:1000],
+                        "started_at": attempt_started_at,
+                        "duration_seconds": attempt_duration,
+                    }
                     attempt["failure_type"] = classify_agent_failure(attempt)
                     attempts.append(attempt)
                     continue
+                attempt_duration = round(time.monotonic() - t_start, 3)
 
                 payload: dict = {}
                 parse_error = ""
@@ -879,6 +890,8 @@ class AgentGateway:
                     "unauthorized_changes": unauthorized,
                     "validation_errors": validation_errors,
                     "requires_change": bool(task.get("requires_change")),
+                    "started_at": attempt_started_at,
+                    "duration_seconds": attempt_duration,
                 }
                 if parse_error:
                     attempt["error"] = str(parse_error)
