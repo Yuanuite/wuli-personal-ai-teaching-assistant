@@ -5,7 +5,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -13,7 +12,9 @@ sys.path.insert(0, str(SCRIPTS))
 import kb  # noqa: E402
 import knowledge_store  # noqa: E402
 
-SPEC = importlib.util.spec_from_file_location("retrieval_benchmark", ROOT / "teacher-console" / "scripts" / "retrieval_benchmark.py")
+SPEC = importlib.util.spec_from_file_location(
+    "retrieval_benchmark", ROOT / "teacher-console" / "scripts" / "retrieval_benchmark.py"
+)
 benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(benchmark)
 
@@ -27,17 +28,20 @@ class RetrievalBenchmarkTest(unittest.TestCase):
         self.entry.mkdir(parents=True)
         kb.write_text(self.entry / "problem.md", "小车和木块发生完全非弹性碰撞，求共同速度。")
         kb.write_text(self.entry / "solution.md", "规定正方向，使用动量守恒，机械能不守恒。")
-        kb.write_json(self.entry / "record.json", {
-            "schema_version": 1,
-            "id": self.entry.name,
-            "title": "完全非弹性碰撞",
-            "subject": "高中物理",
-            "grade": "高二",
-            "kind": "error",
-            "status": "ready",
-            "knowledge_points": ["动量守恒", "非弹性碰撞"],
-            "error_types": ["误用机械能守恒"],
-        })
+        kb.write_json(
+            self.entry / "record.json",
+            {
+                "schema_version": 1,
+                "id": self.entry.name,
+                "title": "完全非弹性碰撞",
+                "subject": "高中物理",
+                "grade": "高二",
+                "kind": "error",
+                "status": "ready",
+                "knowledge_points": ["动量守恒", "非弹性碰撞"],
+                "error_types": ["误用机械能守恒"],
+            },
+        )
         knowledge_store.rebuild(self.library)
 
     def tearDown(self):
@@ -45,14 +49,17 @@ class RetrievalBenchmarkTest(unittest.TestCase):
 
     def cases(self, count=1, status="approved"):
         categories = ("knowledge_point", "problem_type", "error_type", "teacher_phrase")
-        return [{
-            "schema_version": 1,
-            "id": f"case-{index:03d}",
-            "query": "动量守恒 非弹性碰撞",
-            "category": categories[(index - 1) % len(categories)],
-            "review_status": status,
-            "relevant_entry_ids": [self.entry.name],
-        } for index in range(1, count + 1)]
+        return [
+            {
+                "schema_version": 1,
+                "id": f"case-{index:03d}",
+                "query": "动量守恒 非弹性碰撞",
+                "category": categories[(index - 1) % len(categories)],
+                "review_status": status,
+                "relevant_entry_ids": [self.entry.name],
+            }
+            for index in range(1, count + 1)
+        ]
 
     def test_validate_rejects_unknown_entry(self):
         cases = self.cases()

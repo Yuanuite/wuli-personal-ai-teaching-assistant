@@ -16,19 +16,31 @@ import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from log import logger
-
 
 CONSOLE_DIR = Path(__file__).resolve().parent
 OPENAI_ADAPTER = CONSOLE_DIR / "providers" / "openai_compatible_agent_adapter.py"
 PROVIDER_NAMES = {"adapter", "legacy-command", "openai-compatible", "codex", "claude"}
 ROUTING_TIERS = {"auto", "economy", "expert"}
 BASE_ENV_KEYS = {
-    "HOME", "USER", "LOGNAME", "PATH", "SHELL", "TMPDIR", "LANG", "LC_ALL",
-    "SSL_CERT_FILE", "SSL_CERT_DIR", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
-    "http_proxy", "https_proxy", "no_proxy",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "PATH",
+    "SHELL",
+    "TMPDIR",
+    "LANG",
+    "LC_ALL",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "NO_PROXY",
+    "http_proxy",
+    "https_proxy",
+    "no_proxy",
 }
 
 
@@ -50,7 +62,9 @@ def classify_agent_failure(result: dict) -> str:
     attempts = result.get("attempts")
     attempts = attempts if isinstance(attempts, list) else []
     text_parts = [
-        result.get("message"), result.get("error"), result.get("stderr"),
+        result.get("message"),
+        result.get("error"),
+        result.get("stderr"),
         *validation,
     ]
     for attempt in attempts:
@@ -111,7 +125,9 @@ def _probe_version(binary: str, run: Callable = subprocess.run) -> str:
     return _first_line(completed.stdout or completed.stderr)
 
 
-def _probe_flags(binary: str, arguments: list[str], required: tuple[str, ...], run: Callable = subprocess.run) -> tuple[bool, str]:
+def _probe_flags(
+    binary: str, arguments: list[str], required: tuple[str, ...], run: Callable = subprocess.run
+) -> tuple[bool, str]:
     try:
         completed = run([binary, *arguments], text=True, capture_output=True, check=False, timeout=5)
     except (OSError, subprocess.TimeoutExpired) as exc:
@@ -224,20 +240,30 @@ class AgentGateway:
             safe["model_config"] = safe_config
         return safe
 
-    def providers(self, *, include_versions: bool = False, ignore_runtime_failures: bool = False, environ: dict[str, str] | None = None) -> list[Provider]:
+    def providers(
+        self,
+        *,
+        include_versions: bool = False,
+        ignore_runtime_failures: bool = False,
+        environ: dict[str, str] | None = None,
+    ) -> list[Provider]:
         env = self.environ if environ is None else environ
         providers: list[Provider] = []
         adapter = env.get("TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND", "").strip()
         if adapter:
             tokens = tuple(shlex.split(adapter))
             available = bool(tokens) and _command_exists(tokens[0], self.which)
-            providers.append(Provider("adapter", "json-adapter", tokens, available, "" if available else "适配器命令不存在"))
+            providers.append(
+                Provider("adapter", "json-adapter", tokens, available, "" if available else "适配器命令不存在")
+            )
 
         legacy = env.get("TEACHER_CONSOLE_AGENT_COMMAND", "").strip()
         if legacy:
             tokens = tuple(shlex.split(legacy))
             available = bool(tokens) and _command_exists(tokens[0], self.which)
-            providers.append(Provider("legacy-command", "legacy-command", tokens, available, "" if available else "自定义命令不存在"))
+            providers.append(
+                Provider("legacy-command", "legacy-command", tokens, available, "" if available else "自定义命令不存在")
+            )
 
         api_base = env.get("TEACHER_CONSOLE_AGENT_API_BASE_URL", "").strip()
         api_model = env.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip()
@@ -246,7 +272,11 @@ class AgentGateway:
             reason = "" if ready else "API provider 需要同时配置 BASE_URL 与 MODEL"
             if ready and not _is_loopback_url(api_base) and env.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true":
                 ready, reason = False, "远程 API 尚未通过环境变量隐私门禁"
-            providers.append(Provider("openai-compatible", "json-adapter", (sys.executable, str(OPENAI_ADAPTER)), ready, reason, api_model))
+            providers.append(
+                Provider(
+                    "openai-compatible", "json-adapter", (sys.executable, str(OPENAI_ADAPTER)), ready, reason, api_model
+                )
+            )
 
         for name in ("codex", "claude"):
             binary = self.which(name)
@@ -255,14 +285,27 @@ class AgentGateway:
             reason = "" if available else f"未找到 {name} 可执行文件"
             if binary and include_versions:
                 arguments = ["exec", "--help"] if name == "codex" else ["--help"]
-                required = ("--sandbox", "--ephemeral", "--cd", "--ignore-user-config") if name == "codex" else ("--print", "--permission-mode", "--no-session-persistence", "--safe-mode")
+                required = (
+                    ("--sandbox", "--ephemeral", "--cd", "--ignore-user-config")
+                    if name == "codex"
+                    else ("--print", "--permission-mode", "--no-session-persistence", "--safe-mode")
+                )
                 available, reason = _probe_flags(binary, arguments, required, self.run_process)
             providers.append(Provider(name, "cli", (binary,) if binary else (), available, reason, version))
         result: list[Provider] = []
         for item in providers:
             runtime_failure = "" if ignore_runtime_failures else self._runtime_failure(item.name)
             if item.available and runtime_failure:
-                result.append(Provider(item.name, item.mode, item.command, False, f"运行失败后暂时降级：{runtime_failure}", item.version))
+                result.append(
+                    Provider(
+                        item.name,
+                        item.mode,
+                        item.command,
+                        False,
+                        f"运行失败后暂时降级：{runtime_failure}",
+                        item.version,
+                    )
+                )
             else:
                 result.append(item)
         return result
@@ -298,11 +341,13 @@ class AgentGateway:
                         "economy": self.environ.get("TEACHER_CONSOLE_AGENT_API_ECONOMY_MODEL", "").strip(),
                         "expert": self.environ.get("TEACHER_CONSOLE_AGENT_API_EXPERT_MODEL", "").strip(),
                     }
-                    if item.name == "openai-compatible" else {}
+                    if item.name == "openai-compatible"
+                    else {}
                 ),
                 "required_env": (
                     ["TEACHER_CONSOLE_AGENT_API_BASE_URL", "TEACHER_CONSOLE_AGENT_API_MODEL"]
-                    if item.name == "openai-compatible" else []
+                    if item.name == "openai-compatible"
+                    else []
                 ),
                 "capabilities": {
                     "task_types": ["analysis.generate", "answer.revise", "visualization.model"],
@@ -316,7 +361,13 @@ class AgentGateway:
             "available": selected is not None,
             "selected": selected,
             "mode": requested,
-            "reason": "" if selected else (f"未知 provider：{requested}" if requested != "auto" and requested not in PROVIDER_NAMES else "没有可用 provider"),
+            "reason": ""
+            if selected
+            else (
+                f"未知 provider：{requested}"
+                if requested != "auto" and requested not in PROVIDER_NAMES
+                else "没有可用 provider"
+            ),
             "providers": [details(item) for item in providers],
         }
         with self._health_lock:
@@ -329,14 +380,26 @@ class AgentGateway:
             if requested not in PROVIDER_NAMES:
                 return []
             return [item for item in providers if item.name == requested]
-        priority = {name: index for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))}
+        priority = {
+            name: index
+            for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))
+        }
         return sorted(providers, key=lambda item: priority.get(item.name, 99))
 
-    def probe(self, provider_name: str = "", *, timeout_seconds: int = 120, allow_remote: bool = False, model_config: dict | None = None) -> dict:
+    def probe(
+        self,
+        provider_name: str = "",
+        *,
+        timeout_seconds: int = 120,
+        allow_remote: bool = False,
+        model_config: dict | None = None,
+    ) -> dict:
         """Run an explicit no-student-data connectivity probe for one provider."""
         base_task = {"model_config": model_config or {}}
         task_environ = self._task_environ(base_task)
-        requested = provider_name.strip() or task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
+        requested = (
+            provider_name.strip() or task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
+        )
         providers = self.providers(include_versions=True, ignore_runtime_failures=True, environ=task_environ)
         candidates = [item for item in self._ordered(providers, requested) if item.available]
         if not candidates:
@@ -377,7 +440,7 @@ class AgentGateway:
                     capture_output=True,
                     check=False,
                     timeout=timeout,
-                        env=self._provider_environment(provider, task_environ),
+                    env=self._provider_environment(provider, task_environ),
                 )
                 if provider.mode == "json-adapter":
                     try:
@@ -390,7 +453,11 @@ class AgentGateway:
                 else:
                     responsive = "GATEWAY_PROBE_OK" in completed.stdout
                 passed = completed.returncode == 0 and responsive
-                reason = "" if passed else _first_line(completed.stderr or completed.stdout or f"退出码 {completed.returncode}", 500)
+                reason = (
+                    ""
+                    if passed
+                    else _first_line(completed.stderr or completed.stdout or f"退出码 {completed.returncode}", 500)
+                )
             except (OSError, subprocess.TimeoutExpired) as exc:
                 completed = None
                 passed = False
@@ -465,7 +532,7 @@ class AgentGateway:
         env_source = self.environ if environ is None else environ
         keys = set(BASE_ENV_KEYS)
         if provider.name == "codex":
-            prefixes = ("CODEX_", "OPENAI_")
+            prefixes: tuple[str, ...] = ("CODEX_", "OPENAI_")
         elif provider.name == "claude":
             prefixes = ("CLAUDE_", "ANTHROPIC_")
         elif provider.name == "openai-compatible":
@@ -527,7 +594,11 @@ class AgentGateway:
             raise ValueError("adapter files must be an object or array")
         proposals: list[tuple[Path, str]] = []
         for item in files:
-            if not isinstance(item, dict) or not isinstance(item.get("path"), str) or not isinstance(item.get("content"), str):
+            if (
+                not isinstance(item, dict)
+                or not isinstance(item.get("path"), str)
+                or not isinstance(item.get("content"), str)
+            ):
                 raise ValueError("each adapter file needs string path and content")
             relative = item["path"]
             if not self._allowed(relative, allowed, denied):
@@ -655,7 +726,13 @@ class AgentGateway:
         task = dict(task)
         task["routing_tier"] = routing_tier
         route_id = task.get("id", "?")
-        logger.info("gateway task=%s kind=%s entry=%s routing=%s", route_id, task.get("kind"), task.get("entry_id"), routing_tier)
+        logger.info(
+            "gateway task=%s kind=%s entry=%s routing=%s",
+            route_id,
+            task.get("kind"),
+            task.get("entry_id"),
+            routing_tier,
+        )
         model_config = task.get("model_config") if isinstance(task.get("model_config"), dict) else {}
         model_metadata = {
             key: str(model_config.get(source, "")).strip()
@@ -721,7 +798,9 @@ class AgentGateway:
             runtime_task = dict(task)
             runtime_task["entry_dir"] = str(staging)
             runtime_task["working_dir"] = str(staging)
-            runtime_task["prompt"] = str(task["prompt"]).replace(str(task["entry_dir"]), str(staging)).replace(str(entry), str(staging))
+            runtime_task["prompt"] = (
+                str(task["prompt"]).replace(str(task["entry_dir"]), str(staging)).replace(str(entry), str(staging))
+            )
             if task.get("request_path"):
                 request_path = Path(task["request_path"]).resolve()
                 try:
@@ -743,7 +822,9 @@ class AgentGateway:
                         # teacher-console terminal after accepting the positional
                         # prompt, which can leave a background job apparently
                         # running forever.
-                        input=json.dumps(runtime_task_for_child, ensure_ascii=False) if provider.mode == "json-adapter" else "",
+                        input=json.dumps(runtime_task_for_child, ensure_ascii=False)
+                        if provider.mode == "json-adapter"
+                        else "",
                         capture_output=True,
                         check=False,
                         timeout=timeout,
@@ -772,9 +853,13 @@ class AgentGateway:
                 changed = self._changed(before, after)
                 unauthorized = [name for name in changed if not self._allowed(name, allowed, denied)]
                 deleted = [name for name in changed if name in before and name not in after]
-                adapter_ok = provider.mode != "json-adapter" or (not parse_error and payload.get("status") == "completed")
+                adapter_ok = provider.mode != "json-adapter" or (
+                    not parse_error and payload.get("status") == "completed"
+                )
                 changed_enough = not task.get("requires_change") or bool(changed)
-                succeeded = completed.returncode == 0 and adapter_ok and not unauthorized and not deleted and changed_enough
+                succeeded = (
+                    completed.returncode == 0 and adapter_ok and not unauthorized and not deleted and changed_enough
+                )
                 validation_errors: list[str] = []
                 if succeeded and validator:
                     self._restore_paths(entry, staging, hidden)
@@ -784,7 +869,7 @@ class AgentGateway:
                 if canonical_changed:
                     succeeded = False
                     unauthorized.extend(f"canonical:{name}" for name in canonical_changed)
-                attempt = {
+                attempt: dict[str, Any] = {
                     "provider": provider.name,
                     "status": "completed" if succeeded else "failed",
                     "returncode": completed.returncode,
@@ -796,10 +881,20 @@ class AgentGateway:
                     "requires_change": bool(task.get("requires_change")),
                 }
                 if parse_error:
-                    attempt["error"] = parse_error
+                    attempt["error"] = str(parse_error)
                     attempt["parse_error"] = True
                 if deleted:
                     attempt["error"] = "Agent 不得删除文件：" + ", ".join(deleted)
+                # Structured telemetry from JSON adapter payload
+                if payload and isinstance(payload, dict):
+                    raw_usage = payload.get("usage")
+                    if isinstance(raw_usage, dict):
+                        usage_clean = {k: v for k, v in raw_usage.items() if isinstance(v, int) and v >= 0}
+                        if usage_clean:
+                            attempt["token_usage"] = usage_clean
+                    adapter_msg = payload.get("message", "")
+                    if isinstance(adapter_msg, str) and adapter_msg.strip():
+                        attempt["adapter_message"] = adapter_msg.strip()[:2000]
                 attempt["failure_type"] = classify_agent_failure(attempt)
                 attempts.append(attempt)
 
@@ -843,9 +938,13 @@ class AgentGateway:
                         result.update(metadata)
                     return result
                 if parse_error or unauthorized or deleted:
-                    self._mark_runtime_failure(provider.name, parse_error or "; ".join(unauthorized) or attempt.get("error", "候选越权"))
+                    self._mark_runtime_failure(
+                        provider.name, parse_error or "; ".join(unauthorized) or attempt.get("error", "候选越权")
+                    )
                 elif completed.returncode != 0 and not changed:
-                    self._mark_runtime_failure(provider.name, completed.stderr or completed.stdout or f"退出码 {completed.returncode}")
+                    self._mark_runtime_failure(
+                        provider.name, completed.stderr or completed.stdout or f"退出码 {completed.returncode}"
+                    )
                 if changed or canonical_changed:
                     result = {
                         "status": "failed",
@@ -862,7 +961,12 @@ class AgentGateway:
                         **model_metadata,
                     }
                     result["failure_type"] = classify_agent_failure(result)
-                    logger.info("gateway task=%s status=failed reason=validation changed=%s unauthorized=%s", route_id, len(changed), len(unauthorized))
+                    logger.info(
+                        "gateway task=%s status=failed reason=validation changed=%s unauthorized=%s",
+                        route_id,
+                        len(changed),
+                        len(unauthorized),
+                    )
                     return result
 
         last = attempts[-1] if attempts else {}

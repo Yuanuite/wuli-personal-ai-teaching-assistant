@@ -5,7 +5,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -50,7 +49,12 @@ class AgentBatchBenchmarkTest(unittest.TestCase):
                 "created_at": "2026-07-22T10:00:00+08:00",
                 "started_at": "2026-07-22T10:00:20+08:00",
                 "completed_at": "2026-07-22T10:02:20+08:00",
-                "result": {"status": "completed", "provider": "claude", "model": "slow", "usage": {"total_tokens": 200}},
+                "result": {
+                    "status": "completed",
+                    "provider": "claude",
+                    "model": "slow",
+                    "usage": {"total_tokens": 200},
+                },
             },
         )
         records = benchmark.load_records(self.jobs)
@@ -104,11 +108,13 @@ class AgentBatchBenchmarkTest(unittest.TestCase):
     def test_summarizes_failure_repair_outcomes(self):
         self.write_job(
             "recovered",
-            {"result": {
-                "status": "completed",
-                "provider": "codex",
-                "failure_repair": {"status": "recovered", "retry_count": 1},
-            }},
+            {
+                "result": {
+                    "status": "completed",
+                    "provider": "codex",
+                    "failure_repair": {"status": "recovered", "retry_count": 1},
+                }
+            },
         )
         report = benchmark.summarize(benchmark.load_records(self.jobs))
         self.assertEqual(report["kinds"]["source.clean"]["repair_outcomes"], {"recovered": 1})
@@ -123,7 +129,9 @@ class AgentBatchBenchmarkTest(unittest.TestCase):
             since = None
             until = None
 
-        filtered = [record for record in benchmark.load_records(self.jobs) if benchmark.record_passes_filters(record, Args)]
+        filtered = [
+            record for record in benchmark.load_records(self.jobs) if benchmark.record_passes_filters(record, Args)
+        ]
         self.assertEqual([item["id"] for item in filtered], ["source"])
 
     def test_record_benchmark_appends_library_event_and_rebuilds_store(self):

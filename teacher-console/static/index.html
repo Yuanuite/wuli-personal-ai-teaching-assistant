@@ -40,6 +40,7 @@
         <small id="agent-health-detail">正在检查可用 Agent</small>
       </span>
       <button id="probe-agent" class="health-probe" type="button" title="执行一次不含学生数据的真实连通检测">检测 Agent</button>
+      <button id="open-retrieval-review" class="health-probe" type="button" title="逐条核对固定检索评测集">检索评测</button>
       <button id="open-agent-settings" class="health-probe" type="button" title="配置本地模型注册表和默认模型策略">设置</button>
     </div>
   </header>
@@ -80,6 +81,72 @@
       <footer class="settings-footer">
         <small id="agent-settings-path" class="muted"></small>
         <button id="save-agent-settings" class="primary" type="button">保存设置</button>
+      </footer>
+    </section>
+  </div>
+
+  <div id="retrieval-review-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="retrieval-review-title">
+    <section class="retrieval-review-modal">
+      <header class="retrieval-review-head">
+        <div>
+          <p class="eyebrow">RETRIEVAL EVALUATION</p>
+          <h2 id="retrieval-review-title">检索评测复核</h2>
+          <p class="muted">把自己当成正在检索的教师：核对表达，并勾选所有真正能帮助回答这条查询的题目。</p>
+        </div>
+        <div class="retrieval-review-head-actions">
+          <span id="retrieval-review-progress" class="retrieval-review-progress">正在载入…</span>
+          <button id="close-retrieval-review" class="secondary" type="button">关闭</button>
+        </div>
+      </header>
+      <div class="retrieval-review-layout">
+        <aside class="retrieval-case-panel">
+          <div id="retrieval-review-summary" class="retrieval-review-summary"></div>
+          <div class="retrieval-case-legend">
+            <span><i class="draft"></i>待复核</span>
+            <span><i class="approved"></i>已批准</span>
+            <span><i class="rejected"></i>已驳回</span>
+          </div>
+          <div id="retrieval-case-list" class="retrieval-case-list"></div>
+        </aside>
+        <section class="retrieval-review-workspace">
+          <div id="retrieval-review-empty" class="retrieval-review-empty hidden">
+            <strong>当前没有评测草稿</strong>
+            <p>先使用本地命令生成固定检索集，再回到这里复核。</p>
+          </div>
+          <div id="retrieval-review-editor">
+            <div class="retrieval-query-row">
+              <label>检索语句<input id="retrieval-query" type="text" placeholder="教师或学生真实会输入的表达"></label>
+              <label>查询类型
+                <select id="retrieval-category">
+                  <option value="knowledge_point">知识点</option>
+                  <option value="problem_type">题型</option>
+                  <option value="error_type">错因</option>
+                  <option value="teacher_phrase">教师表达</option>
+                </select>
+              </label>
+            </div>
+            <div class="retrieval-candidate-toolbar">
+              <div>
+                <strong>勾选所有相关题目</strong>
+                <small id="retrieval-selection-count">已选择 0 道</small>
+              </div>
+              <label class="retrieval-filter-label">筛选题目<input id="retrieval-candidate-filter" type="search" placeholder="标题、知识点或错因"></label>
+            </div>
+            <div id="retrieval-candidate-grid" class="retrieval-candidate-grid"></div>
+          </div>
+        </section>
+      </div>
+      <footer class="retrieval-review-footer">
+        <div class="retrieval-nav-actions">
+          <button id="retrieval-prev" class="secondary" type="button">上一条</button>
+          <button id="retrieval-next" class="secondary" type="button">下一条</button>
+        </div>
+        <small id="retrieval-review-hint" class="muted">批准前请至少勾选一道相关题目。</small>
+        <div class="retrieval-status-actions">
+          <button id="retrieval-save-draft" class="secondary" type="button">保存草稿</button>
+          <button id="retrieval-reject" class="danger-secondary" type="button">驳回此条</button>
+          <button id="retrieval-approve" class="primary" type="button">批准并看下一条</button>
+        </div>
       </footer>
     </section>
   </div>

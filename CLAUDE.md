@@ -28,7 +28,7 @@ student-site/         ← 独立只读公开站；只接收教师确认后的白
 用户说“处理现在新上传的题目”时，由 `manage-student-error-library` 完成：
 
 ```text
-error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版+教师版
+error-collection → OCR/去重 → Agent整理题干(source.clean) → 原图核对 → 分析/检索 → 学生版+教师版
 → 答案复核 → [教师按需请求交互可视化+复核] → 校验/入库 → PDF → student-package.zip
 ```
 
@@ -42,6 +42,10 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 
 教师端 Agent 任务统一经过 `teacher-console/agent_gateway.py`：provider 只能在输入文件白名单构造的系统临时候选区工作，候选通过允许路径、受保护记录字段、领域验证和 canonical 摘要检查后，才在单题事务锁内提升。CLI/API 参数不得重新散落进 `server.py`；Agent 永远不能调用 `approve-*`、`finish` 或发布。新 provider 优先实现 JSON stdin/stdout adapter，额外环境变量必须显式加入 allowlist。
 
+Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——不要在 prompt 中重复已被 `allowed_paths`、`denied_paths` 和领域 validator 结构性兜底的约束。`answer.revise` 和 `visualization.model` 会自动注入经过裁剪的 Knowledge Store 历史证据（`.agent-context/knowledge-evidence.json`），当前题干和教师意见始终优先。
+
+OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OCR 错误并从题干提取内容相关标题，再进入人工 source review。网页上点击标题文字可直接改名。
+
 ## 深入文档
 
 - `docs/ai-editing-map.md`：AI 修改入口地图；不确定该读哪些文件时先看它，按任务类型选择最小上下文。
@@ -54,6 +58,10 @@ error-collection → OCR/去重 → 原图核对 → 分析/检索 → 学生版
 - `docs/competition-project-description.md`：竞赛完整说明、价值定位、落地计划与演示脚本。
 - `docs/teacher-console-api.md`：本地教师端 HTTP 路由、动作协议和安全边界。
 - `docs/agent-gateway.md`：后台 Agent 作业、provider adapter、隔离候选、降级和远程隐私门禁。
+- `docs/agent-scheduler.md`：后台 Agent 作业调度、优先级、并发配置和后续 Evolve 接口。
+- `docs/evaluator.md`、`docs/candidate-archive.md`、`docs/knowledge-store.md`：评价报告、候选事件档案与本地 RAG evidence pack。
+- `docs/failure-intelligence.md`：Agent 失败排障策略、自动重试边界与一次性纠正机制。
+- `docs/evolve-roadmap.md`：检索评测、RAG 效果观察与慢循环策略更新的分阶段路线和样本门槛。
 - `docs/architecture-governance.md`：基于 graphify 的项目治理协议；功能归位、复杂度删减、变更影响分析时必须先读。
 
 ## graphify

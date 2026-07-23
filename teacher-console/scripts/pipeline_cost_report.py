@@ -19,7 +19,6 @@ import sys
 import time
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(PROJECT_ROOT / "teacher-console"))
 sys.path.insert(0, str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"))
@@ -141,7 +140,9 @@ def build_summary(entry_ids: list[str] | None = None) -> dict:
         "avg_pipeline_duration_seconds": round(avg_pipeline_time, 1),
         "avg_pipeline_duration_display": _fmt_seconds(avg_pipeline_time),
         "token_quality_efficiency": {
-            "avg_tokens_per_quality_point": round(_safe_div(sum(token_quality_list), len(token_quality_list)), 1) if token_quality_list else 0,
+            "avg_tokens_per_quality_point": round(_safe_div(sum(token_quality_list), len(token_quality_list)), 1)
+            if token_quality_list
+            else 0,
             "entries_with_token_data": len(token_quality_list),
         },
         "stage_breakdown": stage_summary,

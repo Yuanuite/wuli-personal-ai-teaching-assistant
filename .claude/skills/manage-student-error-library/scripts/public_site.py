@@ -17,7 +17,6 @@ import pdf_export
 import process_uploads
 from PIL import Image, ImageChops, ImageOps
 
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[3]
 DEFAULT_SITE = PROJECT_ROOT / "student-site"
@@ -107,7 +106,12 @@ def _suggest_crop(path: Path) -> list[float]:
         right, bottom = min(image.width, right + padding_x), min(image.height, bottom + padding_y)
         if (right - left) * (bottom - top) < image.width * image.height * 0.12:
             return [0.0, 0.0, 1.0, 1.0]
-        return [round(left / image.width, 6), round(top / image.height, 6), round((right - left) / image.width, 6), round((bottom - top) / image.height, 6)]
+        return [
+            round(left / image.width, 6),
+            round(top / image.height, 6),
+            round((right - left) / image.width, 6),
+            round((bottom - top) / image.height, 6),
+        ]
 
 
 def _public_image_record_current(entry: Path, record: dict[str, Any]) -> bool:
@@ -176,7 +180,13 @@ def save_public_images(entry: Path, pages: Any, reviewer: str, note: str) -> dic
         include = bool(spec.get("include", False))
         crop = _normalized_box(spec.get("crop", [0, 0, 1, 1]), minimum=0.08)
         redactions = [_normalized_box(box, minimum=0.005) for box in spec.get("redactions", [])]
-        page_record = {"source": relative, "include": include, "crop": crop, "redactions": redactions, "source_digest": kb.sha256_file(source)}
+        page_record = {
+            "source": relative,
+            "include": include,
+            "crop": crop,
+            "redactions": redactions,
+            "source_digest": kb.sha256_file(source),
+        }
         if include:
             output_index += 1
             output_name = f"question-{output_index}.webp"
@@ -185,7 +195,12 @@ def save_public_images(entry: Path, pages: Any, reviewer: str, note: str) -> dic
                 if image.width * image.height > 80_000_000:
                     raise ValueError("题图像素过大，无法安全生成公开副本")
                 x, y, width, height = crop
-                bounds = (round(x * image.width), round(y * image.height), round((x + width) * image.width), round((y + height) * image.height))
+                bounds = (
+                    round(x * image.width),
+                    round(y * image.height),
+                    round((x + width) * image.width),
+                    round((y + height) * image.height),
+                )
                 image = image.crop(bounds)
                 image = ImageOps.autocontrast(image, cutoff=0.4)
                 for rx, ry, rw, rh in redactions:
@@ -218,7 +233,11 @@ def approved_public_images(entry: Path) -> list[Path]:
     record = kb.load_json(entry / PUBLIC_IMAGE_RECORD, {})
     if not _public_image_record_current(entry, record):
         return []
-    return [entry / PUBLIC_IMAGE_DIR / str(page["output"]) for page in record.get("pages", []) if page.get("include") and page.get("output")]
+    return [
+        entry / PUBLIC_IMAGE_DIR / str(page["output"])
+        for page in record.get("pages", [])
+        if page.get("include") and page.get("output")
+    ]
 
 
 def tree_digest(root: Path) -> str:
@@ -304,7 +323,9 @@ def _public_markdown(entry: Path) -> tuple[str, list[tuple[Path, str]]]:
     combined = IMAGE_RE.sub(rewrite, combined)
     title = str(record.get("title") or entry.name).strip()
     public_questions = approved_public_images(entry)
-    question_images = "\n\n".join(f"![公开题图 第 {index} 页](assets/question-{index}.webp)" for index in range(1, len(public_questions) + 1))
+    question_images = "\n\n".join(
+        f"![公开题图 第 {index} 页](assets/question-{index}.webp)" for index in range(1, len(public_questions) + 1)
+    )
     if combined.lstrip().startswith("#"):
         first, separator, rest = combined.partition("\n")
         combined = f"{first}\n\n{question_images}\n\n{rest.lstrip()}" if question_images else combined
@@ -316,7 +337,9 @@ def _public_markdown(entry: Path) -> tuple[str, list[tuple[Path, str]]]:
 
 
 def _generate_pdf(question_dir: Path) -> dict[str, Any]:
-    return pdf_export.generate_markdown_pdf(question_dir / "content.md", question_dir / PUBLIC_PDF_NAME, success_status="generated")
+    return pdf_export.generate_markdown_pdf(
+        question_dir / "content.md", question_dir / PUBLIC_PDF_NAME, success_status="generated"
+    )
 
 
 def _approved_simulator(entry: Path) -> Path | None:
@@ -353,7 +376,7 @@ def _copy_public_simulator(source: Path, destination: Path, identifier: str) -> 
     model["source"] = {"publication": "student-site"}
     model.pop("teacher_audit", None)
     public_model = json.dumps(model, ensure_ascii=False, separators=(",", ":"))
-    html = html[:match.start()] + match.group(1) + public_model + match.group(3) + html[match.end():]
+    html = html[: match.start()] + match.group(1) + public_model + match.group(3) + html[match.end() :]
     html = html.replace("physics-model.json", "统一物理模型")
     destination.write_text(html, encoding="utf-8")
 
@@ -449,7 +472,9 @@ def prepare_publication(library: Path, entry_id: str, site: Path = DEFAULT_SITE)
     return report
 
 
-def publish_prepared(library: Path, entry_id: str, reviewer: str, note: str, site: Path = DEFAULT_SITE) -> dict[str, Any]:
+def publish_prepared(
+    library: Path, entry_id: str, reviewer: str, note: str, site: Path = DEFAULT_SITE
+) -> dict[str, Any]:
     entry = library / "entries" / entry_id
     draft = entry / DRAFT_DIR
     prepared = kb.load_json(entry / DRAFT_RECORD, {})

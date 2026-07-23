@@ -6,6 +6,7 @@ approve, publish, or call a model; it only reads lifecycle artifacts and writes
 an auditable ``evaluation.json`` describing what passed, what needs teacher
 review, and which evidence files support that judgment.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import kb
-
 
 SCORE_MAX = 5
 SCORE_MIN = 0
@@ -56,15 +56,13 @@ def _check(
     evidence: list[str] | None = None,
     details: str = "",
 ) -> None:
-    checks.append(
-        {
-            "id": check_id,
-            "label": label,
-            "status": status,
-            "evidence": evidence or [],
-            "details": details,
-        }
-    )
+    checks.append({
+        "id": check_id,
+        "label": label,
+        "status": status,
+        "evidence": evidence or [],
+        "details": details,
+    })
 
 
 def _score_from_checks(checks: list[dict[str, Any]], check_ids: set[str]) -> int:
@@ -164,12 +162,20 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
         "entry_structure",
         "题目、答案、图片引用与记录结构",
         structural_status,
-        evidence=[_relative(entry / "record.json", root), _relative(entry / "problem.md", root), _relative(entry / "solution.md", root)],
+        evidence=[
+            _relative(entry / "record.json", root),
+            _relative(entry / "problem.md", root),
+            _relative(entry / "solution.md", root),
+        ],
         details="；".join(structural_errors),
     )
 
     source_review = record.get("source_review", {})
-    source_status = "passed" if source_review.get("status") == "passed" or not record.get("ocr", {}).get("review_required") else "failed"
+    source_status = (
+        "passed"
+        if source_review.get("status") == "passed" or not record.get("ocr", {}).get("review_required")
+        else "failed"
+    )
     _check(
         checks,
         "source_review",
@@ -216,7 +222,11 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
         "layered_answer",
         "学生可读分层答案",
         answer_layers_status,
-        evidence=[_relative(entry / "solution.md", root), _relative(entry / "student-solution.md", root), _relative(entry / "teacher-solution.md", root)],
+        evidence=[
+            _relative(entry / "solution.md", root),
+            _relative(entry / "student-solution.md", root),
+            _relative(entry / "teacher-solution.md", root),
+        ],
         details=f"已包含栏目：{', '.join(required_headings)}",
     )
 
@@ -240,7 +250,9 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
 
     model_path = entry / "physics-model.json"
     if model_path.exists():
-        visual_build = kb.load_json(entry / "visualization" / "simulation-build.json", record.get("visualization_build", {})) or {}
+        visual_build = (
+            kb.load_json(entry / "visualization" / "simulation-build.json", record.get("visualization_build", {})) or {}
+        )
         visual_review = kb.load_json(entry / "visualization-review.json", record.get("visualization_review", {})) or {}
         visual_digest = _visualization_digest(entry)
         visual_errors: list[str] = []
@@ -261,8 +273,14 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
             "interactive_visualization",
             "交互可视化构建与复核",
             visual_status,
-            evidence=[_relative(model_path, root), _relative(entry / "visualization" / "simulation-build.json", root), _relative(entry / "visualization-review.json", root)],
-            details="；".join(visual_errors) if visual_errors else f"runtime_check.status={runtime_status or 'not-recorded'}",
+            evidence=[
+                _relative(model_path, root),
+                _relative(entry / "visualization" / "simulation-build.json", root),
+                _relative(entry / "visualization-review.json", root),
+            ],
+            details="；".join(visual_errors)
+            if visual_errors
+            else f"runtime_check.status={runtime_status or 'not-recorded'}",
         )
     else:
         _check(
@@ -293,7 +311,9 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
             "delivery_artifacts",
             "交付 Markdown/PDF/学生包",
             delivery_status,
-            evidence=[_relative(manifest_path, root.parent)] if manifest_path else [_relative(entry / "delivery.json", root)],
+            evidence=[_relative(manifest_path, root.parent)]
+            if manifest_path
+            else [_relative(entry / "delivery.json", root)],
             details="；".join(missing) if missing else "交付清单包含必要学生成品",
         )
     else:
@@ -307,7 +327,12 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
         )
 
     private_refs = []
-    for name, text in (("problem.md", problem), ("solution.md", solution), ("student-solution.md", student_solution), ("teacher-solution.md", teacher_solution)):
+    for name, text in (
+        ("problem.md", problem),
+        ("solution.md", solution),
+        ("student-solution.md", student_solution),
+        ("teacher-solution.md", teacher_solution),
+    ):
         if re.search(r"(/Users/|student-error-library/entries/|error-collection/)", text):
             private_refs.append(name)
     _check(
@@ -325,7 +350,9 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
     teacher_review_required = status != "passed" or any(item["id"].endswith("_hint") for item in checks)
     scores = {
         "completeness": _score_from_checks(checks, {"entry_structure", "layered_answer", "delivery_artifacts"}),
-        "correctness": _score_from_checks(checks, {"source_review", "answer_review_current", "interactive_visualization"}),
+        "correctness": _score_from_checks(
+            checks, {"source_review", "answer_review_current", "interactive_visualization"}
+        ),
         "student_cognitive_load": _score_from_checks(checks, {"layered_answer", "student_cognitive_load_hint"}),
         "safety": _score_from_checks(checks, {"source_review", "local_reference_safety", "delivery_artifacts"}),
         "deliverability": _score_from_checks(checks, {"delivery_artifacts", "interactive_visualization"}),
@@ -373,7 +400,9 @@ def main() -> int:
     parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args()
     root = args.library.expanduser().resolve()
-    report = evaluate_entry(root, args.entry_id, args.output.expanduser().resolve() if args.output else None, write=not args.no_write)
+    report = evaluate_entry(
+        root, args.entry_id, args.output.expanduser().resolve() if args.output else None, write=not args.no_write
+    )
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 1 if report.get("status") == "failed" else 0
 

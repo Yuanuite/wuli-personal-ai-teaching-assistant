@@ -13,6 +13,12 @@
 | [operator-runbook.md](operator-runbook.md) | 本地启动、人工命令、复核门禁、发布学生端、故障排查 |
 | [teacher-console-api.md](teacher-console-api.md) | 教师工作台本地 HTTP 路由、写操作请求头、状态码和调用顺序 |
 | [agent-gateway.md](agent-gateway.md) | Agent Gateway provider、隔离候选、成本档位、隐私门禁和作业恢复 |
+| [agent-scheduler.md](agent-scheduler.md) | 后台 Agent 作业调度：优先级队列、任务并发、配置文件与后续 Evolve 接口 |
+| [evaluator.md](evaluator.md) | 单题产物质量评价报告：解析、可视化、交付和 AI 审计闭环的第一块轻基建 |
+| [candidate-archive.md](candidate-archive.md) | 候选、教师反馈、Agent 结果和 Evaluator 摘要的追加式事件档案 |
+| [knowledge-store.md](knowledge-store.md) | 本地 SQLite/FTS 派生检索层：把题库、评价和候选历史聚合为 RAG evidence pack |
+| [evolve-roadmap.md](evolve-roadmap.md) | RAG 效果观测、检索后端增强和慢循环策略更新的样本门槛与顺序 |
+| [retrieval-eval.example.jsonl](retrieval-eval.example.jsonl) | 私有固定检索评测集的字段示例；真实教师标签留在本地题库 |
 | [litellm-gateway.md](litellm-gateway.md) | 用 LiteLLM Proxy 作为悟理上游模型网关的配置与职责边界 |
 | [visual-review-integration.md](visual-review-integration.md) | OCR 后视觉复核边车、OpenAI-compatible 多模态接入和隐私门禁 |
 | [high-school-physics-techniques.md](high-school-physics-techniques.md) | 高中物理解题技巧速查；自动采用二级结论时仍以 JSON 条件库为准 |

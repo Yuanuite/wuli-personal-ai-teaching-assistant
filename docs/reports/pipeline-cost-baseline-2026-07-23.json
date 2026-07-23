@@ -1,0 +1,48 @@
+{
+  "report_generated_at": "2026-07-23T20:44:15+0800",
+  "entries_evaluated": 13,
+  "entries_total": 13,
+  "pass_count": 12,
+  "pass_rate": "12/13",
+  "score_avg": 81.5,
+  "score_min": 58,
+  "score_max": 85,
+  "total_tokens_consumed": 0,
+  "avg_tokens_per_entry": 0,
+  "avg_pipeline_duration_seconds": 47459.9,
+  "avg_pipeline_duration_display": "791.0m",
+  "token_quality_efficiency": {
+    "avg_tokens_per_quality_point": 0,
+    "entries_with_token_data": 0
+  },
+  "stage_breakdown": {
+    "answer.revise": {
+      "count": 4,
+      "avg_seconds": 335.2,
+      "p50": 266.0,
+      "avg_tokens": 0,
+      "total_tokens": 0
+    },
+    "visualization": {
+      "count": 2,
+      "avg_seconds": 198.0,
+      "p50": 396.0,
+      "avg_tokens": 0,
+      "total_tokens": 0
+    },
+    "analysis": {
+      "count": 1,
+      "avg_seconds": 448.0,
+      "p50": 448.0,
+      "avg_tokens": 0,
+      "total_tokens": 0
+    }
+  },
+  "model_usage": {},
+  "lowest_scores": [
+    [
+      "20260720-bcb60960ecc0f33af64aa7b44de0498d-ba6756",
+      58
+    ]
+  ]
+}

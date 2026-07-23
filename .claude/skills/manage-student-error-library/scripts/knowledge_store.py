@@ -5,6 +5,7 @@ The store is a rebuildable retrieval and evidence layer.  Canonical truth stays
 in entry Markdown/JSON files, ``evaluation.json``, and ``candidate-archive.jsonl``.
 Deleting ``indexes/wuli-memory.db`` must never lose teaching data.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,6 @@ from typing import Any
 
 import candidate_archive
 import kb
-
 
 SCHEMA_VERSION = 1
 DEFAULT_DB_RELATIVE = Path("indexes") / "wuli-memory.db"
@@ -197,17 +197,15 @@ def _document_payloads(entry: Path, record: dict[str, Any]) -> list[dict[str, st
         if not content.strip():
             continue
         tokens = " ".join(kb.tokenize(" ".join([title, content])))
-        payloads.append(
-            {
-                "entry_id": entry.name,
-                "kind": kind,
-                "path": name,
-                "title": title,
-                "content": content,
-                "token_text": tokens,
-                "updated_at": record.get("updated_at") or "",
-            }
-        )
+        payloads.append({
+            "entry_id": entry.name,
+            "kind": kind,
+            "path": name,
+            "title": title,
+            "content": content,
+            "token_text": tokens,
+            "updated_at": record.get("updated_at") or "",
+        })
     return payloads
 
 
@@ -450,7 +448,7 @@ def _snippet(text: str, query: str, limit: int = 180) -> str:
         index = compact.lower().find(token.lower())
         if index >= 0:
             start = max(0, index - limit // 3)
-            return compact[start:start + limit] + ("…" if start + limit < len(compact) else "")
+            return compact[start : start + limit] + ("…" if start + limit < len(compact) else "")
     return compact[:limit] + ("…" if len(compact) > limit else "")
 
 
@@ -536,7 +534,9 @@ def _recent_evolve_observations(connection: sqlite3.Connection, limit: int = 5) 
     ]
 
 
-def query(root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit_db: Path | None = None) -> dict[str, Any]:
+def query(
+    root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit_db: Path | None = None
+) -> dict[str, Any]:
     root = root.expanduser().resolve()
     target = db_path(root, explicit_db)
     if not target.exists():
@@ -584,13 +584,11 @@ def query(root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit
             )
             score = 1.0 / (1.0 + max(float(row["rank"] or 0.0), 0.0)) if use_fts else 0.5
             item["score"] += score
-            item["matched_documents"].append(
-                {
-                    "kind": row["kind"],
-                    "path": row["path"],
-                    "snippet": _snippet(row["content"], text),
-                }
-            )
+            item["matched_documents"].append({
+                "kind": row["kind"],
+                "path": row["path"],
+                "snippet": _snippet(row["content"], text),
+            })
 
         ranked = sorted(grouped.items(), key=lambda pair: (-pair[1]["score"], pair[0]))[:top_k]
         results: list[dict[str, Any]] = []
@@ -599,7 +597,9 @@ def query(root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit
             if not entry_row:
                 continue
             eval_row = connection.execute("SELECT * FROM evaluation WHERE entry_id = ?", (entry_id,)).fetchone()
-            teaching_row = connection.execute("SELECT * FROM teaching_memory WHERE entry_id = ?", (entry_id,)).fetchone()
+            teaching_row = connection.execute(
+                "SELECT * FROM teaching_memory WHERE entry_id = ?", (entry_id,)
+            ).fetchone()
             evaluation = {}
             if eval_row:
                 evaluation = {
@@ -611,28 +611,28 @@ def query(root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit
                     "warning_reasons": _loads(eval_row["warning_reasons_json"], []),
                     "teacher_review_required": bool(eval_row["teacher_review_required"]),
                 }
-            results.append(
-                {
-                    "entry_id": entry_id,
-                    "title": entry_row["title"],
-                    "subject": entry_row["subject"],
-                    "status": entry_row["status"],
-                    "library_folder": entry_row["library_folder"],
-                    "score": round(float(match["score"]), 4),
-                    "path": f"entries/{entry_id}",
-                    "knowledge_points": _loads(entry_row["knowledge_points_json"], []),
-                    "error_types": _loads(entry_row["error_types_json"], []),
-                    "teaching_memory": {
-                        "difficulty": teaching_row["difficulty"] if teaching_row else "",
-                        "methods": _loads(teaching_row["methods_json"], []) if teaching_row else [],
-                        "secondary_conclusions": _loads(teaching_row["secondary_conclusions_json"], []) if teaching_row else [],
-                        "visualizable": bool(teaching_row["visualizable"]) if teaching_row else False,
-                    },
-                    "evaluation": evaluation,
-                    "recent_events": _recent_events(connection, entry_id),
-                    "matched_documents": match["matched_documents"][:3],
-                }
-            )
+            results.append({
+                "entry_id": entry_id,
+                "title": entry_row["title"],
+                "subject": entry_row["subject"],
+                "status": entry_row["status"],
+                "library_folder": entry_row["library_folder"],
+                "score": round(float(match["score"]), 4),
+                "path": f"entries/{entry_id}",
+                "knowledge_points": _loads(entry_row["knowledge_points_json"], []),
+                "error_types": _loads(entry_row["error_types_json"], []),
+                "teaching_memory": {
+                    "difficulty": teaching_row["difficulty"] if teaching_row else "",
+                    "methods": _loads(teaching_row["methods_json"], []) if teaching_row else [],
+                    "secondary_conclusions": _loads(teaching_row["secondary_conclusions_json"], [])
+                    if teaching_row
+                    else [],
+                    "visualizable": bool(teaching_row["visualizable"]) if teaching_row else False,
+                },
+                "evaluation": evaluation,
+                "recent_events": _recent_events(connection, entry_id),
+                "matched_documents": match["matched_documents"][:3],
+            })
         scheduler_benchmarks = _recent_scheduler_benchmarks(connection)
         evolve_observations = _recent_evolve_observations(connection)
     finally:
@@ -652,7 +652,9 @@ def query(root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit
         "results": results,
         "scheduler_benchmarks": scheduler_benchmarks,
         "evolve_observations": evolve_observations,
-        "evidence_sources": sorted({f"{result['path']}/{doc['path']}" for result in results for doc in result["matched_documents"]}),
+        "evidence_sources": sorted({
+            f"{result['path']}/{doc['path']}" for result in results for doc in result["matched_documents"]
+        }),
         "required_checks": required_checks,
         "notes": [
             "SQLite is a derived local index; canonical truth remains Markdown/JSON/JSONL.",

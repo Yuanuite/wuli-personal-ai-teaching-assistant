@@ -5,6 +5,7 @@ This script is intentionally read-only.  It inspects persisted job records under
 ``student-error-library/.cache/agent-jobs`` and turns them into a benchmark
 report for Scheduler tuning, provider comparison, and later Evolve feedback.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,7 +16,6 @@ from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 TERMINAL_STATUSES = {"completed", "failed"}
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -111,7 +111,9 @@ def failure_type(record: dict[str, Any]) -> str:
         return "candidate_validation_failed"
     if result.get("unauthorized_changes"):
         return "unauthorized_change"
-    message = " ".join(str(value) for value in (record.get("error"), result.get("message"), result.get("stderr")) if value).lower()
+    message = " ".join(
+        str(value) for value in (record.get("error"), result.get("message"), result.get("stderr")) if value
+    ).lower()
     if "timeout" in message or "timed out" in message or "超时" in message:
         return "provider_timeout"
     if "rate limit" in message or "429" in message or "限流" in message:
@@ -163,7 +165,9 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     completed_times = [parse_time(item.get("completed_at")) for item in records]
     created_times = [item for item in created_times if item]
     completed_times = [item for item in completed_times if item]
-    wall_seconds = seconds_between(min(created_times) if created_times else None, max(completed_times) if completed_times else None)
+    wall_seconds = seconds_between(
+        min(created_times) if created_times else None, max(completed_times) if completed_times else None
+    )
 
     summary: dict[str, Any] = {
         "schema_version": 1,
@@ -289,13 +293,21 @@ def parser() -> argparse.ArgumentParser:
     value.add_argument("--since", help="ISO timestamp lower bound for created_at")
     value.add_argument("--until", help="ISO timestamp upper bound for created_at")
     value.add_argument("--format", choices=("json", "markdown"), default="json")
-    value.add_argument("--record", action="store_true", help="Append this benchmark summary to the library Candidate Archive and rebuild Knowledge Store")
+    value.add_argument(
+        "--record",
+        action="store_true",
+        help="Append this benchmark summary to the library Candidate Archive and rebuild Knowledge Store",
+    )
     return value
 
 
 def main() -> int:
     args = parser().parse_args()
-    jobs_dir = args.jobs_dir.expanduser().resolve() if args.jobs_dir else (args.library.expanduser().resolve() / ".cache" / "agent-jobs")
+    jobs_dir = (
+        args.jobs_dir.expanduser().resolve()
+        if args.jobs_dir
+        else (args.library.expanduser().resolve() / ".cache" / "agent-jobs")
+    )
     records = [record for record in load_records(jobs_dir) if record_passes_filters(record, args)]
     report = summarize(records)
     report["jobs_dir"] = str(jobs_dir)

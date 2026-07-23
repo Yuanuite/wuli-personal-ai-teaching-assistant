@@ -11,17 +11,18 @@ import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import kb  # noqa: E402
-from agent_jobs import AgentJobManager  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
+from agent_jobs import AgentJobManager  # noqa: E402
 
-SERVER_SPEC = importlib.util.spec_from_file_location("teacher_console_server_http", ROOT / "teacher-console" / "server.py")
+SERVER_SPEC = importlib.util.spec_from_file_location(
+    "teacher_console_server_http", ROOT / "teacher-console" / "server.py"
+)
 teacher_console_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_console_server)
 
@@ -36,22 +37,32 @@ class AgentHttpTest(unittest.TestCase):
         assets.mkdir(parents=True)
         source = assets / "original.png"
         source.write_bytes(b"source")
-        kb.write_text(self.entry / "problem.md", "# 测试题\n\n这是一道长度足够的测试题干，用来验证后台 Agent HTTP 作业会立即返回并支持轮询。")
-        kb.write_json(self.entry / "record.json", {
-            "schema_version": 1,
-            "id": self.entry.name,
-            "kind": "error",
-            "status": "needs-review",
-            "answer_status": "pending",
-            "title": "后台任务测试",
-            "subject": "高中物理",
-            "knowledge_points": ["测试"],
-            "error_types": ["待确认"],
-            "source": {"sha256": hashlib.sha256(b"source").hexdigest(), "source_type": "png", "stored_files": ["assets/original.png"]},
-            "ocr": {"engine": "test", "review_required": False},
-            "source_review": {"status": "passed"},
-            "answer_review": {"status": "not-ready"},
-        })
+        kb.write_text(
+            self.entry / "problem.md",
+            "# 测试题\n\n这是一道长度足够的测试题干，用来验证后台 Agent HTTP 作业会立即返回并支持轮询。",
+        )
+        kb.write_json(
+            self.entry / "record.json",
+            {
+                "schema_version": 1,
+                "id": self.entry.name,
+                "kind": "error",
+                "status": "needs-review",
+                "answer_status": "pending",
+                "title": "后台任务测试",
+                "subject": "高中物理",
+                "knowledge_points": ["测试"],
+                "error_types": ["待确认"],
+                "source": {
+                    "sha256": hashlib.sha256(b"source").hexdigest(),
+                    "source_type": "png",
+                    "stored_files": ["assets/original.png"],
+                },
+                "ocr": {"engine": "test", "review_required": False},
+                "source_review": {"status": "passed"},
+                "answer_review": {"status": "not-ready"},
+            },
+        )
         self.originals = {
             "LIBRARY": teacher_console_server.LIBRARY,
             "AGENT_GATEWAY": teacher_console_server.AGENT_GATEWAY,
@@ -59,10 +70,12 @@ class AgentHttpTest(unittest.TestCase):
         }
         teacher_console_server.LIBRARY = self.library
         adapter = ROOT / "teacher-console" / "tests" / "fixtures" / "fake_agent_adapter.py"
-        teacher_console_server.AGENT_GATEWAY = AgentGateway(environ={
-            "TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": f"{sys.executable} {adapter}",
-            "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter",
-        })
+        teacher_console_server.AGENT_GATEWAY = AgentGateway(
+            environ={
+                "TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": f"{sys.executable} {adapter}",
+                "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter",
+            }
+        )
         teacher_console_server._JOB_MANAGER = AgentJobManager(self.library / ".cache" / "agent-jobs", max_workers=1)
         try:
             self.server = ThreadingHTTPServer(("127.0.0.1", 0), teacher_console_server.Handler)
@@ -109,7 +122,9 @@ class AgentHttpTest(unittest.TestCase):
         self.assertFalse(probed["live_probe"]["student_data_sent"])
 
         status, queued = self.request_json(
-            f"/api/entries/{self.entry.name}/analyze", method="POST", body={"routing_tier": "economy"},
+            f"/api/entries/{self.entry.name}/analyze",
+            method="POST",
+            body={"routing_tier": "economy"},
         )
         self.assertEqual(status, 202)
         self.assertEqual(queued["status"], "queued")
@@ -128,17 +143,24 @@ class AgentHttpTest(unittest.TestCase):
         self.assertEqual(job["result"]["model"], "fake-economy")
         self.assertEqual(job["result"]["usage"]["total_tokens"], 150)
         self.assertEqual(kb.load_json(self.entry / "answer-review.json", {})["status"], "needs-review")
-        self.assertEqual(teacher_console_server.process_uploads.pipeline_state(self.entry)["state"], "needs-answer-review")
+        self.assertEqual(
+            teacher_console_server.process_uploads.pipeline_state(self.entry)["state"], "needs-answer-review"
+        )
 
         output = Path(self.temp.name) / "output"
         output.mkdir()
         (output / "带答案错题.md").write_text("student delivery", encoding="utf-8")
         (output / "private.json").write_text('{"private":true}', encoding="utf-8")
-        kb.write_json(self.entry / "delivery.json", {
-            "output": str(output),
-            "files": ["带答案错题.md", "private.json"],
-        })
-        with urllib.request.urlopen(f"{self.base}/api/download/{self.entry.name}/%E5%B8%A6%E7%AD%94%E6%A1%88%E9%94%99%E9%A2%98.md", timeout=3) as response:
+        kb.write_json(
+            self.entry / "delivery.json",
+            {
+                "output": str(output),
+                "files": ["带答案错题.md", "private.json"],
+            },
+        )
+        with urllib.request.urlopen(
+            f"{self.base}/api/download/{self.entry.name}/%E5%B8%A6%E7%AD%94%E6%A1%88%E9%94%99%E9%A2%98.md", timeout=3
+        ) as response:
             self.assertEqual(response.status, 200)
         with self.assertRaises(urllib.error.HTTPError) as blocked:
             urllib.request.urlopen(f"{self.base}/api/download/{self.entry.name}/private.json", timeout=3)

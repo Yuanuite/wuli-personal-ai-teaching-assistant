@@ -1,7 +1,66 @@
 # 变更记录
 
+## 2026-07-23：Pipeline 日志系统与 CI 测试门禁
+
+- 新增 `teacher-console/log.py`：标准库 `logging` + 按线程隔离的 `trace_id`（管道入口 UUID）——零外部依赖。
+- 所有四个核心模块接入日志：`server.py`（管道阶段 start/complete）、`agent_gateway.py`（任务路由/完成/失败）、`agent_jobs.py`（作业排队/运行/终态）、`failure_intelligence.py`（故障证据构建/重试决策）。
+- `server.py` 新增 `--log-file` 参数，指定时同步写入文件。
+- CI 门禁就位：`.github/workflows/deploy.yml` 新增 `test` job（`pytest` + `coverage`），`deploy` job 依赖 `test`。
+- 新增 7 个 `test_log.py` 单元测试（trace_id 注入/自动生成/线程隔离/配置幂等），全部 118 个测试通过。
+
+## 2026-07-23：Agent prompt 瘦身、题干整理任务与 Knowledge Store 证据注入打通
+
+- Agent 任务 prompt 大幅瘦身：删除了已被 Gateway `allowed_paths`/`denied_paths` 和领域 validator 结构性兜底的"不要做 X"约束，移除 `project-rules.md` 和 `responsibility-matrix.md` 两个不必要的上下文文件，教师反馈前置到 prompt 最前。
+- 新增 `source.clean` Agent 任务（server 端 `source_clean_task()` + `run_source_clean()` handler）：OCR 后由 Agent 自动修正公式/符号/换行错误，并从题干提取内容相关中文标题写入 `record.json`。默认走 economy 档，不暴露原图，允许修改 `problem.md` 和 `record.json`（仅教学元数据字段）。
+- Knowledge Store 证据注入正式接入 Agent Gateway：`agent_evidence_payload()` 封装 `build_agent_evidence()`，`answer.revise` 和 `visualization.model` 任务自动接收裁剪后的历史相似题证据（方法、易错点、既往失败教训），当前题干和教师意见始终优先。economy 最多 2 条/3500 字符，expert 最多 4 条/9000 字符。
+- 新增 `agent_scheduler_config()`：读取/初始化 `agent-scheduler.json` 配置文件，返回标准化调度配置。
+- 检索评测后端接口就位：`retrieval_benchmark` 模块通过 server 暴露，`retrieval_review_snapshot()` 和 `save_retrieval_review()` 为前端评测复核页提供数据。
+- `save_answer_entry` 保存后自动运行 evaluator 并返回 `evaluation` 字段，前端可立即看到评分变化。
+- 网页端新增题目标题点击编辑：`rename-entry` action 直接更新 `record.json` 并刷新索引，Enter/blur 保存、Escape 取消。
+- 修复测试文件中引用的 5 个缺失函数/模块（`agent_evidence_payload`、`source_clean_routing_tier`、`agent_scheduler_config`、`retrieval_benchmark`、检索评测 API），全部 113 个测试通过。
+- Claude provider 保存时持久化 `model` 字段，并在 CC CLI 调用时传入 `--model` 参数；`api_key` 从注册表注入子进程 `ANTHROPIC_API_KEY`，优先于服务器环境变量。
+- dpsk 模型注册表配置统一：`api_key_env` 统一为 `ANTHROPIC_API_KEY`，修复两个条目回退行为不一致的问题。
+- 新增 24 个 evolve 实验模块文件进入 `.gitignore`，暂不追踪。
+
+## 2026-07-22：Agent 失败检索与一次性纠正
+
+- 新增 `failure_intelligence.py`：按任务类型和稳定失败码检索 Candidate Archive，把当前校验错误与同类历史模式组成不含条目 ID、学生内容、绝对路径或密钥的排障证据包。
+- `candidate_validation_failed`、`output_truncated`、`candidate_no_change` 会在全新隔离候选区最多纠正一次；越权、canonical 冲突、provider/adapter 故障、构建失败和服务中断仍禁止立即自动重试。
+- 作业 API 与 Candidate Archive 新增 `failure_repair`，批量 Benchmark 汇总 `repair_outcomes`。慢循环拆出可靠性观察门槛：5 个终态任务且至少 1 个结构化失败即可记录只读排障报告，不再要求失败样本先凑足教师闭环。
+
+## 2026-07-22：RAG 效果观察与慢循环门槛
+
+- 教师工作台新增“检索评测”可视化复核：用原题图、题干摘要、知识点和错因卡片替代手工编辑 JSONL，支持筛选、多选、保存草稿、驳回与批准后跳到下一条；数据仍只写本地私有固定集，不进入学生端。
+- 新增 `slow_loop_report.py` 只读慢循环骨架：组合 RAG 教师闭环、固定检索集和调度基准，输出周报/策略/策略变更/自动应用四级 readiness；样本不足只列缺口，不调用模型、不应用策略。
+- 慢循环只把明确批准或教师返修计为教师闭环；调度建议至少需要 5 个同类作业且忽略 `unknown_failed`。教学质量周报仍要求 20 个 RAG 完成任务和 10 个教师闭环；可靠性观察可由 5 个终态作业与至少 1 个结构化失败单独开启。
+- 策略确认新增显式教师动作并绑定最近一次慢循环报告；新报告会使旧确认失效，确认事件始终标记 `applies_policy=false`。连续两期方向比较只看 RAG/检索策略，不被临时调度诊断干扰。
+- 新增 `retrieval_benchmark.py` 固定集工具：可从 canonical 元数据生成 30 条本地 `draft` 草稿，校验教师标签，并按知识点、题型、错因、教师表达报告 Hit@k、Recall@k、MRR 和空结果率；不调用模型、不自动修改检索策略。
+- 只有至少 30 条教师确认的 `approved` 查询才允许把聚合结果记录为 `evolve.observation.retrieval`；持久事件排除查询正文、相关条目 ID 和逐题结果，草稿结果不能触发后端升级。
+- 新增只读 `rag_effectiveness_report.py`，按 `retrieved / empty / unavailable / legacy-no-rag` 汇总 Agent 成功率、耗时、用量、Evaluator 分数、教师返修与最终批准。
+- 只有同一任务类型的对照组分别达到样本门槛时才标记 `comparison_ready=true`；报告明确属于观察性证据，不在线随机关闭 RAG。
+- 显式 `--record` 可写入全库 Candidate Archive 的 `evolve.observation.rag`，Knowledge Store 新增 `evolve_observation` 派生表。
+- 新增 Evolve 路线门槛：先做 30 条标注检索集，再按召回缺陷增强后端；慢循环从只读周报开始，策略生效必须经过样本、固定测试集、教师确认和回滚门禁。
+
+## 2026-07-22：Knowledge Store 证据注入 Agent
+
+- `answer.revise` 与 `visualization.model` 会在任务开始前读取本地 Knowledge Store，把相似题方法、错因、Evaluator 摘要和近期失败教训作为限量只读证据放入 Gateway 隔离区。
+- 证据包排除当前条目和内部路径/ID，经济模式最多 2 条，其他模式最多 4 条；数据库缺失或检索失败时 fail-soft，不触发重建、不阻塞主任务。
+- Gateway 新增受限的内联上下文运输，只允许写入 `.agent-context/`，并从 adapter stdin 元数据移除原始 payload；作业结果仅记录证据状态和引用数，便于后续 Evaluator/Evolve 对照收益。
+
+## 2026-07-22：Agent 失败原因结构化
+
+- Agent Gateway 在失败发生时写入低基数 `failure_type`，区分 provider 超时/限流/执行失败、adapter 协议错误、无候选变化、输出截断、领域校验失败、越权修改和 canonical 冲突。
+- Agent Scheduler 为服务重启中断和生命周期回调异常分别记录 `worker_interrupted`、`task_exception`；可视化后处理构建失败记录 `simulation_build_failed`。
+- 后台作业公开结果、Candidate Archive 和批量 Benchmark 透传同一失败码；Benchmark 仅对旧作业保留文本推断兼容，为后续 Knowledge Store 检索和 Evolve 调度决策提供稳定证据。
+
 ## 2026-07-22
 
+- 新增 Evaluator 薄切片：`process_uploads.py evaluate <entry-id>` 可手动生成 `evaluation.json`，关键生命周期动作和 Agent 任务结束后自动刷新，`finish` 后把评价摘要写入 `delivery-manifest.json`；报告记录解析结构、来源/答案复核、可视化、交付、安全提示和 0-5 分评分，为后续 Candidate Archive、题库 RAG 与 AI 审计 RAG 提供统一证据入口。
+- 新增 Candidate Archive 薄切片：教师反馈/批准、答案保存、Agent 解析/返修/可视化结果、可视化构建、公开发布和最终交付会追加写入每题与全库 JSONL 档案；档案只保存摘要、状态、变更文件、失败原因和 Evaluator 摘要，自动脱敏密钥字段，为后续 RAG 检索和慢循环复盘沉淀成败历史。
+- 新增 Knowledge Store 薄切片：`student-error-library/indexes/wuli-memory.db` 作为可重建的本地 SQLite/FTS 派生索引，聚合条目 Markdown/JSON、Evaluator 摘要和 Candidate Archive 事件；`knowledge_store.py query` 返回带证据片段、标签、评分与候选历史的 evidence pack，供后续题库 RAG、AI 审计和 Evolve 比较使用。
+- 新增 Agent Scheduler Phase 1：后台 Agent 作业从固定线程池升级为可配置优先级调度，默认各任务类型上限为 4、全局上限为 6，同题仍互斥；等待同类并发额度的作业不再占住 worker。配置文件为 `student-error-library/config/agent-scheduler.json`，保留 provider limits 接口供后续 Evolve 自适应调度使用。
+- 新增 `agent_batch_benchmark.py` 基准脚本：默认只读复盘 `.cache/agent-jobs/` 中的等待时间、运行时间、P50/P90、最大并发、provider/model 分布、失败类型和 token 用量；显式 `--record` 时追加全库级 `scheduler.benchmark` Candidate Archive 事件并刷新 Knowledge Store，用于比较批量录入优化前后的真实收益。
+- 后端批量录入提速：`source.clean` 未显式选择档位时默认走 `economy`，成功后改为防抖刷新知识索引；Evaluator 和 Candidate Archive 仍逐题沉淀结果。
 - 新增可审查的 Archify 系统架构图与错题处理 Pipeline：JSON 作为布局和语义真源，单文件 HTML 提供主题、搜索、语义聚焦和分章节 Story 导览；Story Follow Camera 现在以当前执行模块为优先锚点，在图表只部分进入浏览器视口时自适应留白并保证模块完整可见，同时保留前后步骤上下文，不接管页面滚动。
 - 新增基于 graphify 的架构治理与 AI 入口地图：`.graphifyignore` 排除生成物、公开题库内容和 vendor/minified 依赖，`docs/ai-editing-map.md` 指导 AI 按任务类型选择最小上下文，`docs/architecture-governance.md` 成为功能归位、复杂度删减和变更影响分析的根规则触发文档。
 - 教师端模型设置改为可插拔注册表 UI：支持“自动 / 经济 / 深度 / 自定义”模式，自定义时选择具体模型；本地默认可把可视化建模路由到 `Codex 可视化 Agent`。

@@ -15,11 +15,24 @@ const state = {
   publicationImageObject: null,
   publicationRedactionStart: null,
   agent: null,
-  activeJob: null,
+  activeJobs: {},
   jobPollTimer: null,
   jobDismissTimer: null,
   modelSettings: null,
+  retrievalReview: {
+    cases: [],
+    candidates: [],
+    validation: null,
+    index: 0,
+    selected: new Set(),
+    dirty: false,
+  },
 };
+
+function currentJob() {
+  return state.activeJobs[state.current?.id] || null;
+}
+
 const $ = (id) => document.getElementById(id);
 const AGENT_TIER_KEY = "wuli.teacher-console.agent-tier";
 const AGENT_MODEL_KEY = "wuli.teacher-console.agent-model";
@@ -303,6 +316,236 @@ function toast(message, error = false) {
   element.className = `toast${error ? " error" : ""}`;
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => element.classList.add("hidden"), 1700);
+}
+
+const RETRIEVAL_CATEGORY_LABELS = {
+  knowledge_point: "知识点",
+  problem_type: "题型",
+  error_type: "错因",
+  teacher_phrase: "教师表达",
+};
+
+function currentRetrievalCase() {
+  return state.retrievalReview.cases[state.retrievalReview.index] || null;
+}
+
+function retrievalStatusLabel(status) {
+  return { draft: "待复核", approved: "已批准", rejected: "已驳回" }[status] || status;
+}
+
+function setRetrievalDirty(value = true) {
+  state.retrievalReview.dirty = value;
+  $("retrieval-review-hint").textContent = value
+    ? "当前修改尚未保存。批准前请勾选所有真正相关的题目。"
+    : "批准前请至少勾选一道相关题目。";
+}
+
+function renderRetrievalSummary() {
+  const validation = state.retrievalReview.validation || {};
+  const counts = validation.status_counts || {};
+  const approved = counts.approved || 0;
+  const total = validation.case_count || state.retrievalReview.cases.length;
+  $("retrieval-review-progress").textContent = `${approved} / ${total} 已批准`;
+  const summary = $("retrieval-review-summary");
+  summary.replaceChildren();
+  for (const [label, value, tone] of [
+    ["待复核", counts.draft || 0, "draft"],
+    ["已批准", approved, "approved"],
+    ["已驳回", counts.rejected || 0, "rejected"],
+  ]) {
+    const item = document.createElement("span");
+    item.className = tone;
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    item.append(strong, document.createTextNode(label));
+    summary.append(item);
+  }
+}
+
+function renderRetrievalCaseList() {
+  const list = $("retrieval-case-list");
+  list.replaceChildren();
+  state.retrievalReview.cases.forEach((item, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `retrieval-case-item ${item.review_status || "draft"}${index === state.retrievalReview.index ? " active" : ""}`;
+    const number = document.createElement("span");
+    number.className = "retrieval-case-number";
+    number.textContent = String(index + 1).padStart(2, "0");
+    const copy = document.createElement("span");
+    const category = document.createElement("small");
+    category.textContent = `${RETRIEVAL_CATEGORY_LABELS[item.category] || item.category} · ${retrievalStatusLabel(item.review_status)}`;
+    const query = document.createElement("strong");
+    query.textContent = item.query;
+    copy.append(category, query);
+    button.append(number, copy);
+    button.addEventListener("click", () => selectRetrievalCase(index));
+    list.append(button);
+  });
+}
+
+function candidateSearchText(candidate) {
+  return [candidate.title, candidate.problem_excerpt, ...(candidate.knowledge_points || []), ...(candidate.error_types || [])]
+    .join(" ").toLowerCase();
+}
+
+function renderRetrievalCandidates() {
+  const grid = $("retrieval-candidate-grid");
+  const selected = state.retrievalReview.selected;
+  const filter = $("retrieval-candidate-filter").value.trim().toLowerCase();
+  const candidates = [...state.retrievalReview.candidates]
+    .filter(candidate => !filter || candidateSearchText(candidate).includes(filter))
+    .sort((left, right) => Number(selected.has(right.id)) - Number(selected.has(left.id)) || left.title.localeCompare(right.title, "zh-CN"));
+  grid.replaceChildren();
+  for (const candidate of candidates) {
+    const card = document.createElement("label");
+    card.className = `retrieval-candidate-card${selected.has(candidate.id) ? " selected" : ""}`;
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = selected.has(candidate.id);
+    checkbox.value = candidate.id;
+    checkbox.setAttribute("aria-label", `将${candidate.title}标为相关题目`);
+    const visual = document.createElement("span");
+    visual.className = "retrieval-candidate-visual";
+    if (candidate.thumbnail) {
+      const image = document.createElement("img");
+      image.src = candidate.thumbnail;
+      image.alt = `${candidate.title}题图`;
+      image.loading = "lazy";
+      visual.append(image);
+    } else {
+      visual.textContent = "物";
+    }
+    const body = document.createElement("span");
+    body.className = "retrieval-candidate-body";
+    const title = document.createElement("strong");
+    title.textContent = candidate.title;
+    const tags = document.createElement("span");
+    tags.className = "retrieval-candidate-tags";
+    for (const tag of [...(candidate.knowledge_points || []).slice(0, 3), ...(candidate.error_types || []).slice(0, 2)]) {
+      const chip = document.createElement("small");
+      chip.textContent = tag;
+      tags.append(chip);
+    }
+    const excerpt = document.createElement("span");
+    excerpt.className = "retrieval-candidate-excerpt";
+    excerpt.textContent = candidate.problem_excerpt || "暂无可读题干摘要";
+    body.append(title, tags, excerpt);
+    card.append(checkbox, visual, body);
+    checkbox.addEventListener("change", () => {
+      if (checkbox.checked) selected.add(candidate.id);
+      else selected.delete(candidate.id);
+      setRetrievalDirty();
+      renderRetrievalCandidates();
+      renderRetrievalSelectionCount();
+    });
+    grid.append(card);
+  }
+  if (!candidates.length) {
+    const empty = document.createElement("p");
+    empty.className = "muted retrieval-candidate-empty";
+    empty.textContent = "没有符合筛选条件的题目。";
+    grid.append(empty);
+  }
+}
+
+function renderRetrievalSelectionCount() {
+  $("retrieval-selection-count").textContent = `已选择 ${state.retrievalReview.selected.size} 道`;
+}
+
+function renderRetrievalCase() {
+  const item = currentRetrievalCase();
+  const empty = !item;
+  $("retrieval-review-empty").classList.toggle("hidden", !empty);
+  $("retrieval-review-editor").classList.toggle("hidden", empty);
+  for (const id of ["retrieval-prev", "retrieval-next", "retrieval-save-draft", "retrieval-reject", "retrieval-approve"]) {
+    $(id).disabled = empty;
+  }
+  if (empty) return;
+  $("retrieval-query").value = item.query || "";
+  $("retrieval-category").value = item.category || "knowledge_point";
+  $("retrieval-candidate-filter").value = "";
+  state.retrievalReview.selected = new Set(item.relevant_entry_ids || []);
+  setRetrievalDirty(false);
+  $("retrieval-prev").disabled = state.retrievalReview.index <= 0;
+  $("retrieval-next").disabled = state.retrievalReview.index >= state.retrievalReview.cases.length - 1;
+  renderRetrievalCandidates();
+  renderRetrievalSelectionCount();
+}
+
+function selectRetrievalCase(index) {
+  if (index === state.retrievalReview.index) return;
+  if (state.retrievalReview.dirty && !window.confirm("当前修改尚未保存，仍要切换吗？")) return;
+  state.retrievalReview.index = Math.max(0, Math.min(index, state.retrievalReview.cases.length - 1));
+  renderRetrievalCaseList();
+  renderRetrievalCase();
+}
+
+async function openRetrievalReview() {
+  $("retrieval-review-backdrop").classList.remove("hidden");
+  $("retrieval-review-progress").textContent = "正在载入…";
+  try {
+    const snapshot = await api("/api/retrieval-review");
+    state.retrievalReview.cases = snapshot.cases || [];
+    state.retrievalReview.candidates = snapshot.candidates || [];
+    state.retrievalReview.validation = snapshot.validation || {};
+    const firstDraft = state.retrievalReview.cases.findIndex(item => item.review_status === "draft");
+    state.retrievalReview.index = firstDraft >= 0 ? firstDraft : 0;
+    renderRetrievalSummary();
+    renderRetrievalCaseList();
+    renderRetrievalCase();
+  } catch (error) {
+    toast(`读取检索评测失败：${error.message}`, true);
+    $("retrieval-review-backdrop").classList.add("hidden");
+  }
+}
+
+function closeRetrievalReview() {
+  if (state.retrievalReview.dirty && !window.confirm("当前修改尚未保存，仍要关闭吗？")) return;
+  $("retrieval-review-backdrop").classList.add("hidden");
+}
+
+async function saveRetrievalCase(reviewStatus, advance = false) {
+  const item = currentRetrievalCase();
+  if (!item) return;
+  const query = $("retrieval-query").value.trim();
+  if (!query) { toast("检索语句不能为空", true); return; }
+  if (reviewStatus === "approved" && !state.retrievalReview.selected.size) {
+    toast("批准前请至少勾选一道相关题目", true);
+    return;
+  }
+  const button = reviewStatus === "approved" ? $("retrieval-approve") : (reviewStatus === "rejected" ? $("retrieval-reject") : $("retrieval-save-draft"));
+  button.disabled = true;
+  try {
+    const snapshot = await api("/api/retrieval-review/save", {
+      method: "POST",
+      body: {
+        id: item.id,
+        query,
+        category: $("retrieval-category").value,
+        relevant_entry_ids: [...state.retrievalReview.selected],
+        review_status: reviewStatus,
+      },
+    });
+    state.retrievalReview.cases = snapshot.cases || [];
+    state.retrievalReview.candidates = snapshot.candidates || [];
+    state.retrievalReview.validation = snapshot.validation || {};
+    const currentIndex = state.retrievalReview.cases.findIndex(candidate => candidate.id === item.id);
+    state.retrievalReview.index = Math.max(0, currentIndex);
+    if (advance) {
+      const nextDraft = state.retrievalReview.cases.findIndex((candidate, index) => index > state.retrievalReview.index && candidate.review_status === "draft");
+      if (nextDraft >= 0) state.retrievalReview.index = nextDraft;
+      else if (state.retrievalReview.index < state.retrievalReview.cases.length - 1) state.retrievalReview.index += 1;
+    }
+    renderRetrievalSummary();
+    renderRetrievalCaseList();
+    renderRetrievalCase();
+    toast(reviewStatus === "approved" ? "已批准并保存" : (reviewStatus === "rejected" ? "已驳回此条" : "草稿已保存"));
+  } catch (error) {
+    toast(`保存失败：${error.message}`, true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function hasDynamicVisualization() {
@@ -969,16 +1212,18 @@ async function selectEntry(id) {
   }
   state.current = await api(`/api/entries/${encodeURIComponent(id)}`);
   const persistedJob = state.current.agent_job;
-  if ((!state.activeJob || ["completed", "failed"].includes(state.activeJob.status)) && persistedJob?.id && ["queued", "running", "failed"].includes(persistedJob.status)) {
-    clearTimeout(state.jobPollTimer);
-    state.activeJob = {
+  clearTimeout(state.jobDismissTimer);
+  if (persistedJob?.id) {
+    const jobForEntry = {
       ...persistedJob,
       action: persistedJob.kind,
       entryId: persistedJob.entry_id || state.current.id,
       pollErrors: 0,
     };
+    state.activeJobs[state.current.id] = jobForEntry;
     if (["queued", "running"].includes(persistedJob.status)) {
-      state.jobPollTimer = setTimeout(() => pollActiveJob(String(persistedJob.id)), 450);
+      clearTimeout(state.jobPollTimer);
+      state.jobPollTimer = setTimeout(() => pollActiveJob(String(persistedJob.id), state.current.id), 450);
     }
   }
   state.solutionDrafts = {
@@ -1400,7 +1645,7 @@ function agentActionButtons() {
 }
 
 function syncJobControls() {
-  const busy = Boolean(state.activeJob && !["completed", "failed"].includes(state.activeJob.status));
+  const busy = Boolean(currentJob() && !["completed", "failed"].includes(currentJob().status));
   for (const button of agentActionButtons()) {
     if (busy) {
       if (button.dataset.jobDisabled !== "1") {
@@ -1418,7 +1663,7 @@ function syncJobControls() {
 
 function renderActiveJob() {
   const panel = $("active-job");
-  const job = state.activeJob;
+  const job = currentJob();
   if (!job) {
     panel.className = "active-job hidden";
     syncJobControls();
@@ -1464,7 +1709,7 @@ function beginQueuedJob(job, { action, entryId, success }) {
   clearTimeout(state.jobPollTimer);
   clearTimeout(state.jobDismissTimer);
   const jobId = String(job.id);
-  state.activeJob = {
+  state.activeJobs[entryId] = {
     ...job,
     id: jobId,
     status: job.status || "queued",
@@ -1475,7 +1720,7 @@ function beginQueuedJob(job, { action, entryId, success }) {
   };
   renderActiveJob();
   toast(`${jobActionLabel(action)}已进入后台队列，可继续查看页面`);
-  state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), 450);
+  state.jobPollTimer = setTimeout(() => pollActiveJob(jobId, entryId), 450);
 }
 
 async function refreshAfterJob(job) {
@@ -1490,15 +1735,17 @@ async function refreshAfterJob(job) {
   }
 }
 
-async function pollActiveJob(jobId) {
-  if (!state.activeJob || state.activeJob.id !== jobId) return;
-  const snapshot = state.activeJob;
+function _pollJob(entryId) { return state.activeJobs[entryId] || null; }
+
+async function pollActiveJob(jobId, entryId) {
+  if (!_pollJob(entryId) || _pollJob(entryId).id !== jobId) return;
+  const snapshot = _pollJob(entryId);
   try {
     const response = await api(jobApiUrl(snapshot));
-    if (!state.activeJob || state.activeJob.id !== jobId) return;
+    if (!_pollJob(entryId) || _pollJob(entryId).id !== jobId) return;
     const update = response.job && typeof response.job === "object" ? response.job : response;
-    const context = state.activeJob;
-    state.activeJob = {
+    const context = _pollJob(entryId);
+    state.activeJobs[entryId] = {
       ...context,
       ...update,
       id: String(update.id || jobId),
@@ -1509,30 +1756,35 @@ async function pollActiveJob(jobId) {
       pollErrors: 0,
     };
   } catch (error) {
-    if (!state.activeJob || state.activeJob.id !== jobId) return;
-    state.activeJob.pollErrors = (state.activeJob.pollErrors || 0) + 1;
-    state.activeJob.progress_message = `暂时无法读取进度，正在重试（${state.activeJob.pollErrors}）`;
+    if (!_pollJob(entryId) || _pollJob(entryId).id !== jobId) return;
+    const job = _pollJob(entryId);
+    state.activeJobs[entryId] = {
+      ...job,
+      pollErrors: (job.pollErrors || 0) + 1,
+      progress_message: `暂时无法读取进度，正在重试（${(job.pollErrors || 0) + 1}）`,
+    };
     renderActiveJob();
-    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), Math.min(5000, 900 + state.activeJob.pollErrors * 600));
+    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId, entryId), Math.min(5000, 900 + (job.pollErrors || 0) * 600));
     return;
   }
 
   renderActiveJob();
-  const status = state.activeJob.status;
+  const status = _pollJob(entryId).status;
   if (!["completed", "failed"].includes(status)) {
-    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId), status === "queued" ? 900 : 1400);
+    state.jobPollTimer = setTimeout(() => pollActiveJob(jobId, entryId), status === "queued" ? 900 : 1400);
     return;
   }
 
-  const finished = state.activeJob;
+  const finished = _pollJob(entryId);
   await refreshAfterJob(finished);
-  if (!state.activeJob || state.activeJob.id !== jobId) return;
+  if (!_pollJob(entryId) || _pollJob(entryId).id !== jobId) return;
   if (status === "completed") {
     const message = typeof finished.success === "function" ? finished.success(finished) : finished.success;
     toast(message || `${jobActionLabel(finished.action)}已完成，题目内容已刷新`);
     state.jobDismissTimer = setTimeout(() => {
-      if (state.activeJob?.id === jobId && state.activeJob.status === "completed") {
-        state.activeJob = null;
+      const job = _pollJob(entryId);
+      if (job?.id === jobId && job.status === "completed") {
+        delete state.activeJobs[entryId];
         renderActiveJob();
       }
     }, 5200);
@@ -1639,6 +1891,35 @@ setupLayout();
 setupUpload();
 linkScroll($("problem-editor"), $("problem-preview"));
 linkScroll($("answer-editor"), $("solution-view"));
+
+$("entry-title").addEventListener("click", () => {
+  const titleEl = $("entry-title");
+  if (titleEl.querySelector("input")) return;
+  const original = titleEl.textContent;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.value = original;
+  input.className = "entry-title-edit";
+  input.maxLength = 120;
+  titleEl.textContent = "";
+  titleEl.appendChild(input);
+  input.focus();
+  input.select();
+  const finish = async (save) => {
+    const value = input.value.trim();
+    input.disabled = true;
+    if (save && value && value !== original) {
+      const result = await entryAction("rename-entry", { title: value });
+      if (result) {
+        state.current.title = value;
+        renderEntries(state.current.id);
+      }
+    }
+    titleEl.textContent = state.current.title;
+  };
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") finish(true); if (e.key === "Escape") finish(false); });
+  input.addEventListener("blur", () => finish(true));
+});
 
 document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => activateTab(button.dataset.tab)));
 document.querySelectorAll(".solution-tab").forEach(button => button.addEventListener("click", async () => {
@@ -1853,6 +2134,19 @@ $("probe-agent").addEventListener("click", probeAgent);
 $("open-agent-settings").addEventListener("click", () => {
   openAgentSettings().catch(error => toast(`打开模型设置失败：${error.message}`, true));
 });
+$("open-retrieval-review").addEventListener("click", openRetrievalReview);
+$("close-retrieval-review").addEventListener("click", closeRetrievalReview);
+$("retrieval-review-backdrop").addEventListener("click", event => {
+  if (event.target === $("retrieval-review-backdrop")) closeRetrievalReview();
+});
+$("retrieval-query").addEventListener("input", () => setRetrievalDirty());
+$("retrieval-category").addEventListener("change", () => setRetrievalDirty());
+$("retrieval-candidate-filter").addEventListener("input", renderRetrievalCandidates);
+$("retrieval-prev").addEventListener("click", () => selectRetrievalCase(state.retrievalReview.index - 1));
+$("retrieval-next").addEventListener("click", () => selectRetrievalCase(state.retrievalReview.index + 1));
+$("retrieval-save-draft").addEventListener("click", () => saveRetrievalCase("draft"));
+$("retrieval-reject").addEventListener("click", () => saveRetrievalCase("rejected", true));
+$("retrieval-approve").addEventListener("click", () => saveRetrievalCase("approved", true));
 $("close-agent-settings").addEventListener("click", closeAgentSettings);
 $("agent-settings-backdrop").addEventListener("click", event => {
   if (event.target === $("agent-settings-backdrop")) closeAgentSettings();

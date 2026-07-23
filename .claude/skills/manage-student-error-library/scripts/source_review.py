@@ -12,7 +12,6 @@ from typing import Any
 
 import kb
 
-
 REVIEW_SCHEMA_VERSION = 1
 
 
@@ -130,7 +129,9 @@ def parse_adapter_output(raw: str) -> dict[str, Any]:
     if status not in {"passed", "needs-review"}:
         raise ValueError("review_status must be passed or needs-review")
     for field in ("diagram_facts", "uncertainties"):
-        if not isinstance(result.get(field, []), list) or not all(isinstance(item, str) for item in result.get(field, [])):
+        if not isinstance(result.get(field, []), list) or not all(
+            isinstance(item, str) for item in result.get(field, [])
+        ):
             raise ValueError(f"{field} must be an array of strings")
     if status == "passed":
         if not str(result.get("reviewed_text", "")).strip():

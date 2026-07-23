@@ -18,7 +18,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-
 CONSOLE_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = CONSOLE_DIR.parent
 STATIC_DIR = CONSOLE_DIR / "static"
@@ -34,11 +33,10 @@ import evaluator  # noqa: E402
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
 import public_site  # noqa: E402
-
-from log import configure as configure_logging, logger, TraceContext  # noqa: E402
-
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
+from log import TraceContext, logger
+from log import configure as configure_logging  # noqa: E402
 from model_registry import (  # noqa: E402
     model_config_for_task,
     model_registry_public,
@@ -52,7 +50,6 @@ from model_registry import (  # noqa: E402
 CONSOLE_SCRIPTS = CONSOLE_DIR / "scripts"
 sys.path.insert(0, str(CONSOLE_SCRIPTS))
 import retrieval_benchmark  # noqa: E402
-
 
 MAX_UPLOAD = 30 * 1024 * 1024
 MAX_JSON = 2 * 1024 * 1024
@@ -104,9 +101,21 @@ DELIVERY_CATALOG = {
     },
 }
 PROTECTED_RECORD_FIELDS = {
-    "schema_version", "id", "kind", "status", "answer_status", "created_at", "updated_at",
-    "library_folder", "source", "ocr", "source_review", "answer_review", "visualization_review",
-    "generated_from", "review",
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "answer_status",
+    "created_at",
+    "updated_at",
+    "library_folder",
+    "source",
+    "ocr",
+    "source_review",
+    "answer_review",
+    "visualization_review",
+    "generated_from",
+    "review",
 }
 
 
@@ -127,7 +136,10 @@ def agent_health(*, force: bool = False) -> dict:
                 provider["reason"] = "项目 privacy.allow_remote_agent 尚未授权"
         available = [item for item in result.get("providers", []) if item.get("available")]
         if result.get("mode") == "auto":
-            priority = {name: index for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))}
+            priority = {
+                name: index
+                for index, name in enumerate(("adapter", "openai-compatible", "legacy-command", "codex", "claude"))
+            }
             available.sort(key=lambda item: priority.get(item.get("name"), 99))
             result["selected"] = available[0]["name"] if available else None
         elif not any(item.get("name") == result.get("selected") for item in available):
@@ -162,7 +174,16 @@ def source_clean_routing_tier(routing_tier: str | None) -> str:
 
 
 def gateway_routing_fields(gateway: dict) -> dict:
-    keys = ("routing_tier", "requested_tier", "model_tier", "model", "model_id", "model_display_name", "usage", "routing_notice")
+    keys = (
+        "routing_tier",
+        "requested_tier",
+        "model_tier",
+        "model",
+        "model_id",
+        "model_display_name",
+        "usage",
+        "routing_notice",
+    )
     return {key: gateway[key] for key in keys if key in gateway}
 
 
@@ -257,19 +278,29 @@ def agent_evidence_payload(entry: Path, kind: str, routing_tier: str = "auto") -
         from knowledge_store import build_agent_evidence
     except Exception:
         return {
-            "schema_version": 1, "kind": "agent-evidence",
-            "task_type": task_type, "status": "unavailable", "references": [],
+            "schema_version": 1,
+            "kind": "agent-evidence",
+            "task_type": task_type,
+            "status": "unavailable",
+            "references": [],
         }
     try:
         library_root = entry.resolve().parent.parent  # entries/<id> → library root
         return build_agent_evidence(
-            library_root, entry.name, text,
-            task_type=task_type, top_k=top_k, char_budget=char_budget,
+            library_root,
+            entry.name,
+            text,
+            task_type=task_type,
+            top_k=top_k,
+            char_budget=char_budget,
         )
     except Exception:
         return {
-            "schema_version": 1, "kind": "agent-evidence",
-            "task_type": task_type, "status": "unavailable", "references": [],
+            "schema_version": 1,
+            "kind": "agent-evidence",
+            "task_type": task_type,
+            "status": "unavailable",
+            "references": [],
         }
 
 
@@ -290,20 +321,37 @@ def _agent_task(
     routing_tier = normalize_routing_tier(routing_tier)
     context_files: dict[str, str] = {}
     if kind in {"analysis.generate", "answer.revise"}:
-        context_files[".agent-context/answer-template.md"] = str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "references" / "answer-template.md")
+        context_files[".agent-context/answer-template.md"] = str(
+            PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "references" / "answer-template.md"
+        )
     if kind == "analysis.generate" and routing_tier != "economy":
-        context_files[".agent-context/secondary-conclusions.json"] = str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "references" / "secondary-conclusions.json")
+        context_files[".agent-context/secondary-conclusions.json"] = str(
+            PROJECT_ROOT
+            / ".claude"
+            / "skills"
+            / "build-physics-simulator"
+            / "references"
+            / "secondary-conclusions.json"
+        )
     if routing_tier == "expert":
-        context_files[".agent-context/library-skill.md"] = str(PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "SKILL.md")
+        context_files[".agent-context/library-skill.md"] = str(
+            PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "SKILL.md"
+        )
     if kind == "visualization.model":
         context_files.update({
-            ".agent-context/simulator-skill.md": str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "SKILL.md"),
-            ".agent-context/physics-model.schema.json": str(PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "references" / "physics-model.schema.json"),
+            ".agent-context/simulator-skill.md": str(
+                PROJECT_ROOT / ".claude" / "skills" / "build-physics-simulator" / "SKILL.md"
+            ),
+            ".agent-context/physics-model.schema.json": str(
+                PROJECT_ROOT
+                / ".claude"
+                / "skills"
+                / "build-physics-simulator"
+                / "references"
+                / "physics-model.schema.json"
+            ),
         })
-    scoped_prompt = (
-        "先读取 .agent-context/ 中的规则与模板。"
-        + prompt
-    )
+    scoped_prompt = "先读取 .agent-context/ 中的规则与模板。" + prompt
     if evidence:
         scoped_prompt += "\n" + _evidence_prompt_note(kind)
 
@@ -365,21 +413,30 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
         "analysis.generate",
         prompt,
         ["record.json", "student-solution.md", "teacher-solution.md", "solution.md", "assets/**"],
-        input_paths=["problem.md", "record.json", "student-solution.md", "teacher-solution.md", "solution.md", *sorted(answer_asset_names(entry))],
+        input_paths=[
+            "problem.md",
+            "record.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+            *sorted(answer_asset_names(entry)),
+        ],
         denied_paths=sorted(source_asset_names(entry)),
         routing_tier=routing_tier,
         model_config=model_config,
     )
 
 
-def visualization_task(entry: Path, message: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
+def visualization_task(
+    entry: Path, message: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None
+) -> dict:
     has_model = (entry / "physics-model.json").exists()
     supported_types = ", ".join(SUPPORTED_SIMULATOR_MODEL_TYPES)
     task = (
         "当前尚无 physics-model.json。教师已明确请求生成可交互可视化；"
         "请从已复核题干和答案独立建立完整物理模型，写入 physics-model.json，并执行模型校验。"
-        if not has_model else
-        "当前已有 physics-model.json。请修正物理阶段、事件、轨迹、控件或文字，并执行模型校验。"
+        if not has_model
+        else "当前已有 physics-model.json。请修正物理阶段、事件、轨迹、控件或文字，并执行模型校验。"
     )
     prompt = (
         f"教师要求：{message}\n\n"
@@ -396,8 +453,15 @@ def visualization_task(entry: Path, message: str, request_path: Path, routing_ti
         prompt,
         ["physics-model.json", "assets/visualization-*", "assets/simulation-*"],
         input_paths=[
-            "problem.md", "record.json", "student-solution.md", "teacher-solution.md", "solution.md",
-            "physics-model.json", request_path.name, "assets/visualization-*", "assets/simulation-*",
+            "problem.md",
+            "record.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+            "physics-model.json",
+            request_path.name,
+            "assets/visualization-*",
+            "assets/simulation-*",
             "visualization/simulation-build.json",
         ],
         denied_paths=sorted(source_asset_names(entry) | answer_assets),
@@ -409,13 +473,12 @@ def visualization_task(entry: Path, message: str, request_path: Path, routing_ti
     )
 
 
-def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
+def answer_revision_task(
+    entry: Path, note: str, request_path: Path, routing_tier: str = "auto", model_config: dict | None = None
+) -> dict:
     routing_tier = normalize_routing_tier(routing_tier)
     has_model = routing_tier != "economy" and (entry / "physics-model.json").exists()
-    model_note = (
-        "若教师意见涉及物理模型的共同语义，可同步修正 physics-model.json。"
-        if has_model else ""
-    )
+    model_note = "若教师意见涉及物理模型的共同语义，可同步修正 physics-model.json。" if has_model else ""
     prompt = (
         f"教师意见：{note}\n\n"
         "根据以上意见修订错题解析。核对已批准题干，修改 student-solution.md、teacher-solution.md，"
@@ -427,8 +490,12 @@ def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tie
     if has_model:
         allowed.append("physics-model.json")
     inputs = [
-        "problem.md", "student-solution.md", "teacher-solution.md", "solution.md",
-        request_path.name, *sorted(answer_asset_names(entry)),
+        "problem.md",
+        "student-solution.md",
+        "teacher-solution.md",
+        "solution.md",
+        request_path.name,
+        *sorted(answer_asset_names(entry)),
     ]
     if has_model:
         inputs.append("physics-model.json")
@@ -449,11 +516,7 @@ def answer_revision_task(entry: Path, note: str, request_path: Path, routing_tie
 
 def entry_file_digests(entry: Path) -> dict[str, str]:
     """Snapshot current-entry files for a post-Agent scope audit."""
-    return {
-        str(path.relative_to(entry)): kb.sha256_file(path)
-        for path in sorted(entry.rglob("*"))
-        if path.is_file()
-    }
+    return {str(path.relative_to(entry)): kb.sha256_file(path) for path in sorted(entry.rglob("*")) if path.is_file()}
 
 
 def changed_entry_files(before: dict[str, str], after: dict[str, str]) -> list[str]:
@@ -473,7 +536,9 @@ def source_asset_names(entry: Path) -> set[str]:
     return names
 
 
-def validate_source_clean_candidate(staging: Path, _changed: list[str], canonical_entry: Path | None = None) -> list[str]:
+def validate_source_clean_candidate(
+    staging: Path, _changed: list[str], canonical_entry: Path | None = None
+) -> list[str]:
     """Domain validation for source.clean: problem.md exists and title is content-based."""
     errors: list[str] = []
     problem = staging / "problem.md"
@@ -568,7 +633,9 @@ def validate_visualization_candidate(staging: Path, _changed: list[str]) -> list
     if report.get("errors"):
         return report["errors"]
     if report.get("status") == "unsupported":
-        supported = ", ".join(str(item) for item in report.get("supported", [])) or ", ".join(SUPPORTED_SIMULATOR_MODEL_TYPES)
+        supported = ", ".join(str(item) for item in report.get("supported", [])) or ", ".join(
+            SUPPORTED_SIMULATOR_MODEL_TYPES
+        )
         return [f"unsupported model_type: {report.get('model_type')}; supported: {supported}"]
     validation = report.get("validation")
     if isinstance(validation, dict):
@@ -813,8 +880,7 @@ def entry_detail(entry: Path) -> dict:
     preview_url = None
     if visualization.get("html"):
         preview_url = (
-            f"/api/visualization/{quote(entry.name)}/physics-simulator.html"
-            f"?v={visualization['artifact_digest'][:12]}"
+            f"/api/visualization/{quote(entry.name)}/physics-simulator.html?v={visualization['artifact_digest'][:12]}"
         )
     visualization.pop("html", None)
     publication = public_site.publication_snapshot(entry, PUBLIC_SITE)
@@ -823,14 +889,20 @@ def entry_detail(entry: Path) -> dict:
     for source in publication_images.get("sources", []):
         source["url"] = f"/api/entry-file/{quote(entry.name)}/{quote(source['relative'])}"
     if publication["preview_ready"]:
-        publication["preview_url"] = f"/api/public-preview/{quote(entry.name)}/viewer.html?id={quote(publication['public_id'])}"
+        publication["preview_url"] = (
+            f"/api/public-preview/{quote(entry.name)}/viewer.html?id={quote(publication['public_id'])}"
+        )
     if publication["published_local"]:
         publication["local_site_url"] = f"/api/public-site/viewer.html?id={quote(publication['public_id'])}"
     summary.update({
         "record": record,
         "problem": (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").exists() else "",
-        "student_solution": (entry / "student-solution.md").read_text(encoding="utf-8") if (entry / "student-solution.md").exists() else "",
-        "teacher_solution": (entry / "teacher-solution.md").read_text(encoding="utf-8") if (entry / "teacher-solution.md").exists() else ((entry / "solution.md").read_text(encoding="utf-8") if (entry / "solution.md").exists() else ""),
+        "student_solution": (entry / "student-solution.md").read_text(encoding="utf-8")
+        if (entry / "student-solution.md").exists()
+        else "",
+        "teacher_solution": (entry / "teacher-solution.md").read_text(encoding="utf-8")
+        if (entry / "teacher-solution.md").exists()
+        else ((entry / "solution.md").read_text(encoding="utf-8") if (entry / "solution.md").exists() else ""),
         "source_review_record": read_json(entry / "source-review.json", {}),
         "answer_review_record": read_json(entry / "answer-review.json", record.get("answer_review", {})),
         "analysis_request": read_json(entry / "analysis-request.json", {}),
@@ -903,7 +975,12 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if path == "/api/health":
                 agent = agent_health()
-                return self.json_response({"status": "ok", "project": str(PROJECT_ROOT), "agent_configured": agent["available"], "agent": agent})
+                return self.json_response({
+                    "status": "ok",
+                    "project": str(PROJECT_ROOT),
+                    "agent_configured": agent["available"],
+                    "agent": agent,
+                })
             if path == "/api/agent/providers":
                 return self.json_response(agent_health())
             if path == "/api/agent/model-registry":
@@ -924,7 +1001,10 @@ class Handler(SimpleHTTPRequestHandler):
                 entries = [entry_summary(entry) for entry in reversed(list(kb.entry_dirs(LIBRARY)))]
                 by_id = {entry["id"]: entry for entry in entries}
                 folders = [
-                    {"name": group["name"], "entries": [by_id[entry_id] for entry_id in group["entries"] if entry_id in by_id]}
+                    {
+                        "name": group["name"],
+                        "entries": [by_id[entry_id] for entry_id in group["entries"] if entry_id in by_id],
+                    }
                     for group in groups
                 ]
                 return self.json_response({"entries": entries, "folders": folders})
@@ -989,12 +1069,14 @@ class Handler(SimpleHTTPRequestHandler):
             if path == "/api/agent/providers/probe":
                 data = self.read_json_body()
                 model_id = normalize_model_id(data.get("model_id"))
-                return self.json_response(AGENT_GATEWAY.probe(
-                    str(data.get("provider", "")),
-                    timeout_seconds=int(data.get("timeout_seconds", 120)),
-                    allow_remote=remote_agent_allowed(),
-                    model_config=model_config_for_task("gateway.probe", model_id, "auto"),
-                ))
+                return self.json_response(
+                    AGENT_GATEWAY.probe(
+                        str(data.get("provider", "")),
+                        timeout_seconds=int(data.get("timeout_seconds", 120)),
+                        allow_remote=remote_agent_allowed(),
+                        model_config=model_config_for_task("gateway.probe", model_id, "auto"),
+                    )
+                )
             if path == "/api/agent/model-registry/test":
                 data = self.read_json_body()
                 model_id = normalize_model_id(data.get("model_id"))
@@ -1008,7 +1090,11 @@ class Handler(SimpleHTTPRequestHandler):
                     model_config=config,
                 )
                 settings = update_model_probe_result(model_id, result)
-                return self.json_response({"status": result.get("live_probe", {}).get("status", "failed"), "agent": result, "settings": settings})
+                return self.json_response({
+                    "status": result.get("live_probe", {}).get("status", "failed"),
+                    "agent": result,
+                    "settings": settings,
+                })
             if path == "/api/agent/model-registry":
                 return self.json_response(save_model_registry_settings(self.read_json_body()))
             if path.startswith("/api/entries/"):
@@ -1098,14 +1184,18 @@ class Handler(SimpleHTTPRequestHandler):
             model_id = resolve_model_id_for_task("source.clean", tier, raw_model_id)
             if raw_model_id is not None:
                 model_config_for_task("source.clean", model_id, tier)
-            result = queue_agent_job("source.clean", entry, lambda: self.run_source_clean(entry, data), routing_tier=tier, model_id=model_id)
+            result = queue_agent_job(
+                "source.clean", entry, lambda: self.run_source_clean(entry, data), routing_tier=tier, model_id=model_id
+            )
         elif action == "analyze":
             tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
             if raw_model_id is not None:
                 model_config_for_task("analysis.generate", model_id, tier)
-            result = queue_agent_job("analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id)
+            result = queue_agent_job(
+                "analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id
+            )
         elif action == "save-answer":
             if process_uploads.pipeline_state(entry)["state"] == "needs-source-review":
                 result = {"status": "blocked", "errors": ["请先确认正式题干，再编辑解析"]}
@@ -1120,11 +1210,21 @@ class Handler(SimpleHTTPRequestHandler):
             model_id = resolve_model_id_for_task("answer.revise", tier, raw_model_id)
             if raw_model_id is not None:
                 model_config_for_task("answer.revise", model_id, tier)
-            result = queue_agent_job("answer.revise", entry, lambda: self.run_answer_revision(entry, data), routing_tier=tier, model_id=model_id)
+            result = queue_agent_job(
+                "answer.revise",
+                entry,
+                lambda: self.run_answer_revision(entry, data),
+                routing_tier=tier,
+                model_id=model_id,
+            )
         elif action == "build-visualization":
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
-                result = {"status": "blocked", "errors": ["请先生成并批准解析，再构建动态可视化"], "state": current_state}
+                result = {
+                    "status": "blocked",
+                    "errors": ["请先生成并批准解析，再构建动态可视化"],
+                    "state": current_state,
+                }
             elif not (entry / "physics-model.json").exists():
                 request = {
                     "message": str(data.get("message", "")).strip() or "我想为这道题生成一个可交互的可视化结果。",
@@ -1132,13 +1232,23 @@ class Handler(SimpleHTTPRequestHandler):
                 }
                 request["routing_tier"] = normalize_routing_tier(data.get("routing_tier"))
                 raw_model_id = data.get("model_id")
-                request["model_id"] = resolve_model_id_for_task("visualization.model", request["routing_tier"], raw_model_id)
+                request["model_id"] = resolve_model_id_for_task(
+                    "visualization.model", request["routing_tier"], raw_model_id
+                )
                 if raw_model_id is not None:
                     model_config_for_task("visualization.model", request["model_id"], request["routing_tier"])
-                result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, request), routing_tier=request["routing_tier"], model_id=request["model_id"])
+                result = queue_agent_job(
+                    "visualization.model",
+                    entry,
+                    lambda: self.run_visualization_chat(entry, request),
+                    routing_tier=request["routing_tier"],
+                    model_id=request["model_id"],
+                )
             else:
                 with visualization_lock(entry.name):
-                    result = process_uploads.prepare_visualization(LIBRARY, entry.name, str(data.get("runtime_check", "auto")))
+                    result = process_uploads.prepare_visualization(
+                        LIBRARY, entry.name, str(data.get("runtime_check", "auto"))
+                    )
         elif action == "approve-visualization":
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
@@ -1151,7 +1261,13 @@ class Handler(SimpleHTTPRequestHandler):
             model_id = resolve_model_id_for_task("visualization.model", tier, raw_model_id)
             if raw_model_id is not None:
                 model_config_for_task("visualization.model", model_id, tier)
-            result = queue_agent_job("visualization.model", entry, lambda: self.run_visualization_chat(entry, data), routing_tier=tier, model_id=model_id)
+            result = queue_agent_job(
+                "visualization.model",
+                entry,
+                lambda: self.run_visualization_chat(entry, data),
+                routing_tier=tier,
+                model_id=model_id,
+            )
         elif action == "clear-visualization-chat":
             result = self.clear_visualization_chat(entry)
         elif action == "prepare-publication":
@@ -1174,7 +1290,11 @@ class Handler(SimpleHTTPRequestHandler):
                 result = process_uploads.finish(LIBRARY, entry.name, None, str(data.get("simulator", "auto")))
         else:
             raise ValueError(f"unknown entry action: {action}")
-        status = HTTPStatus.CONFLICT if result.get("status") == "blocked" else (HTTPStatus.ACCEPTED if result.get("status") == "queued" else HTTPStatus.OK)
+        status = (
+            HTTPStatus.CONFLICT
+            if result.get("status") == "blocked"
+            else (HTTPStatus.ACCEPTED if result.get("status") == "queued" else HTTPStatus.OK)
+        )
         self.json_response(result, status)
 
     def save_answer(self, entry: Path, data: dict):
@@ -1186,7 +1306,9 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = source_clean_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("source.clean", routing_tier, raw_model_id)
-            model_config = model_config_for_task("source.clean", model_id, routing_tier) if raw_model_id is not None else None
+            model_config = (
+                model_config_for_task("source.clean", model_id, routing_tier) if raw_model_id is not None else None
+            )
             request = {
                 "schema_version": 1,
                 "entry_id": entry.name,
@@ -1225,7 +1347,12 @@ class Handler(SimpleHTTPRequestHandler):
             if not succeeded:
                 request["message"] = gateway.get("message", "Agent 未能整理题干文字")
             kb.write_json(entry / "source-clean-request.json", request)
-            ctx.info("stage=source.clean entry_id=%s status=%s provider=%s", entry.name, "completed" if succeeded else "failed", gateway.get("provider"))
+            ctx.info(
+                "stage=source.clean entry_id=%s status=%s provider=%s",
+                entry.name,
+                "completed" if succeeded else "failed",
+                gateway.get("provider"),
+            )
             return request
 
     def run_analysis(self, entry: Path, data: dict):
@@ -1234,7 +1361,9 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("analysis.generate", routing_tier, raw_model_id)
-            model_config = model_config_for_task("analysis.generate", model_id, routing_tier) if raw_model_id is not None else None
+            model_config = (
+                model_config_for_task("analysis.generate", model_id, routing_tier) if raw_model_id is not None else None
+            )
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] == "needs-source-review":
                 return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": current_state}
@@ -1288,7 +1417,13 @@ class Handler(SimpleHTTPRequestHandler):
             pipeline["state"] = resulting_state["state"]
             pipeline["analysis_request"] = request
             kb.write_json(entry / "pipeline.json", pipeline)
-            ctx.info("stage=analysis entry_id=%s status=%s provider=%s resulting_state=%s", entry.name, "completed" if succeeded else "failed", gateway.get("provider"), resulting_state["state"])
+            ctx.info(
+                "stage=analysis entry_id=%s status=%s provider=%s resulting_state=%s",
+                entry.name,
+                "completed" if succeeded else "failed",
+                gateway.get("provider"),
+                resulting_state["state"],
+            )
             return request
 
     def run_answer_revision(self, entry: Path, data: dict):
@@ -1297,7 +1432,9 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("answer.revise", routing_tier, raw_model_id)
-            model_config = model_config_for_task("answer.revise", model_id, routing_tier) if raw_model_id is not None else None
+            model_config = (
+                model_config_for_task("answer.revise", model_id, routing_tier) if raw_model_id is not None else None
+            )
             library = entry.parent.parent
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] == "needs-source-review":
@@ -1305,7 +1442,11 @@ class Handler(SimpleHTTPRequestHandler):
             solution_path = entry / "solution.md"
             solution_text = solution_path.read_text(encoding="utf-8") if solution_path.exists() else ""
             if len(solution_text.strip()) < 100:
-                return {"status": "blocked", "errors": ["后台还没有可复核解析，请先运行解析流程"], "state": current_state}
+                return {
+                    "status": "blocked",
+                    "errors": ["后台还没有可复核解析，请先运行解析流程"],
+                    "state": current_state,
+                }
             reviewer = str(data.get("reviewer", "teacher")).strip()
             note = str(data.get("note", "")).strip()
             if len(note) > 4000:
@@ -1368,10 +1509,16 @@ class Handler(SimpleHTTPRequestHandler):
                 })
                 request["message_to_teacher"] = (
                     "解析和引用解释图已按意见修订，请重新复核后再批准。"
-                    if succeeded else gateway.get("message", "大模型任务执行失败，请查看错误后重试。")
+                    if succeeded
+                    else gateway.get("message", "大模型任务执行失败，请查看错误后重试。")
                 )
                 kb.write_json(request_path, request)
-                ctx.info("stage=answer.revise entry_id=%s status=%s provider=%s", entry.name, "completed" if succeeded else "failed", gateway.get("provider"))
+                ctx.info(
+                    "stage=answer.revise entry_id=%s status=%s provider=%s",
+                    entry.name,
+                    "completed" if succeeded else "failed",
+                    gateway.get("provider"),
+                )
                 return {**request, "state": resulting_state}
             finally:
                 lock.release()
@@ -1382,7 +1529,11 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("visualization.model", routing_tier, raw_model_id)
-            model_config = model_config_for_task("visualization.model", model_id, routing_tier) if raw_model_id is not None else None
+            model_config = (
+                model_config_for_task("visualization.model", model_id, routing_tier)
+                if raw_model_id is not None
+                else None
+            )
             library = entry.parent.parent
             message = str(data.get("message", "")).strip()
             if not message:
@@ -1402,7 +1553,9 @@ class Handler(SimpleHTTPRequestHandler):
             try:
                 timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
                 conversation_path = entry / "visualization-conversation.json"
-                conversation = read_json(conversation_path, {"schema_version": 1, "entry_id": entry.name, "messages": []})
+                conversation = read_json(
+                    conversation_path, {"schema_version": 1, "entry_id": entry.name, "messages": []}
+                )
                 conversation.setdefault("messages", []).append({"role": "teacher", "at": timestamp, "content": message})
                 request = {
                     "schema_version": 1,
@@ -1418,10 +1571,18 @@ class Handler(SimpleHTTPRequestHandler):
                 request_path = entry / "visualization-request.json"
                 kb.write_json(request_path, request)
                 kb.write_json(conversation_path, conversation)
-                gateway = AGENT_GATEWAY.run(visualization_task(entry, message, request_path, routing_tier, model_config), validate_visualization_candidate)
+                gateway = AGENT_GATEWAY.run(
+                    visualization_task(entry, message, request_path, routing_tier, model_config),
+                    validate_visualization_candidate,
+                )
                 if gateway["status"] == "unavailable":
                     assistant = "没有可用的 Agent provider。请求已保存在 visualization-request.json；配置 Gateway 后可以重新提交。"
-                    conversation["messages"].append({"role": "assistant", "at": kb.now_iso(), "content": assistant, "status": "awaiting-agent"})
+                    conversation["messages"].append({
+                        "role": "assistant",
+                        "at": kb.now_iso(),
+                        "content": assistant,
+                        "status": "awaiting-agent",
+                    })
                     kb.write_json(conversation_path, conversation)
                     request.update({"status": "awaiting-agent", "message_to_teacher": assistant, "gateway": gateway})
                     kb.write_json(request_path, request)
@@ -1432,13 +1593,15 @@ class Handler(SimpleHTTPRequestHandler):
                         build_result = process_uploads.prepare_visualization(library, entry.name, "auto")
                 resulting = process_uploads.visualization_snapshot(entry)
                 succeeded = (
-                    gateway["status"] == "completed"
-                    and build_result is not None
-                    and build_result.get("status") == "ok"
+                    gateway["status"] == "completed" and build_result is not None and build_result.get("status") == "ok"
                 )
                 output = gateway.get("message") or gateway.get("stdout", "").strip()[-4000:]
                 if not output:
-                    output = "Agent 已完成模型生成或修改，工作台已重新构建可视化。" if succeeded else "Agent 已退出，但未形成可通过构建的交互可视化。"
+                    output = (
+                        "Agent 已完成模型生成或修改，工作台已重新构建可视化。"
+                        if succeeded
+                        else "Agent 已退出，但未形成可通过构建的交互可视化。"
+                    )
                 if not succeeded:
                     output = gateway_failure_detail(gateway, output)
                 status = "completed" if succeeded else "failed"

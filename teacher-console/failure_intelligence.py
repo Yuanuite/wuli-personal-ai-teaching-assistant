@@ -16,7 +16,6 @@ from typing import Callable
 
 from log import logger
 
-
 SCHEMA_VERSION = 1
 AUTO_RETRY_FAILURES = {
     "candidate_validation_failed": "按领域校验错误修正候选后重新提交",
@@ -38,9 +37,20 @@ DEFERRED_FAILURES = {
     "simulation_build_failed": "需要检查仿真模型与构建器兼容性",
 }
 PROTECTED_RECORD_FIELDS = {
-    "schema_version", "id", "kind", "status", "answer_status", "created_at",
-    "library_folder", "source", "ocr", "source_review", "answer_review",
-    "visualization_review", "generated_from", "review",
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "answer_status",
+    "created_at",
+    "library_folder",
+    "source",
+    "ocr",
+    "source_review",
+    "answer_review",
+    "visualization_review",
+    "generated_from",
+    "review",
 }
 MAX_EVIDENCE_ITEMS = 5
 MAX_TEXT = 600
@@ -134,7 +144,8 @@ def build_failure_evidence(library: Path, task_type: str, current_result: dict) 
             "failure_reasons": _safe_strings(event.get("failure_reasons")),
             "validation_errors": _safe_strings(result.get("validation_errors")),
             "repair_status": _short((result.get("failure_repair") or {}).get("status"))
-            if isinstance(result.get("failure_repair"), dict) else "",
+            if isinstance(result.get("failure_repair"), dict)
+            else "",
         })
         if len(matches) >= MAX_EVIDENCE_ITEMS:
             break
@@ -172,14 +183,18 @@ def task_with_repair_evidence(task: dict, evidence: dict) -> dict:
     parts: list[str] = []
     if changed_fields:
         parts.append(
-            "你修改了 record.json 的受保护字段" + "、".join(changed_fields)
+            "你修改了 record.json 的受保护字段"
+            + "、".join(changed_fields)
             + "。Gateway 禁止修改这些字段。请读取 canonical 目录中的 record.json，"
             + "恢复以下字段的原值（只读不改）：\n"
             + "\n".join(f"  - 禁止修改：{field}" for field in sorted(PROTECTED_RECORD_FIELDS))
             + "\n可更新的字段：knowledge_points、error_types、difficulty、grade、title。"
         )
     parts.extend(_safe_strings(errors))
-    corrective = "\n\n【一次性失败修复】上轮候选没有写入正式条目。请读取 .agent-context/failure-evidence.json，保持原任务与允许路径不变，只修正下列问题：\n- " + "\n- ".join(parts)
+    corrective = (
+        "\n\n【一次性失败修复】上轮候选没有写入正式条目。请读取 .agent-context/failure-evidence.json，保持原任务与允许路径不变，只修正下列问题：\n- "
+        + "\n- ".join(parts)
+    )
     corrective += "\n必须生成完整、可校验的候选；不要批准、发布或修改 denied_paths。"
     repaired["prompt"] = (str(repaired.get("prompt", "")) + corrective[:MAX_PROMPT_APPEND]).strip()
     return repaired
@@ -197,7 +212,9 @@ def run_with_failure_repair(
     if initial.get("status") == "completed":
         return initial
     failure_type = str(initial.get("failure_type") or "provider_failed")
-    logger.info("failure_repair task=%s kind=%s initial_failure=%s", task.get("id", "?"), task.get("kind"), failure_type)
+    logger.info(
+        "failure_repair task=%s kind=%s initial_failure=%s", task.get("id", "?"), task.get("kind"), failure_type
+    )
     evidence = build_failure_evidence(library, str(task.get("kind", "")), initial)
     decision = evidence["policy"]
     if not decision["auto_retry"]:
@@ -216,7 +233,9 @@ def run_with_failure_repair(
     initial_attempts = initial.get("attempts") if isinstance(initial.get("attempts"), list) else []
     retry_attempts = retried.get("attempts") if isinstance(retried.get("attempts"), list) else []
     retried["attempts"] = [*initial_attempts, *retry_attempts]
-    final_failure = "" if retried.get("status") == "completed" else str(retried.get("failure_type") or "provider_failed")
+    final_failure = (
+        "" if retried.get("status") == "completed" else str(retried.get("failure_type") or "provider_failed")
+    )
     retried["failure_repair"] = {
         "status": "recovered" if retried.get("status") == "completed" else "exhausted",
         "initial_failure_type": failure_type,

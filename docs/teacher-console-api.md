@@ -30,6 +30,7 @@ X-Teacher-Console: 1
 | `GET /api/jobs?entry_id=<entry-id>` | 找回某题最新后台作业 |
 | `GET /api/entries` | 条目摘要及本地文件夹分组 |
 | `GET /api/entries/<entry-id>` | 单题题干、分层答案、复核状态、仿真、发布和下载信息 |
+| `GET /api/retrieval-review` | 读取本地固定检索集、复核统计和可勾选题目卡片；只含题干摘要与题图，不含教师解析 |
 | `GET /api/entry-file/<entry-id>/<relative>` | 查看条目内经过路径约束的文件 |
 | `GET /api/visualization/<entry-id>/physics-simulator.html` | 查看预审交互仿真 |
 | `GET /api/visualization/<entry-id>/runtime-check.png` | 查看仿真运行检查截图 |
@@ -38,6 +39,8 @@ X-Teacher-Console: 1
 | `GET /api/download/<entry-id>/<relative>` | 下载交付清单白名单内的成品 |
 
 文件接口会解析并检查规范路径，禁止跳出各自的条目、草稿、公开站或交付目录。可视化接口只允许两个固定文件名；交付下载还必须同时出现在 `delivery.json.files` 与教师端 `DELIVERY_CATALOG` 中。
+
+检索评测复核通过顶部“检索评测”进入。保存单条复核使用 `POST /api/retrieval-review/save`，请求体包含 `id`、`query`、`category`、`relevant_entry_ids` 和 `review_status`；批准状态至少要勾选一道 `ready/delivered` 题目。该接口只原子更新被 Git 忽略的 `student-error-library/evals/retrieval-cases.jsonl`，不调用 Agent、不改变条目审批，也不会进入 `student-site/`。
 
 主动探测 provider：
 
@@ -77,6 +80,8 @@ POST /api/entries/<entry-id>/<action>
 
 | `action` | 关键请求字段 | 说明 |
 |---|---|---|
+| `rename-entry` | `title` | 修改当前条目标题，直接更新 `record.json` 并刷新索引；最长 120 字符 |
+| `source-clean` | 可选 `routing_tier`、`model_id` | 创建 `source.clean` 后台作业，让 Agent 修正 OCR 草稿并从题干提取内容相关标题；默认走 economy 档 |
 | `approve-source` | `problem`、`reviewer`、`note` | 保存并批准正式题干；仍含待核对内容时由生命周期拒绝 |
 | `analyze` | 可选 `instruction`、`routing_tier` | 创建 `analysis.generate` 后台作业；不会自动生成交互仿真 |
 | `save-answer` | `layer`、`markdown`、可选 `base_digest` | 保存学生版或教师版 Markdown，并撤销旧答案批准 |
@@ -101,7 +106,7 @@ POST /api/entries/<entry-id>/<action>
 
 ### 后台作业响应
 
-三个 Agent 动作成功提交后返回：
+三个 Agent 动作（`source-clean`、`analyze`、`request-revision`）以及可视化动作（`build-visualization`、`visualization-chat`）成功提交后返回：
 
 ```json
 {
@@ -116,7 +121,7 @@ POST /api/entries/<entry-id>/<action>
 }
 ```
 
-轮询结果状态为 `queued`、`running`、`completed` 或 `failed`。只有 `completed` 且 `result.status=completed` 才表示候选已通过 Gateway 并提升；之后仍必须按题目状态重新进行教师复核。同一题存在运行中作业时，其他写操作返回 `409`。服务重启会把旧 `queued/running` 作业标记为 `failed`，不会自动重放。
+轮询结果状态为 `queued`、`running`、`completed` 或 `failed`。只有 `completed` 且 `result.status=completed` 才表示候选已通过 Gateway 并提升；之后仍必须按题目状态重新进行教师复核。失败结果可带稳定的 `failure_type`，同时保留 `message`、`validation_errors` 和 `unauthorized_changes` 供教师排障。同一题存在运行中作业时，其他写操作返回 `409`。服务重启会把旧 `queued/running` 作业标记为 `failed`、`failure_type=worker_interrupted`，不会自动重放。
 
 ## 最小调用示例
 

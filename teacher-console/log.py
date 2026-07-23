@@ -18,23 +18,16 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import Iterator
-
 
 _TRACE_ID_KEY = "pipeline_trace_id"
-
-
-def _trace_filter(record: logging.LogRecord) -> bool:
-    """Inject the current thread's trace_id into every log record."""
-    trace_id = getattr(logging, _TRACE_ID_KEY, {}).get(thread_id(), None)
-    record.trace_id = trace_id or "-"
-    return True
 
 
 def thread_id() -> int:
     """Return the current thread ID (portable across Python versions)."""
     import threading
+
     return threading.current_thread().ident or 0
 
 
@@ -47,13 +40,18 @@ def _set_trace_id(tid: int, value: str | None) -> None:
     setattr(logging, _TRACE_ID_KEY, mapping)
 
 
-class _TraceFormatter(logging.Formatter):
-    """Formatter that includes trace_id even for unfiltered loggers."""
+class _TraceFilter(logging.Filter):
+    """Filter that injects the current thread's trace_id into every log record.
 
-    def format(self, record: logging.LogRecord) -> str:
-        if not hasattr(record, "trace_id"):
-            record.trace_id = getattr(logging, _TRACE_ID_KEY, {}).get(thread_id(), "-")
-        return super().format(record)
+    This runs before any formatter, so *all* handlers (even those using a plain
+    ``logging.Formatter``) see ``record.trace_id``.  Install with
+    ``addFilter(_TraceFilter())`` on the logger or handler.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        trace_id = getattr(logging, _TRACE_ID_KEY, {}).get(thread_id(), None)
+        record.trace_id = trace_id or "-"
+        return True
 
 
 def configure(*, level: int = logging.INFO, log_file: str | None = None) -> None:
@@ -71,22 +69,24 @@ def configure(*, level: int = logging.INFO, log_file: str | None = None) -> None
         return  # already configured
 
     logger.setLevel(level)
+    logger.addFilter(_TraceFilter())
     fmt = "%(asctime)s [%(levelname)s] [%(trace_id)s] %(message)s"
 
     handler: logging.Handler
     handler = logging.StreamHandler()
-    handler.setFormatter(_TraceFormatter(fmt))
+    handler.setFormatter(logging.Formatter(fmt))
     logger.addHandler(handler)
 
     if log_file:
         fh = logging.FileHandler(log_file, encoding="utf-8")
-        fh.setFormatter(_TraceFormatter(fmt))
+        fh.setFormatter(logging.Formatter(fmt))
         logger.addHandler(fh)
 
     # Also configure the root logger so imported modules see the same trace_id
     root = logging.getLogger()
     if not root.handlers:
         root.addHandler(handler)
+        root.addFilter(_TraceFilter())
     root.setLevel(logging.WARNING)
 
 

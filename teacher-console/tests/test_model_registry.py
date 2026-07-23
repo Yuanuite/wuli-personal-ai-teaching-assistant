@@ -5,14 +5,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import kb  # noqa: E402
-
 import model_registry  # noqa: E402
 
 
@@ -23,42 +21,45 @@ class ModelRegistryTest(unittest.TestCase):
         kb.init_library(self.library)
         self.original_library = model_registry.LIBRARY
         model_registry.LIBRARY = self.library
-        kb.write_json(self.library / "config" / "model-registry.json", {
-            "schema_version": 1,
-            "defaults": {
-                "economy": "cheap",
-                "expert": "deep",
-                "analysis.generate": "analysis-model",
-                "answer.revise": "revision-model",
-                "visualization.model": "visual-model",
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {
+                    "economy": "cheap",
+                    "expert": "deep",
+                    "analysis.generate": "analysis-model",
+                    "answer.revise": "revision-model",
+                    "visualization.model": "visual-model",
+                },
+                "models": [
+                    {
+                        "id": "cheap",
+                        "display_name": "Cheap",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "cheap-model",
+                        "capabilities": ["answer.revise"],
+                    },
+                    {
+                        "id": "deep",
+                        "display_name": "Deep",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "deep-model",
+                        "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
+                    },
+                    {
+                        "id": "analysis-model",
+                        "display_name": "Analysis",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "analysis-model",
+                        "capabilities": ["analysis.generate"],
+                    },
+                ],
             },
-            "models": [
-                {
-                    "id": "cheap",
-                    "display_name": "Cheap",
-                    "provider": "openai-compatible",
-                    "base_url": "http://127.0.0.1:8000/v1",
-                    "model": "cheap-model",
-                    "capabilities": ["answer.revise"],
-                },
-                {
-                    "id": "deep",
-                    "display_name": "Deep",
-                    "provider": "openai-compatible",
-                    "base_url": "http://127.0.0.1:8000/v1",
-                    "model": "deep-model",
-                    "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
-                },
-                {
-                    "id": "analysis-model",
-                    "display_name": "Analysis",
-                    "provider": "openai-compatible",
-                    "base_url": "http://127.0.0.1:8000/v1",
-                    "model": "analysis-model",
-                    "capabilities": ["analysis.generate"],
-                },
-            ],
-        })
+        )
 
     def tearDown(self):
         model_registry.LIBRARY = self.original_library
@@ -67,7 +68,9 @@ class ModelRegistryTest(unittest.TestCase):
     def test_mode_defaults_resolve_to_registered_models(self):
         self.assertEqual(model_registry.resolve_model_id_for_task("answer.revise", "economy", "auto"), "cheap")
         self.assertEqual(model_registry.resolve_model_id_for_task("answer.revise", "expert", "auto"), "deep")
-        self.assertEqual(model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto"), "analysis-model")
+        self.assertEqual(
+            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto"), "analysis-model"
+        )
         self.assertEqual(model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep")
 
     def test_capability_mismatch_fails_before_agent_run(self):
@@ -77,7 +80,9 @@ class ModelRegistryTest(unittest.TestCase):
     def test_untested_model_is_unavailable_until_probe_passes(self):
         with self.assertRaisesRegex(ValueError, "not passed connection test|未测试|暂不可用"):
             model_registry.model_config_for_task("analysis.generate", "analysis-model", "auto")
-        model_registry.update_model_probe_result("analysis-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}})
+        model_registry.update_model_probe_result(
+            "analysis-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}}
+        )
         config = model_registry.model_config_for_task("analysis.generate", "analysis-model", "auto")
         self.assertEqual(config["model"], "analysis-model")
 
@@ -104,53 +109,65 @@ class ModelRegistryTest(unittest.TestCase):
         settings = model_registry.model_registry_settings()
         self.assertNotIn("api_key", settings["models"][0])
         self.assertTrue(settings["models"][0]["api_key_saved"])
-        model_registry.update_model_probe_result("remote-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}})
+        model_registry.update_model_probe_result(
+            "remote-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}}
+        )
         config = model_registry.model_config_for_task("analysis.generate", "remote-model", "auto")
         self.assertEqual(config["api_key"], "sk-local-secret")
 
     def test_blank_api_key_preserves_previous_saved_key(self):
         model_registry.save_model_registry_settings({
-            "models": [{
-                "id": "remote-model",
-                "provider": "openai-compatible",
-                "base_url": "http://127.0.0.1:9000/v1",
-                "model": "remote-model",
-                "api_key": "sk-local-secret",
-                "remote": False,
-            }],
+            "models": [
+                {
+                    "id": "remote-model",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:9000/v1",
+                    "model": "remote-model",
+                    "api_key": "sk-local-secret",
+                    "remote": False,
+                }
+            ],
         })
         model_registry.save_model_registry_settings({
-            "models": [{
-                "id": "remote-model",
-                "provider": "openai-compatible",
-                "base_url": "http://127.0.0.1:9000/v1",
-                "model": "remote-model",
-                "api_key": "",
-                "remote": False,
-            }],
+            "models": [
+                {
+                    "id": "remote-model",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:9000/v1",
+                    "model": "remote-model",
+                    "api_key": "",
+                    "remote": False,
+                }
+            ],
         })
         raw = kb.load_json(self.library / "config" / "model-registry.json", {})
         self.assertEqual(raw["models"][0]["api_key"], "sk-local-secret")
 
     def test_model_change_invalidates_previous_probe(self):
         model_registry.save_model_registry_settings({
-            "models": [{
-                "id": "analysis-model",
-                "provider": "openai-compatible",
-                "base_url": "http://127.0.0.1:8000/v1",
-                "model": "analysis-model",
-                "capabilities": ["analysis.generate"],
-            }],
+            "models": [
+                {
+                    "id": "analysis-model",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:8000/v1",
+                    "model": "analysis-model",
+                    "capabilities": ["analysis.generate"],
+                }
+            ],
         })
-        model_registry.update_model_probe_result("analysis-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}})
+        model_registry.update_model_probe_result(
+            "analysis-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}}
+        )
         model_registry.save_model_registry_settings({
-            "models": [{
-                "id": "analysis-model",
-                "provider": "openai-compatible",
-                "base_url": "http://127.0.0.1:8000/v1",
-                "model": "changed-model",
-                "capabilities": ["analysis.generate"],
-            }],
+            "models": [
+                {
+                    "id": "analysis-model",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:8000/v1",
+                    "model": "changed-model",
+                    "capabilities": ["analysis.generate"],
+                }
+            ],
         })
         public = model_registry.model_registry_public(kind="analysis.generate")
         model = next(item for item in public["models"] if item["id"] == "analysis-model")

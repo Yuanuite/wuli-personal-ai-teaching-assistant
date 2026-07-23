@@ -5,6 +5,7 @@ The report is observational: it never disables retrieval or calls a model. It
 combines persisted Agent jobs (runtime/cost) with Candidate Archive events
 (Evaluator and teacher-review outcomes). Use a fixed eval set for causal A/B.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,13 +16,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
 import candidate_archive  # noqa: E402
-
 
 TASKS = {"answer.revise", "visualization.model"}
 APPROVAL_TASK = {"answer.revise": "answer.approve", "visualization.model": "visualization.approve"}
@@ -139,12 +138,19 @@ def teaching_trials(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 continue
             window = []
             superseded = False
-            for following in ordered[index + 1:]:
+            for following in ordered[index + 1 :]:
                 if following.get("task_type") == task_type and following.get("event_type") == "agent-result":
                     superseded = True
                     break
                 window.append(following)
-            approval = next((item for item in window if item.get("task_type") == APPROVAL_TASK[task_type] and item.get("raw_status") == "approved"), None)
+            approval = next(
+                (
+                    item
+                    for item in window
+                    if item.get("task_type") == APPROVAL_TASK[task_type] and item.get("raw_status") == "approved"
+                ),
+                None,
+            )
             rework = sum(1 for item in window if item.get("task_type") in REWORK_TASKS[task_type])
             evaluation = event.get("evaluation") if isinstance(event.get("evaluation"), dict) else {}
             scores = evaluation.get("scores") if isinstance(evaluation.get("scores"), dict) else {}
@@ -159,8 +165,14 @@ def teaching_trials(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "pending": candidate_completed and approval is None and not superseded,
                 "superseded": candidate_completed and approval is None and superseded,
                 "rework_events": rework,
-                "seconds_to_approval": _seconds(event.get("created_at"), approval.get("created_at")) if approval else None,
-                "scores": {str(key): float(value) for key, value in scores.items() if isinstance(value, (int, float)) and not isinstance(value, bool)},
+                "seconds_to_approval": _seconds(event.get("created_at"), approval.get("created_at"))
+                if approval
+                else None,
+                "scores": {
+                    str(key): float(value)
+                    for key, value in scores.items()
+                    if isinstance(value, (int, float)) and not isinstance(value, bool)
+                },
             })
     return trials
 
@@ -177,7 +189,9 @@ def teaching_summary(trials: list[dict[str, Any]], min_samples: int) -> dict[str
             "task_type": task_type,
             "cohort": group,
             "count": len(items),
-            "teaching_batch_count": len({item["teaching_batch"] for item in items if item["teaching_batch"] != "unknown"}),
+            "teaching_batch_count": len({
+                item["teaching_batch"] for item in items if item["teaching_batch"] != "unknown"
+            }),
             "sample_ready": len(items) >= min_samples,
             "candidate_completion_rate": round(sum(item["candidate_completed"] for item in items) / len(items), 4),
             "candidate_failed": sum(not item["candidate_completed"] for item in items),
@@ -241,6 +255,7 @@ def record_report(library: Path, report: dict[str, Any], request: dict[str, Any]
     )
     try:
         import knowledge_store
+
         event["knowledge_store"] = knowledge_store.rebuild(library)
     except Exception as exc:  # noqa: BLE001
         event["knowledge_store"] = {"status": "skipped", "error": str(exc)}
@@ -284,7 +299,9 @@ def main() -> int:
     jobs_dir = args.jobs_dir.expanduser().resolve() if args.jobs_dir else library / ".cache" / "agent-jobs"
     report = build_report(library, jobs_dir, min_samples=max(1, args.min_samples))
     if args.record:
-        report["archive_event"] = record_report(library, report, {"min_samples": args.min_samples, "jobs_dir": str(jobs_dir)})
+        report["archive_event"] = record_report(
+            library, report, {"min_samples": args.min_samples, "jobs_dir": str(jobs_dir)}
+        )
     if args.format == "markdown":
         print_markdown(report)
     else:

@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -100,14 +99,21 @@ class EvaluatorTest(unittest.TestCase):
         self.assertEqual(requested["status"], "revision-requested")
         self.assertEqual(requested["evaluation"]["status"], "failed")
         report = kb.load_json(self.entry / "evaluation.json", {})
-        self.assertTrue(any(item["id"] == "answer_review_current" and item["status"] == "failed" for item in report["checks"]))
+        self.assertTrue(
+            any(item["id"] == "answer_review_current" and item["status"] == "failed" for item in report["checks"])
+        )
 
     def test_stale_answer_review_fails_evaluation(self):
         self.approve_answer()
-        kb.write_text(self.entry / "student-solution.md", (self.entry / "student-solution.md").read_text(encoding="utf-8") + "\n新增内容。\n")
+        kb.write_text(
+            self.entry / "student-solution.md",
+            (self.entry / "student-solution.md").read_text(encoding="utf-8") + "\n新增内容。\n",
+        )
         report = evaluator.evaluate_entry(self.library, self.entry.name, write=False)
         self.assertEqual(report["status"], "failed")
-        self.assertTrue(any(item["id"] == "answer_review_current" and item["status"] == "failed" for item in report["checks"]))
+        self.assertTrue(
+            any(item["id"] == "answer_review_current" and item["status"] == "failed" for item in report["checks"])
+        )
         self.assertTrue(report["teacher_review_required"])
 
     def test_finish_records_evaluation_in_manifest_and_output(self):
@@ -117,9 +123,16 @@ class EvaluatorTest(unittest.TestCase):
         def fake_export(_root, _entry_id, _output_base):
             output.mkdir(parents=True, exist_ok=True)
             kb.write_text(output / "带答案错题.md", "student")
-            return {"entry_id": self.entry.name, "output": str(output), "pdf": {"status": "generated", "file": "带答案错题.pdf"}}
+            return {
+                "entry_id": self.entry.name,
+                "output": str(output),
+                "pdf": {"status": "generated", "file": "带答案错题.pdf"},
+            }
 
-        with mock.patch.object(kb, "finalize_entry", return_value=[]), mock.patch.object(kb, "export_entry", side_effect=fake_export):
+        with (
+            mock.patch.object(kb, "finalize_entry", return_value=[]),
+            mock.patch.object(kb, "export_entry", side_effect=fake_export),
+        ):
             manifest = process_uploads.finish(self.library, self.entry.name, None, "auto")
         self.assertEqual(manifest["status"], "delivered")
         self.assertEqual(manifest["evaluation"]["status"], "passed")

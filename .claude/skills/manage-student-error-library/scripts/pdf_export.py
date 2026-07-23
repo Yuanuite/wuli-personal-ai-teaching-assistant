@@ -13,7 +13,6 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-
 IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)(?:\{width=\d+%\})?")
 _PANDOC_IMAGE_RE = re.compile(r"(!\[[^\]]*\]\([^)\s]+\))(?!\{width=)")
 
@@ -51,6 +50,7 @@ def generate_markdown_pdf(
 
 _PANDOC_SAFE_EXTENSIONS = {".webp", ".svg", ".gif", ".bmp", ".tiff", ".tif"}
 
+
 def _prerender_svgs(markdown: str, base: Path) -> tuple[str, list[Path]]:
     """Pre-render images that pandoc/xelatex cannot reliably handle to 1200px-wide PNGs."""
     rsvg = shutil.which("rsvg-convert")
@@ -71,7 +71,10 @@ def _prerender_svgs(markdown: str, base: Path) -> tuple[str, list[Path]]:
         if suffix == ".svg" and rsvg:
             res = subprocess.run(
                 [rsvg, "-f", "png", "-w", "1200", "-o", str(png), str(source)],
-                capture_output=True, text=True, timeout=30, check=False,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
             )
             ok = res.returncode == 0 and png.is_file()
         elif suffix in _PANDOC_SAFE_EXTENSIONS and PILImage:
@@ -213,7 +216,9 @@ def _try_reportlab(markdown_path: Path, pdf_path: Path, success_status: str) -> 
         leftIndent=8,
         rightIndent=8,
     )
-    caption = ParagraphStyle("WuliCaption", parent=normal, fontSize=9, textColor=colors.HexColor("#606a78"), alignment=TA_CENTER)
+    caption = ParagraphStyle(
+        "WuliCaption", parent=normal, fontSize=9, textColor=colors.HexColor("#606a78"), alignment=TA_CENTER
+    )
 
     doc = SimpleDocTemplate(
         str(pdf_path),
@@ -246,7 +251,11 @@ def _try_reportlab(markdown_path: Path, pdf_path: Path, success_status: str) -> 
                 continue
             stripped = block.strip()
             if stripped in {"---", "***", "___"}:
-                story.append(HRFlowable(width="100%", color=colors.HexColor("#d8deea"), thickness=0.8, spaceBefore=8, spaceAfter=12))
+                story.append(
+                    HRFlowable(
+                        width="100%", color=colors.HexColor("#d8deea"), thickness=0.8, spaceBefore=8, spaceAfter=12
+                    )
+                )
                 continue
             if stripped.startswith("# "):
                 story.append(Paragraph(_escape_inline(stripped[2:].strip()), title))
@@ -373,7 +382,13 @@ def _render_image_for_reportlab(path: Path, tmp_dir: Path, PILImage: Any) -> Pat
         if not converter:
             return None
         output = tmp_dir / f"{path.stem}.png"
-        result = subprocess.run([converter, "-f", "png", "-o", str(output), str(path)], capture_output=True, text=True, timeout=30, check=False)
+        result = subprocess.run(
+            [converter, "-f", "png", "-o", str(output), str(path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
         return output if result.returncode == 0 and output.is_file() else None
     try:
         with PILImage.open(path) as image:

@@ -5,7 +5,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -120,19 +119,22 @@ class KnowledgeStoreTest(unittest.TestCase):
         similar.mkdir(parents=True)
         kb.write_text(similar / "problem.md", "# 相似碰撞题\n\n两个小车发生非弹性碰撞，求共同速度。")
         kb.write_text(similar / "solution.md", "使用动量守恒，先规定正方向，再检查单位和极限情况。")
-        kb.write_json(similar / "record.json", {
-            "schema_version": 1,
-            "id": similar.name,
-            "kind": "error",
-            "status": "ready",
-            "title": "同类动量守恒题",
-            "subject": "高中物理",
-            "grade": "高二",
-            "knowledge_points": ["动量守恒", "非弹性碰撞"],
-            "error_types": ["方向符号错误"],
-            "methods": ["规定正方向后列动量守恒"],
-            "library_folder": "学生私有文件夹",
-        })
+        kb.write_json(
+            similar / "record.json",
+            {
+                "schema_version": 1,
+                "id": similar.name,
+                "kind": "error",
+                "status": "ready",
+                "title": "同类动量守恒题",
+                "subject": "高中物理",
+                "grade": "高二",
+                "knowledge_points": ["动量守恒", "非弹性碰撞"],
+                "error_types": ["方向符号错误"],
+                "methods": ["规定正方向后列动量守恒"],
+                "library_folder": "学生私有文件夹",
+            },
+        )
         knowledge_store.rebuild(self.library)
         evidence = knowledge_store.build_agent_evidence(
             self.library,

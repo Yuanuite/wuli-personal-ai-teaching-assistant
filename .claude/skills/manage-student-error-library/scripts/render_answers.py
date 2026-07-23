@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Render layered answer Markdown from the shared physics model."""
+
 from __future__ import annotations
 
 import argparse
@@ -58,7 +59,13 @@ def main() -> int:
     parser.add_argument("--entry-dir", type=Path, required=True)
     parser.add_argument("--no-update-canonical", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(render(args.model.resolve(), args.entry_dir.resolve(), not args.no_update_canonical), ensure_ascii=False, indent=2))
+    print(
+        json.dumps(
+            render(args.model.resolve(), args.entry_dir.resolve(), not args.no_update_canonical),
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
     return 0
 
 

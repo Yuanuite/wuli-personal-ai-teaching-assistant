@@ -12,9 +12,89 @@ python3 teacher-console/server.py
 
 浏览器打开 <http://127.0.0.1:8787/>。它是本地服务而不是公网网站；终端关闭后服务也会停止。若 8787 被占用，可使用 `--port 8788` 并打开对应端口。服务硬性拒绝非回环地址；学生端公开访问必须走独立静态站，不能把教师端开放到局域网或公网。
 
+如需将控制台日志保存到文件，可指定 `--log-file`：
+
+```bash
+python3 teacher-console/server.py --log-file /tmp/teacher-console.log
+```
+
+日志格式为 `时间 [级别] [trace_id] 消息`，其中 `trace_id` 在每个管道阶段入口自动生成（12 位 hex），可用于串联一次"上传→交付"全流程中的所有相关日志行。所有核心模块（server、agent_gateway、agent_jobs、failure_intelligence）已接入同一日志系统。
+
 需要用其他本地页面或脚本调用工作台时，接口清单、`X-Teacher-Console` 写操作请求头和流程顺序见 [`teacher-console-api.md`](teacher-console-api.md)。学生静态站不调用这些接口。
 
 “生成解析”、答案返修和可视化建模统一进入本机 Agent Gateway 后台队列。Gateway 优先使用 JSON adapter 和经授权的 OpenAI-compatible API，其次兼容旧命令、Codex 和 Claude Code。页面右上角可选“自动 / 经济 / 深度 / 自定义”：简单返修可主动选经济档，自动档按设置页的默认模型策略匹配任务，自定义档才展开具体模型下拉框。页面会显示请求档位、实际模型、token 用量、provider、排队/运行/完成状态和失败原因。按钮不会绕过来源复核，也不会替教师批准答案；候选未通过范围或内容校验时 canonical 条目保持原样。
+
+多题上传后的 `source.clean` 是后端批处理优化点：未显式选择时默认走 `economy`，并允许不同题目有限并发；解析、返修和可视化也可跨题有限并发，但同一题永远只能有一个 Agent 作业运行。默认调度配置在 `student-error-library/config/agent-scheduler.json`，服务启动时读取；环境变量可临时覆盖：
+
+```bash
+export TEACHER_CONSOLE_AGENT_MAX_WORKERS=6
+export TEACHER_CONSOLE_SOURCE_CLEAN_CONCURRENCY=4
+export TEACHER_CONSOLE_ANALYSIS_CONCURRENCY=4
+export TEACHER_CONSOLE_ANSWER_REVISE_CONCURRENCY=4
+export TEACHER_CONSOLE_VISUALIZATION_MODEL_CONCURRENCY=4
+export TEACHER_CONSOLE_SOURCE_CLEAN_INDEX_DEBOUNCE_SECONDS=2
+```
+
+Scheduler 会按优先级领取当前可运行任务，等待同类并发额度的作业不会占住 worker 阻塞其他类型任务。`source.clean` 成功后会防抖刷新索引，避免 8 道题同时完成时每题都重建全库；本题 Evaluator 与 Candidate Archive 记录不等待批量索引完成。详细策略见 [`agent-scheduler.md`](agent-scheduler.md)。
+
+复盘批量录入耗时：
+
+```bash
+python3 teacher-console/scripts/agent_batch_benchmark.py \
+  --library student-error-library --kind source.clean --format markdown
+```
+
+输出包含排队等待、运行耗时、P50/P90、最大并发、provider/model 分布和失败类型；这是调度器、模型路由与后续 Evolve 调参的基准。
+
+确认一次基准有代表性后，可显式沉淀到本地记忆：
+
+```bash
+python3 teacher-console/scripts/agent_batch_benchmark.py \
+  --library student-error-library --kind source.clean --format markdown --record
+```
+
+该命令追加全库级 `scheduler.benchmark` 事件并刷新 Knowledge Store；不写入单题目录，不进入学生端公开内容。
+
+观察 RAG 是否与更好的 Agent/教师闭环结果相关：
+
+```bash
+python3 teacher-console/scripts/rag_effectiveness_report.py \
+  --library student-error-library --format markdown
+```
+
+默认只读。仅在样本有代表性时加 `--record`，将报告保存为全库级 `evolve.observation.rag`。`comparison_ready=false` 表示同一任务类型的检索组和历史无检索组尚未分别达到最小样本量，不能据此调整策略。具体门槛见 [`evolve-roadmap.md`](evolve-roadmap.md)。
+
+建立并运行固定检索评测集：
+
+```bash
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library seed --limit 30
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library validate
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library run --include-draft --format markdown
+```
+
+草稿位于 `student-error-library/evals/retrieval-cases.jsonl`。启动教师端后，点击顶栏“检索评测”：左侧逐条选择查询，右侧会显示带原题图、题干摘要、知识点和错因标签的可勾选题目卡；核对 `query`，勾选所有真正相关的题，再“批准并看下一条”。网页保存和命令行工具共用同一 JSONL，卡片不会展示教师版解析，也不会向学生站发布评测数据。不要批量直接改状态；少于 30 条 approved 时，工具拒绝 `--record` 和检索后端升级结论。格式示例见 [`retrieval-eval.example.jsonl`](retrieval-eval.example.jsonl)。
+
+查看慢循环证据是否达到策略建议门槛：
+
+```bash
+python3 teacher-console/scripts/slow_loop_report.py \
+  --library student-error-library --format markdown
+```
+
+该命令只读，不调用模型也不修改路由、并发、检索参数或审批。达到 20 个已完成 RAG 任务和 10 个明确教师闭环后，才可显式加 `--record` 保存为 `evolve.observation.slow-loop`；记录仍不等于应用策略。
+
+若最近一次已记录周报包含策略建议，教师可明确确认其进入离线试验：
+
+```bash
+python3 teacher-console/scripts/slow_loop_report.py \
+  --library student-error-library --confirm-strategy \
+  --reviewer "李老师" --note "仅确认离线验证"
+```
+
+确认与该次周报 event ID 绑定；新周报生成后旧确认自动失效。此动作不会修改线上策略。
 
 模型设置位于右上角“设置”。每个 OpenAI-compatible 模型可填写 API 地址、真实模型名和 API Key；Key 只保存到已被 `.gitignore` 排除的 `student-error-library/config/model-registry.json`，再次打开页面只显示“已保存/已配置”，不回显明文。每个可选模型必须点击该行“测试”并通过不含学生数据的连通探测后，才会被自动/默认路由调用；未测试、测试失败或修改过地址/模型名/API Key 的模型会置灰。提交 GitHub 前不要使用 `git add -f student-error-library/config/model-registry.json`。
 
@@ -81,6 +161,47 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 ```
 
 `--simulator required` 要求必须存在并成功构建仿真；`--simulator skip` 明确不构建仿真。
+
+关键生命周期动作会自动刷新 `evaluation.json`：来源批准、答案保存/批准/返修请求、可视化构建/批准、Agent 解析/返修/可视化任务结束、公开预览/发布和最终 `finish`。交付完成后还会把摘要写入 `delivery-manifest.json`。也可在任意阶段手动生成或只读查看：
+
+```bash
+python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
+  --library student-error-library evaluate <entry-id>
+
+python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
+  --library student-error-library evaluate <entry-id> --no-write
+```
+
+同一批动作还会追加写入候选档案：
+
+```text
+student-error-library/entries/<entry-id>/candidate-archive.jsonl
+student-error-library/indexes/candidate-archive.jsonl
+```
+
+档案只保存摘要、状态、变更文件、失败原因和 Evaluator 摘要；密钥字段会脱敏，原图和完整候选内容不会被复制。
+
+同一套条目、评价和候选档案会派生到本地 SQLite Knowledge Store：
+
+```text
+student-error-library/indexes/wuli-memory.db
+```
+
+它会在 `kb.py rebuild`、校验/完成等索引刷新点自动重建；也可手动执行：
+
+```bash
+python3 .claude/skills/manage-student-error-library/scripts/knowledge_store.py \
+  --library student-error-library rebuild
+```
+
+需要给 AI/RAG 提供证据包时：
+
+```bash
+python3 .claude/skills/manage-student-error-library/scripts/knowledge_store.py \
+  --library student-error-library query "动量守恒 非弹性碰撞" --mode teaching --top-k 5
+```
+
+返回结果包含命中文档片段、知识点/错因标签、Evaluator 摘要和最近候选事件。它只辅助检索与审计，不代表教师审批，也不替代 `record.json`、Markdown、`evaluation.json` 和 `candidate-archive.jsonl` 真源。
 
 ## 发布只读学生端
 
@@ -157,7 +278,7 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 
 ## 依赖与降级
 
-- Agent Gateway：CLI 只在修改前失败时自动切换 provider；候选越权、验证失败或 canonical 并发变化后立即停止。实际运行失败会暂时熔断该 provider，单项默认超时 300 秒；主动 probe 不发送学生材料。作业记录位于私有 `.cache/agent-jobs/`，服务重启后重新提交失败任务。
+- Agent Gateway：CLI 只在修改前失败时自动切换 provider；内容校验失败、输出截断或未形成修改时，上层会把当前错误与同类历史模式放入新的隔离候选区，最多纠正一次。候选越权、canonical 并发变化、provider 故障或构建失败不会自动重试。实际运行失败会暂时熔断该 provider，单项默认超时 300 秒；主动 probe 不发送学生材料。作业记录位于私有 `.cache/agent-jobs/`，服务重启后重新提交失败任务。Scheduler 默认各任务类型上限为 4、全局上限为 6，同题并发始终阻断。
 - 服务单实例：同一知识库不能同时启动两个教师工作台；关闭时若有 Agent 正在运行，终端会等待它安全结束后再释放锁。
 - 自定义 provider 环境：默认只传基础运行变量与该 provider 的认证变量；额外变量通过 `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` 显式加入。
 - 推理位置：Codex/Claude 是本机启动的 CLI，但底层推理可能远程执行；查看 health 中的 `execution_locality` 和 `data_locality`，不要把“本机进程”等同于“数据不离机”。
@@ -202,7 +323,7 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 - 某个模型灰色不可选：在设置页检查该行状态。未测试、测试失败或修改过 API 地址/真实模型名/API Key 后，模型都会置灰并且默认不调用；重新点击该行“测试”，通过后再保存。
 - API Key 看起来消失：这是正常脱敏。设置页不会回显明文；若显示已保存/已配置或测试通过，说明本地私有注册表仍有 key。只有勾选“清除已保存 Key”并保存才会删除。
 - Agent 作业失败但文件没变化：这是修改前安全失败，可修复 provider 后重试；若 `auto` 还有可用 provider，Gateway 会自动降级。
-- 显示“候选未通过范围或内容校验”：查看作业结果的 `unauthorized_changes`、`validation_errors`；canonical 未提升，不要手工伪造成功状态。
+- 显示“候选未通过范围或内容校验”：先查看作业结果的 `failure_repair`。`recovered` 表示一次性修复候选已通过；`exhausted` 表示修复一次后仍失败；`not-retried` 会给出安全边界或配置原因。再结合 `unauthorized_changes`、`validation_errors` 排查；canonical 未提升时不要手工伪造成功状态。
 - HTML 双击打不开：先查看静态校验错误，再检查是否含远程 URL、模块脚本或丢失资源。
 - HTML 能开但没有动画：查看 `runtime_check` 的控制交互和控制台错误。
 - 答案与仿真事件不同：不要手改 HTML；修正 `physics-model.json` 的对应所有者字段，重新校验和构建。

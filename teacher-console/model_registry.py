@@ -12,6 +12,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 _CONSOLE_DIR = Path(__file__).resolve().parent
@@ -65,7 +66,9 @@ def _model_probe_digest(raw: dict) -> str:
         "base_url": str(raw.get("base_url", "")).strip() if provider == "openai-compatible" else "",
         "model": str(raw.get("model", "")).strip() if provider == "openai-compatible" else "",
         "api_key_env": api_key_env if has_api else "",
-        "api_key_digest": hashlib.sha256(_stored_api_key(raw).encode("utf-8")).hexdigest() if has_api and _stored_api_key(raw) else "",
+        "api_key_digest": hashlib.sha256(_stored_api_key(raw).encode("utf-8")).hexdigest()
+        if has_api and _stored_api_key(raw)
+        else "",
         "remote": bool(raw.get("remote", False)) if has_api else False,
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
@@ -87,13 +90,17 @@ def _model_probe(raw: dict) -> dict:
     }
 
 
-def _public_model_entry(raw: dict, *, kind: str = "") -> dict:
+def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
     model_id = normalize_model_id(raw.get("id"))
     provider = str(raw.get("provider", "")).strip()
     capabilities = [str(item) for item in raw.get("capabilities", []) if str(item).strip()]
     base_url = str(raw.get("base_url", "")).strip()
     remote = bool(raw.get("remote", False))
-    if provider == "openai-compatible" and base_url and (urlparse(base_url).hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}:
+    if (
+        provider == "openai-compatible"
+        and base_url
+        and (urlparse(base_url).hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}
+    ):
         remote = True
     api_key_env = str(raw.get("api_key_env", "")).strip()
     if not api_key_env:
@@ -272,7 +279,7 @@ def save_model_registry_settings(data: dict) -> dict:
     return model_registry_public()
 
 
-def resolve_model_id_for_task(kind: str, routing_tier: str, model_id: str) -> str:
+def resolve_model_id_for_task(kind: str, routing_tier: str, model_id: str | None) -> str:
     if model_id is None:
         return "auto"
     model_id = normalize_model_id(model_id)
@@ -360,7 +367,9 @@ def update_model_probe_result(model_id: str, result: dict) -> dict:
         raw["probe"] = {
             "status": "passed" if passed else "failed",
             "provider": str(result.get("live_probe", {}).get("provider", "")).strip(),
-            "message": str(result.get("live_probe", {}).get("reason", "") or ("连通检测通过" if passed else "连通检测失败")).strip(),
+            "message": str(
+                result.get("live_probe", {}).get("reason", "") or ("连通检测通过" if passed else "连通检测失败")
+            ).strip(),
             "checked_at": datetime.now().isoformat(timespec="seconds"),
             "config_digest": _model_probe_digest(raw),
         }

@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -13,7 +12,9 @@ import candidate_archive  # noqa: E402
 import kb  # noqa: E402
 import knowledge_store  # noqa: E402
 
-SPEC = importlib.util.spec_from_file_location("slow_loop_report", ROOT / "teacher-console" / "scripts" / "slow_loop_report.py")
+SPEC = importlib.util.spec_from_file_location(
+    "slow_loop_report", ROOT / "teacher-console" / "scripts" / "slow_loop_report.py"
+)
 slow_loop = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(slow_loop)
 
@@ -22,7 +23,13 @@ class SlowLoopReportTest(unittest.TestCase):
     def minimal(self):
         return slow_loop.analyze(
             {"operational": {}, "teaching_outcomes": {}},
-            {"fixed_set_ready": False, "upgrade_recommended": False, "validation": {"status_counts": {}}, "overall": {"recall": {"@5": None}}, "by_category": {}},
+            {
+                "fixed_set_ready": False,
+                "upgrade_recommended": False,
+                "validation": {"status_counts": {}},
+                "overall": {"recall": {"@5": None}},
+                "by_category": {},
+            },
             {"kinds": {}},
         )
 
@@ -38,13 +45,22 @@ class SlowLoopReportTest(unittest.TestCase):
         teaching = {}
         for cohort, approval in (("retrieved", 0.8), ("legacy-no-rag", 0.5)):
             teaching[f"answer.revise:{cohort}"] = {
-                "task_type": "answer.revise", "cohort": cohort, "count": 10,
-                "pending": 0, "teacher_closed": 10, "teaching_batch_count": 2, "teacher_approval_rate": approval,
+                "task_type": "answer.revise",
+                "cohort": cohort,
+                "count": 10,
+                "pending": 0,
+                "teacher_closed": 10,
+                "teaching_batch_count": 2,
+                "teacher_approval_rate": approval,
             }
         report = slow_loop.analyze(
-            {"operational": {"answer.revise:retrieved": {"cohort": "retrieved", "completed": 20}}, "teaching_outcomes": teaching},
             {
-                "fixed_set_ready": True, "upgrade_recommended": True,
+                "operational": {"answer.revise:retrieved": {"cohort": "retrieved", "completed": 20}},
+                "teaching_outcomes": teaching,
+            },
+            {
+                "fixed_set_ready": True,
+                "upgrade_recommended": True,
                 "validation": {"status_counts": {"approved": 30}},
                 "overall": {"recall": {"@5": 0.8}},
                 "by_category": {"teacher_phrase": {"hit_rate": {"@5": 0.7}}},
@@ -73,11 +89,23 @@ class SlowLoopReportTest(unittest.TestCase):
     def test_failure_samples_open_separate_reliability_observation_gate(self):
         report = slow_loop.analyze(
             {"operational": {}, "teaching_outcomes": {}},
-            {"fixed_set_ready": False, "upgrade_recommended": False, "validation": {"status_counts": {}}, "overall": {"recall": {"@5": None}}, "by_category": {}},
-            {"kinds": {"visualization.model": {
-                "count": 5, "completed": 1, "failed": 4,
-                "failure_types": {"candidate_validation_failed": 4},
-            }}},
+            {
+                "fixed_set_ready": False,
+                "upgrade_recommended": False,
+                "validation": {"status_counts": {}},
+                "overall": {"recall": {"@5": None}},
+                "by_category": {},
+            },
+            {
+                "kinds": {
+                    "visualization.model": {
+                        "count": 5,
+                        "completed": 1,
+                        "failed": 4,
+                        "failure_types": {"candidate_validation_failed": 4},
+                    }
+                }
+            },
         )
         self.assertFalse(report["readiness"]["weekly_report_ready"])
         self.assertTrue(report["readiness"]["reliability_observation_ready"])

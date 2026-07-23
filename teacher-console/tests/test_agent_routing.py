@@ -2,7 +2,6 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
     "openai_compatible_agent_adapter",
@@ -29,7 +28,11 @@ class AgentRoutingTest(unittest.TestCase):
             {
                 "kind": "answer.revise",
                 "routing_tier": "economy",
-                "model_config": {"provider": "openai-compatible", "model": "teacher-picked-model", "model_tier": "custom"},
+                "model_config": {
+                    "provider": "openai-compatible",
+                    "model": "teacher-picked-model",
+                    "model_tier": "custom",
+                },
             },
             self.env,
         )

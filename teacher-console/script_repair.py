@@ -12,11 +12,21 @@ import json
 import re
 from pathlib import Path
 
-
 PROTECTED_RECORD_FIELDS = {
-    "schema_version", "id", "kind", "status", "answer_status", "created_at",
-    "library_folder", "source", "ocr", "source_review", "answer_review",
-    "visualization_review", "generated_from", "review",
+    "schema_version",
+    "id",
+    "kind",
+    "status",
+    "answer_status",
+    "created_at",
+    "library_folder",
+    "source",
+    "ocr",
+    "source_review",
+    "answer_review",
+    "visualization_review",
+    "generated_from",
+    "review",
 }
 
 

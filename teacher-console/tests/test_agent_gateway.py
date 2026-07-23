@@ -7,12 +7,11 @@ import threading
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 sys.path.insert(0, str(CONSOLE))
 
-from agent_gateway import AgentGateway  # noqa: E402
+from agent_gateway import AgentGateway, classify_agent_failure  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 
 
@@ -100,6 +99,7 @@ class AgentGatewayTest(unittest.TestCase):
 
         result = AgentGateway(environ={}, which=self.which, run=runner).run(self.task())
         self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_type"], "unauthorized_change")
         self.assertIn("record.json", result["unauthorized_changes"])
         self.assertEqual((self.entry / "record.json").read_bytes(), original)
 
@@ -113,8 +113,50 @@ class AgentGatewayTest(unittest.TestCase):
             lambda _staging, _changed: ["domain validation failed"],
         )
         self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_type"], "candidate_validation_failed")
         self.assertEqual(result["validation_errors"], ["domain validation failed"])
         self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "old solution")
+
+    def test_failure_classifier_prefers_actionable_root_causes(self):
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "unauthorized_changes": ["canonical:solution.md"],
+            }),
+            "canonical_changed",
+        )
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "validation_errors": ["response was truncated before closing JSON"],
+            }),
+            "output_truncated",
+        )
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "returncode": 1,
+                "stderr": "HTTP 429 rate limit exceeded",
+            }),
+            "provider_rate_limited",
+        )
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "requires_change": True,
+                "changed_files": [],
+            }),
+            "candidate_no_change",
+        )
+
+    def test_timeout_attempt_is_structured_after_all_providers_fail(self):
+        def runner(command, **_kwargs):
+            raise subprocess.TimeoutExpired(command, 30)
+
+        result = AgentGateway(environ={}, which=self.which, run=runner).run(self.task())
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_type"], "provider_timeout")
+        self.assertTrue(all(item["failure_type"] == "provider_timeout" for item in result["attempts"]))
 
     def test_json_adapter_returns_structured_file_proposals(self):
         payload = {"status": "completed", "message": "revised", "files": {"solution.md": "adapter result"}}
@@ -133,6 +175,41 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertEqual(result["provider"], "adapter")
         self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "adapter result")
 
+    def test_inline_evidence_is_materialized_but_not_duplicated_in_adapter_stdin(self):
+        payload = {"status": "completed", "message": "revised", "files": {"solution.md": "adapter result"}}
+
+        def runner(command, cwd=None, input=None, **_kwargs):
+            child_task = json.loads(input)
+            self.assertNotIn("context_payloads", child_task)
+            evidence_path = Path(cwd, ".agent-context", "knowledge-evidence.json")
+            self.assertEqual(json.loads(evidence_path.read_text(encoding="utf-8"))["references"][0]["title"], "相似题")
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        gateway = AgentGateway(
+            environ={"TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": "adapter", "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter"},
+            which=self.which,
+            run=runner,
+        )
+        result = gateway.run(
+            self.task(
+                context_payloads={
+                    ".agent-context/knowledge-evidence.json": {"references": [{"title": "相似题"}]},
+                },
+                evidence_context={"status": "ready", "reference_count": 1, "task_type": "answer.revise"},
+            )
+        )
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["evidence_context"]["reference_count"], 1)
+
+    def test_inline_context_cannot_escape_agent_context_directory(self):
+        gateway = AgentGateway(
+            environ={"TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": "adapter", "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter"},
+            which=self.which,
+            run=lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, stdout="{}", stderr=""),
+        )
+        with self.assertRaises(PermissionError):
+            gateway.run(self.task(context_payloads={".agent-context/../escaped.json": {"secret": True}}))
+
     def test_task_model_config_can_select_openai_compatible_provider(self):
         payload = {
             "status": "completed",
@@ -149,15 +226,19 @@ class AgentGatewayTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
 
         gateway = AgentGateway(environ={}, which=self.which, run=runner)
-        result = gateway.run(self.task(model_config={
-            "id": "picked",
-            "display_name": "教师选择模型",
-            "provider": "openai-compatible",
-            "base_url": "http://127.0.0.1:9000/v1",
-            "model": "picked-model",
-            "api_key": "picked-key",
-            "model_tier": "custom",
-        }))
+        result = gateway.run(
+            self.task(
+                model_config={
+                    "id": "picked",
+                    "display_name": "教师选择模型",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:9000/v1",
+                    "model": "picked-model",
+                    "api_key": "picked-key",
+                    "model_tier": "custom",
+                }
+            )
+        )
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["provider"], "openai-compatible")
         self.assertEqual(result["model_id"], "picked")
@@ -165,7 +246,11 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "openai-compatible result")
 
     def test_direct_model_api_key_is_environment_only_not_task_stdin(self):
-        payload = {"status": "completed", "message": "picked model", "files": {"solution.md": "openai-compatible result"}}
+        payload = {
+            "status": "completed",
+            "message": "picked model",
+            "files": {"solution.md": "openai-compatible result"},
+        }
 
         def runner(command, cwd=None, input=None, env=None, **_kwargs):
             self.assertEqual(env["TEACHER_CONSOLE_AGENT_API_KEY"], "picked-key")
@@ -173,14 +258,18 @@ class AgentGatewayTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
 
         gateway = AgentGateway(environ={}, which=self.which, run=runner)
-        result = gateway.run(self.task(model_config={
-            "id": "picked",
-            "display_name": "教师选择模型",
-            "provider": "openai-compatible",
-            "base_url": "http://127.0.0.1:9000/v1",
-            "model": "picked-model",
-            "api_key": "picked-key",
-        }))
+        result = gateway.run(
+            self.task(
+                model_config={
+                    "id": "picked",
+                    "display_name": "教师选择模型",
+                    "provider": "openai-compatible",
+                    "base_url": "http://127.0.0.1:9000/v1",
+                    "model": "picked-model",
+                    "api_key": "picked-key",
+                }
+            )
+        )
         self.assertEqual(result["status"], "completed")
 
     def test_live_probe_quarantines_unresponsive_provider_without_student_data(self):
@@ -311,22 +400,118 @@ class AgentJobManagerTest(unittest.TestCase):
         self.assertEqual(stored["status"], "completed")
         self.assertEqual(stored["result"]["provider"], "fake")
 
+    def test_source_clean_can_run_for_multiple_entries_in_parallel(self):
+        manager = AgentJobManager(self.directory, max_workers=4, kind_limits={"source.clean": 2})
+        first_started = threading.Event()
+        second_started = threading.Event()
+        release = threading.Event()
+
+        def work(started):
+            started.set()
+            release.wait(2)
+            return {"status": "completed", "provider": "fake"}
+
+        first = manager.submit("source.clean", "entry-1", lambda: work(first_started))
+        second = manager.submit("source.clean", "entry-2", lambda: work(second_started))
+        self.assertEqual(first["status"], "queued")
+        self.assertEqual(second["status"], "queued")
+        self.assertTrue(first_started.wait(2))
+        self.assertTrue(second_started.wait(2))
+        release.set()
+        manager.shutdown(wait=True)
+        self.assertEqual(manager.get(first["job"]["id"])["status"], "completed")
+        self.assertEqual(manager.get(second["job"]["id"])["status"], "completed")
+
+    def test_higher_risk_job_kinds_remain_limited(self):
+        manager = AgentJobManager(self.directory, max_workers=4, kind_limits={"answer.revise": 1})
+        first_started = threading.Event()
+        second_started = threading.Event()
+        release = threading.Event()
+
+        def work(started):
+            started.set()
+            release.wait(2)
+            return {"status": "completed"}
+
+        first = manager.submit("answer.revise", "entry-1", lambda: work(first_started))
+        second = manager.submit("answer.revise", "entry-2", lambda: work(second_started))
+        self.assertEqual(first["status"], "queued")
+        self.assertEqual(second["status"], "queued")
+        self.assertTrue(first_started.wait(2))
+        self.assertFalse(second_started.wait(0.1))
+        release.set()
+        manager.shutdown(wait=True)
+        self.assertEqual(manager.get(first["job"]["id"])["status"], "completed")
+        self.assertEqual(manager.get(second["job"]["id"])["status"], "completed")
+
+    def test_waiting_kind_limited_job_does_not_starve_other_kinds(self):
+        manager = AgentJobManager(
+            self.directory,
+            scheduler_config={
+                "global_max_running": 2,
+                "kind_limits": {"answer.revise": 1, "source.clean": 1},
+                "kind_priorities": {"answer.revise": 80, "source.clean": 70},
+            },
+        )
+        first_revision_started = threading.Event()
+        source_clean_started = threading.Event()
+        release = threading.Event()
+
+        def revision():
+            first_revision_started.set()
+            release.wait(2)
+            return {"status": "completed"}
+
+        def source_clean():
+            source_clean_started.set()
+            return {"status": "completed"}
+
+        first = manager.submit("answer.revise", "entry-1", revision)
+        blocked_by_kind = manager.submit("answer.revise", "entry-2", lambda: {"status": "completed"})
+        clean = manager.submit("source.clean", "entry-3", source_clean)
+        self.assertEqual(first["status"], "queued")
+        self.assertEqual(blocked_by_kind["status"], "queued")
+        self.assertEqual(clean["status"], "queued")
+        self.assertTrue(first_revision_started.wait(2))
+        self.assertTrue(source_clean_started.wait(2))
+        release.set()
+        manager.shutdown(wait=True)
+        self.assertEqual(manager.get(first["job"]["id"])["status"], "completed")
+        self.assertEqual(manager.get(blocked_by_kind["job"]["id"])["status"], "completed")
+        self.assertEqual(manager.get(clean["job"]["id"])["status"], "completed")
+
     def test_restart_marks_running_job_interrupted(self):
         self.directory.mkdir(parents=True)
         path = self.directory / "old-job.json"
-        path.write_text(json.dumps({
-            "schema_version": 1,
-            "id": "old-job",
-            "kind": "analysis.generate",
-            "entry_id": "entry-1",
-            "status": "running",
-            "created_at": "2026-07-20T00:00:00+08:00",
-        }), encoding="utf-8")
+        path.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "id": "old-job",
+                "kind": "analysis.generate",
+                "entry_id": "entry-1",
+                "status": "running",
+                "created_at": "2026-07-20T00:00:00+08:00",
+            }),
+            encoding="utf-8",
+        )
         manager = AgentJobManager(self.directory)
         recovered = manager.get("old-job")
         manager.shutdown()
         self.assertEqual(recovered["status"], "failed")
+        self.assertEqual(recovered["failure_type"], "worker_interrupted")
         self.assertIn("重启", recovered["error"])
+
+    def test_job_exception_has_structured_failure_type(self):
+        def broken():
+            raise RuntimeError("boom")
+
+        manager = AgentJobManager(self.directory, max_workers=1)
+        submitted = manager.submit("answer.revise", "entry-exception", broken)
+        manager.shutdown(wait=True)
+        record = manager.get(submitted["job"]["id"])
+        self.assertEqual(record["status"], "failed")
+        self.assertEqual(record["failure_type"], "task_exception")
+        self.assertEqual(AgentJobManager.public(record)["failure_type"], "task_exception")
 
 
 if __name__ == "__main__":

@@ -9,12 +9,14 @@
 | 处理新上传错题、导出 PDF/MD、入库、复习 | `.claude/skills/manage-student-error-library/SKILL.md` | `student-error-library/`、`output/`、相关脚本 | `process_uploads.py` 对应命令、`kb.py rebuild` |
 | 生成或修复交互物理仿真 | `.claude/skills/build-physics-simulator/SKILL.md`、条目 `physics-model.json` | 仿真 Skill 的 schema/renderer/test、条目 `visualization/` | 模型校验、HTML/ZIP 检查、浏览器截图 |
 | 教师端页面或本地 API | `docs/teacher-console-api.md`、`docs/architecture.md#教师工作台` | `teacher-console/server.py`、`teacher-console/static/`、`teacher-console/tests/` | `python3 -B -m unittest discover -s teacher-console/tests -p 'test_*.py' -v` |
-| Agent provider、模型选择、API Key、后台任务 | `docs/agent-gateway.md` | `teacher-console/agent_gateway.py`、provider adapter、模型注册表测试 | Agent Gateway 单测、静态契约测试 |
+| Agent provider、模型选择、API Key、后台任务 | `docs/agent-gateway.md`、`docs/failure-intelligence.md` | `teacher-console/agent_gateway.py`、`teacher-console/failure_intelligence.py`、provider adapter、模型注册表测试 | Agent Gateway、失败排障、静态契约测试 |
 | 学生端公开站、GitHub 只读展示、公开 PDF | `docs/architecture.md#学生端公开边界`、`docs/operator-runbook.md#发布只读学生端` | `student-site/`、`public_site.py`、公开发布测试 | public site 测试、隐私扫描 |
 | 视觉复核、OCR 后图像语义确认 | `docs/visual-review-integration.md` | 视觉边车 adapter、source-review 流程 | source review 测试，不能让无视觉模型自批 |
 | 高中物理解题策略、二级结论 | `docs/high-school-physics-techniques.md` 和 JSON 条件库 | 技巧库、检索脚本、答案模板 | 技巧适用条件测试 |
 | 架构归位、复杂度删减、影响分析 | `docs/architecture-governance.md`，再用 `graphify query` | 取决于查询结果 | `git diff --check` + 相关模块测试 |
 | 会话收尾、文档同步、规范审计 | `.claude/skills/neat-freak/SKILL.md` | README、docs、CLAUDE/AGENTS、变更日志 | 文档链接/规则/测试状态核验 |
+| OCR 后整理题干、修正标题（source.clean） | `docs/teacher-console-api.md` | `teacher-console/server.py`（`source_clean_task`、`validate_source_clean_candidate`） | Agent Gateway 测试 |
+| 检索评测复核、Knowledge Store 证据注入 | `docs/knowledge-store.md`、`docs/evolve-roadmap.md` | `teacher-console/scripts/retrieval_benchmark.py`、`knowledge_store.py` | 检索评测测试、Knowledge Store 测试 |
 
 ## 默认不要先读的大文件
 

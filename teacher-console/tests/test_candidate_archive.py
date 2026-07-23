@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -107,9 +106,16 @@ class CandidateArchiveTest(unittest.TestCase):
         def fake_export(_root, _entry_id, _output_base):
             output.mkdir(parents=True, exist_ok=True)
             kb.write_text(output / "带答案错题.md", "student")
-            return {"entry_id": self.entry.name, "output": str(output), "pdf": {"status": "generated", "file": "带答案错题.pdf"}}
+            return {
+                "entry_id": self.entry.name,
+                "output": str(output),
+                "pdf": {"status": "generated", "file": "带答案错题.pdf"},
+            }
 
-        with mock.patch.object(kb, "finalize_entry", return_value=[]), mock.patch.object(kb, "export_entry", side_effect=fake_export):
+        with (
+            mock.patch.object(kb, "finalize_entry", return_value=[]),
+            mock.patch.object(kb, "export_entry", side_effect=fake_export),
+        ):
             manifest = process_uploads.finish(self.library, self.entry.name, None, "auto")
         self.assertEqual(manifest["evaluation"]["archive_event_id"], self.read_events()[-1]["event_id"])
         self.assertEqual(self.read_events()[-1]["task_type"], "delivery.finish")

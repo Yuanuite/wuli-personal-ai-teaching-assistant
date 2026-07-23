@@ -5,6 +5,7 @@ This script aggregates retrieval, RAG teaching outcomes, and Agent scheduling
 evidence.  It never edits routing, concurrency, prompts, retrieval parameters,
 canonical entries, approvals, or publication state.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +15,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -53,7 +53,8 @@ def _previous_slow_reports(library: Path) -> list[dict[str, Any]]:
 
 def _latest_slow_event(library: Path) -> dict[str, Any] | None:
     matches = [
-        event for event in candidate_archive.read_library_events(library)
+        event
+        for event in candidate_archive.read_library_events(library)
         if event.get("task_type") == "evolve.observation.slow-loop" and isinstance(event.get("result"), dict)
     ]
     return matches[-1] if matches else None
@@ -85,14 +86,10 @@ def analyze(
     operations = rag.get("operational", {}) if isinstance(rag.get("operational"), dict) else {}
     teaching = rag.get("teaching_outcomes", {}) if isinstance(rag.get("teaching_outcomes"), dict) else {}
     retrieved_completed = sum(
-        int(item.get("completed", 0))
-        for item in operations.values()
-        if item.get("cohort") == "retrieved"
+        int(item.get("completed", 0)) for item in operations.values() if item.get("cohort") == "retrieved"
     )
     teacher_closed = sum(
-        int(item.get("teacher_closed", 0))
-        for item in teaching.values()
-        if item.get("cohort") == "retrieved"
+        int(item.get("teacher_closed", 0)) for item in teaching.values() if item.get("cohort") == "retrieved"
     )
     weekly_ready = retrieved_completed >= 20 and teacher_closed >= 10
     scheduler_kinds = scheduler.get("kinds", {}) if isinstance(scheduler.get("kinds"), dict) else {}
@@ -132,7 +129,11 @@ def analyze(
             "proposal": "在固定集上试验 JSON 标签过滤与字段加权，保持 query()/build_agent_evidence() 接口不变。",
             "evidence": {
                 "recall_at_5": retrieval.get("overall", {}).get("recall", {}).get("@5"),
-                "teacher_phrase_hit_at_5": retrieval.get("by_category", {}).get("teacher_phrase", {}).get("hit_rate", {}).get("@5"),
+                "teacher_phrase_hit_at_5": retrieval
+                .get("by_category", {})
+                .get("teacher_phrase", {})
+                .get("hit_rate", {})
+                .get("@5"),
             },
             "apply": False,
         })
@@ -141,7 +142,9 @@ def analyze(
         for task_type in comparable:
             retrieved = teaching[f"{task_type}:retrieved"]
             legacy = teaching[f"{task_type}:legacy-no-rag"]
-            approval_delta = round(_rate(retrieved.get("teacher_approval_rate")) - _rate(legacy.get("teacher_approval_rate")), 4)
+            approval_delta = round(
+                _rate(retrieved.get("teacher_approval_rate")) - _rate(legacy.get("teacher_approval_rate")), 4
+            )
             if approval_delta >= 0.1:
                 recommendations.append({
                     "code": f"rag.keep-and-canary.{task_type}",
@@ -175,7 +178,12 @@ def analyze(
                 "evidence": {"run_p90_seconds": run_p90},
                 "apply": False,
             })
-        if count >= 5 and dominant_failure and dominant_failure != "unknown_failed" and failures[dominant_failure] / count >= 0.2:
+        if (
+            count >= 5
+            and dominant_failure
+            and dominant_failure != "unknown_failed"
+            and failures[dominant_failure] / count >= 0.2
+        ):
             recommendations.append({
                 "code": f"scheduler.failure-review.{kind}.{dominant_failure}",
                 "area": "scheduler",
@@ -199,19 +207,20 @@ def analyze(
         and current_recall >= previous_recall
     )
     policy_change_ready = bool(
-        strategy_ready
-        and same_direction_twice
-        and fixed_set_non_regression
-        and teacher_strategy_confirmed
+        strategy_ready and same_direction_twice and fixed_set_non_regression and teacher_strategy_confirmed
     )
     auto_apply_executor_ready = False
     auto_apply_ready = bool(policy_change_ready and teacher_closed >= 50 and auto_apply_executor_ready)
 
     blockers = []
     if not weekly_ready:
-        blockers.append(f"只读周报还需 {max(0, 20 - retrieved_completed)} 个已完成 RAG 任务、{max(0, 10 - teacher_closed)} 个教师闭环。")
+        blockers.append(
+            f"只读周报还需 {max(0, 20 - retrieved_completed)} 个已完成 RAG 任务、{max(0, 10 - teacher_closed)} 个教师闭环。"
+        )
     if not reliability_ready:
-        blockers.append(f"失败可靠性观察还需至少 {max(0, 5 - terminal_attempts)} 个终态 Agent 任务，并至少出现 1 个结构化失败。")
+        blockers.append(
+            f"失败可靠性观察还需至少 {max(0, 5 - terminal_attempts)} 个终态 Agent 任务，并至少出现 1 个结构化失败。"
+        )
     if not strategy_ready:
         blockers.append("策略建议尚缺同任务双 cohort 各 10 个样本，并需各跨至少两个教学批次。")
     if not retrieval.get("fixed_set_ready"):
@@ -282,7 +291,9 @@ def build_report(library: Path, jobs_dir: Path, cases_path: Path) -> dict[str, A
 def record_report(library: Path, report: dict[str, Any]) -> dict[str, Any]:
     readiness = report.get("readiness", {})
     if not (readiness.get("weekly_report_ready") or readiness.get("reliability_observation_ready")):
-        raise ValueError("--record requires either 20 completed RAG tasks + 10 teacher closures, or 5 terminal Agent attempts with a structured failure")
+        raise ValueError(
+            "--record requires either 20 completed RAG tasks + 10 teacher closures, or 5 terminal Agent attempts with a structured failure"
+        )
     event = candidate_archive.append_library_event(
         library,
         task_type="evolve.observation.slow-loop",
@@ -334,8 +345,12 @@ def print_markdown(report: dict[str, Any]) -> None:
     print(f"- strategy_recommendation_ready: {readiness['strategy_recommendation_ready']}")
     print(f"- policy_change_ready: {readiness['policy_change_ready']}")
     print(f"- auto_apply_ready: {readiness['auto_apply_ready']}")
-    print(f"- RAG completed / teacher closed: {counts['retrieved_agent_completed']} / {counts['retrieved_teacher_closed']}")
-    print(f"- Agent terminal / structured failures: {counts['agent_terminal_attempts']} / {counts['agent_structured_failures']}")
+    print(
+        f"- RAG completed / teacher closed: {counts['retrieved_agent_completed']} / {counts['retrieved_teacher_closed']}"
+    )
+    print(
+        f"- Agent terminal / structured failures: {counts['agent_terminal_attempts']} / {counts['agent_structured_failures']}"
+    )
     print(f"- retrieval approved cases: {counts['retrieval_approved_cases']}")
     print()
     if report["recommendations"]:

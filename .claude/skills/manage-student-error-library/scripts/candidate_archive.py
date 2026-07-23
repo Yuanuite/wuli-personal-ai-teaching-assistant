@@ -6,6 +6,7 @@ build results, and evaluator summaries.  It deliberately stores compact,
 sanitized metadata instead of full prompts, API keys, source images, or raw
 student artifacts.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import kb
-
 
 SCHEMA_VERSION = 1
 ENTRY_ARCHIVE = "candidate-archive.jsonl"

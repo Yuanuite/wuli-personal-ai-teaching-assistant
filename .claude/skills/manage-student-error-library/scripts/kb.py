@@ -16,12 +16,12 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import pdf_export
-
 
 SCHEMA_VERSION = 1
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic", ".tif", ".tiff", ".bmp"}
@@ -92,7 +92,7 @@ def answer_artifact_digest(entry: Path) -> str:
         for raw in markdown_image_refs(path.read_text(encoding="utf-8")):
             value = raw.strip()
             if value.startswith("<") and ">" in value:
-                relative = value[1:value.index(">")]
+                relative = value[1 : value.index(">")]
             else:
                 relative = value.split(maxsplit=1)[0]
             if re.match(r"^(https?:|data:)", relative):
@@ -208,7 +208,9 @@ def sync_library_folders(root: Path) -> list[dict[str, Any]]:
         record = load_json(record_path, {})
         raw_name = local_assignments.get(entry.name) or str(record.get("library_folder", ""))
         try:
-            folder_name = validate_library_folder_name(raw_name) if raw_name else default_library_folder(record, entry.name)
+            folder_name = (
+                validate_library_folder_name(raw_name) if raw_name else default_library_folder(record, entry.name)
+            )
         except ValueError:
             folder_name = default_library_folder(record, entry.name)
         if record.get("library_folder") != folder_name:
@@ -224,10 +226,7 @@ def sync_library_folders(root: Path) -> list[dict[str, Any]]:
             except OSError:
                 write_json(pointer, {"entry_id": entry.name, "target": os.path.relpath(entry, group_dir)})
         grouped[folder_name].append(entry.name)
-    return [
-        {"name": name, "entries": sorted(entry_ids)}
-        for name, entry_ids in sorted(grouped.items(), reverse=True)
-    ]
+    return [{"name": name, "entries": sorted(entry_ids)} for name, entry_ids in sorted(grouped.items(), reverse=True)]
 
 
 def rename_library_folder(root: Path, old_name: str, new_name: str) -> dict[str, Any]:
@@ -237,10 +236,14 @@ def rename_library_folder(root: Path, old_name: str, new_name: str) -> dict[str,
         return {"status": "unchanged", "old_name": old, "new_name": new, "entries": []}
     folders_root = root / "folders"
     old_dir, new_dir = folders_root / old, folders_root / new
-    conflicting = next(
-        (path for path in folders_root.iterdir() if path.name.casefold() == new.casefold() and path.name != old),
-        None,
-    ) if folders_root.exists() else None
+    conflicting = (
+        next(
+            (path for path in folders_root.iterdir() if path.name.casefold() == new.casefold() and path.name != old),
+            None,
+        )
+        if folders_root.exists()
+        else None
+    )
     if new_dir.exists() or conflicting:
         raise FileExistsError(f"folder already exists: {new}")
     if not old_dir.exists():
@@ -280,8 +283,7 @@ def discover_inputs(source: Path) -> list[Path]:
         return [source] if source.suffix.lower() in SUPPORTED_EXTENSIONS else []
     if source.is_dir():
         return sorted(
-            path for path in source.rglob("*")
-            if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
+            path for path in source.rglob("*") if path.is_file() and path.suffix.lower() in SUPPORTED_EXTENSIONS
         )
     return []
 
@@ -302,12 +304,25 @@ def vision_ocr(image: Path, cache_dir: Path) -> dict[str, Any]:
             clang_cache.mkdir(parents=True, exist_ok=True)
             compile_env = os.environ.copy()
             compile_env["CLANG_MODULE_CACHE_PATH"] = str(clang_cache)
-            compile_result = run_process([
-                clang, "-fobjc-arc", "-fblocks",
-                "-framework", "Foundation", "-framework", "Vision",
-                "-framework", "ImageIO", "-framework", "CoreGraphics",
-                str(VISION_OBJC_SOURCE), "-o", str(executable),
-            ], env=compile_env)
+            compile_result = run_process(
+                [
+                    clang,
+                    "-fobjc-arc",
+                    "-fblocks",
+                    "-framework",
+                    "Foundation",
+                    "-framework",
+                    "Vision",
+                    "-framework",
+                    "ImageIO",
+                    "-framework",
+                    "CoreGraphics",
+                    str(VISION_OBJC_SOURCE),
+                    "-o",
+                    str(executable),
+                ],
+                env=compile_env,
+            )
             if compile_result.returncode != 0:
                 errors.append(compile_result.stderr.strip() or "Objective-C helper compilation failed")
         if executable.exists():
@@ -415,9 +430,7 @@ def combine_ocr(results: list[dict[str, Any]]) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "engine": "+".join(sorted({str(item.get("engine", "unknown")) for item in results})),
         "average_confidence": sum(confidences) / len(confidences) if confidences else 0.0,
-        "text": "\n\n".join(
-            f"--- Page {index} ---\n{item.get('text', '')}" for index, item in enumerate(results, 1)
-        ),
+        "text": "\n\n".join(f"--- Page {index} ---\n{item.get('text', '')}" for index, item in enumerate(results, 1)),
         "pages": results,
     }
 
@@ -510,8 +523,9 @@ def _ingest_image(
     return {"input": str(stored_image), "status": "ingested", "entry_id": entry_id, "entry": str(entry)}
 
 
-def ingest_one(root: Path, source: Path, provider: str, command_text: str | None,
-               subject: str, title: str | None) -> dict[str, Any]:
+def ingest_one(
+    root: Path, source: Path, provider: str, command_text: str | None, subject: str, title: str | None
+) -> dict[str, Any]:
     source_hash = sha256_file(source)
     duplicate = find_duplicate(root, source_hash)
     if duplicate:
@@ -536,7 +550,7 @@ def ingest_one(root: Path, source: Path, provider: str, command_text: str | None
         cache_dir=root / ".cache",
         original_name=source.name,
         source_type=source.suffix.lower().lstrip("."),
-   )
+    )
 
 
 def ingest_pdf_pages(
@@ -561,8 +575,10 @@ def ingest_pdf_pages(
             duplicate = find_duplicate(root, page_hash)
             if duplicate:
                 results.append({
-                    "input": str(pdf_source), "status": "duplicate",
-                    "entry_id": duplicate, "page": index,
+                    "input": str(pdf_source),
+                    "status": "duplicate",
+                    "entry_id": duplicate,
+                    "page": index,
                 })
                 continue
 
@@ -609,8 +625,9 @@ def copy_assets(asset_paths: list[Path], destination: Path) -> list[str]:
     return refs
 
 
-def create_generated(root: Path, record_path: Path, problem_path: Path,
-                     solution_path: Path, asset_paths: list[Path]) -> dict[str, Any]:
+def create_generated(
+    root: Path, record_path: Path, problem_path: Path, solution_path: Path, asset_paths: list[Path]
+) -> dict[str, Any]:
     record = load_json(record_path, {})
     problem = problem_path.read_text(encoding="utf-8")
     solution = solution_path.read_text(encoding="utf-8")
@@ -622,20 +639,18 @@ def create_generated(root: Path, record_path: Path, problem_path: Path,
     assets = entry / "assets"
     assets.mkdir(parents=True, exist_ok=False)
     copied = copy_assets(asset_paths, assets)
-    record.update(
-        {
-            "schema_version": SCHEMA_VERSION,
-            "id": entry_id,
-            "kind": "generated",
-            "status": "needs-review",
-            "answer_status": "pending",
-            "created_at": now_iso(),
-            "updated_at": now_iso(),
-            "library_folder": str(date.today()),
-            "source": {"sha256": digest, "source_type": "generated", "stored_files": copied},
-            "ocr": {"engine": "not-applicable", "average_confidence": 1.0, "review_required": False},
-        }
-    )
+    record.update({
+        "schema_version": SCHEMA_VERSION,
+        "id": entry_id,
+        "kind": "generated",
+        "status": "needs-review",
+        "answer_status": "pending",
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+        "library_folder": str(date.today()),
+        "source": {"sha256": digest, "source_type": "generated", "stored_files": copied},
+        "ocr": {"engine": "not-applicable", "average_confidence": 1.0, "review_required": False},
+    })
     record.setdefault("generated_from", [])
     record.setdefault("error_types", ["巩固练习"])
     record.setdefault("student_error", "针对既有错因生成的迁移练习。")
@@ -675,14 +690,20 @@ def reocr_entry(root: Path, entry_id: str, provider: str, command_text: str | No
     }
     record["updated_at"] = now_iso()
     write_json(entry / "record.json", record)
-    return {"entry_id": entry_id, "engine": record["ocr"]["engine"], "average_confidence": record["ocr"]["average_confidence"]}
+    return {
+        "entry_id": entry_id,
+        "engine": record["ocr"]["engine"],
+        "average_confidence": record["ocr"]["average_confidence"],
+    }
 
 
 def markdown_image_refs(text: str) -> list[str]:
     return re.findall(r"!\[[^\]]*\]\(([^)]+)\)", text)
 
 
-def validate_entry(root: Path, entry: Path, *, ready_rules: bool = True, require_answer_review: bool = True) -> list[str]:
+def validate_entry(
+    root: Path, entry: Path, *, ready_rules: bool = True, require_answer_review: bool = True
+) -> list[str]:
     errors: list[str] = []
     record = load_json(entry / "record.json", {})
     problem_path, solution_path = entry / "problem.md", entry / "solution.md"
@@ -770,7 +791,7 @@ def tokenize(text: str) -> list[str]:
         if len(segment) == 1:
             tokens.append(segment)
         else:
-            tokens.extend(segment[index:index + 2] for index in range(len(segment) - 1))
+            tokens.extend(segment[index : index + 2] for index in range(len(segment) - 1))
             if len(segment) <= 8:
                 tokens.append(segment)
     return tokens
@@ -825,6 +846,12 @@ def rebuild_index(root: Path) -> dict[str, Any]:
         "documents": documents,
     }
     write_json(root / "indexes" / "catalog.json", payload)
+    try:
+        import knowledge_store
+
+        payload["knowledge_store"] = knowledge_store.rebuild(root)
+    except Exception as exc:
+        payload["knowledge_store"] = {"status": "skipped", "error": str(exc)}
     return payload
 
 
@@ -888,7 +915,8 @@ def apply_review(root: Path, entry_id: str, result: str, note: str) -> dict[str,
 def due_entries(root: Path, on_date: date) -> list[dict[str, Any]]:
     index = rebuild_index(root)
     return [
-        item for item in index["entries"]
+        item
+        for item in index["entries"]
         if item.get("status") == "ready" and item.get("next_review") and item["next_review"] <= str(on_date)
     ]
 
@@ -909,14 +937,24 @@ def export_entry(root: Path, entry_id: str, output_base: Path | None = None) -> 
 
     problem = (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").exists() else ""
     solution = (entry / "solution.md").read_text(encoding="utf-8") if (entry / "solution.md").exists() else ""
-    student_solution = (entry / "student-solution.md").read_text(encoding="utf-8") if (entry / "student-solution.md").exists() else solution
-    teacher_solution = (entry / "teacher-solution.md").read_text(encoding="utf-8") if (entry / "teacher-solution.md").exists() else solution
+    student_solution = (
+        (entry / "student-solution.md").read_text(encoding="utf-8")
+        if (entry / "student-solution.md").exists()
+        else solution
+    )
+    teacher_solution = (
+        (entry / "teacher-solution.md").read_text(encoding="utf-8")
+        if (entry / "teacher-solution.md").exists()
+        else solution
+    )
 
     # Rewrite image paths to point back to entries assets — no duplication.
     # output/<title>/  →  ../../student-error-library/entries/<id>/assets/
     rel_base = os.path.relpath(str(entry / "assets"), str(out_dir))
+
     def _relink(text: str) -> str:
-        return re.sub(r'!\[([^\]]*)\]\(assets/([^)]+)\)', rf'![\1]({rel_base}/\2)', text)
+        return re.sub(r"!\[([^\]]*)\]\(assets/([^)]+)\)", rf"![\1]({rel_base}/\2)", text)
+
     problem_linked = _relink(problem)
     student_linked = _relink(student_solution)
     teacher_linked = _relink(teacher_solution)
@@ -1005,7 +1043,9 @@ def parser() -> argparse.ArgumentParser:
     reocr.add_argument("--ocr", choices=("auto", "vision", "command", "none"), default="auto")
     reocr.add_argument("--ocr-command", help="Executable command; use {input} placeholder or input is appended")
 
-    finalize = commands.add_parser("finalize", help="Validate an edited entry, mark it ready, and auto-export to output/")
+    finalize = commands.add_parser(
+        "finalize", help="Validate an edited entry, mark it ready, and auto-export to output/"
+    )
     finalize.add_argument("entry_id")
     finalize.add_argument("--output", type=Path, help="Output base directory (default: workspace/output)")
     validate = commands.add_parser("validate", help="Validate one entry or the whole library")
@@ -1020,7 +1060,9 @@ def parser() -> argparse.ArgumentParser:
     review.add_argument("--note", default="")
     due = commands.add_parser("due", help="List entries due for review")
     due.add_argument("--date", default=str(date.today()))
-    export_parser = commands.add_parser("export", help="Export entry to output/<title>/ with combined markdown + assets")
+    export_parser = commands.add_parser(
+        "export", help="Export entry to output/<title>/ with combined markdown + assets"
+    )
     export_parser.add_argument("entry_id")
     export_parser.add_argument("--output", type=Path, help="Output base directory (default: library/output)")
     commands.add_parser("stats", help="Show library summary")
@@ -1045,14 +1087,20 @@ def main() -> int:
                 results.extend(ingest_pdf_pages(root, item, args.ocr, args.ocr_command, args.subject))
             else:
                 results.append(
-                    ingest_one(root, item, args.ocr, args.ocr_command, args.subject,
-                               args.title if len(inputs) == 1 else None)
+                    ingest_one(
+                        root, item, args.ocr, args.ocr_command, args.subject, args.title if len(inputs) == 1 else None
+                    )
                 )
         rebuild_index(root)
         print_json(results)
     elif args.command == "create":
-        result = create_generated(root, args.record.resolve(), args.problem.resolve(), args.solution.resolve(),
-                                  [path.resolve() for path in args.asset])
+        result = create_generated(
+            root,
+            args.record.resolve(),
+            args.problem.resolve(),
+            args.solution.resolve(),
+            [path.resolve() for path in args.asset],
+        )
         rebuild_index(root)
         print_json(result)
     elif args.command == "reocr":
@@ -1067,7 +1115,12 @@ def main() -> int:
         return 1 if errors else 0
     elif args.command == "validate":
         targets = [root / "entries" / args.entry_id] if args.entry_id else list(entry_dirs(root))
-        report = {entry.name: validate_entry(root, entry, ready_rules=load_json(entry / "record.json", {}).get("status") == "ready") for entry in targets}
+        report = {
+            entry.name: validate_entry(
+                root, entry, ready_rules=load_json(entry / "record.json", {}).get("status") == "ready"
+            )
+            for entry in targets
+        }
         rebuild_index(root)
         print_json(report)
         return 1 if any(report.values()) else 0

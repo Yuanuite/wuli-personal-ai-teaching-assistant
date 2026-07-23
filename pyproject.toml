@@ -12,7 +12,49 @@ target-version = "py39"
 line-length = 120
 
 [tool.ruff.lint]
-select = ["E", "F", "W"]
+select = ["E", "F", "W", "I", "UP"]
+ignore = ["E402"]  # module-import-not-at-top-of-file — sys.path hack unavoidable
+
+[tool.ruff.lint.per-file-ignores]
+"teacher-console/tests/*.py" = ["F401", "F811"]
+
+[tool.ruff.format]
+preview = true
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+explicit_package_bases = true
+namespace_packages = true
+ignore_missing_imports = true
+follow_imports = "silent"
+# 既有代码噪音过滤——有价值的检查是 no-any-return、assignment 和 arg-type
+disable_error_code = [
+    "no-untyped-def",       # 大量函数需要逐步加注解，不阻断
+    "type-arg",             # dict[str, Any] vs dict 的分歧在 py39 太啰嗦
+    "no-untyped-call",      # 调用无注解的函数
+    "union-attr",           # 条件分支访问在既有代码中常见
+    "attr-defined",         # 同上
+]
+mypy_path = [
+    "teacher-console",
+    ".claude/skills/manage-student-error-library/scripts",
+]
+[[tool.mypy.overrides]]
+module = [
+    "agent_gateway",
+    "agent_jobs",
+    "server",
+    "model_registry",
+    "failure_intelligence",
+    "evaluator",
+    "kb",
+    "process_uploads",
+    "public_site",
+    "candidate_archive",
+    "knowledge_store",
+]
+follow_imports = "normal"
 
 [tool.coverage.run]
 source = ["teacher-console"]

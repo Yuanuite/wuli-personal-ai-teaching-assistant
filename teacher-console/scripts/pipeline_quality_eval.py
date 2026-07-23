@@ -14,11 +14,8 @@ import argparse
 import json
 import re
 import sys
-import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LIBRARY = PROJECT_ROOT / "student-error-library"
@@ -33,6 +30,7 @@ sys.path.insert(0, str(SKILL_SCRIPTS))
 # ---------------------------------------------------------------------------
 # 1. Data loaders
 # ---------------------------------------------------------------------------
+
 
 def load_text(path: Path) -> str:
     if not path.is_file():
@@ -135,6 +133,7 @@ def _collect_archive_events(entry: Path) -> list[dict]:
 # 3. Quality scorers
 # ---------------------------------------------------------------------------
 
+
 def _word_count(text: str) -> int:
     return len(re.findall(r"[\w一-鿿]+", text))
 
@@ -155,7 +154,13 @@ def _has_heading(text: str, heading: str) -> bool:
 def score_completeness(content: str, solution: str) -> dict:
     """Score answer completeness by comparing content.md with solution.md."""
     if not solution:
-        return {"score": 0, "reason": "无 solution.md 参考基线", "content_words": 0, "solution_words": 0, "missing_headings": []}
+        return {
+            "score": 0,
+            "reason": "无 solution.md 参考基线",
+            "content_words": 0,
+            "solution_words": 0,
+            "missing_headings": [],
+        }
 
     content_words = _word_count(content)
     solution_words = _word_count(solution)
@@ -298,7 +303,7 @@ def score_pipeline_accuracy(entry: Path, requests: list[dict]) -> dict:
     if output_dir:
         manifest_path = Path(output_dir)
         if not manifest_path.is_file():
-            warnings.append(f"交付目录已移动（不影响评分）")
+            warnings.append("交付目录已移动（不影响评分）")
 
     base = 100 - len(issues) * 15
     return {
@@ -342,6 +347,7 @@ def score_token_efficiency(requests: list[dict], completeness_score: float, pipe
 # ---------------------------------------------------------------------------
 # 4. Main evaluator
 # ---------------------------------------------------------------------------
+
 
 def evaluate_entry(entry_id_or_path: str) -> dict:
     """Run all quality evaluations for one entry."""
@@ -387,7 +393,9 @@ def evaluate_entry(entry_id_or_path: str) -> dict:
                 pass
     if pipeline.get("started_at") and pipeline.get("completed_at"):
         try:
-            total = (datetime.fromisoformat(pipeline["completed_at"]) - datetime.fromisoformat(pipeline["started_at"])).total_seconds()
+            total = (
+                datetime.fromisoformat(pipeline["completed_at"]) - datetime.fromisoformat(pipeline["started_at"])
+            ).total_seconds()
             timing["pipeline_total_seconds"] = round(total, 1)
         except (ValueError, TypeError):
             pass
@@ -411,9 +419,16 @@ def evaluate_entry(entry_id_or_path: str) -> dict:
         "is_legacy": len(requests) == 0,
         "dimensions": {
             "completeness": {"score": completeness["score"], "reason": completeness["reason"], "detail": completeness},
-            "hallucination": {"score": hallucination["score"], "reason": hallucination["reason"], "flags": hallucination.get("flag_examples", ["(no detail)"])},
+            "hallucination": {
+                "score": hallucination["score"],
+                "reason": hallucination["reason"],
+                "flags": hallucination.get("flag_examples", ["(no detail)"]),
+            },
             "format": {"score": fmt["score"], "reason": fmt["reason"]},
-            "pipeline_accuracy": {"score": pipeline_acc["score"], "reason": "; ".join(pipeline_acc["issues"]) if pipeline_acc["issues"] else "正常"},
+            "pipeline_accuracy": {
+                "score": pipeline_acc["score"],
+                "reason": "; ".join(pipeline_acc["issues"]) if pipeline_acc["issues"] else "正常",
+            },
         },
         "telemetry": {
             "requests": len(requests),
@@ -455,9 +470,12 @@ def _summarize(
 # 5. CLI
 # ---------------------------------------------------------------------------
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("entry_ids", nargs="*", metavar="ENTRY_ID", help="Entry IDs or prefixes; omit to scan all delivered")
+    parser.add_argument(
+        "entry_ids", nargs="*", metavar="ENTRY_ID", help="Entry IDs or prefixes; omit to scan all delivered"
+    )
     parser.add_argument("--library", default=str(LIBRARY))
     parser.add_argument("--jsonl", action="store_true", help="Output JSONL (one entry per line)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed per-entry reports")
@@ -499,13 +517,15 @@ def main() -> int:
 
 
 def _print_verbose(result: dict) -> None:
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"条目: {result['entry_id'][:48]}...")
     print(f"总分: {result['score']}/100  {'✅' if result['pass'] else '❌'}")
     for dim, data in result["dimensions"].items():
         print(f"  {dim}: {data['score']}/100 — {str(data.get('reason', ''))[:80]}")
     tele = result["telemetry"]
-    print(f"  请求数: {tele['requests']}  尝试数: {tele['attempts']}  Token: {tele['token_efficiency']['total_tokens']}")
+    print(
+        f"  请求数: {tele['requests']}  尝试数: {tele['attempts']}  Token: {tele['token_efficiency']['total_tokens']}"
+    )
     if tele["token_efficiency"]["usage_detail"]:
         for kind, usage in tele["token_efficiency"]["usage_detail"].items():
             print(f"    {kind}: {usage.get('total_tokens', 0)} tok ({usage.get('model', '?')})")

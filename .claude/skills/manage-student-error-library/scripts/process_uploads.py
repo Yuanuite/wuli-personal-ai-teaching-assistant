@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Coordinate upload → analysis handoff → answer → PDF/simulator → delivery."""
+
 from __future__ import annotations
 
 import argparse
@@ -13,9 +14,10 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
+import candidate_archive
+import evaluator
 import kb
 import source_review
-
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 BUILD_SKILL = SKILL_DIR.parent / "build-physics-simulator"
@@ -41,10 +43,9 @@ def pipeline_state(entry: Path) -> dict:
     # interactive simulation. Static SVG/PNG explanations belong to answer
     # review and are already covered by answer_artifact_digest().
     visualization_required = has_model
-    answer_review_stale = (
-        answer_review.get("status") == "passed"
-        and answer_review.get("answer_digest") != answer_digest(entry)
-    )
+    answer_review_stale = answer_review.get("status") == "passed" and answer_review.get(
+        "answer_digest"
+    ) != answer_digest(entry)
     visualization_review_stale = visualization["review_stale"]
     delivered_valid = (
         record.get("status") == "ready"
@@ -101,7 +102,9 @@ def pipeline_state(entry: Path) -> dict:
             "note": answer_review.get("note", ""),
         },
         "visualization_review": {
-            "status": "stale" if visualization_review_stale else visualization_review.get("status", "not-required" if not has_model else "not-ready"),
+            "status": "stale"
+            if visualization_review_stale
+            else visualization_review.get("status", "not-required" if not has_model else "not-ready"),
             "reviewer": visualization_review.get("reviewer"),
             "note": visualization_review.get("note", ""),
         },
@@ -152,7 +155,9 @@ def review_entry_source(entry: Path, options: dict) -> dict:
     mode = options["mode"]
     if mode == "adapter":
         if not options["command"]:
-            return source_review.prepare_review(entry, "visual adapter mode selected but no adapter command is configured")
+            return source_review.prepare_review(
+                entry, "visual adapter mode selected but no adapter command is configured"
+            )
         try:
             return source_review.run_adapter(entry, options["command"], options["locality"], options["allow_remote"])
         except Exception as exc:  # noqa: BLE001 - preserve safe human fallback
@@ -177,7 +182,9 @@ def start(
     adapter_locality: str | None,
 ) -> dict:
     kb.init_library(root)
-    review_options = resolve_review_options(root, review_mode, vision_capability, visual_review_command, adapter_locality)
+    review_options = resolve_review_options(
+        root, review_mode, vision_capability, visual_review_command, adapter_locality
+    )
     inputs = kb.discover_inputs(input_path)
     results: list[dict] = []
     for item in inputs:
@@ -201,7 +208,16 @@ def start(
                 "entry_id": entry_id,
                 "started_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "state": state["state"],
-                "steps": ["ingest", "source-review", "analysis", "answer-review", "visualization-build", "visualization-review", "validate", "deliver"],
+                "steps": [
+                    "ingest",
+                    "source-review",
+                    "analysis",
+                    "answer-review",
+                    "visualization-build",
+                    "visualization-review",
+                    "validate",
+                    "deliver",
+                ],
             }
             write_json(pipeline_path, pipeline)
         orders.append(state)
@@ -223,13 +239,55 @@ def approve_source(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
     try:
         report = source_review.approve_source(entry, reviewer, note)
     except Exception as exc:  # noqa: BLE001 - return an auditable blocked state
-        return {"status": "blocked", "entry_id": entry_id, "errors": [str(exc)], "state": pipeline_state(entry) if entry.exists() else None}
+        return {
+            "status": "blocked",
+            "entry_id": entry_id,
+            "errors": [str(exc)],
+            "state": pipeline_state(entry) if entry.exists() else None,
+        }
     pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry_id})
     state = pipeline_state(entry)
     pipeline.update({"state": state["state"], "source_review": report})
     write_json(entry / "pipeline.json", pipeline)
     kb.rebuild_index(root)
-    return {"status": "approved", "source_review": report, "state": state}
+    evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="source.approve",
+        actor="teacher",
+        event_type="review",
+        status="approved",
+        summary="教师批准当前题干来源复核",
+        request={"reviewer": reviewer, "note": note},
+        result={"source_review": report},
+        evaluation=evaluation_summary,
+    )
+    return {
+        "status": "approved",
+        "source_review": report,
+        "state": state,
+        "evaluation": evaluation_summary,
+        "archive": archive,
+    }
+
+
+def _evaluation_summary(report: dict) -> dict:
+    return {
+        "status": report.get("status"),
+        "scores": report.get("scores", {}),
+        "teacher_review_required": report.get("teacher_review_required", True),
+        "failure_reasons": report.get("failure_reasons", []),
+        "warning_reasons": report.get("warning_reasons", []),
+    }
+
+
+def _archive_event(root: Path, entry: Path, **payload) -> dict:
+    try:
+        return candidate_archive.append_event(root, entry, **payload)
+    except Exception as exc:  # noqa: BLE001 - archive must not break lifecycle actions
+        return {"status": "archive-error", "error": str(exc)}
 
 
 def answer_digest(entry: Path) -> str:
@@ -280,7 +338,9 @@ def visualization_snapshot(entry: Path) -> dict:
     review = kb.load_json(entry / "visualization-review.json", record.get("visualization_review", {}))
     if not model_path.exists():
         review = {"status": "not-required"}
-    review_stale = bool(model_path.exists() and review.get("status") == "passed" and review.get("artifact_digest") != digest)
+    review_stale = bool(
+        model_path.exists() and review.get("status") == "passed" and review.get("artifact_digest") != digest
+    )
     return {
         "kind": kind,
         "has_model": model_path.exists(),
@@ -307,12 +367,17 @@ def build_simulator(entry: Path, output_dir: Path, runtime_mode: str = "auto") -
         sys.executable,
         str(BUILD_SKILL / "scripts" / "build_simulator.py"),
         str(model_path),
-        "--entry-dir", str(entry),
-        "--output-dir", str(output_dir),
-        "--name", "physics-simulator",
-        "--title", str(kb.load_json(entry / "record.json", {}).get("title", "物理仿真")),
+        "--entry-dir",
+        str(entry),
+        "--output-dir",
+        str(output_dir),
+        "--name",
+        "physics-simulator",
+        "--title",
+        str(kb.load_json(entry / "record.json", {}).get("title", "物理仿真")),
         "--zip",
-        "--runtime-check", runtime_mode,
+        "--runtime-check",
+        runtime_mode,
     ]
     result = subprocess.run(command, text=True, capture_output=True, check=False)
     try:
@@ -332,7 +397,7 @@ def _rebase_report_paths(value, old_root: Path, new_root: Path):
     if isinstance(value, list):
         return [_rebase_report_paths(item, old_root, new_root) for item in value]
     if isinstance(value, str) and value.startswith(str(old_root)):
-        return str(new_root) + value[len(str(old_root)):]
+        return str(new_root) + value[len(str(old_root)) :]
     return value
 
 
@@ -344,7 +409,9 @@ def prepare_visualization(root: Path, entry_id: str, runtime_mode: str = "auto")
     if not (entry / "physics-model.json").exists():
         return {
             "status": "needs-model",
-            "errors": ["physics-model.json is missing; explicitly ask an Agent to invoke build-physics-simulator first"],
+            "errors": [
+                "physics-model.json is missing; explicitly ask an Agent to invoke build-physics-simulator first"
+            ],
             "visualization": visualization_snapshot(entry),
             "state": pipeline_state(entry),
         }
@@ -386,14 +453,20 @@ def record_visualization_build(root: Path, entry_id: str, report: dict) -> dict:
         and current.get("status") == "passed"
         and current.get("artifact_digest") == snapshot["artifact_digest"]
     )
-    review = current if same_approved_artifact else {
-        "schema_version": 1,
-        "entry_id": entry_id,
-        "status": "needs-review",
-        "model_digest": report.get("model_digest"),
-        "artifact_digest": snapshot["artifact_digest"],
-        "note": "可视化已构建，等待教师复核" if report.get("status") == "ok" else "可视化构建未通过，请查看错误或请求 Agent 修复",
-    }
+    review = (
+        current
+        if same_approved_artifact
+        else {
+            "schema_version": 1,
+            "entry_id": entry_id,
+            "status": "needs-review",
+            "model_digest": report.get("model_digest"),
+            "artifact_digest": snapshot["artifact_digest"],
+            "note": "可视化已构建，等待教师复核"
+            if report.get("status") == "ok"
+            else "可视化构建未通过，请查看错误或请求 Agent 修复",
+        }
+    )
     record["visualization_build"] = {
         "status": report.get("status"),
         "model_digest": report.get("model_digest"),
@@ -407,9 +480,34 @@ def record_visualization_build(root: Path, entry_id: str, report: dict) -> dict:
     write_json(entry / "visualization-review.json", review)
     state = pipeline_state(entry)
     pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry_id})
-    pipeline.update({"state": state["state"], "visualization_build": record["visualization_build"], "visualization_review": review})
+    pipeline.update({
+        "state": state["state"],
+        "visualization_build": record["visualization_build"],
+        "visualization_review": review,
+    })
     write_json(entry / "pipeline.json", pipeline)
-    return {"status": report.get("status"), "build": report, "review": review, "state": state}
+    evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="visualization.build",
+        actor="system",
+        event_type="deterministic-build",
+        status=str(report.get("status", "failed")),
+        summary="构建或刷新教师预审交互可视化",
+        result={"build_status": report.get("status"), "runtime_check": report.get("runtime_check", {})},
+        evaluation=evaluation_summary,
+        failure_reasons=report.get("errors", []),
+    )
+    return {
+        "status": report.get("status"),
+        "build": report,
+        "review": review,
+        "state": state,
+        "evaluation": evaluation_summary,
+        "archive": archive,
+    }
 
 
 def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
@@ -425,7 +523,11 @@ def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -
             "state": pipeline_state(entry),
         }
     if snapshot["has_model"] and not snapshot["build_current"]:
-        return {"status": "blocked", "errors": ["build or refresh the current visualization before approval"], "state": pipeline_state(entry)}
+        return {
+            "status": "blocked",
+            "errors": ["build or refresh the current visualization before approval"],
+            "state": pipeline_state(entry),
+        }
     if not reviewer.strip():
         return {"status": "blocked", "errors": ["reviewer is required"]}
     reviewed_at = datetime.now().astimezone().isoformat(timespec="seconds")
@@ -448,7 +550,27 @@ def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -
     pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry_id})
     pipeline.update({"state": state["state"], "visualization_review": report})
     write_json(entry / "pipeline.json", pipeline)
-    return {"status": "approved", "visualization_review": report, "state": state}
+    evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="visualization.approve",
+        actor="teacher",
+        event_type="review",
+        status="approved",
+        summary="教师批准当前交互可视化产物",
+        request={"reviewer": reviewer, "note": note},
+        result={"visualization_review": report},
+        evaluation=evaluation_summary,
+    )
+    return {
+        "status": "approved",
+        "visualization_review": report,
+        "state": state,
+        "evaluation": evaluation_summary,
+        "archive": archive,
+    }
 
 
 def approve_answer(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
@@ -479,7 +601,27 @@ def approve_answer(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
     state = pipeline_state(entry)
     pipeline.update({"state": state["state"], "answer_review": report})
     write_json(entry / "pipeline.json", pipeline)
-    return {"status": "approved", "answer_review": report, "state": state}
+    evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="answer.approve",
+        actor="teacher",
+        event_type="review",
+        status="approved",
+        summary="教师批准当前分层答案",
+        request={"reviewer": reviewer, "note": note},
+        result={"answer_review": report},
+        evaluation=evaluation_summary,
+    )
+    return {
+        "status": "approved",
+        "answer_review": report,
+        "state": state,
+        "evaluation": evaluation_summary,
+        "archive": archive,
+    }
 
 
 def request_answer_revision(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
@@ -508,13 +650,37 @@ def request_answer_revision(root: Path, entry_id: str, reviewer: str, note: str)
     state = pipeline_state(entry)
     pipeline.update({"state": state["state"], "answer_review": report})
     write_json(entry / "pipeline.json", pipeline)
-    return {"status": "revision-requested", "answer_review": report, "state": state}
+    evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="answer.revision-request",
+        actor="teacher",
+        event_type="feedback",
+        status="revision-requested",
+        summary="教师请求修改分层答案",
+        request={"reviewer": reviewer, "note": note},
+        result={"answer_review": report},
+        evaluation=evaluation_summary,
+    )
+    return {
+        "status": "revision-requested",
+        "answer_review": report,
+        "state": state,
+        "evaluation": evaluation_summary,
+        "archive": archive,
+    }
 
 
 def build_student_package(entry: Path, output_dir: Path, export_result: dict, simulation: dict | None) -> Path:
     problem = (entry / "problem.md").read_text(encoding="utf-8")
     answer_path = entry / "student-solution.md"
-    answer = answer_path.read_text(encoding="utf-8") if answer_path.exists() else (entry / "solution.md").read_text(encoding="utf-8")
+    answer = (
+        answer_path.read_text(encoding="utf-8")
+        if answer_path.exists()
+        else (entry / "solution.md").read_text(encoding="utf-8")
+    )
     combined = f"{problem}\n\n---\n\n{answer}"
     package = output_dir / "student-package.zip"
     package_manifest = {"schema_version": 1, "entry_id": entry.name, "files": ["student-answer.md"]}
@@ -555,19 +721,39 @@ def finish(root: Path, entry_id: str, output_base: Path | None, simulator: str) 
     answer_review = record.get("answer_review")
     if answer_review is not None:
         if answer_review.get("status") != "passed":
-            return {"status": "blocked", "errors": ["teacher answer review has not passed"], "state": pipeline_state(entry)}
+            return {
+                "status": "blocked",
+                "errors": ["teacher answer review has not passed"],
+                "state": pipeline_state(entry),
+            }
         if answer_review.get("answer_digest") != answer_digest(entry):
-            return {"status": "blocked", "errors": ["answer changed after teacher approval; review it again"], "state": pipeline_state(entry)}
+            return {
+                "status": "blocked",
+                "errors": ["answer changed after teacher approval; review it again"],
+                "state": pipeline_state(entry),
+            }
     visualization = visualization_snapshot(entry)
     visualization_required = model_path.exists()
     if visualization_required and not (model_path.exists() and simulator == "skip"):
         visualization_review = kb.load_json(entry / "visualization-review.json", record.get("visualization_review", {}))
         if visualization_review.get("status") != "passed":
-            return {"status": "blocked", "errors": ["teacher visualization review has not passed"], "state": pipeline_state(entry)}
+            return {
+                "status": "blocked",
+                "errors": ["teacher visualization review has not passed"],
+                "state": pipeline_state(entry),
+            }
         if visualization_review.get("artifact_digest") != visualization["artifact_digest"]:
-            return {"status": "blocked", "errors": ["visualization changed after teacher approval; review it again"], "state": pipeline_state(entry)}
+            return {
+                "status": "blocked",
+                "errors": ["visualization changed after teacher approval; review it again"],
+                "state": pipeline_state(entry),
+            }
         if model_path.exists() and not visualization["build_current"]:
-            return {"status": "blocked", "errors": ["approved visualization build is missing or stale"], "state": pipeline_state(entry)}
+            return {
+                "status": "blocked",
+                "errors": ["approved visualization build is missing or stale"],
+                "state": pipeline_state(entry),
+            }
     errors = kb.finalize_entry(root, entry_id)
     if errors:
         return {"status": "blocked", "state": pipeline_state(entry), "errors": errors}
@@ -592,8 +778,12 @@ def finish(root: Path, entry_id: str, output_base: Path | None, simulator: str) 
         "entry": str(entry.resolve()),
         "output": str(output_dir.resolve()),
         "answer_validation": "passed",
-        "source_review": kb.load_json(entry / "record.json", {}).get("source_review", {"status": "legacy-not-recorded"}),
-        "answer_review": kb.load_json(entry / "record.json", {}).get("answer_review", {"status": "legacy-not-recorded"}),
+        "source_review": kb.load_json(entry / "record.json", {}).get(
+            "source_review", {"status": "legacy-not-recorded"}
+        ),
+        "answer_review": kb.load_json(entry / "record.json", {}).get(
+            "answer_review", {"status": "legacy-not-recorded"}
+        ),
         "visualization_review": (
             kb.load_json(entry / "record.json", {}).get("visualization_review", {"status": "not-ready"})
             if model_path.exists()
@@ -601,7 +791,9 @@ def finish(root: Path, entry_id: str, output_base: Path | None, simulator: str) 
         ),
         "pdf": exported.get("pdf"),
         "simulation": simulation or {"status": "not-generated"},
-        "runtime_check": simulation.get("runtime_check", {"status": "not-generated"}) if simulation else {"status": "not-generated"},
+        "runtime_check": simulation.get("runtime_check", {"status": "not-generated"})
+        if simulation
+        else {"status": "not-generated"},
         "student_package": str(package.resolve()),
         "files": delivery_files(output_dir),
     }
@@ -610,8 +802,39 @@ def finish(root: Path, entry_id: str, output_base: Path | None, simulator: str) 
     manifest["files"] = delivery_files(output_dir)
     write_json(manifest_path, manifest)
     write_json(entry / "delivery.json", manifest)
+    evaluation = evaluator.evaluate_entry(root, entry_id, output_dir, write=True)
+    evaluation_summary = _evaluation_summary(evaluation)
+    archive = _archive_event(
+        root,
+        entry,
+        task_type="delivery.finish",
+        actor="system",
+        event_type="delivery",
+        status="delivered",
+        summary="生成最终 Markdown/PDF/学生包交付产物",
+        result={
+            "output": str(output_dir.resolve()),
+            "pdf": exported.get("pdf"),
+            "simulation_status": (simulation or {}).get("status", "not-generated"),
+        },
+        evaluation=evaluation_summary,
+    )
+    manifest["evaluation"] = {
+        "status": evaluation_summary.get("status"),
+        "scores": evaluation_summary.get("scores", {}),
+        "teacher_review_required": evaluation_summary.get("teacher_review_required", True),
+        "file": str((output_dir / "evaluation.json").resolve()),
+        "archive_event_id": archive.get("event_id"),
+    }
+    manifest["files"] = delivery_files(output_dir)
+    write_json(manifest_path, manifest)
+    write_json(entry / "delivery.json", manifest)
     pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry_id})
-    pipeline.update({"state": "delivered", "completed_at": manifest["generated_at"], "delivery_manifest": str((output_dir / "delivery-manifest.json").resolve())})
+    pipeline.update({
+        "state": "delivered",
+        "completed_at": manifest["generated_at"],
+        "delivery_manifest": str((output_dir / "delivery-manifest.json").resolve()),
+    })
     write_json(entry / "pipeline.json", pipeline)
     kb.rebuild_index(root)
     return manifest
@@ -655,6 +878,10 @@ def main() -> int:
     finish_parser.add_argument("entry_id")
     finish_parser.add_argument("--output", type=Path)
     finish_parser.add_argument("--simulator", choices=("auto", "required", "skip"), default="auto")
+    evaluate_parser = commands.add_parser("evaluate")
+    evaluate_parser.add_argument("entry_id")
+    evaluate_parser.add_argument("--output", type=Path)
+    evaluate_parser.add_argument("--no-write", action="store_true")
     args = parser.parse_args()
     root = args.library.expanduser().resolve()
     if args.command == "start":
@@ -682,6 +909,13 @@ def main() -> int:
         report = prepare_visualization(root, args.entry_id, args.runtime_check)
     elif args.command == "approve-visualization":
         report = approve_visualization(root, args.entry_id, args.reviewer, args.note)
+    elif args.command == "evaluate":
+        report = evaluator.evaluate_entry(
+            root,
+            args.entry_id,
+            args.output.expanduser().resolve() if args.output else None,
+            write=not args.no_write,
+        )
     else:
         report = finish(root, args.entry_id, args.output.resolve() if args.output else None, args.simulator)
     print(json.dumps(report, ensure_ascii=False, indent=2))

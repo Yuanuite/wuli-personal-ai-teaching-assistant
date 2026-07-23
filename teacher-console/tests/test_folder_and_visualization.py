@@ -7,7 +7,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
@@ -15,7 +14,9 @@ sys.path.insert(0, str(SCRIPTS))
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
 
-SERVER_SPEC = importlib.util.spec_from_file_location("teacher_console_server_visual", ROOT / "teacher-console" / "server.py")
+SERVER_SPEC = importlib.util.spec_from_file_location(
+    "teacher_console_server_visual", ROOT / "teacher-console" / "server.py"
+)
 teacher_console_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_console_server)
 
@@ -137,7 +138,10 @@ class FolderAndVisualizationTest(unittest.TestCase):
             kb.write_text(output / "带答案错题.md", "student")
             return {"entry_id": self.entry.name, "output": str(output), "pdf": {"status": "skipped"}}
 
-        with mock.patch.object(kb, "finalize_entry", return_value=[]), mock.patch.object(kb, "export_entry", side_effect=fake_export):
+        with (
+            mock.patch.object(kb, "finalize_entry", return_value=[]),
+            mock.patch.object(kb, "export_entry", side_effect=fake_export),
+        ):
             delivered = process_uploads.finish(self.library, self.entry.name, None, "auto")
         self.assertEqual(delivered["status"], "delivered")
         self.assertEqual((output / "simulation" / "physics-simulator.html").read_bytes(), reviewed_html)
@@ -158,7 +162,13 @@ class FolderAndVisualizationTest(unittest.TestCase):
     def test_visualization_chat_fails_closed_without_agent(self):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
-        unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
+        unavailable = {
+            "status": "unavailable",
+            "provider": None,
+            "attempts": [],
+            "changed_files": [],
+            "unauthorized_changes": [],
+        }
         with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", return_value=unavailable):
             result = handler.run_visualization_chat(self.entry, {"message": "请补充关键事件暂停，并检查正电荷偏转方向"})
         self.assertEqual(result["status"], "awaiting-agent")
@@ -166,6 +176,26 @@ class FolderAndVisualizationTest(unittest.TestCase):
         self.assertEqual(conversation["messages"][0]["role"], "teacher")
         self.assertEqual(conversation["messages"][1]["status"], "awaiting-agent")
         self.assertFalse((self.entry / "visualization-review.json").exists())
+
+    def test_visualization_task_receives_knowledge_evidence(self):
+        request_path = self.entry / "visualization-request.json"
+        kb.write_json(request_path, {"message": "展示关键事件"})
+        evidence = {
+            "schema_version": 1,
+            "kind": "agent-evidence",
+            "task_type": "visualization.model",
+            "status": "ready",
+            "references": [{"reference": "similar-1", "recent_lessons": [{"summary": "暂停点需与物理事件一致"}]}],
+        }
+        with mock.patch.object(teacher_console_server, "agent_evidence_payload", return_value=evidence):
+            task = teacher_console_server.visualization_task(
+                self.entry,
+                "展示关键事件",
+                request_path,
+                "expert",
+            )
+        self.assertEqual(task["context_payloads"][".agent-context/knowledge-evidence.json"], evidence)
+        self.assertIn("当前题干、答案和教师要求优先", task["prompt"])
 
     def test_no_model_keeps_optional_visualization_entry_without_blocking_delivery(self):
         (self.entry / "physics-model.json").unlink()
@@ -185,7 +215,10 @@ class FolderAndVisualizationTest(unittest.TestCase):
             kb.write_text(output / "带答案错题.md", "student")
             return {"entry_id": self.entry.name, "output": str(output), "pdf": {"status": "skipped"}}
 
-        with mock.patch.object(kb, "finalize_entry", return_value=[]), mock.patch.object(kb, "export_entry", side_effect=fake_export):
+        with (
+            mock.patch.object(kb, "finalize_entry", return_value=[]),
+            mock.patch.object(kb, "export_entry", side_effect=fake_export),
+        ):
             delivered = process_uploads.finish(self.library, self.entry.name, None, "auto")
         self.assertEqual(delivered["status"], "delivered")
         manifest = kb.load_json(output / "delivery-manifest.json", {})
@@ -198,7 +231,13 @@ class FolderAndVisualizationTest(unittest.TestCase):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
         captured = {}
-        unavailable = {"status": "unavailable", "provider": None, "attempts": [], "changed_files": [], "unauthorized_changes": []}
+        unavailable = {
+            "status": "unavailable",
+            "provider": None,
+            "attempts": [],
+            "changed_files": [],
+            "unauthorized_changes": [],
+        }
 
         def fake_run(task, _validator):
             captured["prompt"] = task["prompt"]
@@ -263,8 +302,9 @@ class FolderAndVisualizationTest(unittest.TestCase):
                 "attempts": [],
             }
 
-        with mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", side_effect=fake_gateway_run), mock.patch.object(
-            process_uploads, "build_simulator", side_effect=self.fake_build
+        with (
+            mock.patch.object(teacher_console_server.AGENT_GATEWAY, "run", side_effect=fake_gateway_run),
+            mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build),
         ):
             result = handler.run_visualization_chat(
                 self.entry,

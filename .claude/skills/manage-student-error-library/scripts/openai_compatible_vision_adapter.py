@@ -13,7 +13,6 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-
 LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 

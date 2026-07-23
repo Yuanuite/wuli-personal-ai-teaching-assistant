@@ -6,6 +6,7 @@ creates machine-proposed draft cases from canonical entry metadata; a teacher
 must change ``review_status`` to ``approved`` before the cases count as a fixed
 evaluation set.  ``run`` is read-only unless ``--record`` is explicitly used.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(SKILL_SCRIPTS))
@@ -24,7 +24,6 @@ sys.path.insert(0, str(SKILL_SCRIPTS))
 import candidate_archive  # noqa: E402
 import kb  # noqa: E402
 import knowledge_store  # noqa: E402
-
 
 SCHEMA_VERSION = 1
 DEFAULT_CASES = Path("evals") / "retrieval-cases.jsonl"
@@ -83,7 +82,11 @@ def validate_cases(library: Path, cases: list[dict[str, Any]]) -> dict[str, Any]
             errors.append(f"line {line}: invalid review_status {review_status or '<empty>'}")
         else:
             status_counts[review_status] += 1
-        if not isinstance(relevant, list) or not relevant or not all(isinstance(item, str) and item for item in relevant):
+        if (
+            not isinstance(relevant, list)
+            or not relevant
+            or not all(isinstance(item, str) and item for item in relevant)
+        ):
             errors.append(f"line {line}: relevant_entry_ids must be a non-empty string list")
         else:
             missing = sorted(set(relevant) - entry_ids)
@@ -121,13 +124,20 @@ def seed_cases(library: Path, *, limit: int = 30) -> list[dict[str, Any]]:
         title = str(record.get("title", entry.name)).strip()
         knowledge = _record_values(record, "knowledge_points")
         errors = [item for item in _record_values(record, "error_types") if item != "待确认"]
-        base = {"relevant_entry_ids": [entry.name], "review_status": "draft", "notes": "机器按条目元数据生成；请教师核对查询表达与相关条目后改为 approved。"}
+        base = {
+            "relevant_entry_ids": [entry.name],
+            "review_status": "draft",
+            "notes": "机器按条目元数据生成；请教师核对查询表达与相关条目后改为 approved。",
+        }
         if title:
             pools["problem_type"].append({**base, "query": title})
         if knowledge:
             pools["knowledge_point"].append({**base, "query": " ".join(knowledge[:2])})
         if errors:
-            pools["error_type"].append({**base, "query": f"{errors[0]} 容易错的题 {knowledge[0] if knowledge else title}"})
+            pools["error_type"].append({
+                **base,
+                "query": f"{errors[0]} 容易错的题 {knowledge[0] if knowledge else title}",
+            })
         if knowledge or errors:
             phrase_parts = ["帮我找一道"]
             if errors:
@@ -184,7 +194,8 @@ def run_benchmark(
     if not validation["valid"]:
         raise ValueError("; ".join(validation["errors"]))
     eligible = [
-        case for case in cases
+        case
+        for case in cases
         if case.get("review_status") == "approved" or (include_draft and case.get("review_status") == "draft")
     ]
     per_case: list[dict[str, Any]] = []
@@ -203,7 +214,10 @@ def run_benchmark(
             "retrieved_entry_ids": retrieved,
             "first_relevant_rank": min(ranks) if ranks else None,
             "reciprocal_rank": round(1.0 / min(ranks), 4) if ranks else 0.0,
-            "hits": {cutoff: 1.0 if any(entry_id in relevant for entry_id in retrieved[:cutoff]) else 0.0 for cutoff in cutoffs},
+            "hits": {
+                cutoff: 1.0 if any(entry_id in relevant for entry_id in retrieved[:cutoff]) else 0.0
+                for cutoff in cutoffs
+            },
             "recall": {cutoff: round(len(relevant & set(retrieved[:cutoff])) / len(relevant), 4) for cutoff in cutoffs},
         })
     overall = _metrics(per_case, top_k)
@@ -271,12 +285,16 @@ def print_markdown(report: dict[str, Any]) -> None:
     print(f"- eligible: {report['eligible_cases']}; excluded: {report['excluded_cases']}")
     print(f"- fixed_set_ready: {report['fixed_set_ready']}; threshold_evaluable: {report['threshold_evaluable']}")
     print(f"- upgrade_recommended: {report['upgrade_recommended']}")
-    print(f"- Recall@5: {report['overall']['recall'].get('@5', 0.0)}; MRR: {report['overall']['mrr']}; empty_rate: {report['overall']['empty_rate']}")
+    print(
+        f"- Recall@5: {report['overall']['recall'].get('@5', 0.0)}; MRR: {report['overall']['mrr']}; empty_rate: {report['overall']['empty_rate']}"
+    )
     print()
     print("| category | n | Hit@5 | Recall@5 | MRR | empty |")
     print("|---|---:|---:|---:|---:|---:|")
     for category, metrics in report["by_category"].items():
-        print(f"| {category} | {metrics['count']} | {metrics['hit_rate'].get('@5', 0.0)} | {metrics['recall'].get('@5', 0.0)} | {metrics['mrr']} | {metrics['empty_rate']} |")
+        print(
+            f"| {category} | {metrics['count']} | {metrics['hit_rate'].get('@5', 0.0)} | {metrics['recall'].get('@5', 0.0)} | {metrics['mrr']} | {metrics['empty_rate']} |"
+        )
     if report["missed_case_ids_at_5"]:
         print()
         print("Missed at 5: " + ", ".join(report["missed_case_ids_at_5"]))
@@ -308,7 +326,13 @@ def main() -> int:
             raise FileExistsError(f"case file already exists: {cases_path}; use --force to replace it")
         cases = seed_cases(library, limit=max(1, args.limit))
         write_cases(cases_path, cases)
-        print(json.dumps({"status": "seeded", "path": str(cases_path), "case_count": len(cases), "review_status": "draft"}, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"status": "seeded", "path": str(cases_path), "case_count": len(cases), "review_status": "draft"},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         return 0
     cases = load_cases(cases_path)
     if args.command == "validate":
@@ -318,8 +342,12 @@ def main() -> int:
     report = run_benchmark(library, cases, top_k=max(1, args.top_k), include_draft=args.include_draft)
     if args.record:
         if not report["fixed_set_ready"]:
-            raise ValueError("--record requires at least 30 teacher-approved cases; draft results are not durable evidence")
-        report["archive_event"] = record_report(library, report, {"case_count": report["eligible_cases"], "top_k": report["top_k"]})
+            raise ValueError(
+                "--record requires at least 30 teacher-approved cases; draft results are not durable evidence"
+            )
+        report["archive_event"] = record_report(
+            library, report, {"case_count": report["eligible_cases"], "top_k": report["top_k"]}
+        )
     if args.format == "markdown":
         print_markdown(report)
     else:

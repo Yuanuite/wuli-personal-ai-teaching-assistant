@@ -4,8 +4,8 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
-from PIL import Image
 
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -33,12 +33,15 @@ class PublicSiteTest(unittest.TestCase):
             '<svg xmlns="http://www.w3.org/2000/svg"><text x="1" y="12">受力方向</text></svg>',
             encoding="utf-8",
         )
-        write_json(self.entry / "record.json", {
-            "title": "带电粒子在磁场中的运动",
-            "subject": "高中物理",
-            "knowledge_points": ["洛伦兹力", "圆周运动"],
-            "source": {"stored_files": ["assets/original.png"]},
-        })
+        write_json(
+            self.entry / "record.json",
+            {
+                "title": "带电粒子在磁场中的运动",
+                "subject": "高中物理",
+                "knowledge_points": ["洛伦兹力", "圆周运动"],
+                "source": {"stored_files": ["assets/original.png"]},
+            },
+        )
         (self.entry / "problem.md").write_text(
             f"# 带电粒子在磁场中的运动\n\n题目编号：`{self.entry_id}`\n\n![原始题图](assets/original.png)\n\n求粒子的运动半径。\n",
             encoding="utf-8",
@@ -47,15 +50,16 @@ class PublicSiteTest(unittest.TestCase):
             "## 解答\n\n![受力示意](assets/explanation.svg)\n\n由 $qvB=mv^2/r$ 得 $r=mv/(qB)$。\n",
             encoding="utf-8",
         )
-        (self.entry / "teacher-solution.md").write_text(
-            "PRIVATE-TEACHER：课堂上追问学生。\n", encoding="utf-8"
-        )
+        (self.entry / "teacher-solution.md").write_text("PRIVATE-TEACHER：课堂上追问学生。\n", encoding="utf-8")
         write_json(self.entry / "pipeline.json", {"state": "delivered"})
-        write_json(self.entry / "delivery.json", {
-            "status": "delivered",
-            "output": str(root / "internal-output"),
-            "visualization_review": {"status": "not-required"},
-        })
+        write_json(
+            self.entry / "delivery.json",
+            {
+                "status": "delivered",
+                "output": str(root / "internal-output"),
+                "visualization_review": {"status": "not-required"},
+            },
+        )
 
     def tearDown(self):
         self.temp.cleanup()
@@ -63,12 +67,19 @@ class PublicSiteTest(unittest.TestCase):
     def approve_public_image(self, include=True):
         snapshot = public_site.public_image_snapshot(self.entry)
         source = snapshot["sources"][0]
-        return public_site.save_public_images(self.entry, [{
-            "source_id": source["id"],
-            "include": include,
-            "crop": [0, 0, 1, 1],
-            "redactions": [[0, 0, 0.2, 0.1]],
-        }], "teacher", "已脱敏")
+        return public_site.save_public_images(
+            self.entry,
+            [
+                {
+                    "source_id": source["id"],
+                    "include": include,
+                    "crop": [0, 0, 1, 1],
+                    "redactions": [[0, 0, 0.2, 0.1]],
+                }
+            ],
+            "teacher",
+            "已脱敏",
+        )
 
     @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
     def test_prepare_and_publish_excludes_private_material(self, _pdf):
@@ -138,8 +149,14 @@ class PublicSiteTest(unittest.TestCase):
         with mock.patch.object(public_site, "_generate_pdf", side_effect=fake_generate_pdf):
             prepared = public_site.prepare_publication(self.library, self.entry_id, self.site)
         catalog = json.loads((self.entry / public_site.DRAFT_DIR / "catalog.json").read_text(encoding="utf-8"))
-        self.assertEqual(catalog["questions"][0]["pdf"], f"questions/{prepared['public_id']}/{public_site.PUBLIC_PDF_NAME}")
-        self.assertTrue((self.entry / public_site.DRAFT_DIR / "questions" / prepared["public_id"] / public_site.PUBLIC_PDF_NAME).is_file())
+        self.assertEqual(
+            catalog["questions"][0]["pdf"], f"questions/{prepared['public_id']}/{public_site.PUBLIC_PDF_NAME}"
+        )
+        self.assertTrue(
+            (
+                self.entry / public_site.DRAFT_DIR / "questions" / prepared["public_id"] / public_site.PUBLIC_PDF_NAME
+            ).is_file()
+        )
 
     def test_public_pdf_falls_back_to_reportlab_for_webp_and_svg(self):
         question_dir = self.entry / "public-question"
@@ -157,7 +174,9 @@ class PublicSiteTest(unittest.TestCase):
             "# 带电粒子题\n\n![公开题图](assets/question-1.webp)\n\n## 详细解答\n\n由 $qvB=mv^2/r$ 得半径。\n\n![示意图](assets/asset-1.svg)\n",
             encoding="utf-8",
         )
-        with mock.patch.object(public_site.pdf_export, "_try_pandoc", return_value={"status": "skipped", "reason": "forced"}):
+        with mock.patch.object(
+            public_site.pdf_export, "_try_pandoc", return_value={"status": "skipped", "reason": "forced"}
+        ):
             result = public_site._generate_pdf(question_dir)
         self.assertEqual(result["status"], "generated")
         self.assertEqual(result["engine"], "reportlab")
@@ -174,15 +193,18 @@ class PublicSiteTest(unittest.TestCase):
         source = self.entry / "approved-simulator.html"
         source.write_text(
             '<script type="application/json" id="physics-model-data">'
-            + json.dumps({
-                "schema_version": 1,
-                "model_type": "planar-magnetic-multi-particle",
-                "entry_id": self.entry_id,
-                "source": {"original_image": "assets/original.png"},
-                "teacher_audit": {"note": "PRIVATE-TEACHER"},
-                "event_model": {"timeline": [{"id": "P", "order": 0}]},
-            }, ensure_ascii=False)
-            + '</script><p>答案来自 physics-model.json</p>',
+            + json.dumps(
+                {
+                    "schema_version": 1,
+                    "model_type": "planar-magnetic-multi-particle",
+                    "entry_id": self.entry_id,
+                    "source": {"original_image": "assets/original.png"},
+                    "teacher_audit": {"note": "PRIVATE-TEACHER"},
+                    "event_model": {"timeline": [{"id": "P", "order": 0}]},
+                },
+                ensure_ascii=False,
+            )
+            + "</script><p>答案来自 physics-model.json</p>",
             encoding="utf-8",
         )
         destination = self.entry / "public-simulator.html"

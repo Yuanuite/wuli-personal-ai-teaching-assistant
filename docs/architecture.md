@@ -78,11 +78,15 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 
 - `server.py` 只提交任务类型、教师意见、读写集合和隐私策略，不保存具体 CLI/API 参数；
 - provider 在系统临时目录工作，canonical entry 不作为工作目录；候选区按输入白名单构造，原始题图、批准记录和无关内部文件不被 Gateway 复制或写入 prompt；CLI 运行时的额外只读边界仍由其自身沙箱决定，严格披露边界应使用结构化 adapter；
+- `answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
 - `.agent-context/` 按任务和成本档位提供最小只读规则：答案任务以答案模板与职责边界为主，深度档才附完整知识库 Skill；可视化任务附仿真 Skill 与模型 Schema；
 - 候选修改仅限任务白名单，答案候选由知识库验证器检查，可视化候选由仿真模型构建器检查；
 - canonical 条目在排队期间变化、候选越权、删除文件或验证失败时均不提升；
+- 内容校验失败、输出截断或未形成修改时，失败排障层可在全新隔离区携带脱敏证据纠正一次；它不放宽路径、审批或发布边界，越权与 canonical 冲突永不自动重试；
 - provider 只有在尚未产生候选修改时才能安全降级；
 - 教师可选择 `auto|economy|expert`；档位只路由模型并裁剪上下文，实际模型、降级说明和 provider 用量写入私有作业记录，不改变复核门禁；
+- 后台 Agent 作业由 Scheduler 按优先级和任务类型领取当前可运行任务，不让等待限额的作业占住 worker；`source.clean` 默认进入 `economy` 快速档并允许跨题并发，解析生成、答案返修和可视化建模也可跨题有限并发，同题任务始终互斥；
+- `source.clean` 批量完成后以防抖方式刷新知识索引，避免每题成功都立即重建全库；Evaluator 与 Candidate Archive 仍逐题记录结果；
 - 版本/help 探测与无学生数据的主动连通探测分离；实际运行失败会触发短期熔断，避免每道题重复等待同一个坏 provider；
 - OS 单实例锁阻止两个教师服务同时管理同一知识库；单题事务锁覆盖摘要复查、提升及后处理，库级锁串行化知识索引写入；
 - provider 仅继承基础运行变量与自身认证变量，其他环境变量必须显式加入 adapter allowlist；
@@ -136,6 +140,12 @@ Gateway 不拥有 OCR、答案或物理语义，也不得调用任何 `approve-*
 6. HTML/JavaScript/ZIP 静态校验；
 7. 浏览器运行时检查，或明确记录因依赖不可用而跳过；
 8. 来源、答案与可视化复核摘要、PDF 状态、学生包和交付文件清单写入 manifest。
+
+`finish` 成功后还会生成单题 `evaluation.json`，把解析结构、来源/答案复核、可视化状态、交付完整性和本地路径安全提示整理成可审计评分。Evaluator 只记录确定性事实和启发式提示，不替代教师复核；它是后续 Candidate Archive、题库 RAG 和 AI 审计 RAG 的共同证据入口。细节见 [`evaluator.md`](evaluator.md)。
+
+关键教师动作、Agent 任务、确定性构建和交付动作同时追加到 `candidate-archive.jsonl`，记录任务类型、执行者、结果、变更文件、失败原因和 Evaluator 摘要。Archive 不保存密钥、原图或完整候选内容，也不改变审批状态；它为后续题库 RAG、AI 审计 RAG 和慢循环复盘提供“成败历史”。细节见 [`candidate-archive.md`](candidate-archive.md)。
+
+`student-error-library/indexes/wuli-memory.db` 是从条目 Markdown/JSON、`evaluation.json` 和 Candidate Archive 重建出的本地 SQLite Knowledge Store。它启用 WAL 与 FTS5（不可用时降级扫描），把题干、答案、标签、评价摘要和最近候选事件打包成可引用的 evidence pack，供后续题库 RAG、AI 审计和 Evolve 候选比较使用。该数据库是派生缓存，不是审批或教学内容真源；`kb.py rebuild` 会顺带刷新它，失败时不阻断原生命周期。细节见 [`knowledge-store.md`](knowledge-store.md)。
 
 若还要发布学生端，则在以上交付完成后执行公开草稿生成、安全扫描、教师预览与隐私确认；它不改变 `delivered` 状态，也不替代本地交付 manifest。
 

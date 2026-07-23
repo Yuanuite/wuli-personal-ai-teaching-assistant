@@ -10,7 +10,6 @@ import math
 from pathlib import Path
 from typing import Any
 
-
 COLORS = {
     "ink": "#172033",
     "muted": "#64748b",

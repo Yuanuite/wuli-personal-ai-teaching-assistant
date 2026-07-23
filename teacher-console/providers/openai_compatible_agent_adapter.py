@@ -11,7 +11,6 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlparse
 
-
 MAX_CONTEXT_CHARS = 300_000
 ENTRY_CONTEXT = (
     "problem.md",
@@ -92,8 +91,11 @@ def select_model(task: dict, environ: dict[str, str] | None = None) -> tuple[str
 def normalized_usage(payload: dict) -> dict:
     raw = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
     aliases = {
-        "prompt_tokens": "prompt_tokens", "completion_tokens": "completion_tokens",
-        "input_tokens": "input_tokens", "output_tokens": "output_tokens", "total_tokens": "total_tokens",
+        "prompt_tokens": "prompt_tokens",
+        "completion_tokens": "completion_tokens",
+        "input_tokens": "input_tokens",
+        "output_tokens": "output_tokens",
+        "total_tokens": "total_tokens",
     }
     result = {}
     for source, target in aliases.items():
@@ -101,7 +103,10 @@ def normalized_usage(payload: dict) -> dict:
         if isinstance(value, int) and value >= 0:
             result[target] = value
     if "total_tokens" not in result:
-        parts = [result.get("prompt_tokens", result.get("input_tokens")), result.get("completion_tokens", result.get("output_tokens"))]
+        parts = [
+            result.get("prompt_tokens", result.get("input_tokens")),
+            result.get("completion_tokens", result.get("output_tokens")),
+        ]
         if all(isinstance(value, int) for value in parts):
             result["total_tokens"] = sum(parts)
     return result
@@ -120,27 +125,32 @@ def main() -> int:
     allowed = json.dumps(task.get("allowed_paths", []), ensure_ascii=False)
     instruction = (
         "You are a scoped teaching-content worker. Return exactly one JSON object and no prose. "
-        "Schema: {\"status\":\"completed|unsupported\",\"message\":\"...\","
-        "\"files\":[{\"path\":\"relative/path\",\"content\":\"complete UTF-8 content\"}]}. "
+        'Schema: {"status":"completed|unsupported","message":"...",'
+        '"files":[{"path":"relative/path","content":"complete UTF-8 content"}]}. '
         f"You may propose only these paths: {allowed}. Never approve, publish, deliver, or alter review records. "
         "Return complete replacement contents, not diffs. If tools or evidence are insufficient, return unsupported with no files.\n\n"
         f"TASK:\n{task['prompt']}\n\nCURRENT ENTRY CONTEXT:\n{load_context(task)}"
     )
-    body = json.dumps({
-        "model": model,
-        "temperature": 0.1,
-        "messages": [
-            {"role": "system", "content": "Follow the structured JSON contract exactly."},
-            {"role": "user", "content": instruction},
-        ],
-    }, ensure_ascii=False).encode("utf-8")
+    body = json.dumps(
+        {
+            "model": model,
+            "temperature": 0.1,
+            "messages": [
+                {"role": "system", "content": "Follow the structured JSON contract exactly."},
+                {"role": "user", "content": instruction},
+            ],
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
     headers = {"Content-Type": "application/json"}
     api_key = os.environ.get("TEACHER_CONSOLE_AGENT_API_KEY", "").strip()
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     request = urllib.request.Request(endpoint(base), data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(request, timeout=int(os.environ.get("TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS", "300"))) as response:
+        with urllib.request.urlopen(
+            request, timeout=int(os.environ.get("TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS", "300"))
+        ) as response:
             payload = json.loads(response.read().decode("utf-8"))
         content = payload["choices"][0]["message"]["content"]
         result = parse_content(content)
