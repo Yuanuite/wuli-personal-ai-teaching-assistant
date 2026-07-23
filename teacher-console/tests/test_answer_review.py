@@ -112,6 +112,8 @@ class AnswerReviewGateTest(unittest.TestCase):
         self.assertFalse(process_uploads.should_render_answers(model_path))
         self.assertEqual(kb.load_json(self.entry / "answer-review.json", {})["status"], "needs-review")
         self.assertEqual(process_uploads.pipeline_state(self.entry)["state"], "needs-answer-review")
+        self.assertEqual(result["evaluation"]["status"], "failed")
+        self.assertTrue((self.entry / "evaluation.json").is_file())
 
     def test_explanatory_svg_change_invalidates_answer_approval(self):
         approved = process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
@@ -149,6 +151,73 @@ class AnswerReviewGateTest(unittest.TestCase):
         self.assertIn("assets/explanatory.svg", task["input_paths"])
         self.assertNotIn(".agent-context/library-skill.md", task["context_files"])
         self.assertIn(".agent-context/answer-template.md", task["context_files"])
+        evidence = task["context_payloads"][".agent-context/knowledge-evidence.json"]
+        self.assertIn(evidence["status"], {"ready", "unavailable"})
+        self.assertEqual(evidence["task_type"], "answer.revise")
+        self.assertEqual(evidence["references"], [])
+
+    def test_economy_context_is_substantially_smaller_than_expert(self):
+        """Measure actual byte-size reduction of economy vs expert context.
+
+        Economy omits the full library SKILL.md (≈21 KB) and secondary
+        conclusions database, keeping only answer-template, project rules,
+        and responsibility matrix.  This test locks in a minimum 20%
+        reduction — if it ever fails, check whether the context_files
+        budget has drifted significantly.
+        """
+        request_path = self.entry / "answer-revision-request.json"
+        kb.write_json(request_path, {"note": "测试"})
+        economy = teacher_console_server.answer_revision_task(
+            self.entry, "测试", request_path, "economy",
+        )
+        expert = teacher_console_server.answer_revision_task(
+            self.entry, "测试", request_path, "expert",
+        )
+        ROOT = Path(__file__).resolve().parents[2]
+
+        def context_bytes(task: dict) -> int:
+            total = len(task.get("prompt", ""))
+            for relative, source in task.get("context_files", {}).items():
+                path = Path(source)
+                if not path.is_absolute():
+                    path = ROOT / path
+                if path.is_file():
+                    total += path.stat().st_size
+            total += len(str(task.get("context_payloads", {})).encode("utf-8"))
+            for input_file in task.get("input_paths", []):
+                candidate = self.entry / input_file
+                if candidate.is_file():
+                    total += candidate.stat().st_size
+            return total
+
+        economy_bytes = context_bytes(economy)
+        expert_bytes = context_bytes(expert)
+        ratio = 1 - economy_bytes / max(expert_bytes, 1)
+
+        self.assertGreater(
+            ratio, 0.20,
+            f"economy context ({economy_bytes} B) is only "
+            f"{ratio:.0%} smaller than expert ({expert_bytes} B); "
+            f"expected ≥20% reduction",
+        )
+
+    def test_answer_revision_receives_bounded_knowledge_evidence(self):
+        request_path = self.entry / "answer-revision-request.json"
+        kb.write_json(request_path, {"note": "减少认知负担"})
+        evidence = {
+            "schema_version": 1,
+            "kind": "agent-evidence",
+            "task_type": "answer.revise",
+            "status": "ready",
+            "references": [{"reference": "similar-1", "methods": ["先画受力图"]}],
+        }
+        with mock.patch.object(teacher_console_server, "agent_evidence_payload", return_value=evidence):
+            task = teacher_console_server.answer_revision_task(
+                self.entry, "减少认知负担", request_path, "economy",
+            )
+        self.assertEqual(task["context_payloads"][".agent-context/knowledge-evidence.json"], evidence)
+        self.assertEqual(task["evidence_context"], {"status": "ready", "reference_count": 1, "task_type": "answer.revise"})
+        self.assertIn("当前题干与教师意见优先", task["prompt"])
 
     def test_expert_revision_can_share_existing_model(self):
         kb.write_json(self.entry / "physics-model.json", {"schema_version": 1})
@@ -233,6 +302,95 @@ class AnswerReviewGateTest(unittest.TestCase):
                 teacher_console_server.acquire_instance_lock(self.library)
         finally:
             teacher_console_server.release_instance_lock(first)
+
+
+
+
+class ValidateAnswerCandidateTest(unittest.TestCase):
+    """Pure unit tests for validate_answer_candidate — temp files only, no pipeline init.
+
+    The staging dir must pass kb.validate_entry(ready_rules=True), which means
+    it needs a real-looking problem.md, record.json with all required fields,
+    and a solution.md with headings + image reference.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.staging = Path(self.temp.name) / "staging"
+        self.staging.mkdir(parents=True)
+        # problem.md — must be ≥30 chars
+        kb.write_text(self.staging / "problem.md",
+                       "# 测试题\n\n一个足够长的高中物理题干，用于验证答案校验函数。")
+        # All three answer files, teacher == solution
+        kb.write_text(self.staging / "student-solution.md",
+                       "# 学生版\n\n## 答案速览\n正确。\n\n## 详细解答\n计算过程。\n\n## 易错点\n注意单位。\n\n![图](assets/explanatory.svg)")
+        kb.write_text(self.staging / "teacher-solution.md",
+                       "# 教师版\n\n## 答案速览\n3 m/s\n\n## 详细解答\n第一步，明确研究对象和过程。\n"
+                       "第二步，根据动能定理列方程：$\\frac12 mv^2 = mgh$。\n"
+                       "第三步，代入数据求解，得到 v = 3 m/s。\n"
+                       "最后用量纲和边界条件做双重检查，确认结果合理。\n\n"
+                       "## 易错点\n方向判断，以及公式的适用条件。\n\n![图](assets/explanatory.svg)")
+        # solution.md must be identical to teacher-solution.md
+        kb.write_text(self.staging / "solution.md",
+                       "# 教师版\n\n## 答案速览\n3 m/s\n\n## 详细解答\n第一步，明确研究对象和过程。\n"
+                       "第二步，根据动能定理列方程：$\\frac12 mv^2 = mgh$。\n"
+                       "第三步，代入数据求解，得到 v = 3 m/s。\n"
+                       "最后用量纲和边界条件做双重检查，确认结果合理。\n\n"
+                       "## 易错点\n方向判断，以及公式的适用条件。\n\n![图](assets/explanatory.svg)")
+        # Minimal record.json that passes ready_rules
+        kb.write_json(self.staging / "record.json", {
+            "schema_version": 1,
+            "id": "staging",
+            "kind": "error",
+            "title": "测试题",
+            "subject": "高中物理",
+            "knowledge_points": ["测试"],
+            "error_types": ["待确认"],
+            "source": {"source_type": "test"},
+        })
+        (self.staging / "assets").mkdir(exist_ok=True)
+        (self.staging / "assets" / "explanatory.svg").write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="60"></svg>',
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_passes_valid_candidate(self):
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertEqual(errors, [])
+
+    def test_missing_student_solution(self):
+        (self.staging / "student-solution.md").unlink()
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertIn("student-solution.md is missing", errors)
+
+    def test_missing_teacher_solution(self):
+        (self.staging / "teacher-solution.md").unlink()
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertIn("teacher-solution.md is missing", errors)
+
+    def test_missing_solution(self):
+        (self.staging / "solution.md").unlink()
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertIn("solution.md is missing", errors)
+
+    def test_teacher_solution_mismatch(self):
+        kb.write_text(self.staging / "teacher-solution.md",
+                       "# 教师版\n\n## 答案速览\n不同版本\n\n## 详细解答\n不同。\n\n## 易错点\n不同。\n\n![图](assets/explanatory.svg)")
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertIn("solution.md must be identical to teacher-solution.md", errors)
+
+    def test_all_three_missing_checks_present_among_kb_errors(self):
+        for name in ("student-solution.md", "teacher-solution.md", "solution.md"):
+            (self.staging / name).unlink()
+        errors = teacher_console_server.validate_answer_candidate(self.staging, [])
+        self.assertIn("student-solution.md is missing", errors)
+        self.assertIn("teacher-solution.md is missing", errors)
+        self.assertIn("solution.md is missing", errors)
+        # Mismatch should NOT be reported when files are missing
+        self.assertNotIn("solution.md must be identical to teacher-solution.md", errors)
 
 
 if __name__ == "__main__":
