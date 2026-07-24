@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import mimetypes
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -29,12 +31,15 @@ MODEL_REGISTRY_PATH = LIBRARY / "config" / "model-registry.json"
 sys.path.insert(0, str(SKILL_SCRIPTS))
 sys.path.insert(0, str(CONSOLE_DIR))
 
+import analysis_artifacts  # noqa: E402
+import candidate_archive  # noqa: E402
 import evaluator  # noqa: E402
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
 import public_site  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
+from failure_intelligence import run_with_failure_repair  # noqa: E402
 from log import TraceContext, logger
 from log import configure as configure_logging  # noqa: E402
 from model_registry import (  # noqa: E402
@@ -45,6 +50,13 @@ from model_registry import (  # noqa: E402
     resolve_model_id_for_task,
     save_model_registry_settings,
     update_model_probe_result,
+)
+from runtime_environment import (  # noqa: E402
+    classify_runtime_probe,
+    resolved_environment,
+    runtime_settings_public,
+    save_runtime_settings,
+    update_runtime_probe_result,
 )
 
 CONSOLE_SCRIPTS = CONSOLE_DIR / "scripts"
@@ -59,7 +71,7 @@ LIBRARY_INDEX_LOCK = threading.RLock()
 VISUALIZATION_LOCKS: dict[str, threading.RLock] = {}
 VISUALIZATION_LOCKS_GUARD = threading.Lock()
 PUBLICATION_LOCK = threading.RLock()
-AGENT_GATEWAY = AgentGateway()
+AGENT_GATEWAY = AgentGateway(environment_resolver=lambda: resolved_environment(LIBRARY))
 _JOB_MANAGER: AgentJobManager | None = None
 _JOB_MANAGER_LOCK = threading.Lock()
 SUPPORTED_SIMULATOR_MODEL_TYPES = [
@@ -100,6 +112,14 @@ DELIVERY_CATALOG = {
         "order": 5,
     },
 }
+def _sanitize_output(text: str, max_len: int = 2000) -> str:
+    """Truncate and sanitize agent stdout/stderr to avoid leaking paths or config."""
+    truncated = text.strip()[:max_len]
+    if len(text.strip()) > max_len:
+        truncated += "\n… (truncated)"
+    return truncated
+
+
 PROTECTED_RECORD_FIELDS = {
     "schema_version",
     "id",
@@ -183,8 +203,111 @@ def gateway_routing_fields(gateway: dict) -> dict:
         "model_display_name",
         "usage",
         "routing_notice",
+        "failure_type",
+        "evidence_context",
+        "failure_repair",
+        "budget_guard",
+        "materialization",
+        "resumed_from_checkpoint",
     )
     return {key: gateway[key] for key in keys if key in gateway}
+
+
+def run_agent_gateway(entry: Path, task: dict, validator, *, materializer=None) -> dict:
+    """Run one scoped task through the Gateway and the bounded repair policy."""
+    if materializer is None:
+        run_once = AGENT_GATEWAY.run
+    else:
+        def run_once(current_task, current_validator):
+            return AGENT_GATEWAY.run(
+                current_task,
+                current_validator,
+                materializer=materializer,
+            )
+    return run_with_failure_repair(
+        task,
+        validator,
+        library=entry.parent.parent,
+        run_once=run_once,
+    )
+
+
+def archive_agent_result(
+    entry: Path,
+    task_type: str,
+    request: dict,
+    gateway: dict,
+    *,
+    summary: str,
+) -> dict:
+    """Persist compact terminal Agent telemetry without raw prompts or process output."""
+    library = entry.parent.parent
+    status = str(gateway.get("status", "failed"))
+    attempts = []
+    for attempt in gateway.get("attempts", []) if isinstance(gateway.get("attempts"), list) else []:
+        if not isinstance(attempt, dict):
+            continue
+        attempts.append({
+            key: attempt[key]
+            for key in ("provider", "status", "failure_type", "duration_seconds")
+            if key in attempt
+        })
+    compact_result = {
+        key: gateway[key]
+        for key in (
+            "status",
+            "provider",
+            "failure_type",
+            "changed_files",
+            "unauthorized_changes",
+            "validation_errors",
+            "failure_repair",
+            "evidence_context",
+            "budget_guard",
+        )
+        if key in gateway
+    }
+    compact_result["attempts"] = attempts
+    compact_request = {
+        key: request[key]
+        for key in ("routing_tier", "model_id", "model_display_name")
+        if key in request
+    }
+    try:
+        evaluation = evaluator.evaluate_entry(library, entry.name, write=True)
+        evaluation_summary = {
+            key: evaluation.get(key)
+            for key in (
+                "status",
+                "scores",
+                "teacher_review_required",
+                "failure_reasons",
+                "warning_reasons",
+            )
+        }
+    except Exception as exc:  # noqa: BLE001 - telemetry must not break the lifecycle
+        logger.warning("agent archive evaluation failed entry=%s error=%s", entry.name, exc)
+        evaluation_summary = {}
+    try:
+        return candidate_archive.append_event(
+            library,
+            entry,
+            task_type=task_type,
+            actor="agent",
+            event_type="agent-result",
+            status=status,
+            summary=summary,
+            request=compact_request,
+            result=compact_result,
+            evaluation=evaluation_summary,
+            changed_files=gateway.get("changed_files", []),
+            failure_reasons=[]
+            if status == "completed"
+            else [str(gateway.get("message") or gateway.get("failure_type") or "Agent 任务失败")],
+        )
+    except Exception as exc:  # noqa: BLE001 - archive is observability, not a lifecycle gate
+        logger.warning("agent archive append failed entry=%s error=%s", entry.name, exc)
+        return {"status": "archive-error", "error": str(exc)}
 
 
 def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto", model_id: str = "auto") -> dict:
@@ -333,7 +456,7 @@ def _agent_task(
             / "references"
             / "secondary-conclusions.json"
         )
-    if routing_tier == "expert":
+    if routing_tier == "expert" and kind != "analysis.generate":
         context_files[".agent-context/library-skill.md"] = str(
             PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "SKILL.md"
         )
@@ -403,16 +526,21 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
     prompt = (
         f"处理错题知识库条目。{instruction}\n"
         "已复核题干见 problem.md。检索已有方法，独立解题。\n"
-        "更新 record.json 的教学元数据字段：knowledge_points、error_types、difficulty、grade、title；"
-        "record.json 的其他字段为保护字段，不可修改。\n"
-        "生成 student-solution.md、teacher-solution.md、同步的 solution.md，以及至少一张本地解释图（assets/ 下）。\n"
-        "遵循 .agent-context/ 中的答案模板与格式要求。"
+        "返回一份结构化解析：完整学生版、仅教师增补的审计内容、教学元数据和解题逻辑节点。"
+        "不要直接编辑文件，不要重复输出教师版或兼容版；程序会确定性生成这些产物与解释图。\n"
+        "遵循授权上下文中的答案模板与格式要求。"
     )
-    return _agent_task(
+    task = _agent_task(
         entry,
         "analysis.generate",
         prompt,
-        ["record.json", "student-solution.md", "teacher-solution.md", "solution.md", "assets/**"],
+        [
+            "record.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+            analysis_artifacts.EXPLANATION_PATH,
+        ],
         input_paths=[
             "problem.md",
             "record.json",
@@ -425,6 +553,14 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
         routing_tier=routing_tier,
         model_config=model_config,
     )
+    task["output_contract"] = analysis_artifacts.output_contract()
+    task["structured_context_paths"] = [
+        "problem.md",
+        "record.json",
+        ".agent-context/answer-template.md",
+        ".agent-context/secondary-conclusions.json",
+    ]
+    return task
 
 
 def visualization_task(
@@ -442,7 +578,8 @@ def visualization_task(
         f"教师要求：{message}\n\n"
         f"{task}\n"
         f"遵循 .agent-context/ 中的 build-physics-simulator Skill。"
-        f"支持的 model_type：{supported_types}。必须选择其中一种，严禁自创 model_type；若都不适用，明确说明原因，不要写入无法构建的模型。"
+        f"支持的 model_type：{supported_types}。必须选择其中一种，严禁自创 model_type；"
+        "若都不适用，明确说明原因，不要写入无法构建的模型。"
         "静态解释 SVG 属于解析复核，不在此任务范围。执行模型校验即可。"
     )
     answer_assets = answer_asset_names(entry)
@@ -650,6 +787,9 @@ def gateway_failure_detail(gateway: dict, fallback: str) -> str:
     message = str(gateway.get("message") or "").strip()
     if message:
         parts.append(message)
+    failure_type = str(gateway.get("failure_type") or "").strip()
+    if failure_type:
+        parts.append(f"失败类型：{failure_type}")
     validation = gateway.get("validation_errors")
     if isinstance(validation, list) and validation:
         parts.append("校验原因：" + "；".join(str(item) for item in validation[:5]))
@@ -662,6 +802,9 @@ def gateway_failure_detail(gateway: dict, fallback: str) -> str:
     provider = gateway.get("provider")
     if provider:
         parts.append(f"provider：{provider}")
+    repair = gateway.get("failure_repair")
+    if isinstance(repair, dict) and repair.get("action"):
+        parts.append("建议：" + str(repair["action"]))
     return "\n".join(parts) if parts else fallback
 
 
@@ -806,6 +949,117 @@ def save_retrieval_review(data: dict, library: Path) -> dict:
         updated.append(case)
     retrieval_benchmark.write_cases(cases_path, updated)
     return retrieval_review_snapshot(library)
+
+
+# ---------------------------------------------------------------------------
+# Agent baseline snapshot and teacher-edit diff  (efficiency evaluator feed)
+# ---------------------------------------------------------------------------
+
+_LATEX_NORMALIZATIONS = [
+    (re.compile(r"\\dfrac\b"), r"\\frac"),
+    (re.compile(r"\\tfrac\b"), r"\\frac"),
+    (re.compile(r"\\mathbf\b"), r"\\vec"),
+    (re.compile(r"\\bm\b"), r"\\vec"),
+    (re.compile(r"\\bigl\b"), r"\\left"),
+    (re.compile(r"\\bigr\b"), r"\\right"),
+    (re.compile(r"\\Bigl\b"), r"\\left"),
+    (re.compile(r"\\Bigr\b"), r"\\right"),
+    (re.compile(r"\\biggl\b"), r"\\left"),
+    (re.compile(r"\\biggr\b"), r"\\right"),
+    (re.compile(r"\\Biggl\b"), r"\\left"),
+    (re.compile(r"\\Biggr\b"), r"\\right"),
+    (re.compile(r"\\displaystyle\b"), r""),
+    (re.compile(r"\\textstyle\b"), r""),
+    (re.compile(r"\\scriptstyle\b"), r""),
+    (re.compile(r"\\limits"), r""),
+    (re.compile(r"\\nolimits"), r""),
+    (re.compile(r"\\qquad\b"), r" "),
+    (re.compile(r"\\quad\b"), r" "),
+    (re.compile(r"\\enspace\b"), r" "),
+    (re.compile(r"\\;"), r" "),
+    (re.compile(r"\\:"), r" "),
+    (re.compile(r"\\,"), r" "),
+    (re.compile(r"\\!"), r""),
+]
+
+
+def _normalize_latex(text: str) -> str:
+    """Normalise LaTeX formatting differences so only semantic changes count."""
+    for pattern, replacement in _LATEX_NORMALIZATIONS:
+        text = pattern.sub(replacement, text)
+    return text
+
+
+def _save_agent_baseline(entry: Path, changed_files: list[str]) -> Path | None:
+    """Snapshot agent-promoted files as the baseline for later teacher-edit diff."""
+    if not changed_files:
+        return None
+    baseline_dir = entry / ".agent-baseline"
+    if baseline_dir.exists():
+        shutil.rmtree(baseline_dir)
+    baseline_dir.mkdir(parents=True)
+    for relative in changed_files:
+        source = entry / relative
+        if source.is_file() and not source.is_symlink():
+            target = baseline_dir / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+    return baseline_dir
+
+
+def _compute_agent_diff(entry: Path) -> dict:
+    """Compare the Agent baseline with the teacher-reviewed files.
+
+    Text artifacts use a normalized line diff. Binary explanation assets count
+    as one unit so a PNG/JPEG never blocks the answer-approval endpoint.
+    """
+    baseline_dir = entry / ".agent-baseline"
+    if not baseline_dir.exists():
+        return {"status": "no-baseline", "changed_lines": 0, "total_lines": 0, "change_ratio": 0.0}
+    total_changed = 0
+    total_lines = 0
+    for baseline_file in sorted(baseline_dir.rglob("*")):
+        if not baseline_file.is_file():
+            continue
+        relative = baseline_file.relative_to(baseline_dir).as_posix()
+        current_file = entry / relative
+        baseline_bytes = baseline_file.read_bytes()
+        try:
+            baseline_text = baseline_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            baseline_text = None
+        if not current_file.is_file():
+            units = max(len(baseline_text.splitlines()), 1) if baseline_text is not None else 1
+            total_changed += units
+            total_lines += units
+            continue
+        current_bytes = current_file.read_bytes()
+        try:
+            current_text = current_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            current_text = None
+        if baseline_text is None or current_text is None:
+            total_changed += 0 if baseline_bytes == current_bytes else 1
+            total_lines += 1
+            continue
+        old_norm = _normalize_latex(baseline_text)
+        new_norm = _normalize_latex(current_text)
+        old_lines = old_norm.splitlines()
+        new_lines = new_norm.splitlines()
+        matcher = difflib.SequenceMatcher(None, old_lines, new_lines)
+        changed = 0
+        for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+            if tag != "equal":
+                changed += max(i2 - i1, j2 - j1)
+        total_changed += changed
+        total_lines += max(len(old_lines), 1)
+    change_ratio = round(total_changed / max(total_lines, 1), 4)
+    return {
+        "status": "computed",
+        "changed_lines": total_changed,
+        "total_lines": total_lines,
+        "change_ratio": change_ratio,
+    }
 
 
 def read_json(path: Path, default=None):
@@ -985,6 +1239,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.json_response(agent_health())
             if path == "/api/agent/model-registry":
                 return self.json_response(model_registry_settings())
+            if path == "/api/agent/runtime":
+                return self.json_response(runtime_settings_public(LIBRARY))
             if path == "/api/jobs":
                 entry_id = parse_qs(parsed.query).get("entry_id", [""])[0]
                 if not entry_id:
@@ -994,6 +1250,8 @@ class Handler(SimpleHTTPRequestHandler):
             if path.startswith("/api/jobs/"):
                 job_id = unquote(path.removeprefix("/api/jobs/")).strip("/")
                 return self.json_response(job_manager().public(job_manager().get(job_id)))
+            if path == "/api/retrieval-review":
+                return self.json_response(retrieval_review_snapshot(LIBRARY))
             if path == "/api/entries":
                 kb.init_library(LIBRARY)
                 with FOLDER_LOCK:
@@ -1057,6 +1315,8 @@ class Handler(SimpleHTTPRequestHandler):
                 return self.handle_upload(parsed)
             if path == "/api/run-upload":
                 return self.handle_run_upload()
+            if path == "/api/retrieval-review/save":
+                return self.json_response(save_retrieval_review(self.read_json_body(), LIBRARY))
             if path == "/api/folders/rename":
                 data = self.read_json_body()
                 with FOLDER_LOCK:
@@ -1075,8 +1335,32 @@ class Handler(SimpleHTTPRequestHandler):
                         timeout_seconds=int(data.get("timeout_seconds", 120)),
                         allow_remote=remote_agent_allowed(),
                         model_config=model_config_for_task("gateway.probe", model_id, "auto"),
+                        require_file_tools=data.get("require_file_tools") is True,
                     )
                 )
+            if path == "/api/agent/runtime":
+                settings = save_runtime_settings(LIBRARY, self.read_json_body())
+                AGENT_GATEWAY.invalidate_health()
+                return self.json_response(settings)
+            if path == "/api/agent/runtime/diagnose":
+                data = self.read_json_body()
+                if isinstance(data.get("settings"), dict):
+                    save_runtime_settings(LIBRARY, data["settings"])
+                    AGENT_GATEWAY.invalidate_health()
+                snapshot = runtime_settings_public(LIBRARY)
+                result = AGENT_GATEWAY.probe(
+                    "codex",
+                    timeout_seconds=int(data.get("timeout_seconds", 120)),
+                    allow_remote=remote_agent_allowed(),
+                    model_config={"provider": "codex"},
+                )
+                diagnosis = classify_runtime_probe(snapshot, result)
+                snapshot = update_runtime_probe_result(LIBRARY, diagnosis)
+                return self.json_response({
+                    "runtime": snapshot,
+                    "diagnosis": diagnosis,
+                    "agent": result,
+                })
             if path == "/api/agent/model-registry/test":
                 data = self.read_json_body()
                 model_id = normalize_model_id(data.get("model_id"))
@@ -1088,6 +1372,7 @@ class Handler(SimpleHTTPRequestHandler):
                     timeout_seconds=int(data.get("timeout_seconds", 120)),
                     allow_remote=remote_agent_allowed(),
                     model_config=config,
+                    require_file_tools=str(config.get("provider", "")) in {"codex", "claude"},
                 )
                 settings = update_model_probe_result(model_id, result)
                 return self.json_response({
@@ -1191,8 +1476,7 @@ class Handler(SimpleHTTPRequestHandler):
             tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
-            if raw_model_id is not None:
-                model_config_for_task("analysis.generate", model_id, tier)
+            model_config_for_task("analysis.generate", model_id, tier)
             result = queue_agent_job(
                 "analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id
             )
@@ -1202,8 +1486,13 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 result = self.save_answer(entry, data)
         elif action == "approve-answer":
+            agent_diff = _compute_agent_diff(entry)
             with LIBRARY_INDEX_LOCK:
-                result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note)
+                result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note, agent_diff=agent_diff)
+            # Clean up baseline snapshot after approval — diff is now stored in answer-review.json
+            baseline_dir = entry / ".agent-baseline"
+            if baseline_dir.exists():
+                shutil.rmtree(baseline_dir)
         elif action == "request-revision":
             tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
@@ -1319,7 +1608,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "model_display_name": model_config.get("display_name") if model_config else "",
             }
             kb.write_json(entry / "source-clean-request.json", request)
-            gateway = AGENT_GATEWAY.run(
+            gateway = run_agent_gateway(
+                entry,
                 source_clean_task(entry, routing_tier, model_config),
                 lambda staging, changed: validate_source_clean_candidate(staging, changed, entry),
             )
@@ -1327,6 +1617,14 @@ class Handler(SimpleHTTPRequestHandler):
                 request["status"] = "awaiting-agent"
                 request["message"] = "没有可用的 Agent provider；请求已保留，可在配置 Gateway 后重试。"
                 request["gateway"] = gateway
+                archive = archive_agent_result(
+                    entry,
+                    "source.clean",
+                    request,
+                    gateway,
+                    summary="Agent 整理题干候选",
+                )
+                request["archive_event_id"] = archive.get("event_id")
                 kb.write_json(entry / "source-clean-request.json", request)
                 ctx.info("stage=source.clean entry_id=%s status=awaiting-agent", entry.name)
                 return request
@@ -1336,8 +1634,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "provider": gateway.get("provider"),
                 "returncode": gateway.get("returncode"),
-                "stdout": gateway.get("stdout", ""),
-                "stderr": gateway.get("stderr", ""),
+                "stdout": _sanitize_output(gateway.get("stdout", "")),
+                "stderr": _sanitize_output(gateway.get("stderr", "")),
                 "changed_files": gateway.get("changed_files", []),
                 "unauthorized_changes": gateway.get("unauthorized_changes", []),
                 "validation_errors": gateway.get("validation_errors", []),
@@ -1345,7 +1643,15 @@ class Handler(SimpleHTTPRequestHandler):
                 **gateway_routing_fields(gateway),
             })
             if not succeeded:
-                request["message"] = gateway.get("message", "Agent 未能整理题干文字")
+                request["message"] = gateway_failure_detail(gateway, "Agent 未能整理题干文字")
+            archive = archive_agent_result(
+                entry,
+                "source.clean",
+                request,
+                gateway,
+                summary="Agent 整理题干候选",
+            )
+            request["archive_event_id"] = archive.get("event_id")
             kb.write_json(entry / "source-clean-request.json", request)
             ctx.info(
                 "stage=source.clean entry_id=%s status=%s provider=%s",
@@ -1361,9 +1667,7 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("analysis.generate", routing_tier, raw_model_id)
-            model_config = (
-                model_config_for_task("analysis.generate", model_id, routing_tier) if raw_model_id is not None else None
-            )
+            model_config = model_config_for_task("analysis.generate", model_id, routing_tier)
             current_state = process_uploads.pipeline_state(entry)
             if current_state["state"] == "needs-source-review":
                 return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": current_state}
@@ -1379,21 +1683,64 @@ class Handler(SimpleHTTPRequestHandler):
                 "model_display_name": model_config.get("display_name") if model_config else "",
             }
             kb.write_json(entry / "analysis-request.json", request)
-            gateway = AGENT_GATEWAY.run(
-                analysis_task(entry, instruction, routing_tier, model_config),
-                lambda staging, changed: validate_answer_candidate(staging, changed, entry),
+            task = analysis_task(entry, instruction, routing_tier, model_config)
+            fingerprint = analysis_artifacts.input_fingerprint(
+                entry,
+                instruction=instruction,
+                model_id=model_id,
+                routing_tier=routing_tier,
             )
+            checkpoint = analysis_artifacts.load_generation_checkpoint(
+                entry,
+                fingerprint=fingerprint,
+            )
+
+            def validator(staging, changed):
+                return validate_answer_candidate(staging, changed, entry)
+
+            if checkpoint is not None:
+                gateway = AGENT_GATEWAY.replay_structured(
+                    task,
+                    checkpoint,
+                    validator,
+                    materializer=analysis_artifacts.materialize,
+                )
+            else:
+                def materialize_with_checkpoint(staging, payload):
+                    analysis_artifacts.save_generation_checkpoint(
+                        entry,
+                        fingerprint=fingerprint,
+                        payload=payload,
+                    )
+                    return analysis_artifacts.materialize(staging, payload)
+
+                gateway = run_agent_gateway(
+                    entry,
+                    task,
+                    validator,
+                    materializer=materialize_with_checkpoint,
+                )
             if gateway["status"] == "unavailable":
                 request["status"] = "awaiting-agent"
                 request["message"] = "没有可用的 Agent provider；请求已保留，可在配置 Gateway 后重试。"
                 request["gateway"] = gateway
+                archive = archive_agent_result(
+                    entry,
+                    "analysis.generate",
+                    request,
+                    gateway,
+                    summary="Agent 生成分层解析候选",
+                )
+                request["archive_event_id"] = archive.get("event_id")
                 kb.write_json(entry / "analysis-request.json", request)
                 ctx.info("stage=analysis entry_id=%s status=awaiting-agent", entry.name)
                 return request
             succeeded = gateway["status"] == "completed"
             if succeeded:
+                analysis_artifacts.clear_generation_checkpoint(entry)
                 marked = mark_answer_needs_review(LIBRARY, entry, "Agent 已生成分层解析，等待教师复核")
                 resulting_state = marked["state"]
+                _save_agent_baseline(entry, gateway.get("changed_files", []))
             else:
                 resulting_state = process_uploads.pipeline_state(entry)
             request.update({
@@ -1401,17 +1748,36 @@ class Handler(SimpleHTTPRequestHandler):
                 "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "provider": gateway.get("provider"),
                 "returncode": gateway.get("returncode"),
-                "stdout": gateway.get("stdout", ""),
-                "stderr": gateway.get("stderr", ""),
+                "stdout": _sanitize_output(gateway.get("stdout", "")),
+                "stderr": _sanitize_output(gateway.get("stderr", "")),
                 "changed_files": gateway.get("changed_files", []),
                 "unauthorized_changes": gateway.get("unauthorized_changes", []),
                 "validation_errors": gateway.get("validation_errors", []),
                 "attempts": gateway.get("attempts", []),
+                "stages": [
+                    *analysis_artifacts.stage_records(gateway),
+                    {
+                        "name": "candidate-validation",
+                        "status": "completed" if succeeded else "failed",
+                    },
+                    {
+                        "name": "canonical-promotion",
+                        "status": "completed" if succeeded else "not-run",
+                    },
+                ],
                 "resulting_state": resulting_state["state"],
                 **gateway_routing_fields(gateway),
             })
             if not succeeded:
-                request["message"] = gateway.get("message", "Agent 未形成可复核答案")
+                request["message"] = gateway_failure_detail(gateway, "Agent 未形成可复核答案")
+            archive = archive_agent_result(
+                entry,
+                "analysis.generate",
+                request,
+                gateway,
+                summary="Agent 生成分层解析候选",
+            )
+            request["archive_event_id"] = archive.get("event_id")
             kb.write_json(entry / "analysis-request.json", request)
             pipeline = kb.load_json(entry / "pipeline.json", {"schema_version": 1, "entry_id": entry.name})
             pipeline["state"] = resulting_state["state"]
@@ -1475,16 +1841,27 @@ class Handler(SimpleHTTPRequestHandler):
                 }
                 request_path = entry / "answer-revision-request.json"
                 kb.write_json(request_path, request)
-                gateway = AGENT_GATEWAY.run(
+                gateway = run_agent_gateway(
+                    entry,
                     answer_revision_task(entry, note, request_path, routing_tier, model_config),
                     lambda staging, changed: validate_answer_candidate(staging, changed, entry),
                 )
                 if gateway["status"] == "unavailable":
                     request.update({
                         "status": "awaiting-agent",
-                        "message_to_teacher": "修改意见已记录，但当前没有可用的 Agent provider；请配置 Gateway 后重试。",
+                        "message_to_teacher": (
+                            "修改意见已记录，但当前没有可用的 Agent provider；请配置 Gateway 后重试。"
+                        ),
                         "gateway": gateway,
                     })
+                    archive = archive_agent_result(
+                        entry,
+                        "answer.revise",
+                        request,
+                        gateway,
+                        summary="Agent 按教师意见修订解析候选",
+                    )
+                    request["archive_event_id"] = archive.get("event_id")
                     kb.write_json(request_path, request)
                     ctx.info("stage=answer.revise entry_id=%s status=awaiting-agent", entry.name)
                     return {**request, "state": process_uploads.pipeline_state(entry)}
@@ -1493,13 +1870,14 @@ class Handler(SimpleHTTPRequestHandler):
                 if succeeded:
                     marked = mark_answer_needs_review(library, entry, "大模型已按教师意见修订，等待教师重新复核")
                     resulting_state = marked["state"]
+                    _save_agent_baseline(entry, gateway.get("changed_files", []))
                 request.update({
                     "status": "completed" if succeeded else "failed",
                     "completed_at": kb.now_iso(),
                     "provider": gateway.get("provider"),
                     "returncode": gateway.get("returncode"),
-                    "stdout": gateway.get("stdout", ""),
-                    "stderr": gateway.get("stderr", ""),
+                    "stdout": _sanitize_output(gateway.get("stdout", "")),
+                    "stderr": _sanitize_output(gateway.get("stderr", "")),
                     "changed_files": gateway.get("changed_files", []),
                     "unauthorized_changes": gateway.get("unauthorized_changes", []),
                     "validation_errors": gateway.get("validation_errors", []),
@@ -1510,8 +1888,16 @@ class Handler(SimpleHTTPRequestHandler):
                 request["message_to_teacher"] = (
                     "解析和引用解释图已按意见修订，请重新复核后再批准。"
                     if succeeded
-                    else gateway.get("message", "大模型任务执行失败，请查看错误后重试。")
+                    else gateway_failure_detail(gateway, "大模型任务执行失败，请查看错误后重试。")
                 )
+                archive = archive_agent_result(
+                    entry,
+                    "answer.revise",
+                    request,
+                    gateway,
+                    summary="Agent 按教师意见修订解析候选",
+                )
+                request["archive_event_id"] = archive.get("event_id")
                 kb.write_json(request_path, request)
                 ctx.info(
                     "stage=answer.revise entry_id=%s status=%s provider=%s",
@@ -1571,12 +1957,16 @@ class Handler(SimpleHTTPRequestHandler):
                 request_path = entry / "visualization-request.json"
                 kb.write_json(request_path, request)
                 kb.write_json(conversation_path, conversation)
-                gateway = AGENT_GATEWAY.run(
+                gateway = run_agent_gateway(
+                    entry,
                     visualization_task(entry, message, request_path, routing_tier, model_config),
                     validate_visualization_candidate,
                 )
                 if gateway["status"] == "unavailable":
-                    assistant = "没有可用的 Agent provider。请求已保存在 visualization-request.json；配置 Gateway 后可以重新提交。"
+                    assistant = (
+                        "没有可用的 Agent provider。请求已保存在 visualization-request.json；"
+                        "配置 Gateway 后可以重新提交。"
+                    )
                     conversation["messages"].append({
                         "role": "assistant",
                         "at": kb.now_iso(),
@@ -1585,6 +1975,14 @@ class Handler(SimpleHTTPRequestHandler):
                     })
                     kb.write_json(conversation_path, conversation)
                     request.update({"status": "awaiting-agent", "message_to_teacher": assistant, "gateway": gateway})
+                    archive = archive_agent_result(
+                        entry,
+                        "visualization.model",
+                        request,
+                        gateway,
+                        summary="Agent 生成或修订可视化模型候选",
+                    )
+                    request["archive_event_id"] = archive.get("event_id")
                     kb.write_json(request_path, request)
                     return {"status": "awaiting-agent", "conversation": conversation, "visualization": current}
                 build_result = None
@@ -1595,7 +1993,7 @@ class Handler(SimpleHTTPRequestHandler):
                 succeeded = (
                     gateway["status"] == "completed" and build_result is not None and build_result.get("status") == "ok"
                 )
-                output = gateway.get("message") or gateway.get("stdout", "").strip()[-4000:]
+                output = gateway.get("message") or _sanitize_output(gateway.get("stdout", ""), 4000)
                 if not output:
                     output = (
                         "Agent 已完成模型生成或修改，工作台已重新构建可视化。"
@@ -1618,7 +2016,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "completed_at": kb.now_iso(),
                     "provider": gateway.get("provider"),
                     "returncode": gateway.get("returncode"),
-                    "stderr": gateway.get("stderr", ""),
+                    "stderr": _sanitize_output(gateway.get("stderr", "")),
                     "unauthorized_changes": gateway.get("unauthorized_changes", []),
                     "validation_errors": gateway.get("validation_errors", []),
                     "changed_files": gateway.get("changed_files", []),
@@ -1627,6 +2025,14 @@ class Handler(SimpleHTTPRequestHandler):
                     "build_status": build_result.get("status") if build_result else None,
                     "resulting_state": process_uploads.pipeline_state(entry)["state"],
                 })
+                archive = archive_agent_result(
+                    entry,
+                    "visualization.model",
+                    request,
+                    gateway,
+                    summary="Agent 生成或修订可视化模型候选",
+                )
+                request["archive_event_id"] = archive.get("event_id")
                 kb.write_json(request_path, request)
                 return {
                     "status": status,

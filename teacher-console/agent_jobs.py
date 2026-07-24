@@ -108,6 +108,8 @@ class AgentJobManager:
         self.running_by_provider: dict[str, int] = {}
         self.pending_callbacks: dict[str, Callable[[], dict]] = {}
         self.queued_jobs: list[str] = []
+        self._task_cooldowns: dict[tuple[str, str], tuple[float, str]] = {}  # (entry_id, kind) → (expires_at, reason)
+        self._cooldown_seconds = self._read_cooldown_seconds()
         self._sequence = 0
         self._shutdown = False
         self.workers: list[threading.Thread] = []
@@ -160,6 +162,14 @@ class AgentJobManager:
                         "errors": ["这道题已有 Agent 任务正在运行"],
                         "job": self.public(active),
                     }
+            remaining, reason = self._task_cooldown_status(entry_id, kind)
+            if remaining > 0:
+                return {
+                    "status": "blocked",
+                    "errors": [f"该任务最近执行失败（{reason}），请等待 {remaining} 秒后重试"],
+                    "cooldown_remaining_seconds": remaining,
+                    "cooldown_reason": reason,
+                }
             job_id = uuid.uuid4().hex
             record = {
                 "schema_version": 1,
@@ -197,6 +207,41 @@ class AgentJobManager:
 
     def _provider_for(self, record: dict) -> str:
         return str(record.get("provider", "") or "")
+
+    @staticmethod
+    def _read_cooldown_seconds() -> int:
+        import os
+
+        try:
+            seconds = int(os.environ.get("TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS", "300"))
+        except ValueError:
+            seconds = 300
+        return max(30, min(seconds, 3600))
+
+    def _task_cooldown_status(self, entry_id: str, kind: str) -> tuple[int, str]:
+        """Return (remaining_seconds, reason) for a task cooldown, or (0, '') if not in cooldown."""
+        key = (entry_id, kind)
+        with self.lock:
+            value = self._task_cooldowns.get(key)
+            if not value:
+                return (0, "")
+            expires_at, reason = value
+            remaining = max(0.0, expires_at - time.monotonic())
+            if remaining <= 0:
+                self._task_cooldowns.pop(key, None)
+                return (0, "")
+            return (int(remaining), reason)
+
+    def _set_task_cooldown(self, entry_id: str, kind: str, reason: str) -> None:
+        with self.lock:
+            self._task_cooldowns[(entry_id, kind)] = (
+                time.monotonic() + self._cooldown_seconds,
+                reason or "任务失败",
+            )
+
+    def _clear_task_cooldown(self, entry_id: str, kind: str) -> None:
+        with self.lock:
+            self._task_cooldowns.pop((entry_id, kind), None)
 
     def _can_run_locked(self, record: dict) -> bool:
         kind = str(record.get("kind", ""))
@@ -253,6 +298,7 @@ class AgentJobManager:
 
     def _run(self, job_id: str, callback: Callable[[], dict]) -> None:
         record = self.get(job_id)
+        running_provider = self._provider_for(record)
         logger.info("job=%s kind=%s entry=%s status=running", job_id, record.get("kind"), record.get("entry_id"))
         with self.lock:
             self._write(record)
@@ -267,6 +313,9 @@ class AgentJobManager:
                 "result": result,
             })
             if record["status"] == "failed":
+                failure_type = str(result.get("failure_type", "") or "").strip()
+                if failure_type:
+                    record["failure_type"] = failure_type
                 record["error"] = (
                     result.get("message_to_teacher")
                     or result.get("message")
@@ -285,11 +334,26 @@ class AgentJobManager:
                 kind = str(record.get("kind", ""))
                 provider = self._provider_for(record)
                 self.running_by_kind[kind] = max(0, self.running_by_kind.get(kind, 0) - 1)
-                if provider:
-                    self.running_by_provider[provider] = max(0, self.running_by_provider.get(provider, 0) - 1)
+                if running_provider:
+                    self.running_by_provider[running_provider] = max(
+                        0, self.running_by_provider.get(running_provider, 0) - 1
+                    )
                 self._write(record)
                 if self.active_by_entry.get(record["entry_id"]) == job_id:
                     self.active_by_entry.pop(record["entry_id"], None)
+                # Per-task cooldown: block retry of same (entry, kind) after failure;
+                # clear on success so the user can re-submit if needed.
+                entry_id = str(record.get("entry_id", ""))
+                if record.get("status") == "failed":
+                    failure_type = str(record.get("failure_type", "") or "")
+                    error = str(record.get("error", "") or "")[:200]
+                    reason = f"{failure_type}: {error}" if failure_type else (error or "Agent 任务未完成")
+                    self._task_cooldowns[(entry_id, kind)] = (
+                        time.monotonic() + self._cooldown_seconds,
+                        reason,
+                    )
+                elif record.get("status") == "completed":
+                    self._task_cooldowns.pop((entry_id, kind), None)
                 self.condition.notify_all()
             logger.info("job=%s kind=%s status=%s provider=%s", job_id, kind, record.get("status"), provider or "-")
 
@@ -365,6 +429,7 @@ class AgentJobManager:
                 "routing_notice",
                 "evidence_context",
                 "failure_repair",
+                "budget_guard",
             }
             value["result"] = {key: result[key] for key in public_keys if key in result}
         return value

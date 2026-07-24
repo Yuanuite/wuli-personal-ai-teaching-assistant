@@ -573,7 +573,7 @@ def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -
     }
 
 
-def approve_answer(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
+def approve_answer(root: Path, entry_id: str, reviewer: str, note: str, *, agent_diff: dict | None = None) -> dict:
     entry = root / "entries" / entry_id
     if not entry.exists():
         return {"status": "blocked", "errors": [f"entry not found: {entry_id}"]}
@@ -590,6 +590,8 @@ def approve_answer(root: Path, entry_id: str, reviewer: str, note: str) -> dict:
         "answer_digest": answer_digest(entry),
         "note": note.strip(),
     }
+    if agent_diff:
+        report["agent_diff"] = agent_diff
     if not report["reviewer"]:
         return {"status": "blocked", "errors": ["reviewer is required"]}
     record = kb.load_json(entry / "record.json", {})

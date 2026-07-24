@@ -182,7 +182,10 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
         "原图/题干来源复核",
         source_status,
         evidence=[_relative(entry / "record.json", root)],
-        details=f"source_review.status={source_review.get('status', 'legacy-not-recorded')}; ocr.review_required={record.get('ocr', {}).get('review_required')}",
+        details=(
+            f"source_review.status={source_review.get('status', 'legacy-not-recorded')}; "
+            f"ocr.review_required={record.get('ocr', {}).get('review_required')}"
+        ),
     )
 
     pending_markers = [marker for marker in kb.PENDING_MARKERS if marker in problem or marker in solution]
@@ -303,7 +306,7 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
             missing.append("student-package.zip missing")
         pdf = manifest.get("pdf", {})
         delivery_status = "passed" if not missing else "failed"
-        if delivery_status == "passed" and pdf.get("status") not in {"generated", "copied"}:
+        if delivery_status == "passed" and pdf.get("status") not in {"ok", "generated", "copied"}:
             delivery_status = "warning"
             missing.append(f"pdf.status={pdf.get('status', 'skipped')}")
         _check(
@@ -344,19 +347,75 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
         details="发现疑似私有引用：" + "，".join(private_refs) if private_refs else "未发现常见私有路径模式",
     )
 
+    # --- Agent efficiency: time-cost vs teacher-edit ratio -------------------
+    efficiency_status = "skipped"
+    efficiency_details = "尚未批准答案，无效率基线"
+    efficiency_score: float | None = None
+    _check(
+        checks,
+        "agent_efficiency",
+        "Agent 生成效率（时间代价 vs 教师改动量）",
+        efficiency_status,
+        evidence=[_relative(entry / "answer-review.json", root)],
+        details=efficiency_details,
+    )
+    answer_review_raw = kb.load_json(entry / "answer-review.json", record.get("answer_review", {})) or {}
+    agent_diff = answer_review_raw.get("agent_diff")
+    if isinstance(agent_diff, dict) and agent_diff.get("status") == "computed":
+        change_ratio = float(agent_diff.get("change_ratio", 0.0))
+        analysis_req = kb.load_json(entry / "analysis-request.json", {}) or {}
+        req_start = analysis_req.get("requested_at", "")
+        req_end = analysis_req.get("completed_at", "")
+        duration = 0.0
+        if req_start and req_end:
+            try:
+                from datetime import datetime as _dt
+
+                t_start = _dt.fromisoformat(req_start)
+                t_end = _dt.fromisoformat(req_end)
+                duration = max(0.0, (t_end - t_start).total_seconds())
+            except (ValueError, TypeError):
+                pass
+        if duration > 0:
+            max_duration = 1800.0
+            time_factor = max(0.0, 1.0 - duration / max_duration)
+            quality_factor = max(0.0, 1.0 - change_ratio)
+            raw_efficiency = quality_factor * time_factor
+            efficiency_score = round(raw_efficiency * SCORE_MAX, 3)
+            if raw_efficiency >= 0.7:
+                efficiency_status = "passed"
+            elif raw_efficiency >= 0.3:
+                efficiency_status = "warning"
+            else:
+                efficiency_status = "failed"
+            efficiency_details = (
+                f"耗时 {duration:.0f}s，教师改动率 {change_ratio:.1%}；"
+                f"时间因子={time_factor:.2f}，质量因子={quality_factor:.2f}；"
+                f"效率分={efficiency_score:.1f}/5"
+            )
+            checks[-1].update({"status": efficiency_status, "details": efficiency_details})
+
     status = _overall_status(checks)
     failure_reasons = [f"{item['label']}：{item['details']}" for item in checks if item["status"] == "failed"]
     warning_reasons = [f"{item['label']}：{item['details']}" for item in checks if item["status"] == "warning"]
     teacher_review_required = status != "passed" or any(item["id"].endswith("_hint") for item in checks)
-    scores = {
+    scores: dict[str, float] = {
         "completeness": _score_from_checks(checks, {"entry_structure", "layered_answer", "delivery_artifacts"}),
+        # Keep the v1 score key for manifests, reports, and downstream readers.
+        # Process compliance is a new, more precise label for the same current
+        # deterministic checks, so it is additive rather than a schema rename.
         "correctness": _score_from_checks(
+            checks, {"source_review", "answer_review_current", "interactive_visualization"}
+        ),
+        "process_compliance": _score_from_checks(
             checks, {"source_review", "answer_review_current", "interactive_visualization"}
         ),
         "student_cognitive_load": _score_from_checks(checks, {"layered_answer", "student_cognitive_load_hint"}),
         "safety": _score_from_checks(checks, {"source_review", "local_reference_safety", "delivery_artifacts"}),
         "deliverability": _score_from_checks(checks, {"delivery_artifacts", "interactive_visualization"}),
     }
+    if efficiency_score is not None:
+        scores["efficiency"] = efficiency_score
     report = {
         "schema_version": EVALUATION_SCHEMA_VERSION,
         "entry_id": entry_id,

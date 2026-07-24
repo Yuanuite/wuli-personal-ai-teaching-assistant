@@ -2,7 +2,7 @@
 """Pipeline quality evaluator for student-error-library entries.
 
 For one or more delivered entries, assemble all available telemetry and produce
-a structured quality score across dimensions: completeness, hallucination risk,
+a structured quality score across dimensions: content_coverage, hallucination risk,
 format compliance, pipeline accuracy, and token efficiency.
 
 Output is JSON(L) — one record per entry.
@@ -32,9 +32,9 @@ sys.path.insert(0, str(SKILL_SCRIPTS))
 # ---------------------------------------------------------------------------
 
 DEFAULT_PARAMS = {
-    # --- completeness ---
+    # --- content_coverage ---
     "heading_penalty_per_missing": 0.15,  # each missing heading deducts this fraction
-    "heading_weight": 0.3,  # weight of heading coverage in completeness score
+    "heading_weight": 0.3,  # weight of heading coverage in content_coverage score
     "keyword_weight": 0.4,  # weight of keyword overlap
     "len_weight": 0.3,  # weight of length ratio
     "keyword_ratio_warn": 0.5,  # below this → flagged in reason
@@ -51,7 +51,7 @@ DEFAULT_PARAMS = {
     "pass_threshold": 70,
     "hallucination_max_penalty": 20,  # max points hallucination can lose before auto-fail
     # --- overall weights ---
-    "completeness_weight": 0.30,
+    "content_coverage_weight": 0.30,
     "hallucination_weight": 0.35,
     "format_weight": 0.10,
     "pipeline_weight": 0.15,
@@ -78,15 +78,18 @@ def load_json(path: Path) -> dict:
         return {}
 
 
-def entry_path(entry_id: str) -> Path:
+def entry_path(entry_id: str, entries_root: Path | None = None) -> Path:
     """Find entry directory by ID (exact or prefix match)."""
-    target = ENTRIES / entry_id
+    entries = entries_root or ENTRIES
+    target = entries / entry_id
     if target.is_dir():
         return target
-    for child in sorted(ENTRIES.iterdir()):
+    if not entries.is_dir():
+        raise FileNotFoundError(f"entries directory is unavailable: {entries}")
+    for child in sorted(entries.iterdir()):
         if child.name.startswith(entry_id):
             return child
-    raise FileNotFoundError(f"no entry matching {entry_id!r} in {ENTRIES}")
+    raise FileNotFoundError(f"no entry matching {entry_id!r} in {entries}")
 
 
 # ---------------------------------------------------------------------------
@@ -182,8 +185,8 @@ def _has_heading(text: str, heading: str) -> bool:
     return bool(re.search(r"^#{1,4}\s*" + re.escape(heading), text, re.MULTILINE))
 
 
-def score_completeness(content: str, solution: str, params: dict | None = None) -> dict:
-    """Score answer completeness by comparing content.md with solution.md."""
+def score_content_coverage(content: str, solution: str, params: dict | None = None) -> dict:
+    """Score answer content coverage by comparing content.md with solution.md."""
     p = dict(DEFAULT_PARAMS, **(params or {}))
     if not solution:
         return {
@@ -356,7 +359,7 @@ def score_pipeline_accuracy(entry: Path, requests: list[dict], params: dict | No
     }
 
 
-def score_token_efficiency(requests: list[dict], completeness_score: float, pipeline_accuracy_score: float) -> dict:
+def score_token_efficiency(requests: list[dict], content_coverage_score: float, pipeline_accuracy_score: float) -> dict:
     """Aggregate token usage and compute efficiency ratio."""
     total_tokens = 0
     usage_detail: dict[str, dict] = {}
@@ -374,7 +377,7 @@ def score_token_efficiency(requests: list[dict], completeness_score: float, pipe
                     "completion_tokens": usage.get("completion_tokens", 0),
                 }
 
-    quality_avg = (completeness_score + pipeline_accuracy_score) / 2.0
+    quality_avg = (content_coverage_score + pipeline_accuracy_score) / 2.0
     efficiency = round(total_tokens / max(quality_avg, 1), 2) if quality_avg > 0 else 0
 
     return {
@@ -390,11 +393,16 @@ def score_token_efficiency(requests: list[dict], completeness_score: float, pipe
 # ---------------------------------------------------------------------------
 
 
-def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
+def evaluate_entry(
+    entry_id_or_path: str,
+    params: dict | None = None,
+    *,
+    entries_root: Path | None = None,
+) -> dict:
     """Run all quality evaluations for one entry."""
     p = dict(DEFAULT_PARAMS, **(params or {}))
     try:
-        entry = entry_path(entry_id_or_path)
+        entry = entry_path(entry_id_or_path, entries_root)
     except FileNotFoundError as exc:
         return {"entry_id": entry_id_or_path, "error": str(exc), "score": 0, "pass": False}
 
@@ -406,19 +414,17 @@ def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
     solution = load_text(entry / "solution.md")
     # content.md may be student-solution.md (older naming) or content.md
     content = load_text(entry / "content.md") or load_text(entry / "student-solution.md")
-    teacher_content = load_text(entry / "teacher-solution.md") or load_text(entry / "solution.md")
-
     # Telemetry
     requests = _collect_requests(entry)
     attempts = _collect_attempts(entry)
     archive_events = _collect_archive_events(entry)
 
     # Quality dimensions
-    completeness = score_completeness(content, solution, params)
+    content_coverage = score_content_coverage(content, solution, params)
     hallucination = score_hallucination(content, problem, solution, params)
     fmt = score_format(content)
     pipeline_acc = score_pipeline_accuracy(entry, requests, params)
-    token_eff = score_token_efficiency(requests, completeness["score"], pipeline_acc["score"])
+    token_eff = score_token_efficiency(requests, content_coverage["score"], pipeline_acc["score"])
 
     # Pipeline timing
     timing: dict = {}
@@ -443,11 +449,22 @@ def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
             pass
 
     # Weighted total score
-    completeness_w = completeness["score"] * p["completeness_weight"]
+    content_coverage_w = content_coverage["score"] * p["content_coverage_weight"]
     hallucination_w = hallucination["score"] * p["hallucination_weight"]
     format_w = fmt["score"] * p["format_weight"]
     pipeline_w = pipeline_acc["score"] * p["pipeline_weight"]
-    total_score = round(completeness_w + hallucination_w + format_w + pipeline_w)
+    weight_total = sum(
+        p[key]
+        for key in (
+            "content_coverage_weight",
+            "hallucination_weight",
+            "format_weight",
+            "pipeline_weight",
+        )
+    )
+    total_score = (
+        round((content_coverage_w + hallucination_w + format_w + pipeline_w) / weight_total) if weight_total > 0 else 0
+    )
 
     # Pass/fail
     hallucination_penalty = 100 - hallucination["score"]
@@ -460,7 +477,11 @@ def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
         "pass": passed,
         "is_legacy": len(requests) == 0,
         "dimensions": {
-            "completeness": {"score": completeness["score"], "reason": completeness["reason"], "detail": completeness},
+            "content_coverage": {
+                "score": content_coverage["score"],
+                "reason": content_coverage["reason"],
+                "detail": content_coverage,
+            },
             "hallucination": {
                 "score": hallucination["score"],
                 "reason": hallucination["reason"],
@@ -479,22 +500,22 @@ def evaluate_entry(entry_id_or_path: str, params: dict | None = None) -> dict:
             "token_efficiency": token_eff,
             "pipeline_timing": timing,
         },
-        "overall_reasoning": _summarize(total_score, completeness, hallucination, fmt, pipeline_acc, len(requests)),
+        "overall_reasoning": _summarize(total_score, content_coverage, hallucination, fmt, pipeline_acc, len(requests)),
     }
     return result
 
 
 def _summarize(
     total: int,
-    completeness: dict,
+    content_coverage: dict,
     hallucination: dict,
     fmt: dict,
     pipeline_acc: dict,
     request_count: int,
 ) -> str:
     parts = [f"质量总分 {total}/100"]
-    if completeness["score"] < 80:
-        parts.append(f"完整性 {completeness['score']}/100")
+    if content_coverage["score"] < 80:
+        parts.append(f"内容覆盖度 {content_coverage['score']}/100")
     if hallucination["score"] < 100:
         parts.append(f"幻觉风险 {hallucination['score']}/100")
     if fmt["score"] < 100:
@@ -513,15 +534,17 @@ def _summarize(
 # ---------------------------------------------------------------------------
 
 
-def calibrate(output: str | None = None) -> dict:
+def calibrate(output: str | None = None, *, entries_root: Path | None = None) -> dict:
     """Grid‑search over key parameters so that ≥90% of delivered entries pass.
 
     Adjusts only the most sensitive parameters.  Saves result to *output*
     (or stdout) as a JSON override file.
     """
-    entries = sorted(
-        e for e in ENTRIES.iterdir()
-        if load_json(e / "pipeline.json").get("state") == "delivered"
+    entries_dir = entries_root or ENTRIES
+    entries = (
+        sorted(e for e in entries_dir.iterdir() if load_json(e / "pipeline.json").get("state") == "delivered")
+        if entries_dir.is_dir()
+        else []
     )
     if not entries:
         print("No delivered entries found for calibration", file=sys.stderr)
@@ -533,7 +556,7 @@ def calibrate(output: str | None = None) -> dict:
     candidates = {
         "hallucination_penalty_per_flag": (10, 15, 20),
         "hallucination_min_eq_len": (4, 6, 8),
-        "completeness_weight": (0.25, 0.30, 0.35),
+        "content_coverage_weight": (0.25, 0.30, 0.35),
         "hallucination_weight": (0.30, 0.35, 0.40),
         "pass_threshold": (60, 65, 70),
         "keyword_ratio_warn": (0.4, 0.5, 0.6),
@@ -553,7 +576,7 @@ def calibrate(output: str | None = None) -> dict:
             scores = []
             passes = 0
             for entry in entries:
-                result = evaluate_entry(entry.name, params=trial)
+                result = evaluate_entry(entry.name, params=trial, entries_root=entries_dir)
                 if not result.get("error"):
                     scores.append(result["score"])
                     if result.get("pass"):
@@ -571,7 +594,11 @@ def calibrate(output: str | None = None) -> dict:
         "best_pass_rate": f"{best_pass_rate:.0%}",
         "best_avg_score": round(best_avg, 1),
         "params": best_params,
-        "base_params": {k: v for k, v in DEFAULT_PARAMS.items() if k not in best_params or DEFAULT_PARAMS[k] != best_params[k]},
+        "base_params": {
+            key: value
+            for key, value in DEFAULT_PARAMS.items()
+            if key not in best_params or DEFAULT_PARAMS[key] != best_params[key]
+        },
         "description": "Generated by --calibrate. Pass as --weights <file> to override defaults.",
     }
     serialized = json.dumps(result, indent=2, ensure_ascii=False)
@@ -596,16 +623,25 @@ def main() -> int:
     parser.add_argument("--library", default=str(LIBRARY))
     parser.add_argument("--jsonl", action="store_true", help="Output JSONL (one entry per line)")
     parser.add_argument("--verbose", "-v", action="store_true", help="Print detailed per-entry reports")
-    parser.add_argument("--calibrate", nargs="?", const="-", metavar="OUTPUT.json",
-                        help="Grid‑search parameters using delivered entries; optionally save to file")
-    parser.add_argument("--weights", metavar="WEIGHTS.json",
-                        help="Override default params with values from a JSON file (from --calibrate)")
+    parser.add_argument(
+        "--calibrate",
+        nargs="?",
+        const="-",
+        metavar="OUTPUT.json",
+        help="Grid‑search parameters using delivered entries; optionally save to file",
+    )
+    parser.add_argument(
+        "--weights",
+        metavar="WEIGHTS.json",
+        help="Override default params with values from a JSON file (from --calibrate)",
+    )
     args = parser.parse_args()
+    entries_root = Path(args.library).expanduser().resolve() / "entries"
 
     # Calibration mode
     if args.calibrate:
         out = None if args.calibrate == "-" else args.calibrate
-        calibrate(output=out)
+        calibrate(output=out, entries_root=entries_root)
         return 0
 
     # Load custom weights
@@ -624,11 +660,11 @@ def main() -> int:
         entries = []
         for eid in args.entry_ids:
             try:
-                entries.append(entry_path(eid))
+                entries.append(entry_path(eid, entries_root))
             except FileNotFoundError as exc:
                 print(f"Skipping {eid}: {exc}", file=sys.stderr)
     else:
-        entries = sorted(ENTRIES.iterdir())
+        entries = sorted(entries_root.iterdir()) if entries_root.is_dir() else []
         delivered = []
         for e in entries:
             pipeline = load_json(e / "pipeline.json")
@@ -639,7 +675,7 @@ def main() -> int:
 
     results: list[dict] = []
     for entry in entries:
-        result = evaluate_entry(entry.name, params=params)
+        result = evaluate_entry(entry.name, params=params, entries_root=entries_root)
         results.append(result)
         if args.verbose and not args.jsonl:
             _print_verbose(result)

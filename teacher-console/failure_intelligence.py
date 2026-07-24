@@ -29,6 +29,7 @@ NEVER_RETRY_FAILURES = {
 DEFERRED_FAILURES = {
     "provider_timeout": "Gateway 已完成 provider 降级；稍后重试可避免重复计费",
     "provider_rate_limited": "等待限流窗口结束后再提交",
+    "provider_budget_exceeded": "当前模型未在单次费用上限内完成；不要提高预算，改用更小任务或结构化 provider",
     "provider_unavailable": "先修复或切换模型配置",
     "adapter_protocol_error": "先修复 provider adapter 协议",
     "provider_execution_failed": "先检查 provider 运行环境",
@@ -55,6 +56,7 @@ PROTECTED_RECORD_FIELDS = {
 MAX_EVIDENCE_ITEMS = 5
 MAX_TEXT = 600
 MAX_PROMPT_APPEND = 3000
+MAX_AUTOMATIC_RETRY_SPEND_SECONDS = 30.0
 
 
 def repair_decision(failure_type: str) -> dict:
@@ -104,6 +106,43 @@ def _event_failure_type(event: dict) -> str:
     result = event.get("result") if isinstance(event.get("result"), dict) else {}
     repair = result.get("failure_repair") if isinstance(result.get("failure_repair"), dict) else {}
     return str(result.get("failure_type") or repair.get("initial_failure_type") or "").strip()
+
+
+def _material_spend_reason(result: dict) -> str:
+    """Explain why a full model retry would likely duplicate meaningful spend."""
+    usage_sources = [result.get("usage")]
+    attempts = result.get("attempts") if isinstance(result.get("attempts"), list) else []
+    usage_sources.extend(
+        attempt.get("token_usage")
+        for attempt in attempts
+        if isinstance(attempt, dict)
+    )
+    for usage in usage_sources:
+        if not isinstance(usage, dict):
+            continue
+        total = usage.get("total_tokens")
+        if not isinstance(total, int):
+            total = sum(
+                value
+                for key, value in usage.items()
+                if key in {"prompt_tokens", "completion_tokens", "input_tokens", "output_tokens"}
+                and isinstance(value, int)
+                and value >= 0
+            )
+        if isinstance(total, int) and total > 0:
+            return f"首轮已报告 {total} tokens"
+    durations: list[float] = []
+    for attempt in attempts:
+        if not isinstance(attempt, dict):
+            continue
+        try:
+            durations.append(float(attempt.get("duration_seconds", 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    longest = max(durations, default=0.0)
+    if longest >= MAX_AUTOMATIC_RETRY_SPEND_SECONDS:
+        return f"首轮 provider 已运行 {longest:.1f} 秒"
+    return ""
 
 
 def _read_jsonl(path: Path) -> list[dict]:
@@ -192,7 +231,9 @@ def task_with_repair_evidence(task: dict, evidence: dict) -> dict:
         )
     parts.extend(_safe_strings(errors))
     corrective = (
-        "\n\n【一次性失败修复】上轮候选没有写入正式条目。请读取 .agent-context/failure-evidence.json，保持原任务与允许路径不变，只修正下列问题：\n- "
+        "\n\n【一次性失败修复】上轮候选没有写入正式条目。"
+        "请读取 .agent-context/failure-evidence.json，保持原任务与允许路径不变，"
+        "只修正下列问题：\n- "
         + "\n- ".join(parts)
     )
     corrective += "\n必须生成完整、可校验的候选；不要批准、发布或修改 denied_paths。"
@@ -225,6 +266,18 @@ def run_with_failure_repair(
             "retry_count": 0,
             "policy": decision["policy"],
             "action": decision["action"],
+            "evidence_reference_count": evidence["reference_count"],
+        }
+        return initial
+    spend_reason = _material_spend_reason(initial)
+    if spend_reason:
+        initial["failure_repair"] = {
+            "status": "not-retried-budget-protected",
+            "initial_failure_type": failure_type,
+            "final_failure_type": failure_type,
+            "retry_count": 0,
+            "policy": "budget-protected-no-retry",
+            "action": f"{spend_reason}；保留候选诊断，避免自动执行第二次完整推理",
             "evidence_reference_count": evidence["reference_count"],
         }
         return initial
