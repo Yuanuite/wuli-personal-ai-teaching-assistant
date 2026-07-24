@@ -6,7 +6,6 @@
   <meta name="color-scheme" content="light">
   <title>悟理教师工作台</title>
   <link rel="stylesheet" href="/vendor/katex.min.css">
-  <link rel="stylesheet" href="/vendor/neat-annotations.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -72,14 +71,43 @@
             </div>
             <div class="settings-actions">
               <button id="add-codex-visualization-preset" class="secondary" type="button">添加 Codex 可视化预设</button>
+              <button id="toggle-codex-runtime" class="secondary codex-runtime-toggle" type="button" aria-expanded="false">
+                Codex · <span id="runtime-status" class="runtime-status untested">待检测</span>
+              </button>
               <button id="add-agent-model" class="secondary" type="button">新增模型</button>
+            </div>
+          </div>
+          <div id="codex-runtime-panel" class="codex-runtime-panel hidden">
+            <div class="codex-runtime-head">
+              <p id="runtime-message" class="muted">检查 Codex、登录与网络，不发送学生数据。</p>
+              <button id="diagnose-agent-runtime" class="secondary" type="button">检测</button>
+            </div>
+            <div class="runtime-settings-grid">
+              <label>Codex 路径
+                <input id="runtime-codex-path" list="runtime-codex-candidates" placeholder="留空时自动选择">
+                <datalist id="runtime-codex-candidates"></datalist>
+              </label>
+              <label>网络
+                <select id="runtime-proxy-mode">
+                  <option value="inherit">沿用启动环境</option>
+                  <option value="direct">直接连接</option>
+                  <option value="manual">使用本地代理</option>
+                </select>
+              </label>
+              <label id="runtime-proxy-url-field">代理地址
+                <input id="runtime-proxy-url" placeholder="例如 http://127.0.0.1:7890">
+              </label>
+              <div class="runtime-detected">
+                <span>检测到的本地代理</span>
+                <div id="runtime-proxy-candidates" class="runtime-proxy-candidates"></div>
+              </div>
             </div>
           </div>
           <div id="agent-model-editor-list" class="model-editor-list"></div>
         </section>
       </div>
       <footer class="settings-footer">
-        <small id="agent-settings-path" class="muted"></small>
+        <small id="agent-settings-path" class="muted">配置仅保存在本机</small>
         <button id="save-agent-settings" class="primary" type="button">保存设置</button>
       </footer>
     </section>

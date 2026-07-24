@@ -19,6 +19,7 @@ const state = {
   jobPollTimer: null,
   jobDismissTimer: null,
   modelSettings: null,
+  runtimeSettings: null,
   retrievalReview: {
     cases: [],
     candidates: [],
@@ -855,6 +856,13 @@ function settingField(labelText, input) {
   return label;
 }
 
+function settingHint(text) {
+  const hint = document.createElement("p");
+  hint.className = "model-provider-hint";
+  hint.textContent = text;
+  return hint;
+}
+
 function textInput(value, placeholder = "") {
   const input = document.createElement("input");
   input.value = value || "";
@@ -936,6 +944,29 @@ function renderModelEditors() {
     const remote = document.createElement("input");
     remote.type = "checkbox";
     remote.checked = Boolean(model.remote);
+    const providerHint = settingHint("");
+    const apiFields = [base, apiModel, apiKey, clearApiKey, keyEnv, remote];
+
+    const syncProviderPresentation = () => {
+      const isApi = provider.value === "openai-compatible";
+      const isClaudeRuntime = provider.value === "claude";
+      for (const input of apiFields) input.disabled = !(isApi || isClaudeRuntime);
+      if (isClaudeRuntime) {
+        providerHint.textContent = "Claude Code Agent：保留本地 Skill 与文件工具；本条目的地址、Key 和模型名会隔离覆盖本机 Claude 配置。";
+        base.placeholder = "兼容后端地址，如 https://…";
+        apiModel.placeholder = "传给 claude --model 的真实模型名";
+        keyEnv.placeholder = "留空时默认 ANTHROPIC_API_KEY";
+      } else if (isApi) {
+        providerHint.textContent = "结构化 API：读取系统注入的 Skill Pack，但不直接运行本地文件工具，适合解题、分析和简单返修。";
+        base.placeholder = "https://.../v1 或 http://127.0.0.1:.../v1";
+        apiModel.placeholder = "真实模型名";
+        keyEnv.placeholder = "环境变量名，不是 key 本身";
+      } else {
+        providerHint.textContent = provider.value === "codex"
+          ? "Codex CLI 使用本机 Agent 运行环境；这里不需要填写 API 地址或 Key。"
+          : "JSON Adapter 的命令由本机运行环境统一配置；这里不需要填写 API 地址或 Key。";
+      }
+    };
 
     grid.append(
       settingField("ID", id),
@@ -955,7 +986,7 @@ function renderModelEditors() {
       settingField("说明", description),
     );
     grid.lastElementChild.classList.add("wide-field");
-    card.append(head, grid);
+    card.append(head, providerHint, grid);
     list.append(card);
 
     const sync = () => {
@@ -988,6 +1019,8 @@ function renderModelEditors() {
       input.addEventListener("input", sync);
       input.addEventListener("change", sync);
     }
+    provider.addEventListener("change", syncProviderPresentation);
+    syncProviderPresentation();
   }
 }
 
@@ -1071,13 +1104,124 @@ function renderSettingsDefaults() {
   fillSelect($("settings-default-visualization"), defaults["visualization.model"] || "auto", options);
 }
 
+function currentRuntimeSettingsPayload() {
+  return {
+    schema_version: 1,
+    codex_path: $("runtime-codex-path")?.value.trim() || "",
+    proxy: {
+      mode: $("runtime-proxy-mode")?.value || "inherit",
+      url: $("runtime-proxy-url")?.value.trim() || "",
+    },
+  };
+}
+
+function renderRuntimeStatus(diagnosis = null) {
+  const status = $("runtime-status");
+  const message = $("runtime-message");
+  if (!diagnosis && state.runtimeSettings?.probe_status === "passed" && state.runtimeSettings?.probe_passed) {
+    diagnosis = {
+      status: "passed",
+      message: `上次检测通过${state.runtimeSettings.probe_checked_at ? ` · ${state.runtimeSettings.probe_checked_at}` : ""}`,
+    };
+  } else if (!diagnosis && state.runtimeSettings?.probe_status === "failed") {
+    diagnosis = {
+      status: "failed",
+      message: state.runtimeSettings.probe_message || "上次检测未通过，请重新检测。",
+    };
+  }
+  if (!diagnosis) {
+    status.className = "runtime-status untested";
+    status.textContent = "待检测";
+    const codex = state.runtimeSettings?.codex;
+    message.textContent = codex?.available
+      ? `已找到 Codex${codex.candidates?.find(item => item.path === codex.selected_path)?.version ? ` · ${codex.candidates.find(item => item.path === codex.selected_path).version}` : ""}`
+      : "尚未找到可用的 Codex CLI。";
+    return;
+  }
+  const passed = diagnosis.status === "passed";
+  status.className = `runtime-status ${passed ? "passed" : "failed"}`;
+  status.textContent = passed ? "正常" : "需处理";
+  message.textContent = diagnosis.message || diagnosis.detail || "检测完成";
+  message.title = diagnosis.detail || "";
+}
+
+function renderRuntimeSettings(diagnosis = null) {
+  const settings = state.runtimeSettings || { codex_path: "", proxy: { mode: "inherit", url: "" } };
+  $("runtime-codex-path").value = settings.codex_path || "";
+  const datalist = $("runtime-codex-candidates");
+  datalist.replaceChildren();
+  for (const candidate of settings.codex?.candidates || []) {
+    const option = document.createElement("option");
+    option.value = candidate.path;
+    option.label = [candidate.source, candidate.version].filter(Boolean).join(" · ");
+    datalist.append(option);
+  }
+  $("runtime-proxy-mode").value = settings.proxy?.mode || "inherit";
+  $("runtime-proxy-url").value = settings.proxy?.url || "";
+  $("runtime-proxy-url-field").classList.toggle("hidden", $("runtime-proxy-mode").value !== "manual");
+  const candidates = $("runtime-proxy-candidates");
+  candidates.replaceChildren();
+  const available = (settings.proxy_status?.candidates || []).filter(item => item.available);
+  if (!available.length) {
+    const empty = document.createElement("span");
+    empty.className = "none";
+    empty.textContent = "未发现";
+    candidates.append(empty);
+  } else {
+    for (const candidate of available) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "secondary";
+      button.textContent = `使用 ${candidate.url}`;
+      button.addEventListener("click", () => {
+        $("runtime-proxy-mode").value = "manual";
+        $("runtime-proxy-url").value = candidate.url;
+        $("runtime-proxy-url-field").classList.remove("hidden");
+        renderRuntimeStatus({
+          status: "failed",
+          message: "已选择本地代理；点击“检测 Codex”保存并验证。",
+        });
+      });
+      candidates.append(button);
+    }
+  }
+  renderRuntimeStatus(diagnosis);
+}
+
+async function diagnoseAgentRuntime() {
+  const button = $("diagnose-agent-runtime");
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = "检测中…";
+  try {
+    const result = await api("/api/agent/runtime/diagnose", {
+      method: "POST",
+      body: { settings: currentRuntimeSettingsPayload(), timeout_seconds: 120 },
+    });
+    state.runtimeSettings = result.runtime;
+    renderRuntimeSettings(result.diagnosis);
+    await health();
+    if (result.diagnosis?.status === "passed") toast("Codex 运行环境检测通过");
+    else toast(result.diagnosis?.message || "Codex 运行环境仍需处理", true);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
 async function openAgentSettings() {
-  state.modelSettings = await api("/api/agent/model-registry");
+  const [modelSettings, runtimeSettings] = await Promise.all([
+    api("/api/agent/model-registry"),
+    api("/api/agent/runtime"),
+  ]);
+  state.modelSettings = modelSettings;
+  state.runtimeSettings = runtimeSettings;
   state.modelSettings.defaults ||= {};
   state.modelSettings.models ||= [];
-  $("agent-settings-path").textContent = `本地配置：${state.modelSettings.path || "student-error-library/config/model-registry.json"}`;
+  $("agent-settings-path").textContent = "模型、API Key 与运行环境仅保存在本机，不会上传 GitHub";
   renderSettingsDefaults();
   renderModelEditors();
+  renderRuntimeSettings();
   $("agent-settings-backdrop").classList.remove("hidden");
 }
 
@@ -1087,7 +1231,12 @@ function closeAgentSettings() {
 
 async function saveAgentSettings() {
   const settings = currentModelSettingsPayload();
-  const saved = await api("/api/agent/model-registry", { method: "POST", body: settings });
+  const runtime = currentRuntimeSettingsPayload();
+  const [saved, savedRuntime] = await Promise.all([
+    api("/api/agent/model-registry", { method: "POST", body: settings }),
+    api("/api/agent/runtime", { method: "POST", body: runtime }),
+  ]);
+  state.runtimeSettings = savedRuntime;
   toast("模型设置已保存");
   closeAgentSettings();
   await health();
@@ -2148,6 +2297,17 @@ $("retrieval-save-draft").addEventListener("click", () => saveRetrievalCase("dra
 $("retrieval-reject").addEventListener("click", () => saveRetrievalCase("rejected", true));
 $("retrieval-approve").addEventListener("click", () => saveRetrievalCase("approved", true));
 $("close-agent-settings").addEventListener("click", closeAgentSettings);
+$("toggle-codex-runtime").addEventListener("click", () => {
+  const panel = $("codex-runtime-panel");
+  const expanded = panel.classList.toggle("hidden") === false;
+  $("toggle-codex-runtime").setAttribute("aria-expanded", String(expanded));
+});
+$("diagnose-agent-runtime").addEventListener("click", () => {
+  diagnoseAgentRuntime().catch(error => toast(`运行环境检测失败：${error.message}`, true));
+});
+$("runtime-proxy-mode").addEventListener("change", () => {
+  $("runtime-proxy-url-field").classList.toggle("hidden", $("runtime-proxy-mode").value !== "manual");
+});
 $("agent-settings-backdrop").addEventListener("click", event => {
   if (event.target === $("agent-settings-backdrop")) closeAgentSettings();
 });
