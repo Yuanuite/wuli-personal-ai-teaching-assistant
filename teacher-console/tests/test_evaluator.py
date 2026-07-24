@@ -85,6 +85,30 @@ class EvaluatorTest(unittest.TestCase):
         self.assertEqual(report["checks"][0]["id"], "entry_structure")
         self.assertEqual(report["summary"]["failed"], 0)
         self.assertIn("correctness", report["scores"])
+        self.assertNotIn("efficiency", report["scores"])
+
+    def test_efficiency_uses_the_computed_continuous_score(self):
+        kb.write_json(
+            self.entry / "analysis-request.json",
+            {
+                "requested_at": "2026-07-22T10:00:00+08:00",
+                "completed_at": "2026-07-22T10:03:00+08:00",
+            },
+        )
+        approved = process_uploads.approve_answer(
+            self.library,
+            self.entry.name,
+            "teacher",
+            "checked",
+            agent_diff={
+                "status": "computed",
+                "changed_lines": 1,
+                "total_lines": 10,
+                "change_ratio": 0.1,
+            },
+        )
+
+        self.assertAlmostEqual(approved["evaluation"]["scores"]["efficiency"], 4.05)
 
     def test_approve_answer_auto_refreshes_evaluation(self):
         approved = process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
@@ -126,7 +150,7 @@ class EvaluatorTest(unittest.TestCase):
             return {
                 "entry_id": self.entry.name,
                 "output": str(output),
-                "pdf": {"status": "generated", "file": "带答案错题.pdf"},
+                "pdf": {"status": "ok", "file": "带答案错题.pdf"},
             }
 
         with (

@@ -111,6 +111,11 @@ class StaticWorkbenchContractTest(unittest.TestCase):
             "agent-model",
             "agent-tier",
             "add-codex-visualization-preset",
+            "runtime-status",
+            "runtime-codex-path",
+            "runtime-proxy-mode",
+            "runtime-proxy-url",
+            "diagnose-agent-runtime",
             "probe-agent",
             "active-job",
             "active-job-title",
@@ -129,6 +134,8 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("数据位置取决于 provider", script)
         self.assertIn('"/api/agent/providers/probe"', script)
         self.assertIn('"/api/agent/model-registry/test"', script)
+        self.assertIn('"/api/agent/runtime/diagnose"', script)
+        self.assertIn('"/api/agent/runtime"', script)
         self.assertIn("真实连通检测", script)
         self.assertIn("model-probe-status", css)
         self.assertIn("model-untested", css)

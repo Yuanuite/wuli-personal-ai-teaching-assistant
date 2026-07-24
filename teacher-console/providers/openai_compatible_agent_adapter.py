@@ -118,19 +118,31 @@ def main() -> int:
     if not base or not os.environ.get("TEACHER_CONSOLE_AGENT_API_MODEL", "").strip():
         raise SystemExit("TEACHER_CONSOLE_AGENT_API_BASE_URL and TEACHER_CONSOLE_AGENT_API_MODEL are required")
     model, model_tier, requested_tier, routing_notice = select_model(task)
-    if not is_loopback(base):
-        if os.environ.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true" or task.get("allow_remote") is not True:
-            raise SystemExit("remote Agent API requires both project and environment privacy gates")
+    if not is_loopback(base) and task.get("allow_remote") is not True:
+        raise SystemExit("remote Agent API requires project privacy allow_remote_agent")
 
-    allowed = json.dumps(task.get("allowed_paths", []), ensure_ascii=False)
-    instruction = (
-        "You are a scoped teaching-content worker. Return exactly one JSON object and no prose. "
-        'Schema: {"status":"completed|unsupported","message":"...",'
-        '"files":[{"path":"relative/path","content":"complete UTF-8 content"}]}. '
-        f"You may propose only these paths: {allowed}. Never approve, publish, deliver, or alter review records. "
-        "Return complete replacement contents, not diffs. If tools or evidence are insufficient, return unsupported with no files.\n\n"
-        f"TASK:\n{task['prompt']}\n\nCURRENT ENTRY CONTEXT:\n{load_context(task)}"
-    )
+    contract = task.get("output_contract")
+    if isinstance(contract, dict):
+        schema = json.dumps(contract.get("schema", {}), ensure_ascii=False)
+        contract_instructions = str(contract.get("instructions", "")).strip()
+        instruction = (
+            "You are a scoped teaching-content worker. Return exactly one JSON object and no prose. "
+            f"The JSON must satisfy this schema: {schema}. {contract_instructions} "
+            "Never approve, publish, deliver, or alter review records. "
+            "If the evidence is insufficient, return status=unsupported with a concise message.\n\n"
+            f"TASK:\n{task['prompt']}\n\nCURRENT ENTRY CONTEXT:\n{load_context(task)}"
+        )
+    else:
+        allowed = json.dumps(task.get("allowed_paths", []), ensure_ascii=False)
+        instruction = (
+            "You are a scoped teaching-content worker. Return exactly one JSON object and no prose. "
+            'Schema: {"status":"completed|unsupported","message":"...",'
+            '"files":[{"path":"relative/path","content":"complete UTF-8 content"}]}. '
+            f"You may propose only these paths: {allowed}. Never approve, publish, deliver, or alter review records. "
+            "Return complete replacement contents, not diffs. "
+            "If tools or evidence are insufficient, return unsupported with no files.\n\n"
+            f"TASK:\n{task['prompt']}\n\nCURRENT ENTRY CONTEXT:\n{load_context(task)}"
+        )
     body = json.dumps(
         {
             "model": model,

@@ -86,6 +86,50 @@ class ModelRegistryTest(unittest.TestCase):
         config = model_registry.model_config_for_task("analysis.generate", "analysis-model", "auto")
         self.assertEqual(config["model"], "analysis-model")
 
+    def test_claude_timeout_is_preserved_in_task_config(self):
+        model_registry.save_model_registry_settings({
+            "schema_version": 1,
+            "defaults": {"analysis.generate": "claude-analysis"},
+            "models": [{
+                "id": "claude-analysis",
+                "display_name": "Claude Analysis",
+                "provider": "claude",
+                "model": "claude-analysis",
+                "timeout_seconds": "900",
+                "capabilities": ["analysis.generate"],
+            }],
+        })
+        model_registry.update_model_probe_result(
+            "claude-analysis", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
+        )
+        config = model_registry.model_config_for_task("analysis.generate", "claude-analysis", "auto")
+        self.assertEqual(config["timeout_seconds"], "900")
+
+    def test_claude_compatible_backend_credentials_are_preserved_per_model(self):
+        model_registry.save_model_registry_settings({
+            "schema_version": 1,
+            "defaults": {"analysis.generate": "deepseek-agent"},
+            "models": [{
+                "id": "deepseek-agent",
+                "display_name": "DeepSeek via Claude Code",
+                "provider": "claude",
+                "base_url": "http://127.0.0.1:9001",
+                "model": "deepseek-agent-model",
+                "api_key": "local-agent-token",
+                "api_key_env": "TEACHER_CONSOLE_AGENT_API_KEY",
+                "capabilities": ["analysis.generate"],
+            }],
+        })
+        model_registry.update_model_probe_result(
+            "deepseek-agent", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
+        )
+        config = model_registry.model_config_for_task("analysis.generate", "deepseek-agent", "auto")
+        self.assertEqual(config["base_url"], "http://127.0.0.1:9001")
+        self.assertEqual(config["model"], "deepseek-agent-model")
+        self.assertEqual(config["api_key"], "local-agent-token")
+        public = model_registry.model_registry_public(kind="analysis.generate")["models"][0]
+        self.assertEqual(public["base_url"], "http://127.0.0.1:9001")
+
     def test_api_key_is_saved_locally_but_not_returned_to_settings(self):
         saved = model_registry.save_model_registry_settings({
             "schema_version": 1,

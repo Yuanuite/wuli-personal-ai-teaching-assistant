@@ -172,6 +172,36 @@ class KnowledgeStoreTest(unittest.TestCase):
             connection.close()
         self.assertIsNotNone(table)
 
+    def test_fts_ranking_prefers_the_more_relevant_entry(self):
+        weak = self.library / "entries" / "aaa-weak-match"
+        strong = self.library / "entries" / "zzz-strong-match"
+        for entry, title, problem in (
+            (weak, "普通电学题", "# 题目\n\n本题只简单提到电磁感应。"),
+            (
+                strong,
+                "楞次定律与电磁感应",
+                "# 题目\n\n用楞次定律判断电磁感应、电磁感应、电磁感应中的电流方向。",
+            ),
+        ):
+            entry.mkdir(parents=True)
+            kb.write_text(entry / "problem.md", problem)
+            kb.write_json(
+                entry / "record.json",
+                {
+                    "schema_version": 1,
+                    "id": entry.name,
+                    "kind": "error",
+                    "status": "ready",
+                    "title": title,
+                    "subject": "高中物理",
+                },
+            )
+        knowledge_store.rebuild(self.library)
+
+        evidence = knowledge_store.query(self.library, "楞次定律 电磁感应", top_k=3)
+
+        self.assertEqual(evidence["results"][0]["entry_id"], strong.name)
+
 
 if __name__ == "__main__":
     unittest.main()

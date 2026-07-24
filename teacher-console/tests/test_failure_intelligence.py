@@ -108,6 +108,35 @@ class FailureIntelligenceTest(unittest.TestCase):
         self.assertEqual(result["failure_repair"]["status"], "recovered")
         self.assertEqual(len(result["attempts"]), 2)
 
+    def test_material_provider_spend_disables_full_automatic_retry(self):
+        calls = []
+
+        def run_once(_task, _validator):
+            calls.append(True)
+            return {
+                "status": "failed",
+                "failure_type": "candidate_validation_failed",
+                "validation_errors": ["content still needs review"],
+                "attempts": [
+                    {
+                        "provider": "claude",
+                        "duration_seconds": 120,
+                        "failure_type": "candidate_validation_failed",
+                    }
+                ],
+            }
+
+        result = run_with_failure_repair(
+            self.task,
+            None,
+            library=self.library,
+            run_once=run_once,
+        )
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(result["failure_repair"]["status"], "not-retried-budget-protected")
+        self.assertEqual(result["failure_repair"]["policy"], "budget-protected-no-retry")
+        self.assertIn("120.0 秒", result["failure_repair"]["action"])
+
     def test_unauthorized_change_is_never_retried(self):
         calls = []
 

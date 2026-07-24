@@ -65,6 +65,10 @@ def configure(*, level: int = logging.INFO, log_file: str | None = None) -> None
         If set, also write to this file (rotated on process restart).
     """
     logger = logging.getLogger("wuli")
+    # The same stream handler is also attached to root for third-party modules.
+    # Stop wuli records from propagating there, otherwise every pipeline event
+    # is emitted twice.
+    logger.propagate = False
     if logger.handlers:
         return  # already configured
 

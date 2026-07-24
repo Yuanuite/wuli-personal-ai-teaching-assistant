@@ -76,3 +76,22 @@ test('file limit produces truncation warning', () => {
   assert.ok(json.warnings.some((w) => w.code === 'SCAN_LIMIT_REACHED'));
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('E2E and integration counts include runnable tests but exclude helpers and docs', () => {
+  const dir = tempDir();
+  fs.mkdirSync(path.join(dir, 'e2e'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'docs'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'tests', 'integration'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'e2e', 'lifecycle.e2e.mjs'), 'export default 1;');
+  fs.writeFileSync(path.join(dir, 'e2e', 'run_e2e.py'), 'print("helper")\n');
+  fs.writeFileSync(path.join(dir, 'e2e', 'README.md'), '# E2E\n');
+  fs.writeFileSync(path.join(dir, 'docs', 'visual-review-integration.md'), '# Integration\n');
+  fs.writeFileSync(path.join(dir, 'tests', 'integration', 'test_api.py'), 'def test_api(): pass\n');
+
+  const result = runProbe(dir);
+  const json = JSON.parse(result.stdout);
+  assert.equal(json.summary.e2eTestFiles, 1);
+  assert.equal(json.summary.integrationTestFiles, 1);
+  assert.equal(json.summary.testFiles, 2);
+  fs.rmSync(dir, { recursive: true, force: true });
+});

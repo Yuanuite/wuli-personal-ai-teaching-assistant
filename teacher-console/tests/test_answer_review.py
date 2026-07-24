@@ -125,6 +125,19 @@ class AnswerReviewGateTest(unittest.TestCase):
         self.assertEqual(state["state"], "needs-answer-review")
         self.assertEqual(state["answer_review"]["status"], "stale")
 
+    def test_agent_diff_counts_binary_explanation_asset_without_decoding_it(self):
+        asset = self.entry / "assets" / "explanation.png"
+        asset.write_bytes(b"\x89PNG\r\n\x1a\n\xff")
+        teacher_console_server._save_agent_baseline(self.entry, ["assets/explanation.png"])
+        asset.write_bytes(b"\x89PNG\r\n\x1a\n\xfe")
+
+        diff = teacher_console_server._compute_agent_diff(self.entry)
+
+        self.assertEqual(diff["status"], "computed")
+        self.assertEqual(diff["changed_lines"], 1)
+        self.assertEqual(diff["total_lines"], 1)
+        self.assertEqual(diff["change_ratio"], 1.0)
+
     def test_answer_revision_records_request_when_agent_is_unavailable(self):
         handler = object.__new__(teacher_console_server.Handler)
         unavailable = {

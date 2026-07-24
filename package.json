@@ -1,0 +1,10 @@
+{
+  "name": "wuli-teacher-console-e2e",
+  "private": true,
+  "scripts": {
+    "test:e2e": "python3 teacher-console/e2e/run_e2e.py"
+  },
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}

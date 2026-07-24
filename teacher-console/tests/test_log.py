@@ -40,6 +40,7 @@ class LogTest(unittest.TestCase):
         configure()
         count_after = len(logger.handlers)
         self.assertEqual(count_before, count_after)
+        self.assertFalse(logger.propagate)
 
     def test_trace_context_injects_trace_id(self):
         """Messages inside TraceContext carry a trace_id."""

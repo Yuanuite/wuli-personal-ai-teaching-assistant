@@ -241,9 +241,19 @@ function probeProject(options) {
 
       const ext = path.extname(lowerName);
       if (SOURCE_EXTENSIONS.has(ext)) summary.sourceFiles += 1;
-      if (/(^|\/)(test|tests|__tests__)(\/|$)|(?:^|[._-])(test|spec)\.[^/]+$/i.test(rel)) summary.testFiles += 1;
-      if (/integration/i.test(rel)) summary.integrationTestFiles += 1;
-      if (/(^|\/)(e2e|end-to-end)(\/|$)|playwright|cypress/i.test(rel)) summary.e2eTestFiles += 1;
+      const runnableTestName = /^(test[_-].+|.+\.(?:test|spec|e2e))\.[^/]+$/i.test(entry.name);
+      const inTestDirectory = /(^|\/)(test|tests|__tests__)(\/|$)/i.test(rel);
+      const isTestFile = runnableTestName || inTestDirectory;
+      if (isTestFile) summary.testFiles += 1;
+      if (runnableTestName && /(^|\/)integration(\/|$)|integration/i.test(rel)) {
+        summary.integrationTestFiles += 1;
+      }
+      if (
+        runnableTestName
+        && (/(^|\/)(e2e|end-to-end)(\/|$)/i.test(rel) || /playwright|cypress|\.e2e\./i.test(rel))
+      ) {
+        summary.e2eTestFiles += 1;
+      }
 
       if (MANIFESTS.has(lowerName)) manifests.push(rel);
       if (DOC_NAMES.has(lowerName)) docs.push(rel);

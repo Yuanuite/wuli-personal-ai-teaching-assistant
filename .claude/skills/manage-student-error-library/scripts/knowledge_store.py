@@ -582,7 +582,10 @@ def query(
                 row["entry_id"],
                 {"score": 0.0, "matched_documents": [], "best_title": row["title"]},
             )
-            score = 1.0 / (1.0 + max(float(row["rank"] or 0.0), 0.0)) if use_fts else 0.5
+            # FTS5 bm25() is negative and lower values are more relevant.
+            # Negating preserves that ordering; clamping the raw rank to zero
+            # would flatten every match to the same score.
+            score = max(-float(row["rank"] or 0.0), 0.0) if use_fts else 0.5
             item["score"] += score
             item["matched_documents"].append({
                 "kind": row["kind"],

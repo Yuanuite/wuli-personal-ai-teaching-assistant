@@ -63,8 +63,8 @@ def _model_probe_digest(raw: dict) -> str:
         api_key_env = "ANTHROPIC_API_KEY" if provider == "claude" else "TEACHER_CONSOLE_AGENT_API_KEY"
     payload = {
         "provider": provider,
-        "base_url": str(raw.get("base_url", "")).strip() if provider == "openai-compatible" else "",
-        "model": str(raw.get("model", "")).strip() if provider == "openai-compatible" else "",
+        "base_url": str(raw.get("base_url", "")).strip() if has_api else "",
+        "model": str(raw.get("model", "")).strip() if has_api else "",
         "api_key_env": api_key_env if has_api else "",
         "api_key_digest": hashlib.sha256(_stored_api_key(raw).encode("utf-8")).hexdigest()
         if has_api and _stored_api_key(raw)
@@ -96,11 +96,9 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
     capabilities = [str(item) for item in raw.get("capabilities", []) if str(item).strip()]
     base_url = str(raw.get("base_url", "")).strip()
     remote = bool(raw.get("remote", False))
-    if (
-        provider == "openai-compatible"
-        and base_url
-        and (urlparse(base_url).hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}
-    ):
+    if provider in {"openai-compatible", "claude"} and base_url and (
+        urlparse(base_url).hostname or ""
+    ).lower() not in {"127.0.0.1", "localhost", "::1"}:
         remote = True
     api_key_env = str(raw.get("api_key_env", "")).strip()
     if not api_key_env:
@@ -120,9 +118,7 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
         errors.append(f"unsupported task {kind}")
     if remote and not remote_agent_allowed():
         errors.append("project remote privacy gate is off")
-    if remote and os.environ.get("TEACHER_CONSOLE_AGENT_ALLOW_REMOTE") != "true":
-        errors.append("environment remote gate is off")
-    if provider == "openai-compatible" and remote and not api_key_configured:
+    if provider in {"openai-compatible", "claude"} and remote and not api_key_configured:
         errors.append("missing API key")
     if kind != "gateway.probe" and raw.get("enabled") is not False and not probe["passed"]:
         errors.append("model has not passed connection test")
@@ -130,6 +126,7 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
         "id": model_id,
         "display_name": str(raw.get("display_name") or raw.get("name") or raw.get("model") or model_id),
         "provider": provider,
+        "base_url": base_url if has_api else "",
         "model": str(raw.get("model", "")).strip(),
         "model_tier": str(raw.get("model_tier", raw.get("tier", "selected"))).strip() or "selected",
         "tags": [str(item) for item in raw.get("tags", []) if str(item).strip()],
@@ -253,11 +250,10 @@ def save_model_registry_settings(data: dict) -> dict:
             api_key = str(raw.get("api_key", "")).strip()
             previous_key = _stored_api_key(previous_by_id.get(model_id, {}))
             entry["model"] = str(raw.get("model", "")).strip()
-            if provider == "openai-compatible":
-                entry.update({
-                    "base_url": str(raw.get("base_url", "")).strip(),
-                    "remote": bool(raw.get("remote", False)),
-                })
+            entry.update({
+                "base_url": str(raw.get("base_url", "")).strip(),
+                "remote": bool(raw.get("remote", False)),
+            })
             default_env = "ANTHROPIC_API_KEY" if provider == "claude" else "TEACHER_CONSOLE_AGENT_API_KEY"
             entry["api_key_env"] = str(raw.get("api_key_env", default_env)).strip() or default_env
             if api_key:
@@ -315,8 +311,10 @@ def _model_to_config(raw: dict, public: dict) -> dict:
             })
         else:
             config.update({
+                "base_url": str(raw.get("base_url", "")).strip(),
                 "api_key_env": public["api_key_env"],
                 "api_key": _stored_api_key(raw),
+                "timeout_seconds": str(raw.get("timeout_seconds", "")).strip(),
             })
     return config
 

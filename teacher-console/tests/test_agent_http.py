@@ -166,6 +166,54 @@ class AgentHttpTest(unittest.TestCase):
             urllib.request.urlopen(f"{self.base}/api/download/{self.entry.name}/private.json", timeout=3)
         self.assertEqual(blocked.exception.code, 404)
 
+    def test_runtime_settings_and_diagnosis_stay_local(self):
+        class RuntimeGateway:
+            def __init__(self):
+                self.invalidated = 0
+
+            def invalidate_health(self):
+                self.invalidated += 1
+
+            def probe(self, provider, **_kwargs):
+                self.provider = provider
+                return {
+                    "live_probe": {
+                        "status": "passed",
+                        "provider": "codex",
+                        "reason": "",
+                        "student_data_sent": False,
+                    }
+                }
+
+        gateway = RuntimeGateway()
+        teacher_console_server.AGENT_GATEWAY = gateway
+        status, saved = self.request_json(
+            "/api/agent/runtime",
+            method="POST",
+            body={
+                "codex_path": "",
+                "proxy": {"mode": "manual", "url": "http://127.0.0.1:7890"},
+            },
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(saved["proxy"]["mode"], "manual")
+        self.assertTrue((self.library / "config" / "agent-runtime.json").is_file())
+        self.assertEqual(gateway.invalidated, 1)
+
+        status, runtime = self.request_json("/api/agent/runtime")
+        self.assertEqual(status, 200)
+        self.assertEqual(runtime["proxy"]["url"], "http://127.0.0.1:7890")
+
+        status, diagnosed = self.request_json(
+            "/api/agent/runtime/diagnose",
+            method="POST",
+            body={"timeout_seconds": 10},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(diagnosed["diagnosis"]["status"], "passed")
+        self.assertFalse(diagnosed["diagnosis"]["student_data_sent"])
+        self.assertEqual(gateway.provider, "codex")
+
 
 if __name__ == "__main__":
     unittest.main()
