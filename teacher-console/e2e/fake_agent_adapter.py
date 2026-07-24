@@ -167,6 +167,51 @@ def main() -> int:
             "## 关联知识\n\n牛顿第二定律、合力与加速度方向。\n\n"
             "![受力示意](assets/explanation.svg)\n"
         )
+    if task["kind"] == "analysis.generate":
+        student_solution = solution.replace(
+            "\n![受力示意](assets/explanation.svg)\n",
+            "\n",
+        )
+        diagram_nodes = (
+            ["分解电场运动", "确定入场速度", "建立圆周运动", "应用相切条件"]
+            if charged_particle
+            else ["确定研究对象", "完成受力分析", "应用牛顿第二定律", "检查方向量纲"]
+        )
+        print(
+            json.dumps(
+                {
+                    "status": "completed",
+                    "message": "已生成结构化分层解析",
+                    "student_solution": student_solution,
+                    "teacher_audit": (
+                        "教师复核时应确认研究对象、正方向和边界条件保持一致，"
+                        "并逐步检查公式、量纲与最终结论。"
+                    ),
+                    "metadata": {
+                        "knowledge_points": record["knowledge_points"],
+                        "error_types": record["error_types"],
+                        "difficulty": record["difficulty"],
+                        "grade": record["grade"],
+                        "title": record["title"],
+                    },
+                    "diagram": {
+                        "title": "端到端测试解题逻辑",
+                        "nodes": diagram_nodes,
+                    },
+                    "model": "fake-e2e",
+                    "model_tier": "standard",
+                    "requested_tier": task.get("routing_tier", "auto"),
+                    "usage": {
+                        "prompt_tokens": 120,
+                        "completion_tokens": 30,
+                        "total_tokens": 150,
+                    },
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
+
     files = {
         "record.json": json.dumps(record, ensure_ascii=False, indent=2) + "\n",
         "student-solution.md": solution,
