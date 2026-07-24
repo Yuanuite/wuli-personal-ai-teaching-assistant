@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>带电粒子在同心圆复合场中的运动</title>
+<style>
+:root{color-scheme:light;--background:#fff;--foreground:#1a1c1f;--card:#f5f6f7;--card-foreground:#1a1c1f;--primary:#277fbd;--primary-foreground:#fff;--muted-foreground:#5f6670;--border:#cfd5dc;--ring:#277fbd;--destructive:#d6531d;--viz-series-1:#277fbd;--viz-series-2:#c87821;--viz-series-3:#348c50;--viz-series-4:#a53b78}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#181818;--foreground:#f7f7f7;--card:#292929;--card-foreground:#f7f7f7;--primary:#82c2f0;--primary-foreground:#101010;--muted-foreground:#b3b6ba;--border:#4a4d50;--ring:#82c2f0;--destructive:#ff925c;--viz-series-1:#82c2f0;--viz-series-2:#efaa65;--viz-series-3:#7bd092;--viz-series-4:#e58cba}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground)}body{padding:16px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(100%,1100px);margin:0 auto}.viz-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.form-label{display:inline-flex;align-items:center;gap:5px}.form-range{flex:1 1 180px;min-width:120px;accent-color:var(--primary)}.btn{appearance:none;border:1px solid var(--border);border-radius:8px;padding:7px 11px;background:var(--card);color:var(--card-foreground);font:inherit;cursor:pointer}.btn:focus-visible,.form-range:focus-visible{outline:3px solid var(--ring);outline-offset:2px}.btn-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.card{border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--card-foreground)}@media(max-width:520px){body{padding:10px}.viz-controls{align-items:stretch}.form-label,.form-range{flex-basis:100%}}
+</style>
+</head>
+<body><main>
+<section id="guided-particle-sim" class="guided-sim">
+  <script type="application/json" id="physics-model-data">{"schema_version":1,"model_type":"concentric-radial-multi-field","entry_id":"question-212ecbad04d3","title":"带电粒子在同心圆复合场中的运动","source":{"publication":"student-site"},"coordinate_system":{"positive_angle":"counterclockwise","reference_ray":"OP","out_of_page":"positive-z"},"regions":[{"id":"I","range":"0≤r<R","field":"magnetic","direction":"out-of-page","magnitude":"B","speed":"v0"},{"id":"II","range":"R<r<2R","field":"electric","direction":"radially-outward","magnitude":"unspecified","speed":"v0↔v0/2"},{"id":"III","range":"r>2R","field":"magnetic","direction":"out-of-page","magnitude":"B3","speed":"v0/2"}],"facts":{"charge":"negative","q_over_m":"-sqrt(3)*v0/(B*R)","q_over_m_latex":"-\\frac{\\sqrt{3}v_0}{BR}","uab":"sqrt(3)*B*R*v0/8","uab_latex":"\\frac{\\sqrt{3}}{8}BRv_0","inner_turn_deg":-60,"outer_turn_symbol":"delta","outer_radius_relation":"r3=2R*tan(delta/2)","b3_relation":"B3/B=1/(4*sqrt(3)*tan(delta/2))"},"technique_ids":["mag-lorentz-sign-double-check","mag-radial-boundary-tangent","field-work-energy-sign","multi-region-angle-ledger","deadline-before-nth-entry"],"event_model":{"stop_event_id":"enter-III-3","timeline":[{"id":"start-P","order":0,"label":"从 P 出发","region":"I","iii_entry_count":0,"constant_deg":0,"delta_coefficient":0,"on_inner_boundary":true,"p_candidate":false},{"id":"leave-I-1","order":1,"label":"第一次离开 I 区","region":"I→II","iii_entry_count":0,"constant_deg":-60,"delta_coefficient":0,"on_inner_boundary":true,"p_candidate":true},{"id":"enter-III-1","order":2,"label":"第一次进入 III 区","region":"II→III","iii_entry_count":1,"constant_deg":-60,"delta_coefficient":0,"on_inner_boundary":false,"p_candidate":false},{"id":"return-I-1","order":3,"label":"第一次从 III 区返回 I 区边界","region":"II→I","iii_entry_count":1,"constant_deg":-60,"delta_coefficient":1,"on_inner_boundary":true,"p_candidate":true},{"id":"leave-I-2","order":4,"label":"第二次离开 I 区","region":"I→II","iii_entry_count":1,"constant_deg":-120,"delta_coefficient":1,"on_inner_boundary":true,"p_candidate":true},{"id":"enter-III-2","order":5,"label":"第二次进入 III 区","region":"II→III","iii_entry_count":2,"constant_deg":-120,"delta_coefficient":1,"on_inner_boundary":false,"p_candidate":false},{"id":"return-I-2","order":6,"label":"第二次从 III 区返回 I 区边界","region":"II→I","iii_entry_count":2,"constant_deg":-120,"delta_coefficient":2,"on_inner_boundary":true,"p_candidate":true},{"id":"leave-I-3","order":7,"label":"第三次离开 I 区","region":"I→II","iii_entry_count":2,"constant_deg":-180,"delta_coefficient":2,"on_inner_boundary":true,"p_candidate":true},{"id":"enter-III-3","order":8,"label":"第三次进入 III 区（截止）","region":"II→III","iii_entry_count":3,"constant_deg":-180,"delta_coefficient":2,"on_inner_boundary":false,"p_candidate":false}],"cases":[{"id":"case-b-over-4","delta_deg":60,"b3_ratio":0.25,"b3_label":"B/4","first_p_event_id":"return-I-1","first_p_timing":"第一次从 III 区返回后，在第二次进入 III 区之前经过 P"},{"id":"case-b-over-4sqrt3","delta_deg":90,"b3_ratio":0.14433756729740646,"b3_label":"B/(4√3)","first_p_event_id":"leave-I-3","first_p_timing":"第三次离开 I 区后，在第三次进入 III 区之前经过 P"},{"id":"case-b-over-12","delta_deg":120,"b3_ratio":0.08333333333333333,"b3_label":"B/12","first_p_event_id":"leave-I-2","first_p_timing":"第二次离开 I 区后，在第二次进入 III 区之前经过 P"}]},"student_solution":{"quick_answers":["（1）粒子带负电，$\\frac qm=-\\frac{\\sqrt3v_0}{BR}$。","（2）$U_{ab}=\\frac{\\sqrt3}{8}BRv_0$。","（3）$B_3=\\frac B4,\\frac{B}{4\\sqrt3},\\frac{B}{12}$。"],"recognition":["看到磁场中沿圆边界半径方向进出：优先用切线交点结论 $r=R_{边界}\\tan(\\theta/2)$。","看到多区域重复往返：只记半径方向角，I 区每次 $-60^\\circ$，III 区每次 $+\\delta$，II 区不改角度。"],"main_steps":[{"heading":"（1）电性与比荷","body":"P 点处正电荷受力应向上，而轨迹向下弯，所以粒子带负电。沿半径进出内圆边界，直接用切线交点结论求轨迹半径。","formulae":["r_1=R\\tan30^\\circ=\\frac{R}{\\sqrt3}","\\frac{|q|}{m}=\\frac{v_0}{Br_1}=\\frac{\\sqrt3v_0}{BR}","\\boxed{\\frac qm=-\\frac{\\sqrt3v_0}{BR}}"]},{"heading":"（2）电势差","body":"II 区只有电场力做功，按 $U_{ab}=\\varphi_a-\\varphi_b$ 使用动能定理。","formulae":["qU_{ab}=\\frac12m(\\frac{v_0}{2})^2-\\frac12mv_0^2=-\\frac38mv_0^2","\\boxed{U_{ab}=\\frac{\\sqrt3}{8}BRv_0}"]},{"heading":"（3）先把 B₃ 化成偏转角 δ","body":"III 区沿外圆半径方向进出，外圆半径为 $2R$。","formulae":["r_3=2R\\tan\\frac{\\delta}{2}","r_3=\\frac{mv_0}{2|q|B_3}=\\frac{BR}{2\\sqrt3B_3}","B_3=\\frac{B}{4\\sqrt3\\tan(\\delta/2)}"]},{"heading":"（3）只检查能产生新答案的三个 P 点时刻","body":"P 对应半径方向角为 $0^\\circ$。第三次进入 III 区前，三个不同的首次到达条件如下；第二次返回 I 区前的条件只会重复 $\\delta=60^\\circ$，不产生新解。","formulae":["-60^\\circ+\\delta=0\\Rightarrow\\delta=60^\\circ","-120^\\circ+\\delta=0\\Rightarrow\\delta=120^\\circ","-180^\\circ+2\\delta=0\\Rightarrow\\delta=90^\\circ","\\boxed{B_3=\\frac B4,\\frac{B}{12},\\frac{B}{4\\sqrt3}}"]}],"pitfalls":["“第三次进入之前”是截止条件，第二次进入之前经过 P 也符合。","二级结论 $r=R_{边界}\\tan(\\theta/2)$ 只在入、出速度都沿边界圆半径时使用。"],"self_check":"若 $B_3=B/12$，粒子在哪一次进入 III 区之前首次经过 P？"},"simulation":{"default_case_id":"case-b-over-4","default_duration_seconds":24,"pause_event_ids":["enter-III-1","return-I-1","enter-III-2","return-I-2","leave-I-3","enter-III-3"],"layers":["trajectory","force","geometry"],"default_layer":"trajectory"}}</script>
+  <div class="sim-head">
+    <div><b>第三次进入 III 区前经过 P</b><small id="case-note">答案、事件与轨迹均来自 统一物理模型</small></div>
+    <div class="case-buttons" id="case-buttons" aria-label="答案情形"></div>
+  </div>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-guided" role="img" aria-label="可逐层显示、在关键事件暂停、缩放和平移的带电粒子运动仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-guided"></b></div>
+        <div><small>关键事件</small><b id="event-guided"></b></div>
+        <div><small>命中结论</small><b id="result-guided"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-guided" type="button">播放</button>
+        <button class="btn" id="replay-guided" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-guided" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-guided">进度 <b id="progress-label">0%</b></label>
+        <input class="form-range" id="progress-guided" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <span>显示层</span>
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="force" type="button">2 受力</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-guided">总时长 <b id="duration-label">24 秒</b></label>
+          <input class="form-range" id="duration-guided" type="range" min="8" max="90" value="24">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-guided" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-guided" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-guided" type="button">−</button>
+          <button class="btn" id="fit-guided" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-guided" type="button">＋</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</section>
+<style>
+  #guided-particle-sim{display:grid;gap:10px;width:100%}
+  #guided-particle-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #guided-particle-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #guided-particle-sim .case-buttons{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #guided-particle-sim .scene-pane{display:grid;gap:8px;min-width:0}
+  #guided-particle-sim .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #guided-particle-sim .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #guided-particle-sim .scrub-control,#guided-particle-sim .control-group{display:grid;gap:5px}
+  #guided-particle-sim .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center}
+  #guided-particle-sim .layer-tabs span{grid-column:1/-1;color:var(--muted-foreground);font-size:12px}
+  #guided-particle-sim .layer-tabs .btn{padding-inline:6px}
+  #guided-particle-sim .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #guided-particle-sim .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #guided-particle-sim .more-controls[open] summary{margin-bottom:9px}
+  #guided-particle-sim .more-controls .control-group+ .control-group{margin-top:9px}
+  #guided-particle-sim .button-pair{grid-template-columns:1fr 1fr}
+  #guided-particle-sim .zoom-controls{grid-template-columns:auto 1fr auto}
+  #guided-particle-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #guided-particle-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
+  #guided-particle-sim canvas:active{cursor:grabbing}
+  #guided-particle-sim .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #guided-particle-sim .status-grid small,#guided-particle-sim .status-grid b{display:block}
+  #guided-particle-sim .status-grid small{color:var(--muted-foreground)}
+  #guided-particle-sim .auto-pause{white-space:nowrap}
+  @media(max-width:760px){
+    #guided-particle-sim{gap:8px}
+    #guided-particle-sim .sim-head{display:grid;gap:6px}
+    #guided-particle-sim .sim-head small{display:none}
+    #guided-particle-sim .case-buttons{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+    #guided-particle-sim .case-buttons .btn{flex:0 0 auto}
+    #guided-particle-sim .sim-workspace{display:block}
+    #guided-particle-sim .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #guided-particle-sim .status-grid>div:last-child{grid-column:1/-1}
+    #guided-particle-sim .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:54svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #guided-particle-sim .primary-controls{flex-wrap:nowrap}
+    #guided-particle-sim .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #guided-particle-sim .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #guided-particle-sim .scrub-control label{white-space:nowrap;font-size:12px}
+    #guided-particle-sim .layer-tabs span{display:none}
+    #guided-particle-sim .more-controls{padding-top:6px}
+  }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('guided-particle-sim');
+  const model=JSON.parse(root.querySelector('#physics-model-data').textContent);
+  const canvas=root.querySelector('#canvas-guided'),ctx=canvas.getContext('2d');
+  const cases=model.event_model.cases,timeline=model.event_model.timeline;
+  const pauseIds=new Set([...model.simulation.pause_event_ids,...cases.map(item=>item.first_p_event_id)]);
+  let activeCase=cases.find(item=>item.id===model.simulation.default_case_id)||cases[0];
+  let progress=0,playing=false,lastTime=0,layer=model.simulation.default_layer||'trajectory';
+  let zoom=1,panX=0,panY=0,lastPause=-1,drag=null;
+  const pointers=new Map(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  const pointAt=(r,t)=>({x:r*Math.cos(t),y:-r*Math.sin(t)});
+  const rotate=(p,t)=>({x:p.x*Math.cos(t)+p.y*Math.sin(t),y:-p.x*Math.sin(t)+p.y*Math.cos(t)});
+  const line=(a,b,n=48)=>Array.from({length:n},(_,i)=>({x:a.x+(b.x-a.x)*i/(n-1),y:a.y+(b.y-a.y)*i/(n-1)}));
+  const arc=(c,r,a,b,n=120)=>Array.from({length:n},(_,i)=>{const t=a+(b-a)*i/(n-1);return{x:c.x+r*Math.cos(t),y:c.y-r*Math.sin(t)}});
+  const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#666',border:v('--border')||'#bbb',i:v('--viz-series-1')||'#2783c4',ii:v('--viz-series-2')||'#c87821',iii:v('--viz-series-3')||'#348c50',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
+
+  function buildScene(){
+    const R=72,outer=144,b3=activeCase.b3_ratio,delta=activeCase.delta_deg*Math.PI/180,r1=R/Math.sqrt(3);
+    const baseCenter={x:R,y:r1},baseI=arc(baseCenter,r1,Math.PI/2,7*Math.PI/6,96),segments=[];
+    const add=(points,zone,label,center,speed,eventId)=>segments.push({points,zone,label,center,speed,eventId});
+    const addI=(theta,index)=>{const center=rotate(baseCenter,theta);add(baseI.map(p=>rotate(p,theta)),'I',`I 区第 ${index} 段：偏转 −60°`,center,'v₀',`leave-I-${index}`);return theta-Math.PI/3};
+    const addOut=(theta,index)=>add(line(pointAt(R,theta),pointAt(outer,theta)),'II',`II 区向外：减速`,``, 'v₀→v₀/2',`enter-III-${index}`);
+    const addIII=(theta,index)=>{const entry=pointAt(outer,theta),r3=R/(2*Math.sqrt(3)*b3),n=pointAt(r3,theta+Math.PI/2),center={x:entry.x+n.x,y:entry.y+n.y};add(arc(center,r3,theta-Math.PI/2,theta+delta+Math.PI/2,180),'III',`III 区第 ${index} 段：偏转 +${activeCase.delta_deg}°`,center,'v₀/2',null);return theta+delta};
+    const addIn=(theta,index)=>add(line(pointAt(outer,theta),pointAt(R,theta)),'II',`II 区向内：加速`,null,'v₀/2→v₀',`return-I-${index}`);
+    let theta=0;
+    for(let index=1;index<=3;index++){theta=addI(theta,index);addOut(theta,index);if(index===3)break;theta=addIII(theta,index);addIn(theta,index)}
+    const lengths=segments.map(s=>s.points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p.x-s.points[i].x,p.y-s.points[i].y),0));
+    const total=lengths.reduce((a,b)=>a+b,0),boundaries=[];let sum=0;
+    segments.forEach((s,i)=>{sum+=lengths[i];boundaries.push({fraction:sum/total,eventId:s.eventId,segment:i})});
+    return{R,outer,b3,delta,segments,lengths,total,boundaries,p:pointAt(R,0)};
+  }
+
+  function current(scene){let remaining=progress*scene.total,state={point:scene.segments[0].points[0],tangent:{x:0,y:1},segment:0,local:0};for(let i=0;i<scene.segments.length;i++){const s=scene.segments[i],f=clamp(remaining/scene.lengths[i],0,1),k=clamp(Math.round((s.points.length-1)*f),0,s.points.length-1),a=s.points[Math.max(0,k-1)],b=s.points[Math.min(s.points.length-1,k+1)],d=Math.hypot(b.x-a.x,b.y-a.y)||1;if(f>=0)state={point:s.points[k],tangent:{x:(b.x-a.x)/d,y:(b.y-a.y)/d},segment:i,local:f};remaining-=scene.lengths[i];if(remaining<=0)break}return state}
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);return{w,h}}
+  function label(text,x,y,color,align='center'){ctx.fillStyle=color;ctx.font=`${Math.max(11,13/zoom)}px system-ui`;ctx.textAlign=align;ctx.fillText(text,x,y)}
+  function arrow(a,b,color,text=''){const t=Math.atan2(b.y-a.y,b.x-a.x),head=7/zoom;ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=2/zoom;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-head*Math.cos(t-.45),b.y-head*Math.sin(t-.45));ctx.lineTo(b.x-head*Math.cos(t+.45),b.y-head*Math.sin(t+.45));ctx.closePath();ctx.fill();if(text)label(text,b.x+5/zoom,b.y-5/zoom,color,'left')}
+  function stroke(points,color,width,f=1){const n=Math.max(2,Math.ceil(points.length*f));ctx.strokeStyle=color;ctx.lineWidth=width/zoom;ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<n;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke()}
+  function fieldDot(x,y,color){ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=1/zoom;ctx.beginPath();ctx.arc(x,y,4/zoom,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,1.2/zoom,0,Math.PI*2);ctx.fill()}
+  function bounds(scene){let x0=-200,x1=200,y0=-200,y1=200;scene.segments.forEach(s=>s.points.forEach(p=>{x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)}));return{x0:x0-25,x1:x1+25,y0:y0-25,y1:y1+25}}
+  function drawFields(scene,c){
+    ctx.save();ctx.globalAlpha=.09;ctx.fillStyle=c.i;ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.fill();ctx.fillStyle=c.ii;ctx.beginPath();ctx.arc(0,0,scene.outer,0,Math.PI*2);ctx.arc(0,0,scene.R,0,Math.PI*2,true);ctx.fill();ctx.restore();
+    for(let x=-scene.R+15;x<scene.R;x+=28)for(let y=-scene.R+15;y<scene.R;y+=28)if(Math.hypot(x,y)<scene.R-9)fieldDot(x,y,c.i);
+    for(let x=-260;x<=420;x+=55)for(let y=-260;y<=260;y+=55)if(Math.hypot(x,y)>scene.outer+16)fieldDot(x,y,c.iii);
+    for(let k=0;k<12;k++){const t=k*Math.PI/6;arrow(pointAt(scene.R*1.15,t),pointAt(scene.R*1.65,t),c.ii)}
+    label('B ⊙',0,-scene.R*.35,c.i);label('E 沿半径向外',0,-scene.R*1.35,c.ii);label('B₃ ⊙',scene.outer+20,-scene.outer*.45,c.iii,'left');
+  }
+  function drawGeometry(scene,state,c){const s=scene.segments[state.segment];if(s.center){ctx.setLineDash([5/zoom,4/zoom]);ctx.strokeStyle=c.force;ctx.lineWidth=1.4/zoom;ctx.beginPath();ctx.moveTo(s.center.x,s.center.y);ctx.lineTo(state.point.x,state.point.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=c.force;ctx.beginPath();ctx.arc(s.center.x,s.center.y,3/zoom,0,Math.PI*2);ctx.fill();label('轨道圆心',s.center.x+5/zoom,s.center.y-6/zoom,c.force,'left')}
+    const ledger=timeline.filter(e=>e.order<=Math.ceil(progress*(timeline.length-1))).slice(-3);ledger.forEach((e,i)=>label(`${e.constant_deg}° ${e.delta_coefficient?`+ ${e.delta_coefficient}δ`:''}`, -scene.outer-58, -scene.outer+18+i*19,c.fg,'left'));
+  }
+  function drawParticle(scene,state,c){const s=scene.segments[state.segment],p=state.point;arrow(p,{x:p.x+state.tangent.x*28/zoom,y:p.y+state.tangent.y*28/zoom},c.i,s.speed);let f;if(s.center){const dx=s.center.x-p.x,dy=s.center.y-p.y,d=Math.hypot(dx,dy)||1;f={x:dx/d,y:dy/d}}else{const d=Math.hypot(p.x,p.y)||1;f={x:-p.x/d,y:-p.y/d}}arrow(p,{x:p.x+f.x*25/zoom,y:p.y+f.y*25/zoom},c.force,'F');ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(p.x,p.y,7/zoom,0,Math.PI*2);ctx.fill();label(model.facts.charge==='negative'?'−':'+',p.x,p.y+4/zoom,c.bg)}
+
+  function draw(){const scene=buildScene(),m=metrics(),c=colors(),b=bounds(scene),scale=Math.min((m.w-32)/(b.x1-b.x0),(m.h-32)/(b.y1-b.y0)),cx=(b.x0+b.x1)/2,cy=(b.y0+b.y1)/2;ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,scale*zoom);ctx.translate(-cx,-cy);
+    ctx.strokeStyle=c.border;ctx.lineWidth=1.5/zoom;ctx.beginPath();ctx.arc(0,0,scene.R,0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(0,0,scene.outer,0,Math.PI*2);ctx.stroke();label('I',0,-scene.R*.65,c.fg);label('II',0,-scene.R*1.55,c.fg);label('III',scene.outer+18,0,c.fg,'left');label('O',-6,14,c.fg,'right');label('P',scene.p.x+8,scene.p.y-8,c.fg,'left');
+    if(layer==='force')drawFields(scene,c);
+    scene.segments.forEach(s=>{ctx.save();ctx.globalAlpha=.13;stroke(s.points,c.muted,1.2);ctx.restore()});let remain=progress*scene.total;scene.segments.forEach((s,i)=>{const f=clamp(remain/scene.lengths[i],0,1);if(f>0)stroke(s.points,s.zone==='I'?c.i:s.zone==='II'?c.ii:c.iii,3,f);remain-=scene.lengths[i]});
+    const state=current(scene);if(layer==='geometry')drawGeometry(scene,state,c);if(layer==='force')drawParticle(scene,state,c);else{ctx.fillStyle=c.particle;ctx.beginPath();ctx.arc(state.point.x,state.point.y,7/zoom,0,Math.PI*2);ctx.fill();label(model.facts.charge==='negative'?'−':'+',state.point.x,state.point.y+4/zoom,c.bg)}ctx.restore();
+    const reached=[...scene.boundaries].reverse().find(e=>progress+1e-6>=e.fraction),event=reached&&timeline.find(e=>e.id===reached.eventId);root.querySelector('#phase-guided').textContent=scene.segments[state.segment].label;root.querySelector('#event-guided').textContent=event?event.label:'从 P 出发';root.querySelector('#result-guided').textContent=`${activeCase.b3_label}：${activeCase.first_p_timing}`;root.querySelector('#progress-guided').value=Math.round(progress*1000);root.querySelector('#progress-label').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label').textContent=`${root.querySelector('#duration-guided').value} 秒`;
+  }
+  function setPlaying(v){playing=v;lastTime=0;root.querySelector('#play-guided').textContent=v?'暂停':'播放'}
+  function eventStops(scene){return scene.boundaries.filter(e=>e.eventId&&pauseIds.has(e.eventId))}
+  function jump(direction){const stops=eventStops(buildScene()).map(e=>e.fraction),eps=.002;const target=direction>0?stops.find(v=>v>progress+eps):[...stops].reverse().find(v=>v<progress-eps);if(target!==undefined){progress=target;lastPause=stops.indexOf(target);setPlaying(false);draw()}}
+  function animate(t){if(playing){if(!lastTime)lastTime=t;const old=progress;progress+=(t-lastTime)/(Number(root.querySelector('#duration-guided').value)*1000);lastTime=t;const stops=eventStops(buildScene());if(root.querySelector('#auto-pause-guided').checked){const hit=stops.findIndex((e,i)=>i!==lastPause&&e.fraction>old+1e-5&&e.fraction<=progress);if(hit>=0){progress=stops[hit].fraction;lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
+  const caseBox=root.querySelector('#case-buttons');cases.forEach(item=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent=item.b3_label;b.dataset.caseId=item.id;b.onclick=()=>{activeCase=item;progress=0;lastPause=-1;setPlaying(false);zoom=1;panX=panY=0;caseBox.querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));draw()};caseBox.appendChild(b)});caseBox.querySelector(`[data-case-id="${activeCase.id}"]`).classList.add('active');
+  root.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===b));draw()});root.querySelector('#play-guided').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-guided').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-guided').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};root.querySelector('#duration-guided').oninput=draw;root.querySelector('#previous-event-guided').onclick=()=>jump(-1);root.querySelector('#next-event-guided').onclick=()=>jump(1);root.querySelector('#zoom-in-guided').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-guided').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-guided').onclick=()=>{zoom=1;panX=panY=0;draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;new ResizeObserver(draw).observe(root);draw();requestAnimationFrame(animate);
+})();
+</script>
+
+</main></body>
+</html>

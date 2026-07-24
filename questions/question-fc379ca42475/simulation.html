@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>两同向分区磁场中带电粒子的运动与相遇</title>
+<style>
+:root{color-scheme:light;--background:#fff;--foreground:#1a1c1f;--card:#f5f6f7;--card-foreground:#1a1c1f;--primary:#277fbd;--primary-foreground:#fff;--muted-foreground:#5f6670;--border:#cfd5dc;--ring:#277fbd;--destructive:#d6531d;--viz-series-1:#277fbd;--viz-series-2:#c87821;--viz-series-3:#348c50;--viz-series-4:#a53b78}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#181818;--foreground:#f7f7f7;--card:#292929;--card-foreground:#f7f7f7;--primary:#82c2f0;--primary-foreground:#101010;--muted-foreground:#b3b6ba;--border:#4a4d50;--ring:#82c2f0;--destructive:#ff925c;--viz-series-1:#82c2f0;--viz-series-2:#efaa65;--viz-series-3:#7bd092;--viz-series-4:#e58cba}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground)}body{padding:16px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(100%,1100px);margin:0 auto}.viz-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.form-label{display:inline-flex;align-items:center;gap:5px}.form-range{flex:1 1 180px;min-width:120px;accent-color:var(--primary)}.btn{appearance:none;border:1px solid var(--border);border-radius:8px;padding:7px 11px;background:var(--card);color:var(--card-foreground);font:inherit;cursor:pointer}.btn:focus-visible,.form-range:focus-visible{outline:3px solid var(--ring);outline-offset:2px}.btn-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.card{border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--card-foreground)}@media(max-width:520px){body{padding:10px}.viz-controls{align-items:stretch}.form-label,.form-range{flex-basis:100%}}
+</style>
+</head>
+<body><main>
+<section id="planar-magnetic-sim" class="planar-sim">
+  <script type="application/json" id="planar-magnetic-model">{"schema_version":1,"model_type":"planar-magnetic-multi-particle","entry_id":"question-fc379ca42475","title":"上下分区磁场中甲乙两正电粒子的首次相遇","source":{"publication":"student-site"},"regions":[{"id":"upper","label":"上半平面","boundary":"y>0","field":{"type":"magnetic","direction":"+z","strength_label":"B","label":"B ⊙"}},{"id":"lower","label":"下半平面","boundary":"y<0","field":{"type":"magnetic","direction":"+z","strength_label":"2B","label":"2B ⊙"}}],"facts":{"coordinate_system":"x axis is the planar boundary; y is positive upward; +z is out of the page","unit_length":"R = mv0/(qB)","unit_time":"tau = pi m/(qB)","boundary":{"type":"horizontal-line","y":0,"label":"x axis"},"charge_sign":"positive","initial_velocity":"+y","force_check":"For positive charge, v(+y) x B(+z) points +x at O, so the first upper semicircle center is to the right.","particles":[{"id":"jia","label":"甲","mass_label":"m","charge_label":"+q","upper_radius_R":1,"lower_radius_R":0.5,"upper_half_time_tau":1,"lower_half_time_tau":0.5,"color":"#2783c4"},{"id":"yi","label":"乙","mass_label":"2m","charge_label":"+q","upper_radius_R":2,"lower_radius_R":1,"upper_half_time_tau":2,"lower_half_time_tau":1,"color":"#c87821"}],"question1":{"target":"甲到达 x=R","time_tau":1.5,"displacement_R":1,"average_velocity":"2v0/(3pi)"},"meeting":{"position_R":[2,0],"time_tau":3,"time_label":"3tau = 3pi m/(qB)","reason":"甲第二次到 P1(2R,0) 与乙第一次到 P1(2R,0) 同时发生。"}},"technique_ids":["magnetic-circular-radius","magnetic-period-angle","meeting-enumerate-intersections-first"],"event_model":{"stop_event_id":"meet_p1_t3","summary":"先列轨迹交点，再比较到达时间；首次相遇为 P1(2R,0), t=3tau。","timeline":[{"id":"start","order":0,"time_tau":0,"label":"O 点同时出发","short_label":"O","region":"upper","position":[0,0],"p_candidate":false},{"id":"jia_p1_first","order":1,"time_tau":1,"label":"甲第一次到 P1(2R,0)，乙尚未到达","short_label":"甲到 P1","region":"boundary","position":[2,0],"p_candidate":true},{"id":"jia_x1_question1","order":2,"time_tau":1.5,"label":"甲到达 x=R，完成第(1)问平均速度","short_label":"甲到 x=R","region":"boundary","position":[1,0],"p_candidate":true},{"id":"yi_x4_first","order":3,"time_tau":2,"label":"乙第一次到 x=4R","short_label":"乙到 4R","region":"boundary","position":[4,0],"p_candidate":true},{"id":"jia_x3_first","order":4,"time_tau":2.5,"label":"甲第一次到 x=3R","short_label":"甲到 3R","region":"boundary","position":[3,0],"p_candidate":true},{"id":"meet_p1_t3","order":5,"time_tau":3,"label":"甲第二次、乙第一次同时到 P1(2R,0)，首次相遇","short_label":"首次相遇","region":"boundary","position":[2,0],"p_candidate":true}],"cases":[{"id":"first-meeting","label":"首次相遇","first_p_event_id":"meet_p1_t3","first_p_timing":"t=3tau","result":"3pi m/(qB)"}]},"trajectory":{"segments":[{"id":"jia-upper-1","particle_id":"jia","type":"arc","region":"upper","label":"甲：上方半圆 O → P1","start_event":"start","end_event":"jia_p1_first","geometry":{"center":[1,0],"radius":1,"radius_label":"R","start_deg":180,"end_deg":0},"kinematics":{"start_tau":0,"duration_tau":1}},{"id":"jia-lower-1","particle_id":"jia","type":"arc","region":"lower","label":"甲：下方半圆 P1 → x=R","start_event":"jia_p1_first","end_event":"jia_x1_question1","geometry":{"center":[1.5,0],"radius":0.5,"radius_label":"R/2","start_deg":0,"end_deg":-180},"kinematics":{"start_tau":1,"duration_tau":0.5}},{"id":"jia-upper-2","particle_id":"jia","type":"arc","region":"upper","label":"甲：上方半圆 x=R → x=3R","start_event":"jia_x1_question1","end_event":"jia_x3_first","geometry":{"center":[2,0],"radius":1,"radius_label":"R","start_deg":180,"end_deg":0},"kinematics":{"start_tau":1.5,"duration_tau":1}},{"id":"jia-lower-2","particle_id":"jia","type":"arc","region":"lower","label":"甲：下方半圆 x=3R → P1","start_event":"jia_x3_first","end_event":"meet_p1_t3","geometry":{"center":[2.5,0],"radius":0.5,"radius_label":"R/2","start_deg":0,"end_deg":-180},"kinematics":{"start_tau":2.5,"duration_tau":0.5}},{"id":"yi-upper-1","particle_id":"yi","type":"arc","region":"upper","label":"乙：上方半圆 O → x=4R","start_event":"start","end_event":"yi_x4_first","geometry":{"center":[2,0],"radius":2,"radius_label":"2R","start_deg":180,"end_deg":0},"kinematics":{"start_tau":0,"duration_tau":2}},{"id":"yi-lower-1","particle_id":"yi","type":"arc","region":"lower","label":"乙：下方半圆 x=4R → P1","start_event":"yi_x4_first","end_event":"meet_p1_t3","geometry":{"center":[3,0],"radius":1,"radius_label":"R","start_deg":0,"end_deg":-180},"kinematics":{"start_tau":2,"duration_tau":1}}]},"student_solution":{"quick_answers":["平均速度大小为 2v0/(3pi)","第一次相遇时间为 3pi m/(qB)"],"recognition":"分区磁场相遇题先找轨迹交点，再比较每个交点的到达时间。","main_steps":[{"text":"设 R=mv0/(qB), tau=pi m/(qB)。甲在上/下方半径 R、R/2；乙在上/下方半径 2R、R。","formulae":["R=mv0/(qB)","tau=pi m/(qB)"]},{"text":"甲到 x=R 需走上方半圆和下方半圆，总时间 3tau/2，位移 R。","formulae":["|v_bar|=R/(3tau/2)=2v0/(3pi)"]},{"text":"最近公共交点为 P1(2R,0)。甲到 P1 的时刻为 tau, 3tau, ...；乙第一次到 P1 为 3tau。","formulae":["t_meet=3tau=3pi m/(qB)"]}],"pitfalls":["平均速度用位移除以时间，不用路程除以时间。","相遇题先枚举空间交点，再核对时间。"],"self_check":"甲 tau 时到 P1，但乙还没到；3tau 时甲第二次到 P1，乙第一次到 P1。"},"simulation":{"default_duration_seconds":18,"layers":["trajectory","force","geometry"],"default_layer":"trajectory","pause_event_ids":["jia_p1_first","jia_x1_question1","yi_x4_first","jia_x3_first","meet_p1_t3"],"result_label":"首次相遇：P1(2R,0), t=3τ=3πm/(qB)"}}</script>
+  <div class="sim-head">
+    <div><b id="planar-title"></b><small>平面分界、多粒子轨迹与事件均由 统一物理模型 驱动</small></div>
+    <div class="legend" id="particle-legend"></div>
+  </div>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-planar" role="img" aria-label="可播放、拖动进度、逐层显示、缩放和平移的平面分界磁场多粒子仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-planar"></b></div>
+        <div><small>关键事件</small><b id="event-planar"></b></div>
+        <div><small>命中结论</small><b id="result-planar"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-planar" type="button">播放</button>
+        <button class="btn" id="replay-planar" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-planar" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-planar">进度 <b id="progress-label-planar">0%</b></label>
+        <input class="form-range" id="progress-planar" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <span>显示层</span>
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="force" type="button">2 受力</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-planar">总时长 <b id="duration-label-planar"></b></label>
+          <input class="form-range" id="duration-planar" type="range" min="8" max="90">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-planar" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-planar" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-planar" type="button" aria-label="缩小">−</button>
+          <button class="btn" id="fit-planar" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-planar" type="button" aria-label="放大">＋</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</section>
+<style>
+  #planar-magnetic-sim{display:grid;gap:10px;width:100%}
+  #planar-magnetic-sim .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #planar-magnetic-sim .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #planar-magnetic-sim .legend{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #planar-magnetic-sim .legend span{display:inline-flex;gap:5px;align-items:center;font-size:12px;color:var(--muted-foreground)}
+  #planar-magnetic-sim .legend i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  #planar-magnetic-sim .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #planar-magnetic-sim .scene-pane{display:grid;gap:8px;min-width:0}
+  #planar-magnetic-sim .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #planar-magnetic-sim .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #planar-magnetic-sim .scrub-control,#planar-magnetic-sim .control-group{display:grid;gap:5px}
+  #planar-magnetic-sim .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;align-items:center}
+  #planar-magnetic-sim .layer-tabs span{grid-column:1/-1;color:var(--muted-foreground);font-size:12px}
+  #planar-magnetic-sim .layer-tabs .btn{padding-inline:6px}
+  #planar-magnetic-sim .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #planar-magnetic-sim .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #planar-magnetic-sim .more-controls[open] summary{margin-bottom:9px}
+  #planar-magnetic-sim .more-controls .control-group+ .control-group{margin-top:9px}
+  #planar-magnetic-sim .button-pair{grid-template-columns:1fr 1fr}
+  #planar-magnetic-sim .zoom-controls{grid-template-columns:auto 1fr auto}
+  #planar-magnetic-sim .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #planar-magnetic-sim canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
+  #planar-magnetic-sim canvas:active{cursor:grabbing}
+  #planar-magnetic-sim .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #planar-magnetic-sim .status-grid small,#planar-magnetic-sim .status-grid b{display:block}
+  #planar-magnetic-sim .status-grid small{color:var(--muted-foreground)}
+  #planar-magnetic-sim .auto-pause{white-space:nowrap}
+  @media(max-width:760px){
+    #planar-magnetic-sim{gap:8px}
+    #planar-magnetic-sim .sim-head{display:grid;gap:6px}
+    #planar-magnetic-sim .sim-head small{display:none}
+    #planar-magnetic-sim .legend{flex-wrap:nowrap;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+    #planar-magnetic-sim .sim-workspace{display:block}
+    #planar-magnetic-sim .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #planar-magnetic-sim .status-grid>div:last-child{grid-column:1/-1}
+    #planar-magnetic-sim .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:58svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #planar-magnetic-sim .primary-controls{flex-wrap:nowrap}
+    #planar-magnetic-sim .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #planar-magnetic-sim .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #planar-magnetic-sim .scrub-control label{white-space:nowrap;font-size:12px}
+    #planar-magnetic-sim .layer-tabs span{display:none}
+    #planar-magnetic-sim .more-controls{padding-top:6px}
+  }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('planar-magnetic-sim');
+  const model=JSON.parse(root.querySelector('#planar-magnetic-model').textContent);
+  const canvas=root.querySelector('#canvas-planar'),ctx=canvas.getContext('2d');
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rad=d=>d*Math.PI/180;
+  const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#667',border:v('--border')||'#bbb',one:v('--viz-series-1')||'#2783c4',two:v('--viz-series-2')||'#c87821',three:v('--viz-series-3')||'#348c50',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
+  const palette=['#2783c4','#c87821','#348c50','#a53b78','#d6531d'];
+  const particles=model.facts.particles||[];
+  const particleById=new Map(particles.map((p,i)=>[p.id,{...p,color:p.color||palette[i%palette.length]}]));
+  const timeline=[...model.event_model.timeline].sort((a,b)=>a.time_tau-b.time_tau);
+  const segments=(model.trajectory.segments||[]).map(segment=>({...segment,particle:particleById.get(segment.particle_id)}));
+  const maxTime=Math.max(...timeline.map(event=>event.time_tau),...segments.map(segment=>(segment.kinematics.start_tau||0)+segment.kinematics.duration_tau));
+  const pauseIds=new Set(model.simulation.pause_event_ids||[]);
+  let progress=0,playing=false,lastTime=0,lastPause=-1,layer=model.simulation.default_layer||'trajectory';
+  let zoom=1,panX=0,panY=0,drag=null,viewScale=1;
+  const pointers=new Map();
+  const px=value=>value/(viewScale*zoom);
+
+  function sampleArc(geometry,samples=140){
+    const center={x:geometry.center[0],y:geometry.center[1]},radius=geometry.radius,start=rad(geometry.start_deg),end=rad(geometry.end_deg),points=[];
+    for(let i=0;i<samples;i++){const t=i/(samples-1),a=start+(end-start)*t;points.push({x:center.x+radius*Math.cos(a),y:center.y+radius*Math.sin(a),angle:a})}
+    return points;
+  }
+  for(const segment of segments)segment.points=sampleArc(segment.geometry);
+  function segmentProgress(segment,time){
+    const start=Number(segment.kinematics.start_tau||0),duration=Number(segment.kinematics.duration_tau||1);
+    return clamp((time-start)/duration,0,1);
+  }
+  function pointOn(segment,f){
+    const index=clamp(Math.round((segment.points.length-1)*f),0,segment.points.length-1);
+    const a=segment.points[Math.max(0,index-1)],b=segment.points[Math.min(segment.points.length-1,index+1)],length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    return{point:segment.points[index],tangent:{x:(b.x-a.x)/length,y:(b.y-a.y)/length},segment};
+  }
+  function particleState(particleId,time){
+    const owned=segments.filter(segment=>segment.particle_id===particleId).sort((a,b)=>(a.kinematics.start_tau||0)-(b.kinematics.start_tau||0));
+    let chosen=owned[0],fraction=0;
+    for(const segment of owned){fraction=segmentProgress(segment,time);if(time<=(segment.kinematics.start_tau||0)+segment.kinematics.duration_tau+1e-8){chosen=segment;break}chosen=segment;fraction=1}
+    return pointOn(chosen,fraction);
+  }
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);return{w,h}}
+  function worldBounds(){
+    const xs=[],ys=[];
+    for(const segment of segments)for(const p of segment.points){xs.push(p.x);ys.push(p.y)}
+    for(const event of timeline){if(Array.isArray(event.position)){xs.push(event.position[0]);ys.push(event.position[1])}}
+    const pad=.65;return{x0:Math.min(...xs)-pad,x1:Math.max(...xs)+pad,y0:Math.min(...ys)-pad,y1:Math.max(...ys)+pad};
+  }
+  const bounds=worldBounds();
+  function label(text,x,y,color,align='center'){ctx.fillStyle=color;ctx.font=`${px(13)}px system-ui`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.save();ctx.scale(1,-1);ctx.fillText(text,x,-y);ctx.restore()}
+  function stroke(points,color,width,f=1,dash=[]){const n=Math.max(2,Math.ceil(points.length*f));ctx.strokeStyle=color;ctx.lineWidth=px(width);ctx.setLineDash(dash.map(px));ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<n;i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke();ctx.setLineDash([])}
+  function arrow(a,b,color,text=''){const angle=Math.atan2(b.y-a.y,b.x-a.x),head=px(7);ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(2);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-head*Math.cos(angle-.45),b.y-head*Math.sin(angle-.45));ctx.lineTo(b.x-head*Math.cos(angle+.45),b.y-head*Math.sin(angle+.45));ctx.closePath();ctx.fill();if(text)label(text,b.x+px(6),b.y+px(7),color,'left')}
+  function fieldSymbol(x,y,color){ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(1.2);ctx.beginPath();ctx.arc(x,y,px(4),0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,px(1.3),0,Math.PI*2);ctx.fill()}
+  function drawRegions(c){
+    const boundaryY=Number(model.facts.boundary?.y||0);
+    ctx.save();ctx.globalAlpha=.08;ctx.fillStyle=c.one;ctx.fillRect(bounds.x0,boundaryY,bounds.x1-bounds.x0,bounds.y1-boundaryY);ctx.fillStyle=c.two;ctx.fillRect(bounds.x0,bounds.y0,bounds.x1-bounds.x0,boundaryY-bounds.y0);ctx.restore();
+    ctx.strokeStyle=c.border;ctx.lineWidth=px(1.5);ctx.beginPath();ctx.moveTo(bounds.x0,boundaryY);ctx.lineTo(bounds.x1,boundaryY);ctx.stroke();label('x 轴 / 磁场分界线',bounds.x1-.1,boundaryY+.12,c.fg,'right');
+    if(layer==='force'){
+      for(let x=bounds.x0+.25;x<bounds.x1;x+=.55)for(let y=boundaryY+.22;y<bounds.y1;y+=.45)fieldSymbol(x,y,c.one);
+      for(let x=bounds.x0+.25;x<bounds.x1;x+=.55)for(let y=bounds.y0+.25;y<boundaryY-.08;y+=.45)fieldSymbol(x,y,c.two);
+      for(const region of model.regions){const y=region.id==='upper'?bounds.y1-.3:bounds.y0+.32;label(`${region.label||region.id} ${region.field.label||region.field}`,bounds.x0+.15,y,region.id==='upper'?c.one:c.two,'left')}
+    }
+  }
+  function drawGeometry(c){
+    for(const segment of segments){
+      if(segment.geometry.show_circle===false)return;
+      ctx.strokeStyle=segment.particle?.color||c.muted;ctx.lineWidth=px(1);ctx.setLineDash([px(5),px(4)]);ctx.globalAlpha=.42;ctx.beginPath();ctx.arc(segment.geometry.center[0],segment.geometry.center[1],segment.geometry.radius,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);
+      label(segment.geometry.radius_label||`r=${segment.geometry.radius}R`,segment.geometry.center[0],segment.geometry.center[1]+.15,segment.particle?.color||c.fg);
+    }
+  }
+  function drawParticleState(state,particle,c){
+    const p=state.point,color=particle.color;
+    arrow(p,{x:p.x+state.tangent.x*px(34),y:p.y+state.tangent.y*px(34)},color,'v');
+    const center={x:state.segment.geometry.center[0],y:state.segment.geometry.center[1]},dx=center.x-p.x,dy=center.y-p.y,length=Math.hypot(dx,dy)||1;
+    arrow(p,{x:p.x+dx/length*px(31),y:p.y+dy/length*px(31)},c.force,'F');
+    ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,px(7),0,Math.PI*2);ctx.fill();label(particle.label,p.x,p.y+px(17),color);
+  }
+  function currentEvent(time){
+    return [...timeline].reverse().find(event=>time+1e-6>=event.time_tau)||timeline[0];
+  }
+  function draw(){
+    const m=metrics(),c=colors(),scale=Math.min((m.w-34)/(bounds.x1-bounds.x0),(m.h-34)/(bounds.y1-bounds.y0)),cx=(bounds.x0+bounds.x1)/2,cy=(bounds.y0+bounds.y1)/2,time=progress*maxTime;viewScale=scale;
+    ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,-scale*zoom);ctx.translate(-cx,-cy);
+    drawRegions(c);
+    for(const segment of segments){ctx.save();ctx.globalAlpha=.18;stroke(segment.points,segment.particle?.color||c.muted,1.4);ctx.restore()}
+    for(const segment of segments){const f=segmentProgress(segment,time);if(f>0)stroke(segment.points,segment.particle?.color||c.three,3.2,f)}
+    if(layer==='geometry')drawGeometry(c);
+    for(const particle of particles){const state=particleState(particle.id,time);if(layer==='force')drawParticleState(state,particleById.get(particle.id),c);else{ctx.fillStyle=particleById.get(particle.id).color;ctx.beginPath();ctx.arc(state.point.x,state.point.y,px(7),0,Math.PI*2);ctx.fill();label(particle.label,state.point.x,state.point.y+px(17),particleById.get(particle.id).color)}}
+    for(const event of timeline.filter(event=>event.p_candidate&&Array.isArray(event.position))){ctx.fillStyle=event.id===model.event_model.stop_event_id?c.force:c.muted;ctx.beginPath();ctx.arc(event.position[0],event.position[1],px(4),0,Math.PI*2);ctx.fill();label(event.short_label||event.label,event.position[0],event.position[1]-.16,event.id===model.event_model.stop_event_id?c.force:c.muted)}
+    ctx.restore();
+    const event=currentEvent(time),active=segments.find(segment=>time>=(segment.kinematics.start_tau||0)-1e-8&&time<=(segment.kinematics.start_tau||0)+segment.kinematics.duration_tau+1e-8)||segments[segments.length-1];
+    root.querySelector('#phase-planar').textContent=active.label||active.id;root.querySelector('#event-planar').textContent=event.label;root.querySelector('#result-planar').textContent=model.simulation.result_label||model.event_model.summary||'';root.querySelector('#progress-planar').value=Math.round(progress*1000);root.querySelector('#progress-label-planar').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label-planar').textContent=`${root.querySelector('#duration-planar').value} 秒`;
+  }
+  function setPlaying(value){playing=value;lastTime=0;root.querySelector('#play-planar').textContent=value?'暂停':'播放'}
+  function stops(){return timeline.filter(event=>pauseIds.has(event.id)).map(event=>event.time_tau/maxTime)}
+  function jump(direction){const values=stops(),eps=.002,target=direction>0?values.find(x=>x>progress+eps):[...values].reverse().find(x=>x<progress-eps);if(target!==undefined){progress=target;lastPause=values.indexOf(target);setPlaying(false);draw()}}
+  function animate(timeStamp){if(playing){if(!lastTime)lastTime=timeStamp;const old=progress;progress+=(timeStamp-lastTime)/(Number(root.querySelector('#duration-planar').value)*1000);lastTime=timeStamp;const values=stops();if(root.querySelector('#auto-pause-planar').checked){const hit=values.findIndex((x,i)=>i!==lastPause&&x>old+1e-5&&x<=progress);if(hit>=0){progress=values[hit];lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
+  root.querySelector('#planar-title').textContent=model.title;
+  const legend=root.querySelector('#particle-legend');for(const particle of particles){const item=document.createElement('span'),dot=document.createElement('i');dot.style.background=particleById.get(particle.id).color;item.append(dot,document.createTextNode(`${particle.label} ${particle.mass_label||''}`));legend.append(item)}
+  const duration=root.querySelector('#duration-planar');duration.value=String(model.simulation.default_duration_seconds);
+  root.querySelectorAll('[data-layer]').forEach(button=>button.onclick=()=>{layer=button.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===button));draw()});
+  root.querySelector('#play-planar').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-planar').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-planar').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};duration.oninput=draw;root.querySelector('#previous-event-planar').onclick=()=>jump(-1);root.querySelector('#next-event-planar').onclick=()=>jump(1);root.querySelector('#zoom-in-planar').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-planar').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-planar').onclick=()=>{zoom=1;panX=panY=0;draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
+  const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
+  draw();new ResizeObserver(draw).observe(root);requestAnimationFrame(animate);
+})();
+</script>
+
+</main></body>
+</html>

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="520" viewBox="0 0 720 520">
+  <defs>
+    <marker id="arrowBlue" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#1677ff"/></marker>
+    <marker id="arrowRed" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#d64"/></marker>
+    <marker id="arrowGreen" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#2a8"/></marker>
+    <marker id="arrowDark" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#333"/></marker>
+  </defs>
+
+  <rect width="720" height="520" fill="#fbfcff"/>
+
+  <!-- Title -->
+  <text x="360" y="28" text-anchor="middle" font-size="18" font-weight="bold" fill="#234">电磁天平——方向推理全景图</text>
+
+  <!-- ===== Coil rectangle ===== -->
+  <rect x="180" y="80" width="300" height="200" fill="none" stroke="#234" stroke-width="4" rx="2"/>
+
+  <!-- ===== Clockwise current arrows on coil edges ===== -->
+  <!-- Top edge: left → right -->
+  <line x1="210" y1="82" x2="445" y2="82" stroke="#1677ff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <!-- Right edge: top → bottom -->
+  <line x1="478" y1="110" x2="478" y2="250" stroke="#1677ff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+  <!-- Bottom edge: right → left (KEY: current in lower edge under B₀) -->
+  <line x1="450" y1="278" x2="215" y2="278" stroke="#ff4d4f" stroke-width="4" marker-end="url(#arrowRed)"/>
+  <!-- Left edge: bottom → top -->
+  <line x1="182" y1="250" x2="182" y2="110" stroke="#1677ff" stroke-width="3" marker-end="url(#arrowBlue)"/>
+
+  <!-- Coil label -->
+  <text x="330" y="108" text-anchor="middle" font-size="17" font-weight="bold" fill="#1677ff">I 顺时针</text>
+
+  <!-- ===== Variable B field (OUT of page) above coil ===== -->
+  <text x="330" y="65" text-anchor="middle" font-size="17" font-weight="bold" fill="#2a8">可变磁场 B：⊙ 向外且增大 ↑</text>
+  <g font-size="22" fill="#2a8">
+    <text x="280" y="125">⊙ ⊙ ⊙</text>
+    <text x="280" y="155">⊙ ⊙ ⊙</text>
+  </g>
+
+  <!-- ===== Induced magnetic field (INTO page) inside coil ===== -->
+  <text x="510" y="148" font-size="15" font-weight="bold" fill="#d64">感应磁场</text>
+  <text x="510" y="170" font-size="15" font-weight="bold" fill="#d64">B感 ⊗ 向里</text>
+  <g font-size="22" fill="#d64">
+    <text x="275" y="190">⊗ ⊗ ⊗</text>
+    <text x="275" y="225">⊗ ⊗ ⊗</text>
+    <text x="275" y="258">⊗ ⊗ ⊗</text>
+  </g>
+
+  <!-- Right-hand rule annotation -->
+  <text x="510" y="210" font-size="13" fill="#888">← 右手螺旋定则</text>
+  <text x="510" y="228" font-size="13" fill="#888">  四指：顺时针对应电流</text>
+  <text x="510" y="246" font-size="13" fill="#888">  拇指：向里 对应 B感</text>
+
+  <!-- ===== B₀ field on lower edge ===== -->
+  <text x="55" y="288" font-size="15" fill="#555">B₀ = 1.0 T</text>
+  <text x="55" y="308" font-size="14" fill="#555">⊗ 向里（固定）</text>
+
+  <!-- ===== F安培 downward from lower edge ===== -->
+  <line x1="330" y1="290" x2="330" y2="400" stroke="#d64" stroke-width="4" marker-end="url(#arrowRed)"/>
+  <text x="345" y="400" font-size="18" font-weight="bold" fill="#d64">F安培 ↓ = mg</text>
+
+  <!-- B₀ into-page markers near lower edge -->
+  <g font-size="16" fill="#555">
+    <text x="240" y="305">⊗</text>
+    <text x="280" y="305">⊗</text>
+    <text x="320" y="305">⊗</text>
+    <text x="360" y="305">⊗</text>
+  </g>
+
+  <!-- ===== Bottom verification chain ===== -->
+  <rect x="20" y="440" width="680" height="68" rx="8" fill="#f0f5ff" stroke="#bdd7ff" stroke-width="1.5"/>
+  <text x="360" y="462" text-anchor="middle" font-size="14" fill="#234">
+    验证链条：B ⊙ 向外增大 → Φ外 ↑ → 楞次"增反"→ B感 ⊗ 向里反抗 → 右手定则 → I 顺时针 → 左手定则(B₀ ⊗) → F ↓ = mg
+  </text>
+  <text x="360" y="484" text-anchor="middle" font-size="13" fill="#888">
+    "增反减同"：磁通量增大时感应磁场与原磁场反向 · 感应磁场 ⊗ → 可变磁场必为 ⊙
+  </text>
+</svg>

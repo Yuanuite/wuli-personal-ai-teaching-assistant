@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="380" viewBox="0 0 720 380">
+  <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#234"/></marker></defs>
+  <rect width="720" height="380" fill="#fbfcff"/>
+  <line x1="150" y1="150" x2="570" y2="150" stroke="#1677ff" stroke-width="8" marker-end="url(#a)"/>
+  <text x="130" y="130" font-size="22">A</text><text x="585" y="158" font-size="22">B</text>
+  <line x1="360" y1="295" x2="360" y2="205" stroke="#d65" stroke-width="8" marker-end="url(#a)"/>
+  <text x="375" y="295" font-size="20">D→C（下方）</text>
+  <line x1="225" y1="150" x2="225" y2="235" stroke="#35a45b" stroke-width="5" marker-end="url(#a)"/>
+  <line x1="495" y1="150" x2="495" y2="65" stroke="#35a45b" stroke-width="5" marker-end="url(#a)"/>
+  <path d="M450 250 A120 120 0 0 1 270 250" fill="none" stroke="#8a4fc4" stroke-width="5" marker-end="url(#a)"/>
+  <text x="285" y="335" font-size="22">俯视：合力矩顺时针</text>
+</svg>

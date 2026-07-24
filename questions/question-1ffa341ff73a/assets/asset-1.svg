@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="420" viewBox="0 0 720 420">
+  <rect width="720" height="420" fill="#fbfcff"/>
+
+  <defs>
+    <marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#1677ff"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto">
+      <path d="M0 0 L9 4.5 L0 9 Z" fill="#d65"/>
+    </marker>
+  </defs>
+
+  <!-- Boundary circle: center O, radius R. -->
+  <circle cx="360" cy="220" r="130" fill="#f7fbff" stroke="#243447" stroke-width="3"/>
+  <text x="372" y="239" font-size="20" fill="#243447">O</text>
+  <circle cx="360" cy="220" r="4" fill="#243447"/>
+
+  <!-- Two adjacent boundary radii. Here delta is drawn as 72 degrees only for clarity. -->
+  <line x1="360" y1="220" x2="230" y2="220" stroke="#243447" stroke-width="3"/>
+  <line x1="360" y1="220" x2="319.8" y2="96.4" stroke="#243447" stroke-width="3"/>
+  <circle cx="230" cy="220" r="5" fill="#243447"/>
+  <circle cx="319.8" cy="96.4" r="5" fill="#243447"/>
+  <text x="199" y="246" font-size="20" fill="#243447">P</text>
+  <text x="329" y="91" font-size="19" fill="#243447">下一边界点</text>
+
+  <path d="M300 220 A60 60 0 0 1 341.5 162.9" fill="none" stroke="#1677ff" stroke-width="4" marker-end="url(#arrow-blue)"/>
+  <text x="302" y="178" font-size="22" fill="#1677ff">δ</text>
+
+  <!-- Particle orbit circle. It is tangent to OP at P and also passes through the next boundary point. -->
+  <circle cx="230" cy="125.5" r="94.5" fill="none" stroke="#d65" stroke-width="3" stroke-dasharray="8 7"/>
+  <circle cx="230" cy="125.5" r="4" fill="#d65"/>
+  <text x="193" y="119" font-size="18" fill="#d65">轨迹圆心</text>
+  <path d="M230 220 A94.5 94.5 0 0 1 319.8 96.4" fill="none" stroke="#d65" stroke-width="5" marker-end="url(#arrow-red)"/>
+
+  <!-- Radius r of the particle orbit, perpendicular to the initial velocity at P. -->
+  <line x1="230" y1="125.5" x2="230" y2="220" stroke="#d65" stroke-width="2"/>
+  <text x="238" y="177" font-size="20" fill="#d65">r</text>
+  <path d="M230 220 L255 220" stroke="#243447" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="258" y="228" font-size="18" fill="#243447">入射速度沿半径</text>
+
+  <text x="60" y="346" font-size="21" fill="#243447">相邻两边界半径夹角：δ = 2π/(n+1)</text>
+  <text x="60" y="379" font-size="21" fill="#243447">由交点几何：r = R tan(δ/2)，v = qBr/m</text>
+</svg>

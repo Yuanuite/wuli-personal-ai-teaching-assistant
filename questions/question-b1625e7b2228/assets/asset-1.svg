@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="330" viewBox="0 0 780 330">
+  <rect width="780" height="330" fill="#fbfcff"/>
+  <rect x="70" y="70" width="150" height="150" fill="none" stroke="#1677ff" stroke-width="5"/>
+  <rect x="160" y="40" width="480" height="210" fill="#edf2f7" stroke="#666" stroke-width="3" stroke-dasharray="9 7"/>
+  <g font-size="27" fill="#666"><text x="260" y="105">× × × × ×</text><text x="260" y="155">× × × × ×</text><text x="260" y="205">× × × × ×</text></g>
+  <line x1="70" y1="285" x2="700" y2="285" stroke="#234" stroke-width="4"/>
+  <text x="75" y="315" font-size="20">进入：有电流</text><text x="300" y="315" font-size="20">全入：I=0</text><text x="540" y="315" font-size="20">离开：有电流</text>
+</svg>

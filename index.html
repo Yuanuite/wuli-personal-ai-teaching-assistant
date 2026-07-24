@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="高中物理错题与解析，只读学生端。">
+  <title>悟理学习站</title>
+  <link rel="stylesheet" href="vendor/katex.min.css">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body data-page="catalog">
+  <header class="site-header">
+    <a class="brand" href="index.html"><span>WULI LEARNING LOOP</span><strong>悟理学习站</strong></a>
+    <p>检索题目、阅读解析，需要保存时下载 PDF。</p>
+  </header>
+  <main class="catalog-shell">
+    <section class="catalog-intro">
+      <div><p class="eyebrow">STUDENT LIBRARY</p><h1>把一道错题，变成下一次的得分点。</h1></div>
+      <label class="search-box" for="question-search"><span>搜索题目或知识点</span><input id="question-search" type="search" autocomplete="off" placeholder="例如：洛伦兹力"></label>
+    </section>
+    <p id="catalog-summary" class="catalog-summary" aria-live="polite">正在读取题库…</p>
+    <section id="question-list" class="question-grid" aria-label="题目列表"></section>
+    <div id="catalog-empty" class="empty-card hidden"><strong>暂时没有匹配的题目</strong><p>换一个关键词试试。</p></div>
+  </main>
+  <footer>只读学习页面 · 内容经教师复核后发布</footer>
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/katex.min.js"></script>
+  <script src="assets/site.js" defer></script>
+</body>
+</html>

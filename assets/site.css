@@ -1,0 +1,54 @@
+:root { --paper:#f4f1e9; --panel:#fffdf8; --ink:#1d2922; --muted:#68736c; --line:#d9d7ce; --green:#1f6a4a; --green-dark:#124b34; --green-soft:#dcebe2; --orange:#d8772e; --shadow:0 18px 50px rgba(30,44,36,.09); }
+* { box-sizing:border-box; }
+html { color-scheme:light; scroll-behavior:smooth; }
+body { margin:0; color:var(--ink); background:var(--paper); font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; line-height:1.7; }
+a { color:inherit; }
+.hidden { display:none !important; }
+.site-header { min-height:210px; padding:38px max(5vw,24px); display:flex; align-items:end; justify-content:space-between; gap:30px; color:#f9f5ea; background:linear-gradient(125deg,#183b2c,#255f43 70%,#a15d2d); }
+.brand { display:grid; text-decoration:none; }
+.brand span,.eyebrow { font-size:11px; font-weight:800; letter-spacing:.18em; }
+.brand strong { margin-top:4px; font-family:Georgia,"Songti SC",serif; font-size:clamp(28px,4vw,48px); font-weight:500; }
+.site-header p { max-width:380px; margin:0; color:#dce6df; font-size:14px; }
+.catalog-shell { width:min(1120px,92vw); margin:-34px auto 70px; }
+.catalog-intro { padding:26px; display:grid; grid-template-columns:minmax(0,1fr) minmax(260px,360px); gap:32px; align-items:end; border:1px solid var(--line); border-radius:18px; background:var(--panel); box-shadow:var(--shadow); }
+.eyebrow { margin:0 0 8px; color:var(--orange); }
+.catalog-intro h1 { max-width:670px; margin:0; font-family:Georgia,"Songti SC",serif; font-size:clamp(27px,4vw,44px); line-height:1.22; font-weight:500; }
+.search-box { display:grid; gap:8px; color:var(--muted); font-size:12px; font-weight:700; }
+.search-box input { width:100%; padding:13px 14px; color:var(--ink); background:#faf8f2; border:1px solid var(--line); border-radius:10px; outline:0; font:inherit; }
+.search-box input:focus { border-color:var(--green); box-shadow:0 0 0 3px rgba(31,106,74,.12); }
+.catalog-summary { margin:24px 4px 12px; color:var(--muted); font-size:13px; }
+.question-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+.question-card { min-height:210px; padding:20px; display:flex; flex-direction:column; border:1px solid var(--line); border-radius:14px; background:var(--panel); text-decoration:none; transition:.18s ease; }
+.question-card:hover { border-color:#9eb7a6; transform:translateY(-3px); box-shadow:var(--shadow); }
+.question-card small { color:var(--orange); font-size:10px; font-weight:800; letter-spacing:.12em; }
+.question-card h2 { margin:12px 0 10px; font-family:Georgia,"Songti SC",serif; font-size:22px; line-height:1.4; font-weight:500; }
+.question-card .tag-list { margin-top:auto; }
+.question-card .open-label { margin-top:16px; color:var(--green); font-size:12px; font-weight:800; }
+.tag-list { display:flex; flex-wrap:wrap; gap:6px; }
+.tag { padding:4px 8px; border-radius:999px; color:var(--green-dark); background:var(--green-soft); font-size:10px; }
+.empty-card { padding:40px; text-align:center; border:1px dashed #b8bbb4; border-radius:14px; background:rgba(255,253,248,.6); }
+.empty-card p { margin:5px 0 0; color:var(--muted); }
+footer { padding:20px; text-align:center; color:var(--muted); font-size:11px; border-top:1px solid var(--line); }
+.reader-header { min-height:64px; padding:10px max(4vw,20px); display:flex; align-items:center; justify-content:space-between; gap:16px; position:sticky; top:0; z-index:5; background:rgba(244,241,233,.94); border-bottom:1px solid var(--line); backdrop-filter:blur(12px); }
+.back-link { color:var(--green-dark); font-size:13px; font-weight:800; text-decoration:none; }
+.reader-actions { display:flex; gap:8px; }
+.button { padding:9px 13px; border:1px solid var(--green); border-radius:9px; font-size:12px; font-weight:800; text-decoration:none; }
+.button.primary { color:white; background:var(--green); }
+.button.secondary { color:var(--green-dark); background:transparent; }
+.reader-shell { width:min(1180px,94vw); margin:34px auto 70px; display:grid; grid-template-columns:270px minmax(0,760px); justify-content:center; gap:42px; align-items:start; }
+.reader-meta { position:sticky; top:94px; padding:20px; border-top:3px solid var(--orange); background:#ebe8df; }
+.reader-meta h1 { margin:8px 0 14px; font-family:Georgia,"Songti SC",serif; font-size:25px; line-height:1.4; font-weight:500; }
+.reader-meta > p:last-child { margin:18px 0 0; color:var(--muted); font-size:11px; }
+.markdown-body { min-height:70vh; padding:clamp(24px,5vw,56px); overflow-wrap:anywhere; border:1px solid var(--line); border-radius:14px; background:var(--panel); box-shadow:var(--shadow); }
+.markdown-body h1,.markdown-body h2,.markdown-body h3 { font-family:Georgia,"Songti SC",serif; line-height:1.35; font-weight:500; }
+.markdown-body h1 { margin-top:0; font-size:34px; }
+.markdown-body h2 { margin-top:2em; padding-bottom:7px; font-size:25px; border-bottom:1px solid var(--line); }
+.markdown-body h3 { margin-top:1.6em; font-size:19px; }
+.markdown-body p,.markdown-body li { font-size:15px; }
+.markdown-body img { display:block; max-width:100%; height:auto; margin:24px auto; border-radius:8px; }
+.markdown-body blockquote { margin:20px 0; padding:10px 16px; color:var(--green-dark); background:var(--green-soft); border-left:3px solid var(--green); }
+.markdown-body pre { overflow:auto; padding:14px; background:#eceae3; border-radius:8px; }
+.markdown-body table { width:100%; border-collapse:collapse; font-size:13px; }
+.markdown-body th,.markdown-body td { padding:9px; border:1px solid var(--line); text-align:left; }
+.markdown-body .katex-display { overflow-x:auto; overflow-y:hidden; padding:5px 0; }
+@media (max-width:760px) { .site-header { min-height:180px; align-items:start; flex-direction:column; } .catalog-shell { margin-top:-24px; } .catalog-intro { grid-template-columns:1fr; gap:22px; } .reader-header { align-items:flex-start; } .reader-actions { flex-wrap:wrap; justify-content:flex-end; } .reader-shell { margin-top:18px; grid-template-columns:1fr; gap:14px; } .reader-meta { position:static; } .markdown-body { padding:24px 18px; } .markdown-body h1 { font-size:28px; } }
