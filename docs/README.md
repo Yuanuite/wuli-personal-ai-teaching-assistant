@@ -12,7 +12,7 @@
 | [diagrams/README.md](diagrams/README.md) | Archify 架构图与 Pipeline 的 JSON 真源、渲染命令和 Story 对焦验收契约 |
 | [operator-runbook.md](operator-runbook.md) | 本地启动、人工命令、复核门禁、发布学生端、故障排查 |
 | [teacher-console-api.md](teacher-console-api.md) | 教师工作台本地 HTTP 路由、写操作请求头、状态码和调用顺序 |
-| [agent-gateway.md](agent-gateway.md) | Agent Gateway provider、隔离候选、成本档位、隐私门禁和作业恢复 |
+| [agent-gateway.md](agent-gateway.md) | Agent Gateway provider、运行时/模型/工具兼容矩阵、隔离候选、接入协议和故障排查 |
 | [agent-scheduler.md](agent-scheduler.md) | 后台 Agent 作业调度：优先级队列、任务并发、配置文件与后续 Evolve 接口 |
 | [evaluator.md](evaluator.md) | 单题产物质量评价报告：解析、可视化、交付和 AI 审计闭环的第一块轻基建 |
 | [candidate-archive.md](candidate-archive.md) | 候选、教师反馈、Agent 结果和 Evaluator 摘要的追加式事件档案 |

@@ -78,6 +78,7 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 
 - `server.py` 只提交任务类型、教师意见、读写集合和隐私策略，不保存具体 CLI/API 参数；
 - provider 在系统临时目录工作，canonical entry 不作为工作目录；候选区按输入白名单构造，原始题图、批准记录和无关内部文件不被 Gateway 复制或写入 prompt；CLI 运行时的额外只读边界仍由其自身沙箱决定，严格披露边界应使用结构化 adapter；
+- 标准解析使用 `wuli.analysis.v1` 结构化契约：模型不操作文件，只输出一次学生正文、教师审计增量、教学元数据和图示节点；本地确定性模块合成三份答案与解释 SVG，阶段检查点可避免 provider 成功后的重复推理；
 - `answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
 - `.agent-context/` 按任务和成本档位提供最小只读规则：答案任务以答案模板与职责边界为主，深度档才附完整知识库 Skill；可视化任务附仿真 Skill 与模型 Schema；
 - 候选修改仅限任务白名单，答案候选由知识库验证器检查，可视化候选由仿真模型构建器检查；
@@ -87,7 +88,7 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 - 教师可选择 `auto|economy|expert`；档位只路由模型并裁剪上下文，实际模型、降级说明和 provider 用量写入私有作业记录，不改变复核门禁；
 - 后台 Agent 作业由 Scheduler 按优先级和任务类型领取当前可运行任务，不让等待限额的作业占住 worker；`source.clean` 默认进入 `economy` 快速档并允许跨题并发，解析生成、答案返修和可视化建模也可跨题有限并发，同题任务始终互斥；
 - `source.clean` 批量完成后以防抖方式刷新知识索引，避免每题成功都立即重建全库；Evaluator 与 Candidate Archive 仍逐题记录结果；
-- 版本/help 探测与无学生数据的主动连通探测分离；实际运行失败会触发短期熔断，避免每道题重复等待同一个坏 provider；
+- 版本/help 探测与无学生数据的主动连通探测分离；任务失败后同一题目的同类型任务进入短期冷却，避免重复计费，但不阻止其他题目使用同一 provider；
 - OS 单实例锁阻止两个教师服务同时管理同一知识库；单题事务锁覆盖摘要复查、提升及后处理，库级锁串行化知识索引写入；
 - provider 仅继承基础运行变量与自身认证变量，其他环境变量必须显式加入 adapter allowlist；
 - 作业状态与 `pipeline.json` 分离，页面刷新可以恢复轮询，服务重启则把状态不明的任务标记失败。
@@ -112,6 +113,27 @@ Gateway 不拥有 OCR、答案或物理语义，也不得调用任何 `approve-*
 | provider 探测、后台作业、失败降级 | 不参与 | 负责 | 不参与 |
 | 模型注册 CRUD、probe 验证、config 解析 | 独立模块(`model_registry.py`) | 查询使用 | 不参与 |
 | 教师批准、知识索引和复习计划 | 负责 | 永不执行 | 不参与 |
+
+## 生产流程与 E2E 边界
+
+教师真实处理一道题时，只执行生产生命周期并写入配置所指向的
+`student-error-library/`、`output/` 和经批准的 `student-site/`；生产服务没有调用 E2E runner，
+也不会把教师操作自动录制为测试。E2E 是维护者或 CI 显式启动的独立驱动层：
+
+```text
+Playwright UI 操作 → 真实本地 HTTP/API → 生产生命周期与构建器
+                                      ↘ 临时知识库/输出/公开站
+确定性假 Agent ────────────────────────↗
+                          ↓
+       manifest + Evaluator + pipeline quality 断言
+```
+
+`teacher-console/e2e/run_e2e.py` 为每个场景创建临时根目录、启动真实教师服务并调度 Playwright；
+测试替换 OCR 和 Agent 这两个外部不确定边界，但不替换 HTTP、候选提升、审批门禁、文件导出、
+仿真构建或浏览器交互。`evaluator.py` 与 `pipeline_quality_eval.py` 位于断言层：前者核对单题领域门禁，
+后者汇总内容、流程、Token 和耗时诊断；二者都不是 E2E 驱动器，也不会触发真实题目入库。
+
+当前场景及运行方式见 [`../teacher-console/e2e/README.md`](../teacher-console/e2e/README.md)。
 
 ## `physics-model.json` 集成契约
 

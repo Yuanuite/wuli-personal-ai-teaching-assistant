@@ -11,6 +11,8 @@ LiteLLM 适合作为悟理的“模型供应层”，不替代悟理自己的 Ag
 
 悟理仍然拥有题目生命周期和安全边界；LiteLLM 只负责把不同模型统一成 OpenAI-compatible 接口。
 
+这条路线不提供本地文件或 Skill 工具：LiteLLM 后面的模型只接收 Gateway 发送的结构化上下文并返回候选内容，不能自行读取仓库、调用脚本或启动浏览器。`analysis.generate` 本来就是无工具结构化任务，最适合走 LiteLLM；答案返修和可视化也可以走它，但确定性落盘、校验、仿真构建与浏览器检查由悟理后端完成。若任务必须让模型主动检查多个本地文件或调用 Skill 脚本，应改用 Claude/Codex 文件 Agent，或为目标 Agent Runtime 实现 JSON adapter。
+
 ## 最小本地配置
 
 创建一个 LiteLLM `config.yaml`，把悟理需要的三档模型暴露为稳定别名：
@@ -65,10 +67,7 @@ export LITELLM_API_KEY="sk-..."
 }
 ```
 
-`http://127.0.0.1:4000/v1` 是本机回环地址，不需要打开悟理远程 Agent 隐私门禁。若 LiteLLM 部署在远程服务器，则该模型会被视为远程模型，必须同时满足：
-
-1. `student-error-library/config.json` 中 `privacy.allow_remote_agent=true`；
-2. 教师端服务进程环境中 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`。
+`http://127.0.0.1:4000/v1` 是本机回环地址，不需要打开悟理远程 Agent 隐私门禁。若 LiteLLM 部署在远程服务器，则该模型会被视为远程模型，需要在 `student-error-library/config.json` 中设置 `privacy.allow_remote_agent=true`。
 
 ## 推荐职责分工
 

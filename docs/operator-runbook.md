@@ -96,7 +96,9 @@ python3 teacher-console/scripts/slow_loop_report.py \
 
 确认与该次周报 event ID 绑定；新周报生成后旧确认自动失效。此动作不会修改线上策略。
 
-模型设置位于右上角“设置”。每个 OpenAI-compatible 模型可填写 API 地址、真实模型名和 API Key；Key 只保存到已被 `.gitignore` 排除的 `student-error-library/config/model-registry.json`，再次打开页面只显示“已保存/已配置”，不回显明文。每个可选模型必须点击该行“测试”并通过不含学生数据的连通探测后，才会被自动/默认路由调用；未测试、测试失败或修改过地址/模型名/API Key 的模型会置灰。提交 GitHub 前不要使用 `git add -f student-error-library/config/model-registry.json`。
+模型设置位于右上角“设置”。“添加 Codex 可视化预设”旁的 Codex 状态框可自动发现 CLI 和常见本地代理；它默认保持收起，点击后才显示连接设置。选择检测到的代理并点击“检测”后，系统会保存本机配置并执行一次不含学生数据的真实推理；通过后立即生效且无需重启。检测结果与当前配置摘要绑定，修改 Codex 路径或网络方式后必须重测。运行配置只写入被忽略的 `student-error-library/config/agent-runtime.json`，网页仅允许本机回环代理，不会自动启用探测到的端口。
+
+每个 OpenAI-compatible API 或 Claude Code Agent 模型都可填写 API 地址、真实模型名和 API Key；Key 只保存到已被 `.gitignore` 排除的 `student-error-library/config/model-registry.json`，再次打开页面只显示“已保存/已配置”，不回显明文。选择 Claude Code Agent 时，本条目的地址与 Key 会在任务子进程中覆盖本机全局 Claude 配置；文件任务可使用受限 Skill/文件工具，`analysis.generate` 则刻意关闭工具并走结构化输出。选择 OpenAI-compatible API 时始终走结构化请求。每个可选模型必须点击该行“测试”并通过不含学生数据的连通探测后，才会被自动/默认路由调用；修改地址、模型名或 Key 后旧测试自动失效。提交 GitHub 前不要使用 `git add -f student-error-library/config/model-registry.json` 或 `agent-runtime.json`。
 
 provider 配置、JSON 契约、隔离候选和远程隐私门禁见 [`agent-gateway.md`](agent-gateway.md)。快速检查：
 
@@ -159,6 +161,24 @@ python3 -m pytest teacher-console/tests/ -v --tb=short
 # 测试加覆盖率
 python3 -m pytest teacher-console/tests/ --cov=teacher-console
 ```
+
+教师工作台的浏览器/API E2E 使用临时知识库和确定性假 Agent，不接触真实学生数据。教师在工作台真实处理题目时
+不会触发、录制或追加 E2E；只有维护者运行以下命令，或 CI 启动作业时才执行测试：
+
+```bash
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+默认运行 3 条隔离场景：基础交付、交互可视化生成/复核/交付、公开题图脱敏/预览/本地发布。
+可视化场景实际操作仿真控件，并要求构建、运行时检查和 `interactive_visualization` 评价通过；
+公开发布场景实际绘制遮挡、确认原图字节未变，并扫描公开树中的私有引用。基础交付和可视化场景还会核对
+`delivery-manifest.json`、`evaluator.py` 领域评价与 `pipeline_quality_eval.py` 的质量、Token 和耗时诊断。报告位于
+`test-results/e2e/`。CI 会在 `main` 和 Pull Request 上执行 E2E，但仅允许
+`main` 的 push 进入学生端部署任务。`evaluator.py` 和 `pipeline_quality_eval.py` 只负责断言与诊断，
+不负责操作 UI/API，也不会把测试数据或教师操作写入正式题库。更细的隔离边界见
+[`../teacher-console/e2e/README.md`](../teacher-console/e2e/README.md)。
 
 在完成原图核对、记录分类、分层答案和解释图后先批准答案：
 
@@ -302,7 +322,7 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 - 服务单实例：同一知识库不能同时启动两个教师工作台；关闭时若有 Agent 正在运行，终端会等待它安全结束后再释放锁。
 - 自定义 provider 环境：默认只传基础运行变量与该 provider 的认证变量；额外变量通过 `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` 显式加入。
 - 推理位置：Codex/Claude 是本机启动的 CLI，但底层推理可能远程执行；查看 health 中的 `execution_locality` 和 `data_locality`，不要把“本机进程”等同于“数据不离机”。
-- 远程模型 API：默认关闭。必须同时设置 `privacy.allow_remote_agent=true` 与 `TEACHER_CONSOLE_AGENT_ALLOW_REMOTE=true`；密钥可放环境变量，也可通过设置页保存到已忽略的本地模型注册表，禁止写入示例配置、公开站、日志或可提交文件。
+- 远程模型 API：需要在 `student-error-library/config.json` 中设置 `privacy.allow_remote_agent=true`。密钥可放环境变量，也可通过设置页保存到已忽略的本地模型注册表，禁止写入示例配置、公开站、日志或可提交文件。
 - OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求，默认 300 秒；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。
 - OCR：优先 Apple Vision 本地识别；失败时保留可复核条目，不丢弃原图。远程 OCR 必须先取得授权。
 - 视觉复核：边车失败、返回不确定项或无可用边车时生成教师复核单；绝不以 OCR 置信度代替复核。
@@ -342,6 +362,11 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 - 页面显示 Agent 不可用：查看 `/api/agent/providers` 的版本、缺失参数或熔断原因，再执行带 provider 的 `POST /api/agent/providers/probe`；不要只用 `command -v` 判断。若提示模型要求新版 CLI，升级该 CLI，或显式切到结构化 API/另一个 provider。
 - 某个模型灰色不可选：在设置页检查该行状态。未测试、测试失败或修改过 API 地址/真实模型名/API Key 后，模型都会置灰并且默认不调用；重新点击该行“测试”，通过后再保存。
 - API Key 看起来消失：这是正常脱敏。设置页不会回显明文；若显示已保存/已配置或测试通过，说明本地私有注册表仍有 key。只有勾选“清除已保存 Key”并保存才会删除。
+- 教师端 Claude/DeepSeek 与终端 `claude` 使用不同 Key：这是预期行为。工作台只为当前 Gateway 子进程注入所选模型的地址、模型名和认证，不改写 `~/.claude/settings.json`；终端直跑仍读取用户自己的 Claude 配置。分别在设置页和终端环境中排查，不要靠修改全局 Key 修复网页任务。
+- 模型测试通过但任务仍不可用：测试只证明当前配置能连通；Claude/Codex 的测试还证明一次性目录可受限写文件，不代表模型具备所有任务能力。检查模型 `capabilities`、模式默认映射和当前任务类型。完整解析 `analysis.generate` 会主动关闭文件工具，这是设计边界。
+- OpenAI-compatible/LiteLLM 模型不会调用本地 Skill：它只返回结构化候选；后端负责确定性落盘和验证。需要模型主动读多文件或运行 Skill 脚本时，切换到 Claude/Codex 文件 Agent，或为目标 Agent 工具接入 JSON adapter。
+- 修改设置后是否要重启：模型注册表、Codex 路径和代理配置会在每次任务前重读，保存后无需重启；修改 Python/JavaScript、provider adapter 或环境变量后需要重启教师工作台。重启会把当时仍在 queued/running 的作业标记为 `worker_interrupted`，请先等待任务结束或准备重新提交。
+- Codex 测试超时或流中断：打开“设置”，点击“添加 Codex 可视化预设”旁的 Codex 状态框。若页面发现本地代理，点击对应“使用”按钮后再“检测”；若提示认证失效，先在终端执行 `codex login`。通过状态会保存在本机，后续任务自动复用。
 - Agent 作业失败但文件没变化：这是修改前安全失败，可修复 provider 后重试；若 `auto` 还有可用 provider，Gateway 会自动降级。
 - 显示“候选未通过范围或内容校验”：先查看作业结果的 `failure_repair`。`recovered` 表示一次性修复候选已通过；`exhausted` 表示修复一次后仍失败；`not-retried` 会给出安全边界或配置原因。再结合 `unauthorized_changes`、`validation_errors` 排查；canonical 未提升时不要手工伪造成功状态。
 - HTML 双击打不开：先查看静态校验错误，再检查是否含远程 URL、模块脚本或丢失资源。

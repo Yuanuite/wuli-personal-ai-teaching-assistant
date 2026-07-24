@@ -1,5 +1,34 @@
 # 变更记录
 
+## 2026-07-24：Agent 运行时、模型后端与工具边界完成统一
+
+- 明确 `provider` 表示执行运行时而非上游模型厂商：Claude Code 可连接教师配置的兼容后端，但是否开放 Skill/文件工具由任务契约决定。
+- `analysis.generate` 对 Claude/Codex 同样采用无工具结构化输出；答案返修和可视化才使用受限文件 Agent。OpenAI-compatible/LiteLLM 始终不运行本地工具，由后端确定性落盘、校验和构建。
+- README、Gateway、API、LiteLLM 与运维文档补充兼容矩阵、第三方 Agent adapter 接入条件，以及“网页配置和终端配置彼此隔离”等排障说明。
+
+## 2026-07-24：Claude Code Agent 支持每模型后端与密钥隔离
+
+- 模型注册表中的 Claude Code Agent 现在保留 `base_url`、真实模型名和本地 API Key；任务启动时在隔离子进程中覆盖 `ANTHROPIC_BASE_URL`、`ANTHROPIC_AUTH_TOKEN` 与 `ANTHROPIC_API_KEY`，不再静默继承另一模型的全局认证。
+- provider 与模型厂商正式解耦：`claude` 表示使用 Claude Code 运行时，也可连接教师配置的兼容后端；文件工具是否开放由任务契约决定。`openai-compatible` 仍表示只返回结构化候选的单次 API provider。
+- 模型测试摘要新增 Claude 地址与模型名，修改地址、模型或 Key 后旧通过状态自动失效；远程 Claude 兼容后端同样受 `privacy.allow_remote_agent` 门禁约束。
+- 设置页按 provider 显示短说明，并禁用 Codex/JSON Adapter 不使用的 API 字段，避免“模型名是 DeepSeek、实际沿用旧 Claude 全局令牌”的误配。
+- 本机 DeepSeek–Claude Code 配置使用各自保存的 Key 完成无学生数据文件能力实测；该私有配置不进入仓库。低成本模型只保留经基准验证的任务能力，不能仅凭 probe 通过推断它适合完整解析。
+
+## 2026-07-24：教师工作台新增真实 E2E 驱动层
+
+- 新增 3 条 Playwright 浏览器/API 场景，覆盖基础交付、交互可视化生成与复核、公开题图脱敏与本地发布；HTTP、生命周期门禁、仿真构建、文件导出和浏览器交互均走生产实现。
+- E2E 每个场景使用独立临时知识库、输出目录和公开站，并用确定性 adapter 隔离 Agent 外部波动；测试不读取或修改真实题库，也不会由教师日常处理题目自动触发或录制。
+- `evaluator.py` 和 `pipeline_quality_eval.py` 接入测试断言层，分别核对领域评价以及内容、流程、Token、耗时诊断；它们不是 UI/API 驱动器。
+- CI 在 `main` push、Pull Request 和手动触发时运行单元测试与 E2E、保留诊断产物；学生站部署仍只允许测试通过后的 `main` push。
+- Scout 的自动化探针改为统计可执行 E2E 场景，不再把辅助脚本误报为 0 条测试。
+
+## 2026-07-24：Agent 运行环境可在网页自检与修复
+
+- 教师端把 Codex 运行环境收进“添加 Codex 可视化预设”旁的小状态框：默认收起，点击后才显示 CLI、代理与无学生数据的真实探测。
+- 新增本地私有 `agent-runtime.json` 与 Runtime Doctor API；Codex 路径和代理修改后立即作用于 Gateway，无需重启服务，检测结果与配置摘要绑定并可跨页面刷新保留。
+- 网页只允许无凭据的本机回环代理，探测到端口不会自动启用；Gateway 增加 `ALL_PROXY/all_proxy` 安全白名单传递。
+- 新增运行环境、动态重载、代理安全、HTTP 路由和静态 UI 契约测试；浏览器实测 ChatGPT 内置 Codex `0.145.0-alpha.30` 经本机 `127.0.0.1:7890` 真实探测通过。
+
 ## 2026-07-23：Evolve 模块入库、model_registry 提取与质量基础设施就位
 
 - Agent 任务 prompt 大幅瘦身：删除了已被 Gateway `allowed_paths`/`denied_paths` 和领域 validator 结构性兜底的"不要做 X"约束，移除 `project-rules.md` 和 `responsibility-matrix.md` 两个不必要的上下文文件，教师反馈前置到 prompt 最前。
