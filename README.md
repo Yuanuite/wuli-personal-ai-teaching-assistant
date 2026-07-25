@@ -36,6 +36,8 @@ python3 teacher-console/server.py
 
 Gateway 默认依次尝试结构化 adapter、经授权的 OpenAI-compatible API、兼容旧命令、Codex 和 Claude Code；显式配置的结构化 provider 优先于通用 CLI。本机 CLI 不等于本地推理，页面会显示执行与数据位置属性。顶部“模式”支持“自动 / 经济 / 深度 / 自定义”：普通模式按设置页里的默认模型策略匹配任务，自定义模式才展开真实模型下拉框并携带 `model_id` 覆盖自动 provider/model 选择。没有可用 provider 时保留本地请求，不伪造完成；Agent 也不能替教师执行批准或交付。可用无学生数据的主动探测验证真实连通性；运行失败的 provider 会短暂熔断并安全降级。内容校验失败、输出截断或未产生候选时，系统会携带脱敏失败证据在全新隔离区最多纠正一次，越权与 canonical 冲突绝不自动重试。完整协议见 [`docs/agent-gateway.md`](docs/agent-gateway.md) 和 [`docs/failure-intelligence.md`](docs/failure-intelligence.md)。
 
+首次解析使用 `wuli.analysis.v2` 结构化契约：先从排除当前题目的 Knowledge Store 召回可迁移方法，再在私有方法自检中比较可行路径，学生版只保留不超过五步的最短高中主线。历史证据缺失时任务可继续，且永远不能覆盖当前题干、当前答案或教师意见；学生版若使用积分、导数等超纲方法，或缺少“最短主线”，会在提升前被确定性拒绝。
+
 
 ### 学生端访问
 
@@ -72,7 +74,7 @@ python3 -m http.server 8080 -d student-site
 系统会以 `manage-student-error-library` 为总控，连续完成：
 
 ```text
-发现上传 → OCR/去重 → 原图核对 → 分析与历史检索
+发现上传 → OCR/去重 → Agent 整理题干（source.clean）→ 原图核对 → 分析与历史检索
 → 学生版/教师版答案 → 教师答案复核 → [教师按需请求交互可视化与复核] → 校验与入库
 → Markdown/PDF → student-package.zip → delivery-manifest.json
 ```
@@ -105,7 +107,7 @@ python3 -m http.server 8080 -d student-site
 | `TEACHER_CONSOLE_AGENT_API_KEY` | 远程通常需要 | 只从安全环境读取，禁止写入项目 |
 | `TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` | 否 | OpenAI-compatible 单次请求超时，默认 300 秒 |
 | `TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` | 否 | 单个 provider 最长执行时间，默认 300 秒，范围 30–1800 秒 |
-| `TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS` | 否 | 任务失败后同一 (题目, 操作类型) 的冷却时间，默认 300 秒，范围 30–3600 秒；冷却仅阻止同一题目的同类型任务重试，不阻止其他题目使用同一 provider |
+| `TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS` | 否 | 任务失败后同一 (题目, 操作类型) 的冷却时间，默认 30 秒，范围 30–3600 秒；冷却仅阻止同一题目的同类型任务重试，不阻止其他题目使用同一 provider |
 | `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` | 否 | 自定义 provider 额外允许继承的环境变量名，逗号分隔 |
 
 可插拔模型注册表位于 `student-error-library/config/model-registry.json`，也可在教师端右上角“设置”界面编辑；可从 [`docs/model-registry.example.json`](docs/model-registry.example.json) 复制。“添加 Codex 可视化预设”旁的小状态框可检测 Codex CLI、选择教师确认的本机代理并执行无学生数据的真实探测；运行配置写入同样被忽略的 `student-error-library/config/agent-runtime.json`，保存后无需重启。页面可为 OpenAI-compatible API 或 Claude Code Agent 模型分别保存地址、真实模型名和 API Key；Claude Code 运行时在文件任务中可使用受限 Skill/文件工具，但完整解析 `analysis.generate` 被刻意切换为无工具结构化输出，再由程序确定性生成 Markdown 与 SVG。每次 Claude 子进程都会覆盖所选模型的 `ANTHROPIC_BASE_URL` 与认证变量，避免继承另一模型的全局令牌；这不会改写用户的 `~/.claude/settings.json`，所以在终端直接运行 `claude` 仍使用终端自己的配置。后端不会把明文 key 回显给页面，提交 GitHub 前也不应取消忽略规则。每个可选模型必须先在设置页点“测试”并通过不含学生数据的连通探测，才会被自动/默认路由调用；未测试或测试失败的模型在页面中置灰。推荐用本机 LiteLLM Proxy 统一 Qwen/GPT/DeepSeek/本地模型等上游供应商，再在悟理中注册 `wuli-economy`、`wuli-standard`、`wuli-expert` 三个稳定别名；配置见 [`docs/litellm-gateway.md`](docs/litellm-gateway.md)。远程地址仍必须满足项目隐私门禁 `privacy.allow_remote_agent=true`。

@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="520" viewBox="0 0 1000 520" role="img" aria-labelledby="title desc">
+  <title id="title">两种材料圆环的等效电路</title>
+  <desc id="desc">先把四分之一圆弧和四分之三圆弧分别等效为感应电动势源与内阻，再由两条支路共同端点 A、C 求端电压。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/>
+    </marker>
+    <marker id="arrow-slate" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .sans { font-family: "Noto Sans CJK SC", "Microsoft YaHei", Arial, sans-serif; fill: #0f172a; }
+      .math { font-family: "Times New Roman", serif; fill: #0f172a; }
+      .wire { fill: none; stroke: #334155; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="520" rx="22" fill="#f8fafc"/>
+  <text class="sans" x="500" y="38" text-anchor="middle" font-size="24" font-weight="700">先把圆环抽象成两条含源支路</text>
+
+  <!-- 左：实际圆环，仅保留映射所需信息 -->
+  <rect x="24" y="62" width="356" height="414" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text class="sans" x="202" y="92" text-anchor="middle" font-size="18" font-weight="700">实际对象</text>
+
+  <circle cx="202" cy="245" r="116" fill="#eff6ff" stroke="#dbeafe" stroke-width="2"/>
+  <g stroke="#64748b" stroke-width="2">
+    <path d="M145 176l10 10m0-10l-10 10M201 160l10 10m0-10l-10 10M255 183l10 10m0-10l-10 10"/>
+    <path d="M132 238l10 10m0-10l-10 10M197 230l10 10m0-10l-10 10M260 242l10 10m0-10l-10 10"/>
+    <path d="M155 300l10 10m0-10l-10 10M220 312l10 10m0-10l-10 10"/>
+  </g>
+  <path d="M318 245 A116 116 0 0 0 202 129" fill="none" stroke="#ea580c" stroke-width="13" stroke-linecap="round"/>
+  <path d="M202 129 A116 116 0 1 0 318 245" fill="none" stroke="#2563eb" stroke-width="13" stroke-linecap="round"/>
+
+  <circle cx="318" cy="245" r="6" fill="#0f172a"/>
+  <circle cx="202" cy="129" r="6" fill="#0f172a"/>
+  <text class="sans" x="329" y="251" font-size="19" font-weight="700">A</text>
+  <text class="sans" x="188" y="114" font-size="19" font-weight="700">C</text>
+
+  <path d="M181 379 A132 132 0 0 0 326 286" fill="none" stroke="#475569" stroke-width="3" marker-end="url(#arrow-slate)"/>
+  <text class="sans" x="278" y="375" font-size="16" font-weight="700">I 逆时针</text>
+  <text class="sans" x="202" y="410" text-anchor="middle" font-size="15" fill="#475569">B 向里且增强</text>
+
+  <rect x="55" y="430" width="294" height="32" rx="8" fill="#fff7ed"/>
+  <text class="sans" x="202" y="452" text-anchor="middle" font-size="15" font-weight="700" fill="#9a3412">短弧 AMC：ℰ/4，电阻 r</text>
+  <text class="sans" x="202" y="326" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">长弧 ANC：3ℰ/4，电阻 r</text>
+
+  <!-- 映射箭头 -->
+  <path d="M395 264 H438" fill="none" stroke="#64748b" stroke-width="3" marker-end="url(#arrow-slate)"/>
+  <text class="sans" x="416" y="247" text-anchor="middle" font-size="14" fill="#475569">等效</text>
+
+  <!-- 右：两端口等效电路 -->
+  <rect x="452" y="62" width="524" height="414" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text class="sans" x="714" y="92" text-anchor="middle" font-size="18" font-weight="700">A、C 两端的等效电路</text>
+
+  <circle cx="504" cy="256" r="7" fill="#0f172a"/>
+  <circle cx="926" cy="256" r="7" fill="#0f172a"/>
+  <text class="sans" x="488" y="247" font-size="20" font-weight="700">A</text>
+  <text class="sans" x="936" y="247" font-size="20" font-weight="700">C</text>
+
+  <!-- 上支路：短弧 A -> C -->
+  <path class="wire" d="M504 256 V154 H585"/>
+  <path class="wire" d="M631 154 H694"/>
+  <path class="wire" d="M790 154 H926 V256"/>
+  <line x1="598" y1="134" x2="598" y2="174" stroke="#ea580c" stroke-width="3"/>
+  <line x1="617" y1="126" x2="617" y2="182" stroke="#ea580c" stroke-width="5"/>
+  <text class="sans" x="607" y="116" text-anchor="middle" font-size="14" font-weight="700" fill="#c2410c">−　+</text>
+  <text class="math" x="607" y="207" text-anchor="middle" font-size="19" fill="#c2410c">ℰ₁ = ℰ/4</text>
+  <polyline points="694,154 706,136 726,172 746,136 766,172 790,154" fill="none" stroke="#ea580c" stroke-width="3"/>
+  <text class="math" x="742" y="121" text-anchor="middle" font-size="20">r</text>
+  <text class="sans" x="714" y="224" text-anchor="middle" font-size="15" font-weight="700" fill="#c2410c">短弧 AMC</text>
+
+  <!-- 下支路：长弧，源方向与 A->C 相反 -->
+  <path class="wire" d="M504 256 V358 H585"/>
+  <path class="wire" d="M631 358 H694"/>
+  <path class="wire" d="M790 358 H926 V256"/>
+  <line x1="598" y1="330" x2="598" y2="386" stroke="#2563eb" stroke-width="5"/>
+  <line x1="617" y1="338" x2="617" y2="378" stroke="#2563eb" stroke-width="3"/>
+  <text class="sans" x="607" y="322" text-anchor="middle" font-size="14" font-weight="700" fill="#1d4ed8">+　−</text>
+  <text class="math" x="607" y="414" text-anchor="middle" font-size="19" fill="#1d4ed8">ℰ₂ = 3ℰ/4</text>
+  <polyline points="694,358 706,340 726,376 746,340 766,376 790,358" fill="none" stroke="#2563eb" stroke-width="3"/>
+  <text class="math" x="742" y="325" text-anchor="middle" font-size="20">r</text>
+  <text class="sans" x="714" y="437" text-anchor="middle" font-size="15" font-weight="700" fill="#1d4ed8">长弧 ANC</text>
+
+  <!-- 电流与电压定义 -->
+  <path d="M536 133 H684" fill="none" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <text class="math" x="547" y="121" font-size="18" fill="#c2410c">I</text>
+  <path d="M894 382 H814" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text class="math" x="880" y="407" font-size="18" fill="#1d4ed8">I</text>
+
+  <rect x="512" y="257" width="405" height="58" rx="10" fill="#f1f5f9"/>
+  <text class="math" x="714" y="281" text-anchor="middle" font-size="18">I = (ℰ₁ + ℰ₂)/(2r) = ℰ/(2r)</text>
+  <text class="math" x="714" y="306" text-anchor="middle" font-size="19" font-weight="700">U<tspan baseline-shift="sub" font-size="13">AC</tspan><tspan baseline-shift="baseline"> = Ir − ℰ₁ = ℰ/4</tspan></text>
+</svg>

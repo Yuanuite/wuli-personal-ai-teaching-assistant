@@ -55,7 +55,13 @@ class RagEffectivenessReportTest(unittest.TestCase):
             result={"evidence_context": {"status": "ready", "reference_count": 2}},
             evaluation={"scores": {"correctness": 80}},
         )
-        self.append("answer.approve", "teacher", "review", "approved")
+        self.append(
+            "answer.approve",
+            "teacher",
+            "review",
+            "approved",
+            evaluation={"scores": {"process_compliance": 92}},
+        )
         self.append(
             "answer.revise",
             "agent",
@@ -82,6 +88,7 @@ class RagEffectivenessReportTest(unittest.TestCase):
                     "started_at": "2026-07-22T10:00:10+08:00",
                     "completed_at": "2026-07-22T10:01:10+08:00",
                     "result": result,
+                    "outcome": {"usage": {"measurement": "provider-reported", "total_tokens": 100}},
                 },
             )
         report = reporter.build_report(self.library, self.jobs, min_samples=1)
@@ -91,7 +98,7 @@ class RagEffectivenessReportTest(unittest.TestCase):
         self.assertEqual(report["comparable_tasks"], ["answer.revise"])
         rag = report["teaching_outcomes"]["answer.revise:retrieved"]
         self.assertEqual(rag["teacher_approval_rate"], 1.0)
-        self.assertEqual(rag["avg_evaluator_scores"]["correctness"], 80.0)
+        self.assertEqual(rag["avg_evaluator_scores"]["process_compliance"], 92.0)
 
     def test_recorded_report_becomes_knowledge_store_evolve_observation(self):
         report = reporter.build_report(self.library, self.jobs, min_samples=2)

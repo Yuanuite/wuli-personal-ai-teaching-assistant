@@ -130,6 +130,11 @@ class SlowLoopReportTest(unittest.TestCase):
             self.assertTrue(slow_loop._teacher_strategy_confirmed(library))
             second = dict(report)
             second["generated_at"] = "later"
+            second["observation_window"] = {
+                "start": "2026-07-29T00:00:00+08:00",
+                "end": "2026-08-04T23:59:59+08:00",
+                "input_fingerprint": "sha256:second-period",
+            }
             slow_loop.record_report(library, second)
             self.assertFalse(slow_loop._teacher_strategy_confirmed(library))
 

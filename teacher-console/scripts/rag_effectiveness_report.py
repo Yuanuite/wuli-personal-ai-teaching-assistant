@@ -103,8 +103,8 @@ def operational_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
         runtimes = [value for value in runtimes if value is not None]
         usage_values = []
         for item in items:
-            payload = item.get("result") if isinstance(item.get("result"), dict) else {}
-            usage = payload.get("usage") if isinstance(payload.get("usage"), dict) else {}
+            outcome = item.get("outcome") if isinstance(item.get("outcome"), dict) else {}
+            usage = outcome.get("usage") if isinstance(outcome.get("usage"), dict) else {}
             value = usage.get("total_tokens")
             if isinstance(value, int) and not isinstance(value, bool):
                 usage_values.append(float(value))
@@ -147,13 +147,29 @@ def teaching_trials(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 (
                     item
                     for item in window
-                    if item.get("task_type") == APPROVAL_TASK[task_type] and item.get("raw_status") == "approved"
+                    if item.get("task_type") == APPROVAL_TASK[task_type]
+                    and item.get("raw_status") == "approved"
+                    and (
+                        not item.get("links", {}).get("candidate_event_id")
+                        or item.get("links", {}).get("candidate_event_id") == event.get("event_id")
+                    )
                 ),
                 None,
             )
             rework = sum(1 for item in window if item.get("task_type") in REWORK_TASKS[task_type])
-            evaluation = event.get("evaluation") if isinstance(event.get("evaluation"), dict) else {}
+            if superseded:
+                rework += 1
+            evaluation = (
+                approval.get("evaluation")
+                if approval and isinstance(approval.get("evaluation"), dict)
+                else {}
+            )
             scores = evaluation.get("scores") if isinstance(evaluation.get("scores"), dict) else {}
+            adoption = (
+                approval.get("feedback", {}).get("adoption", {})
+                if approval and isinstance(approval.get("feedback"), dict)
+                else {}
+            )
             candidate_completed = event.get("raw_status") == "completed"
             trials.append({
                 "entry_id": str(event.get("entry_id", "")),
@@ -165,6 +181,8 @@ def teaching_trials(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "pending": candidate_completed and approval is None and not superseded,
                 "superseded": candidate_completed and approval is None and superseded,
                 "rework_events": rework,
+                "adoption_level": adoption.get("level", ""),
+                "teacher_changed_lines": int(adoption.get("evidence", {}).get("changed_lines", 0) or 0),
                 "seconds_to_approval": _seconds(event.get("created_at"), approval.get("created_at"))
                 if approval
                 else None,
@@ -200,6 +218,17 @@ def teaching_summary(trials: list[dict[str, Any]], min_samples: int) -> dict[str
             "pending": sum(item["pending"] for item in items),
             "superseded": sum(item["superseded"] for item in items),
             "rework_events": sum(item["rework_events"] for item in items),
+            "rework_rate": round(sum(item["rework_events"] > 0 for item in items) / len(items), 4),
+            "first_pass_acceptance_rate": round(
+                sum(item["approved"] and item["rework_events"] == 0 for item in items) / len(items), 4
+            ),
+            "avg_teacher_changed_lines": _average(
+                [float(item["teacher_changed_lines"]) for item in items if item["approved"]]
+            ),
+            "adoption_levels": {
+                level: sum(item["adoption_level"] == level for item in items)
+                for level in ("redo", "major-revision", "minor-revision", "as-is")
+            },
             "avg_seconds_to_approval": _average(approval_times),
             "avg_evaluator_scores": {
                 dimension: _average([item["scores"][dimension] for item in items if dimension in item["scores"]])

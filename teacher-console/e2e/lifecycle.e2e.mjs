@@ -88,6 +88,9 @@ try {
 
   await page.locator("#run-analysis").click();
   await waitForState(entryId, "needs-answer-review");
+  await page.waitForFunction(() =>
+    document.querySelector("#answer-editor")?.value.includes("## 答案速览"),
+  );
   await page.locator("#approve-answer").click();
   await waitForState(entryId, "ready-to-finish");
 

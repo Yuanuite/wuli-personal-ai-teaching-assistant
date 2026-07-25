@@ -18,6 +18,7 @@ import candidate_archive
 import evaluator
 import kb
 import source_review
+import teacher_feedback
 
 SKILL_DIR = Path(__file__).resolve().parent.parent
 BUILD_SKILL = SKILL_DIR.parent / "build-physics-simulator"
@@ -552,6 +553,9 @@ def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -
     write_json(entry / "pipeline.json", pipeline)
     evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
     evaluation_summary = _evaluation_summary(evaluation)
+    source_event = candidate_archive.latest_event(
+        entry, task_types={"visualization.model"}, event_type="agent-result"
+    )
     archive = _archive_event(
         root,
         entry,
@@ -563,6 +567,8 @@ def approve_visualization(root: Path, entry_id: str, reviewer: str, note: str) -
         request={"reviewer": reviewer, "note": note},
         result={"visualization_review": report},
         evaluation=evaluation_summary,
+        feedback={"categories": teacher_feedback.feedback_categories(note, changed_files=["physics-model.json"])},
+        links={"candidate_event_id": source_event.get("event_id")} if source_event else {},
     )
     return {
         "status": "approved",
@@ -581,6 +587,12 @@ def approve_answer(root: Path, entry_id: str, reviewer: str, note: str, *, agent
     if errors:
         return {"status": "blocked", "errors": errors, "state": pipeline_state(entry)}
     reviewed_at = datetime.now().astimezone().isoformat(timespec="seconds")
+    prior_events = candidate_archive.read_events(entry)
+    revision_requests = sum(1 for event in prior_events if event.get("task_type") == "answer.revision-request")
+    adoption = teacher_feedback.infer_adoption(agent_diff, revision_requests=revision_requests)
+    source_event = candidate_archive.latest_event(
+        entry, task_types={"analysis.generate", "answer.revise"}, event_type="agent-result"
+    )
     report = {
         "schema_version": 1,
         "entry_id": entry_id,
@@ -589,6 +601,7 @@ def approve_answer(root: Path, entry_id: str, reviewer: str, note: str, *, agent
         "reviewed_at": reviewed_at,
         "answer_digest": answer_digest(entry),
         "note": note.strip(),
+        "adoption": adoption,
     }
     if agent_diff:
         report["agent_diff"] = agent_diff
@@ -616,6 +629,13 @@ def approve_answer(root: Path, entry_id: str, reviewer: str, note: str, *, agent
         request={"reviewer": reviewer, "note": note},
         result={"answer_review": report},
         evaluation=evaluation_summary,
+        feedback={
+            "categories": teacher_feedback.feedback_categories(
+                note, changed_files=list((agent_diff or {}).get("changed_files", []))
+            ),
+            "adoption": adoption,
+        },
+        links={"candidate_event_id": source_event.get("event_id")} if source_event else {},
     )
     return {
         "status": "approved",
@@ -654,6 +674,9 @@ def request_answer_revision(root: Path, entry_id: str, reviewer: str, note: str)
     write_json(entry / "pipeline.json", pipeline)
     evaluation = evaluator.evaluate_entry(root, entry_id, write=True)
     evaluation_summary = _evaluation_summary(evaluation)
+    source_event = candidate_archive.latest_event(
+        entry, task_types={"analysis.generate", "answer.revise"}, event_type="agent-result"
+    )
     archive = _archive_event(
         root,
         entry,
@@ -665,6 +688,8 @@ def request_answer_revision(root: Path, entry_id: str, reviewer: str, note: str)
         request={"reviewer": reviewer, "note": note},
         result={"answer_review": report},
         evaluation=evaluation_summary,
+        feedback={"categories": teacher_feedback.feedback_categories(note)},
+        links={"candidate_event_id": source_event.get("event_id")} if source_event else {},
     )
     return {
         "status": "revision-requested",

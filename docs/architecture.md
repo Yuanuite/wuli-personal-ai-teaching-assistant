@@ -78,8 +78,9 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 
 - `server.py` 只提交任务类型、教师意见、读写集合和隐私策略，不保存具体 CLI/API 参数；
 - provider 在系统临时目录工作，canonical entry 不作为工作目录；候选区按输入白名单构造，原始题图、批准记录和无关内部文件不被 Gateway 复制或写入 prompt；CLI 运行时的额外只读边界仍由其自身沙箱决定，严格披露边界应使用结构化 adapter；
-- 标准解析使用 `wuli.analysis.v1` 结构化契约：模型不操作文件，只输出一次学生正文、教师审计增量、教学元数据和图示节点；本地确定性模块合成三份答案与解释 SVG，阶段检查点可避免 provider 成功后的重复推理；
-- `answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
+- 标准解析使用 `wuli.analysis.v2` 结构化契约：模型不操作文件，只输出一次学生正文、教师审计增量、私有方法自检、教学元数据和图示节点；首次解析会注入裁剪后的相似题方法证据，学生答案必须采用最短高中主线，本地确定性模块合成三份答案与解释 SVG；
+- 每次 Agent 请求归一化为 `AgentRequestOutcome`，统一记录阶段、provider、尝试次数、错误分类、回退状态、隐私安全摘要与可用的 token/时延指标，供作业结果、候选档案和离线评测复用；
+- `analysis.generate`、`answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；证据构造使用确定性的字符预算、逐段裁剪和内容哈希，检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
 - `.agent-context/` 按任务和成本档位提供最小只读规则：答案任务以答案模板与职责边界为主，深度档才附完整知识库 Skill；可视化任务附仿真 Skill 与模型 Schema；
 - 候选修改仅限任务白名单，答案候选由知识库验证器检查，可视化候选由仿真模型构建器检查；
 - canonical 条目在排队期间变化、候选越权、删除文件或验证失败时均不提升；
@@ -97,7 +98,7 @@ Gateway 不拥有 OCR、答案或物理语义，也不得调用任何 `approve-*
 
 ### 学生端公开边界
 
-`student-site/` 是独立、只读、纯静态的发布目标，不是教师工作台的公开模式。数据只能单向流动：原始题图先生成不覆盖原文件的 WebP 公开副本，裁剪、遮挡、源文件摘要和教师确认记录在 `publication-images.json`；源图或副本变化后确认自动失效。已交付条目再生成 `publication-draft/`，安全扫描通过且教师查看预览、勾选隐私确认后，才把白名单产物复制到公开站。公开 ID 使用不可逆摘要，不暴露内部条目 ID；原始上传、教师版解析、流程记录、复核记录、模型 JSON、交付清单、私有交付 PDF 和绝对路径一律禁止进入公开目录。公开页面只读取相对路径的 `catalog.json`、Markdown、题目阅读页中的公开版 `带答案错题.pdf`、公开题图、答案图片及已批准仿真，不调用教师端 API。公开 PDF 从脱敏后的 `content.md` 和公开题图重新生成：优先 `pandoc+xelatex`，失败时降级为 `reportlab`，并保留 Markdown 中的 LaTeX 编码；若两条链路都不可用则标记 `skipped`，Markdown 页面仍可发布且不显示无效下载入口。GitHub 推送是明确的人工后续操作。
+`student-site/` 是独立、只读、纯静态的发布目标，不是教师工作台的公开模式。数据只能单向流动：原始题图先生成不覆盖原文件的 WebP 公开副本，裁剪、遮挡、源文件摘要和教师确认记录在 `publication-images.json`；源图或副本变化后确认自动失效。已交付条目再生成 `publication-draft/`，安全扫描通过且教师查看预览、勾选隐私确认后，才把白名单产物复制到公开站。公开 ID 使用不可逆摘要，不暴露内部条目 ID；原始上传、教师版解析、流程记录、复核记录、模型 JSON、交付清单、私有交付 PDF 和绝对路径一律禁止进入公开目录。公开页面只读取相对路径的 `catalog.json`、Markdown、题目阅读页中的公开版 `带答案错题.pdf`、公开题图、答案图片及已批准仿真，不调用教师端 API；目录中的 `uploaded_at` 只保留条目首次创建日期，不暴露精确时间或时区，用于学生端新旧排序，重新发布不会改变该顺序。公开 PDF 从脱敏后的 `content.md` 和公开题图重新生成：优先 `pandoc+xelatex`，失败时降级为 `reportlab`，并保留 Markdown 中的 LaTeX 编码；若两条链路都不可用则标记 `skipped`，Markdown 页面仍可发布且不显示无效下载入口。GitHub 推送是明确的人工后续操作。
 
 教师工作台允许在解析复核阶段直接编辑学生版或教师版 Markdown。保存教师版时同步 `solution.md`，保存任一答案都会撤销旧批准并重建检索。如果条目包含 `physics-model.json`，保存会把 `source.answer_render_mode` 标记为 `manual`；之后 `finish` 尊重教师手工版本，不再静默用模型重新覆盖 Markdown。需要恢复模型生成时，应显式重新运行答案渲染并把该字段改回 `model`。
 
@@ -149,7 +150,7 @@ Playwright UI 操作 → 真实本地 HTTP/API → 生产生命周期与构建�
 
 机器结构由 `.claude/skills/build-physics-simulator/references/physics-model.schema.json` 校验；跨字段物理关系由 `validate_physics_model.py` 校验。两层都通过后才能构建仿真。
 
-当前确定性仿真器支持四类 `model_type`：同心圆多区场、反向圆形磁场、电场入有界磁场，以及平面分界磁场多粒子轨迹。新增类型必须同时补 renderer、模型校验、Skill 文档和浏览器检查；不得只让 Agent 自创 `model_type`。
+当前确定性仿真器支持六类 `model_type`：同心圆多区场、反向圆形磁场、电场入有界磁场、平面分界磁场多粒子轨迹，以及任意二维或三维分段电/磁场轨迹。三维类型只用于纸面外位移、斜置磁场、螺旋线、圆筒收集面或空间相对运动等第三坐标改变物理结论的题目；不能把二维题强行做成立体装饰。新增类型必须同时补 renderer、模型校验、Skill 文档和浏览器检查；不得只让 Agent 自创 `model_type`。
 
 ## 验证与交付
 
@@ -168,7 +169,7 @@ Playwright UI 操作 → 真实本地 HTTP/API → 生产生命周期与构建�
 
 关键教师动作、Agent 任务、确定性构建和交付动作同时追加到 `candidate-archive.jsonl`，记录任务类型、执行者、结果、变更文件、失败原因和 Evaluator 摘要。Archive 不保存密钥、原图或完整候选内容，也不改变审批状态；它为后续题库 RAG、AI 审计 RAG 和慢循环复盘提供“成败历史”。细节见 [`candidate-archive.md`](candidate-archive.md)。
 
-`student-error-library/indexes/wuli-memory.db` 是从条目 Markdown/JSON、`evaluation.json` 和 Candidate Archive 重建出的本地 SQLite Knowledge Store。它启用 WAL 与 FTS5（不可用时降级扫描），把题干、答案、标签、评价摘要和最近候选事件打包成可引用的 evidence pack，供后续题库 RAG、AI 审计和 Evolve 候选比较使用。该数据库是派生缓存，不是审批或教学内容真源；`kb.py rebuild` 会顺带刷新它，失败时不阻断原生命周期。细节见 [`knowledge-store.md`](knowledge-store.md)。
+`student-error-library/indexes/wuli-memory.db` 是从条目 Markdown/JSON、`evaluation.json` 和 Candidate Archive 重建出的本地 SQLite Knowledge Store。它启用 WAL 与 FTS5（不可用时降级扫描），把题干、答案、标签、评价摘要和近期候选事件打包成可引用的 evidence pack，供后续题库 RAG、AI 审计和 Evolve 候选比较使用。该数据库是派生缓存，不是审批或教学内容真源；`kb.py rebuild` 会顺带刷新它，失败时不阻断原生命周期。细节见 [`knowledge-store.md`](knowledge-store.md)。
 
 若还要发布学生端，则在以上交付完成后执行公开草稿生成、安全扫描、教师预览与隐私确认；它不改变 `delivered` 状态，也不替代本地交付 manifest。
 

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+  <title id="title">粒子分段运动轨迹与接收器命中示意图</title>
+  <desc id="desc">上图为零时刻释放粒子的三段电场运动和三段半圆磁场运动，下图为二分之一个时间单位释放的粒子在九个二分之一个时间单位命中接收器的轨迹。</desc>
+  <defs>
+    <marker id="axisArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#475569"/>
+    </marker>
+    <marker id="blueArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="redArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#dc2626"/>
+    </marker>
+    <style>
+      text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif;fill:#0f172a}
+      .small{font-size:14px}.label{font-size:16px;font-weight:600}.panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}
+      .axis{stroke:#475569;stroke-width:1.6}.guide{stroke:#94a3b8;stroke-width:1;stroke-dasharray:5 5}
+      .electric{stroke:#f59e0b;stroke-width:5;fill:none;stroke-linecap:round}
+      .magnetic{stroke:#2563eb;stroke-width:5;fill:none;stroke-linecap:round}
+      .capture{stroke:#dc2626;stroke-width:5;fill:none;stroke-linecap:round}
+      .point{fill:#0f172a}.key{fill:#dc2626}
+    </style>
+  </defs>
+  <rect width="960" height="560" rx="18" fill="#f8fafc"/>
+  <text x="480" y="34" text-anchor="middle" font-size="22" font-weight="700">交替电、磁场中的粒子轨迹（关键坐标用 r 表示）</text>
+  <text x="480" y="57" text-anchor="middle" class="small">橙色：电场阶段　蓝色：磁场半圆　红色：被接收粒子的轨迹</text>
+
+  <!-- t=0 particle -->
+  <rect class="panel" x="28" y="76" width="904" height="220" rx="14"/>
+  <text x="48" y="102" class="label">① t=0 释放的粒子</text>
+  <line class="axis" x1="70" y1="266" x2="890" y2="266" marker-end="url(#axisArrow)"/>
+  <line class="axis" x1="70" y1="278" x2="70" y2="112" marker-end="url(#axisArrow)"/>
+  <text x="898" y="271" class="small">x</text><text x="61" y="111" class="small">y</text>
+  <!-- scale: 90 px/r horizontally, 48 px/r vertically; origin (100,260) -->
+  <path class="electric" d="M100 260 Q100 222 100 185"/>
+  <path class="magnetic" d="M100 185 C100 132 280 132 280 185"/>
+  <path class="electric" d="M280 185 Q280 205 280 185"/>
+  <path class="magnetic" d="M280 185 C280 238 460 238 460 185"/>
+  <path class="electric" d="M460 185 Q460 146 460 109"/>
+  <path class="magnetic" d="M460 109 C460 75 820 75 820 109"/>
+  <circle class="point" cx="100" cy="260" r="4"/><circle class="point" cx="100" cy="185" r="4"/>
+  <circle class="point" cx="280" cy="185" r="4"/><circle class="point" cx="460" cy="185" r="4"/>
+  <circle class="point" cx="460" cy="109" r="4"/>
+  <text x="86" y="280" class="small">O</text>
+  <text x="82" y="178" class="small">τ</text>
+  <text x="266" y="178" class="small">2τ</text>
+  <text x="444" y="178" class="small">4τ</text>
+  <text x="444" y="102" class="small">5τ</text>
+  <text x="812" y="102" class="small">6τ</text>
+  <line class="guide" x1="280" y1="185" x2="280" y2="266"/>
+  <line class="guide" x1="460" y1="109" x2="460" y2="266"/>
+  <text x="273" y="283" class="small">2r</text><text x="453" y="283" class="small">4r</text>
+  <path d="M145 149 L174 149" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blueArrow)"/>
+  <text x="185" y="151" class="small">磁场中顺时针转动</text>
+
+  <!-- captured particle -->
+  <rect class="panel" x="28" y="314" width="904" height="218" rx="14"/>
+  <text x="48" y="340" class="label">② τ/2 释放的粒子（命中轨迹）</text>
+  <line class="axis" x1="70" y1="505" x2="620" y2="505" marker-end="url(#axisArrow)"/>
+  <line class="axis" x1="70" y1="517" x2="70" y2="352" marker-end="url(#axisArrow)"/>
+  <text x="628" y="510" class="small">x</text><text x="61" y="354" class="small">y</text>
+  <!-- origin (100,500), same scales -->
+  <path class="capture" d="M100 500 Q100 491 100 481"/>
+  <path class="capture" d="M100 481 C100 454 190 454 190 481"/>
+  <path class="capture" d="M190 481 Q190 443 190 406"/>
+  <path class="capture" d="M190 406 C190 327 460 327 460 406"/>
+  <path class="capture" d="M460 406 Q460 436 460 462"/>
+  <circle class="point" cx="100" cy="500" r="4"/><circle class="point" cx="190" cy="481" r="4"/>
+  <circle class="point" cx="460" cy="406" r="4"/><circle class="key" cx="460" cy="462" r="7"/>
+  <line class="guide" x1="460" y1="462" x2="460" y2="505"/>
+  <line class="guide" x1="70" y1="462" x2="460" y2="462"/>
+  <text x="86" y="520" class="small">O</text>
+  <text x="176" y="476" class="small">2τ</text>
+  <text x="445" y="397" class="small">4τ</text>
+  <text x="470" y="458" class="label" fill="#dc2626">M(4r, πr/4)</text>
+  <text x="445" y="522" class="small">4r</text>
+  <text x="75" y="456" class="small">πr/4</text>
+  <path d="M488 430 L468 453" stroke="#dc2626" stroke-width="2" marker-end="url(#redArrow)"/>
+  <text x="500" y="423" class="label" fill="#dc2626">9τ/2 捕获</text>
+  <rect x="680" y="370" width="214" height="116" rx="10" fill="#fff7ed" stroke="#fb923c"/>
+  <text x="787" y="396" text-anchor="middle" class="label">关键尺度</text>
+  <text x="699" y="425" class="small">τ = πm/(qB₀)</text>
+  <text x="699" y="450" class="small">V = πE₀/B₀</text>
+  <text x="699" y="475" class="small">r = V/ω = πE₀m/(qB₀²)</text>
+</svg>

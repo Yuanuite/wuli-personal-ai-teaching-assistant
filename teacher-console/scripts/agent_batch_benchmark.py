@@ -92,6 +92,13 @@ def result_value(record: dict[str, Any], key: str, default: Any = "") -> Any:
 
 
 def usage_total(record: dict[str, Any]) -> int:
+    outcome = record.get("outcome") if isinstance(record.get("outcome"), dict) else {}
+    outcome_usage = outcome.get("usage") if isinstance(outcome.get("usage"), dict) else {}
+    try:
+        if outcome_usage.get("measurement") == "provider-reported":
+            return int(outcome_usage.get("total_tokens") or 0)
+    except (TypeError, ValueError):
+        pass
     usage = result_value(record, "usage", {})
     if not isinstance(usage, dict):
         return 0
@@ -102,6 +109,9 @@ def usage_total(record: dict[str, Any]) -> int:
 
 
 def failure_type(record: dict[str, Any]) -> str:
+    outcome = record.get("outcome") if isinstance(record.get("outcome"), dict) else {}
+    if isinstance(outcome.get("failure_type"), str) and outcome["failure_type"]:
+        return outcome["failure_type"]
     result = record.get("result") if isinstance(record.get("result"), dict) else {}
     if isinstance(result.get("failure_type"), str) and result["failure_type"]:
         return result["failure_type"]

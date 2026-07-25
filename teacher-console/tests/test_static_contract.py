@@ -73,8 +73,14 @@ class StaticWorkbenchContractTest(unittest.TestCase):
     def test_review_navigation_and_feedback_contract(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")
         script = (STATIC / "app.js").read_text(encoding="utf-8")
+        css = (STATIC / "styles.css").read_text(encoding="utf-8")
         self.assertIn("交给大模型修改", html)
         self.assertIn("解释图", html)
+        self.assertIn('<textarea id="answer-note"', html)
+        self.assertIn('grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "approval"', css)
+        self.assertIn(".approval-box { grid-area: approval; }", css)
+        self.assertIn("overflow-y: auto", css)
+        self.assertIn("max-height:min(38vh,320px)", css)
         self.assertIn('setTimeout(() => element.classList.add("hidden"), 1700)', script)
         self.assertIn('activateTab("answer", { force: true })', script)
         self.assertIn('activateTab("visualization", { force: true })', script)
@@ -154,17 +160,32 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("validation_errors", script)
         self.assertIn("required_env", script)
 
-    def test_planar_magnetic_renderer_is_registered(self):
+    def test_particle_renderers_are_registered(self):
         simulator = ROOT / ".claude" / "skills" / "build-physics-simulator"
         builder = (simulator / "scripts" / "build_simulator.py").read_text(encoding="utf-8")
         validator = (simulator / "scripts" / "validate_physics_model.py").read_text(encoding="utf-8")
         skill = (simulator / "SKILL.md").read_text(encoding="utf-8")
-        template = simulator / "assets" / "planar-magnetic-template.html"
-        self.assertTrue(template.exists())
+        server = (ROOT / "teacher-console" / "server.py").read_text(encoding="utf-8")
+        planar_template = simulator / "assets" / "planar-magnetic-template.html"
+        piecewise_template = simulator / "assets" / "piecewise-particle-2d-template.html"
+        piecewise_3d_template = simulator / "assets" / "piecewise-particle-3d-template.html"
+        self.assertTrue(planar_template.exists())
+        self.assertTrue(piecewise_template.exists())
+        self.assertTrue(piecewise_3d_template.exists())
         self.assertIn('"planar-magnetic-multi-particle"', builder)
         self.assertIn("planar-magnetic-template.html", builder)
         self.assertIn('model_type == "planar-magnetic-multi-particle"', validator)
         self.assertIn("planar-magnetic-multi-particle", skill)
+        self.assertIn('"piecewise-field-particle-2d"', builder)
+        self.assertIn("piecewise-particle-2d-template.html", builder)
+        self.assertIn('model_type == "piecewise-field-particle-2d"', validator)
+        self.assertIn("piecewise-field-particle-2d", skill)
+        self.assertIn('"piecewise-field-particle-2d"', server)
+        self.assertIn('"piecewise-field-particle-3d"', builder)
+        self.assertIn("piecewise-particle-3d-template.html", builder)
+        self.assertIn('model_type == "piecewise-field-particle-3d"', validator)
+        self.assertIn("piecewise-field-particle-3d", skill)
+        self.assertIn('"piecewise-field-particle-3d"', server)
 
     def test_publication_gate_and_static_student_site_contract(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")
@@ -194,7 +215,37 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("悟理学习站", student_index)
         self.assertIn("悟理学习站", student_html)
         self.assertIn("悟理学习站", student_script)
+        self.assertIn('id="theme-toggle"', student_index)
+        self.assertIn('id="theme-toggle"', student_html)
+        self.assertIn('localStorage.getItem("wuli-theme")', student_script)
+        self.assertIn(':root[data-theme="dark"]', (student / "assets" / "site.css").read_text(encoding="utf-8"))
         self.assertIn('fetch("catalog.json"', student_script)
+        self.assertIn('id="question-sort"', student_index)
+        self.assertIn("uploaded-desc", student_index)
+        self.assertIn("uploaded-asc", student_index)
+        self.assertIn('class="catalog-bar"', student_index)
+        self.assertIn('class="compact-sort"', student_index)
+        self.assertNotIn('class="sort-box"', student_index)
+        self.assertIn("item.uploaded_at||item.published_at", student_script)
+        self.assertIn('sort.addEventListener("change",draw)', student_script)
+        self.assertIn("difficulty-desc", student_index)
+        self.assertIn("difficultyIndicator", student_script)
+        self.assertIn("difficulty-glyph", student_script)
+        self.assertNotIn('className="difficulty-value"', student_script)
+        self.assertIn("difficulty-popover", (student / "assets" / "site.css").read_text(encoding="utf-8"))
+        self.assertIn("radar-label", student_script)
+        self.assertNotIn('className="difficulty-copy"', student_script)
+        self.assertIn('id="difficulty-assessment"', html)
+        self.assertRegex(
+            html,
+            r'data-solution="teacher"[^>]*>教师版</button>\s*<button id="difficulty-assessment-toggle"',
+        )
+        self.assertIn('aria-controls="difficulty-assessment"', html)
+        self.assertIn('$("difficulty-assessment-toggle").addEventListener', script)
+        self.assertIn('score.max = "5"', script)
+        self.assertIn('score.step = "0.1"', script)
+        self.assertIn('"save-difficulty-assessment"', script)
+        self.assertIn('"refresh-difficulty-assessment"', script)
         self.assertNotIn("/api/", student_script)
         self.assertNotIn("teacher-solution", student_script)
 

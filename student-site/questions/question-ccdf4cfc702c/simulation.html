@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交替电场与磁场中带电粒子的分段运动</title>
+<style>
+:root{color-scheme:light;--background:#fff;--foreground:#1a1c1f;--card:#f5f6f7;--card-foreground:#1a1c1f;--primary:#277fbd;--primary-foreground:#fff;--muted-foreground:#5f6670;--border:#cfd5dc;--ring:#277fbd;--destructive:#d6531d;--viz-series-1:#277fbd;--viz-series-2:#c87821;--viz-series-3:#348c50;--viz-series-4:#a53b78}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#181818;--foreground:#f7f7f7;--card:#292929;--card-foreground:#f7f7f7;--primary:#82c2f0;--primary-foreground:#101010;--muted-foreground:#b3b6ba;--border:#4a4d50;--ring:#82c2f0;--destructive:#ff925c;--viz-series-1:#82c2f0;--viz-series-2:#efaa65;--viz-series-3:#7bd092;--viz-series-4:#e58cba}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground)}body{padding:16px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(100%,1100px);margin:0 auto}.viz-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.form-label{display:inline-flex;align-items:center;gap:5px}.form-range{flex:1 1 180px;min-width:120px;accent-color:var(--primary)}.btn{appearance:none;border:1px solid var(--border);border-radius:8px;padding:7px 11px;background:var(--card);color:var(--card-foreground);font:inherit;cursor:pointer}.btn:focus-visible,.form-range:focus-visible{outline:3px solid var(--ring);outline-offset:2px}.btn-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.card{border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--card-foreground)}@media(max-width:520px){body{padding:10px}.viz-controls{align-items:stretch}.form-label,.form-range{flex-basis:100%}}
+</style>
+</head>
+<body><main>
+<section id="piecewise-particle-2d" class="piecewise-sim">
+  <script type="application/json" id="piecewise-particle-model">{"entry_id":"question-ccdf4cfc702c","event_model":{"cases":[{"conclusion":"2τ 时坐标为 (2r,πr/2)，6τ 时速率为 2v","id":"zero-release","label":"t=0 粒子的 0～6τ 运动"},{"conclusion":"唯一释放时刻 τ/2；捕获时刻 9τ/2","id":"capture","label":"τ/2 释放并在 9τ/2 捕获"}],"stop_event_id":"capture-m","timeline":[{"case_ids":["zero-release"],"id":"release-zero","label":"t=0 从 O 静止释放","order":0,"p_candidate":false,"position":[0,0],"region":"electric-phase","short_label":"O","time":0},{"case_ids":["zero-release"],"id":"e1-end","label":"E0 加速结束","order":1,"p_candidate":false,"position":[0,1.5707963267948966],"region":"magnetic-phase","short_label":"τ","time":1},{"case_ids":["zero-release"],"id":"m1-end","label":"第一次半圆结束","order":2,"p_candidate":false,"position":[2,1.5707963267948966],"region":"electric-phase","short_label":"2τ","time":2},{"case_ids":["zero-release"],"id":"e2-end","label":"2E0 阶段结束，纵向净位移为零","order":3,"p_candidate":false,"position":[2,1.5707963267948966],"region":"magnetic-phase","short_label":"3τ","time":3},{"case_ids":["zero-release"],"id":"m2-end","label":"第二次半圆结束","order":4,"p_candidate":false,"position":[4,1.5707963267948966],"region":"electric-phase","short_label":"4τ","time":4},{"case_ids":["zero-release"],"id":"e3-end","label":"3E0 阶段结束","order":5,"p_candidate":false,"position":[4,3.141592653589793],"region":"magnetic-phase","short_label":"5τ","time":5},{"case_ids":["zero-release"],"id":"six-tau","label":"第三次半圆结束","order":6,"p_candidate":false,"position":[8,3.141592653589793],"region":"magnetic-phase","short_label":"6τ","time":6},{"case_ids":["capture"],"id":"release-half","label":"τ/2 时刻释放","order":0,"p_candidate":false,"position":[0,0],"region":"electric-phase","short_label":"τ/2","time":0.5},{"case_ids":["capture"],"id":"capture-e1-end","label":"第一次电场剩余半段结束","order":1,"p_candidate":false,"position":[0,0.39269908169872414],"region":"magnetic-phase","time":1},{"case_ids":["capture"],"id":"capture-m1-end","label":"半径 r/2 的半圆结束","order":2,"p_candidate":false,"position":[1,0.39269908169872414],"region":"electric-phase","time":2},{"case_ids":["capture"],"id":"capture-e2-end","label":"2E0 阶段结束","order":3,"p_candidate":false,"position":[1,1.9634954084936207],"region":"magnetic-phase","time":3},{"case_ids":["capture"],"id":"capture-m2-end","label":"半径 3r/2 的半圆结束","order":4,"p_candidate":false,"position":[4,1.9634954084936207],"region":"electric-phase","time":4},{"case_ids":["capture"],"id":"capture-m","label":"第三次电场中点命中接收器 M","order":5,"p_candidate":false,"position":[4,0.7853981633974483],"region":"electric-phase","short_label":"M","time":4.5}]},"facts":{"capture_point":[4,0.7853981633974483],"half_turn_map":"(vx,vy)→(-vx,-vy)","length_unit":"r=πE0m/(qB0²)","particles":[{"color":"#dc2626","id":"q","label":"q+"}],"time_unit":"τ=πm/(qB0)","viewport":{"xmax":8.7,"xmin":-0.5,"ymax":3.8,"ymin":-1.1}},"model_type":"piecewise-field-particle-2d","regions":[{"color":"#f59e0b","field":{"kind":"electric","label":"E ↑","vector":[0,1]},"id":"electric-phase","label":"橙：电场阶段 E0、2E0、3E0","shape":{"height":0.22,"type":"rect","width":9.2,"x":-0.5,"y":-0.9}},{"color":"#2563eb","field":{"kind":"magnetic-out","label":"B ⊙"},"id":"magnetic-phase","label":"蓝：磁场阶段 B0（向外）","shape":{"height":0.22,"type":"rect","width":9.2,"x":-0.5,"y":-0.58}}],"schema_version":1,"simulation":{"default_duration_seconds":24,"default_layer":"trajectory","layers":["trajectory","field","geometry"],"pause_event_ids":["e1-end","m1-end","e2-end","m2-end","e3-end","six-tau","capture-e1-end","capture-m1-end","capture-e2-end","capture-m2-end","capture-m"]},"source":{"publication":"student-site"},"student_solution":{"main_steps":[{"formulae":["τ=πm/(qB0)","r=πE0m/(qB0²)"],"title":"统一尺度"},{"formulae":["(vx,vy)→(-vx,-vy)","(Δx,Δy)=(2vy/ω,-2vx/ω)"],"title":"半周期映射"},{"formulae":["xM=4r","yM=πr/4"],"title":"捕获条件"}],"pitfalls":["磁场半圆只改变方向；释放时刻要按区间枚举"],"quick_answers":["2τ 时 (2r,πr/2)","0～6τ 电场力做功 2π²mE0²/B0²","τ/2 释放者在 9τ/2 被捕获"],"recognition":["电场加速段与磁场半圆段交替"],"self_check":"τ/2 释放粒子在 4τ 时应位于 (4r,5πr/8)。"},"technique_ids":[],"title":"交替电场与磁场中的分段运动和捕获时刻","trajectory":{"segments":[{"case_ids":["zero-release"],"end_event":"e1-end","force_direction":[0,1],"geometry":{"end":[0,1.5707963267948966],"start":[0,0]},"id":"zero-e1","kinematics":{"end_time":1,"start_time":0},"label":"E0 中向上加速","particle_id":"q","region":"electric-phase","start_event":"release-zero","type":"line"},{"case_ids":["zero-release"],"end_event":"m1-end","force_direction":[1,0],"geometry":{"center":[1,1.5707963267948966],"end_deg":0,"radius":1,"radius_label":"r","start_deg":180},"id":"zero-m1","kinematics":{"end_time":2,"start_time":1},"label":"B0 中半圆","particle_id":"q","region":"magnetic-phase","start_event":"e1-end","type":"arc"},{"case_ids":["zero-release"],"end_event":"e2-end","force_direction":[0,1],"geometry":{"points":[[2,1.5707963267948966],[2,0.9817477042468103],[2,0.7853981633974483],[2,0.9817477042468103],[2,1.5707963267948966]]},"id":"zero-e2","kinematics":{"end_time":3,"start_time":2},"label":"2E0：先降后升","particle_id":"q","region":"electric-phase","start_event":"m1-end","type":"polyline"},{"case_ids":["zero-release"],"end_event":"m2-end","force_direction":[1,0],"geometry":{"center":[3,1.5707963267948966],"end_deg":0,"radius":1,"radius_label":"r","start_deg":180},"id":"zero-m2","kinematics":{"end_time":4,"start_time":3},"label":"第二个半圆","particle_id":"q","region":"magnetic-phase","start_event":"e2-end","type":"arc"},{"case_ids":["zero-release"],"end_event":"e3-end","force_direction":[0,1],"geometry":{"points":[[4,1.5707963267948966],[4,1.0799224746714913],[4,1.0471975511965976],[4,1.8653206380689396],[4,3.141592653589793]]},"id":"zero-e3","kinematics":{"end_time":5,"start_time":4},"label":"3E0：反向后加速","particle_id":"q","region":"electric-phase","start_event":"m2-end","type":"polyline"},{"case_ids":["zero-release"],"end_event":"six-tau","force_direction":[1,0],"geometry":{"center":[6,3.141592653589793],"end_deg":0,"radius":2,"radius_label":"2r","start_deg":180},"id":"zero-m3","kinematics":{"end_time":6,"start_time":5},"label":"速率 2v 的半圆","particle_id":"q","region":"magnetic-phase","start_event":"e3-end","type":"arc"},{"case_ids":["capture"],"end_event":"capture-e1-end","force_direction":[0,1],"geometry":{"end":[0,0.39269908169872414],"start":[0,0]},"id":"capture-e1","kinematics":{"end_time":1,"start_time":0.5},"label":"剩余半段 E0","particle_id":"q","region":"electric-phase","start_event":"release-half","type":"line"},{"case_ids":["capture"],"end_event":"capture-m1-end","force_direction":[1,0],"geometry":{"center":[0.5,0.39269908169872414],"end_deg":0,"radius":0.5,"radius_label":"r/2","start_deg":180},"id":"capture-m1","kinematics":{"end_time":2,"start_time":1},"label":"半径 r/2 的半圆","particle_id":"q","region":"magnetic-phase","start_event":"capture-e1-end","type":"arc"},{"case_ids":["capture"],"end_event":"capture-e2-end","force_direction":[0,1],"geometry":{"points":[[1,0.39269908169872414],[1,0.19634954084936207],[1,0.2945243112740431],[1,0.9817477042468103],[1,1.9634954084936207]]},"id":"capture-e2","kinematics":{"end_time":3,"start_time":2},"label":"2E0 阶段","particle_id":"q","region":"electric-phase","start_event":"capture-m1-end","type":"polyline"},{"case_ids":["capture"],"end_event":"capture-m2-end","force_direction":[1,0],"geometry":{"center":[2.5,1.9634954084936207],"end_deg":0,"radius":1.5,"radius_label":"3r/2","start_deg":180},"id":"capture-m2","kinematics":{"end_time":4,"start_time":3},"label":"半径 3r/2 的半圆","particle_id":"q","region":"magnetic-phase","start_event":"capture-e2-end","type":"arc"},{"case_ids":["capture"],"end_event":"capture-m","force_direction":[0,1],"geometry":{"points":[[4,1.9634954084936207],[4,1.423534171157875],[4,1.030835089459151],[4,0.7853981633974483]]},"id":"capture-e3","kinematics":{"end_time":4.5,"start_time":4},"label":"第三次电场前半段","particle_id":"q","region":"electric-phase","start_event":"capture-m2-end","type":"polyline"}]}}</script>
+  <header class="sim-head">
+    <div><b id="piecewise-title"></b><small>区域、轨迹、事件与结论均来自 统一物理模型</small></div>
+    <label>情形
+      <select id="case-piecewise" aria-label="选择题目情形"></select>
+    </label>
+  </header>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="canvas-piecewise" role="img" aria-label="二维分段电磁场粒子运动交互仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="phase-piecewise"></b></div>
+        <div><small>关键事件</small><b id="event-piecewise"></b></div>
+        <div><small>本情形结论</small><b id="result-piecewise"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="仿真控制台">
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="play-piecewise" type="button">播放</button>
+        <button class="btn" id="replay-piecewise" type="button">重播</button>
+        <label class="auto-pause"><input id="auto-pause-piecewise" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="progress-piecewise">进度 <b id="progress-label-piecewise">0%</b></label>
+        <input class="form-range" id="progress-piecewise" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="逐层显示">
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="field" type="button">2 场与方向</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>更多控制</summary>
+        <div class="control-group">
+          <label for="duration-piecewise">总时长 <b id="duration-label-piecewise"></b></label>
+          <input class="form-range" id="duration-piecewise" type="range" min="8" max="90">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="previous-event-piecewise" type="button">← 上一事件</button>
+          <button class="btn" id="next-event-piecewise" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="zoom-out-piecewise" type="button" aria-label="缩小">−</button>
+          <button class="btn" id="fit-piecewise" type="button">适合窗口</button>
+          <button class="btn" id="zoom-in-piecewise" type="button" aria-label="放大">＋</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</section>
+<style>
+  #piecewise-particle-2d{display:grid;gap:10px;width:100%}
+  #piecewise-particle-2d .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #piecewise-particle-2d .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #piecewise-particle-2d .sim-head label{display:flex;gap:7px;align-items:center;white-space:nowrap}
+  #piecewise-particle-2d select{max-width:260px}
+  #piecewise-particle-2d .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #piecewise-particle-2d .scene-pane{display:grid;gap:8px;min-width:0}
+  #piecewise-particle-2d .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #piecewise-particle-2d .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #piecewise-particle-2d .scrub-control,#piecewise-particle-2d .control-group{display:grid;gap:5px}
+  #piecewise-particle-2d .layer-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  #piecewise-particle-2d .layer-tabs .btn{padding-inline:5px}
+  #piecewise-particle-2d .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #piecewise-particle-2d .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #piecewise-particle-2d .more-controls[open] summary{margin-bottom:9px}
+  #piecewise-particle-2d .more-controls .control-group+.control-group{margin-top:9px}
+  #piecewise-particle-2d .button-pair{grid-template-columns:1fr 1fr}
+  #piecewise-particle-2d .zoom-controls{grid-template-columns:auto 1fr auto}
+  #piecewise-particle-2d .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #piecewise-particle-2d canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:var(--background)}
+  #piecewise-particle-2d canvas:active{cursor:grabbing}
+  #piecewise-particle-2d .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #piecewise-particle-2d .status-grid small,#piecewise-particle-2d .status-grid b{display:block}
+  #piecewise-particle-2d .status-grid small{color:var(--muted-foreground)}
+  #piecewise-particle-2d .auto-pause{white-space:nowrap}
+  @media(max-width:760px){
+    #piecewise-particle-2d{gap:8px}
+    #piecewise-particle-2d .sim-head{display:grid;gap:6px}
+    #piecewise-particle-2d .sim-head small{display:none}
+    #piecewise-particle-2d .sim-head label{justify-content:space-between}
+    #piecewise-particle-2d select{min-width:0;max-width:75vw}
+    #piecewise-particle-2d .sim-workspace{display:block}
+    #piecewise-particle-2d .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #piecewise-particle-2d .status-grid>div:last-child{grid-column:1/-1}
+    #piecewise-particle-2d .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:58svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #piecewise-particle-2d .primary-controls{flex-wrap:nowrap}
+    #piecewise-particle-2d .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #piecewise-particle-2d .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #piecewise-particle-2d .scrub-control label{white-space:nowrap;font-size:12px}
+  }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('piecewise-particle-2d');
+  const model=JSON.parse(root.querySelector('#piecewise-particle-model').textContent);
+  const canvas=root.querySelector('#canvas-piecewise'),ctx=canvas.getContext('2d');
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rad=d=>d*Math.PI/180;
+  const palette=['#2783c4','#c87821','#348c50','#a53b78','#d6531d','#6d5bd0'];
+  const particles=model.facts.particles||[],particleById=new Map(particles.map((p,i)=>[p.id,{...p,color:p.color||palette[i%palette.length]}]));
+  const cases=model.event_model.cases||[],timeline=[...model.event_model.timeline].sort((a,b)=>a.time-b.time);
+  const allSegments=model.trajectory.segments||[],pauseIds=new Set(model.simulation.pause_event_ids||[]);
+  const viewport=model.facts.viewport;
+  let caseId=cases[0].id,progress=0,playing=false,lastTime=0,lastPause=-1,layer=model.simulation.default_layer||'trajectory';
+  let zoom=1,panX=0,panY=0,drag=null,viewScale=1;
+  const pointers=new Map();
+  const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#667',border:v('--border')||'#bbb',one:v('--viz-series-1')||'#2783c4',two:v('--viz-series-2')||'#c87821',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
+  const px=value=>value/(viewScale*zoom);
+  const currentCase=()=>cases.find(item=>item.id===caseId)||cases[0];
+  const segments=()=>allSegments.filter(segment=>(segment.case_ids||[]).includes(caseId));
+  const events=()=>timeline.filter(event=>!event.case_ids||(event.case_ids||[]).includes(caseId));
+  const totalTime=()=>Math.max(...events().map(event=>Number(event.time)),...segments().map(segment=>Number(segment.kinematics.end_time)));
+
+  function sample(segment,samples=120){
+    const g=segment.geometry;
+    if(segment.type==='line')return [g.start,g.end].map(point=>({x:point[0],y:point[1]}));
+    if(segment.type==='polyline')return g.points.map(point=>({x:point[0],y:point[1]}));
+    if(segment.type==='parabola'){const pl=segment.geometry;const pts=[];for(let i=0;i<samples;i++){const t=(i/(samples-1))*(pl.duration||1);pts.push({x:pl.start[0]+pl.velocity[0]*t+0.5*pl.acceleration[0]*t*t,y:pl.start[1]+pl.velocity[1]*t+0.5*pl.acceleration[1]*t*t})}return pts}
+    const points=[],start=rad(g.start_deg),end=rad(g.end_deg);
+    for(let i=0;i<samples;i++){const f=i/(samples-1),a=start+(end-start)*f;points.push({x:g.center[0]+g.radius*Math.cos(a),y:g.center[1]+g.radius*Math.sin(a)})}
+    return points;
+  }
+  for(const segment of allSegments)segment.points=sample(segment);
+  function segmentFraction(segment,time){const k=segment.kinematics;return clamp((time-k.start_time)/(k.end_time-k.start_time),0,1)}
+  function pointOn(segment,f){
+    const points=segment.points,index=clamp(Math.round((points.length-1)*f),0,points.length-1),a=points[Math.max(0,index-1)],b=points[Math.min(points.length-1,index+1)],length=Math.hypot(b.x-a.x,b.y-a.y)||1;
+    return{point:points[index],tangent:{x:(b.x-a.x)/length,y:(b.y-a.y)/length},segment};
+  }
+  function particleState(particleId,time){
+    const owned=segments().filter(segment=>segment.particle_id===particleId).sort((a,b)=>a.kinematics.start_time-b.kinematics.start_time);
+    if(!owned.length)return null;
+    let chosen=owned[0],fraction=0;
+    for(const segment of owned){chosen=segment;fraction=segmentFraction(segment,time);if(time<=segment.kinematics.end_time+1e-8)break;fraction=1}
+    return pointOn(chosen,fraction);
+  }
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0);return{w,h}}
+  function label(text,x,y,color,align='center'){ctx.fillStyle=color;ctx.font=`${px(13)}px system-ui`;ctx.textAlign=align;ctx.textBaseline='middle';ctx.save();ctx.scale(1,-1);ctx.fillText(text,x,-y);ctx.restore()}
+  function stroke(points,color,width,f=1,dash=[]){if(!points.length)return;const n=Math.max(2,Math.ceil(points.length*f));ctx.strokeStyle=color;ctx.lineWidth=px(width);ctx.setLineDash(dash.map(px));ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);for(let i=1;i<Math.min(n,points.length);i++)ctx.lineTo(points[i].x,points[i].y);ctx.stroke();ctx.setLineDash([])}
+  function arrow(a,b,color,text=''){const angle=Math.atan2(b.y-a.y,b.x-a.x),head=px(7);ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(2);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.beginPath();ctx.moveTo(b.x,b.y);ctx.lineTo(b.x-head*Math.cos(angle-.45),b.y-head*Math.sin(angle-.45));ctx.lineTo(b.x-head*Math.cos(angle+.45),b.y-head*Math.sin(angle+.45));ctx.closePath();ctx.fill();if(text)label(text,b.x+px(6),b.y+px(7),color,'left')}
+  function fieldSymbol(x,y,field,color){const kind=field.kind;ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=px(1.2);if(kind==='magnetic-out'){ctx.beginPath();ctx.arc(x,y,px(4),0,Math.PI*2);ctx.stroke();ctx.beginPath();ctx.arc(x,y,px(1.3),0,Math.PI*2);ctx.fill()}else if(kind==='magnetic-in'){ctx.beginPath();ctx.moveTo(x-px(3),y-px(3));ctx.lineTo(x+px(3),y+px(3));ctx.moveTo(x-px(3),y+px(3));ctx.lineTo(x+px(3),y-px(3));ctx.stroke()}else{const vector=field.vector||[1,0],length=Math.hypot(vector[0],vector[1])||1,dx=vector[0]/length*px(6),dy=vector[1]/length*px(6);arrow({x:x-dx,y:y-dy},{x:x+dx,y:y+dy},color,'')}}
+  function drawShape(region,c){
+    const s=region.shape,color=region.color||c.one;
+    ctx.save();ctx.globalAlpha=.1;ctx.fillStyle=color;ctx.strokeStyle=color;ctx.lineWidth=px(1.5);
+    if(s.type==='rect'){ctx.fillRect(s.x,s.y,s.width,s.height);ctx.globalAlpha=.7;ctx.strokeRect(s.x,s.y,s.width,s.height)}
+    else if(s.type==='circle'){ctx.beginPath();ctx.arc(s.cx,s.cy,s.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=.7;ctx.stroke()}
+    else if(s.type==='half-plane'){const x=s.side==='left'?viewport.xmin:s.x,y=viewport.ymin,w=s.side==='left'?s.x-viewport.xmin:viewport.xmax-s.x;ctx.fillRect(x,y,w,viewport.ymax-viewport.ymin);ctx.globalAlpha=.7;ctx.beginPath();ctx.moveTo(s.x,viewport.ymin);ctx.lineTo(s.x,viewport.ymax);ctx.stroke()}
+    else if(s.type==='polygon'){ctx.beginPath();s.points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();ctx.globalAlpha=.7;ctx.stroke()}
+    ctx.restore();
+    if(layer==='field'){
+      const polygonContains=(points,x,y)=>{let inside=false;for(let i=0,j=points.length-1;i<points.length;j=i++){const xi=points[i][0],yi=points[i][1],xj=points[j][0],yj=points[j][1],cross=(yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi;if(cross)inside=!inside}return inside};
+      const box=s.type==='rect'?{x0:s.x,x1:s.x+s.width,y0:s.y,y1:s.y+s.height}:s.type==='circle'?{x0:s.cx-s.r,x1:s.cx+s.r,y0:s.cy-s.r,y1:s.cy+s.r}:s.type==='polygon'?{x0:Math.min(...s.points.map(p=>p[0])),x1:Math.max(...s.points.map(p=>p[0])),y0:Math.min(...s.points.map(p=>p[1])),y1:Math.max(...s.points.map(p=>p[1]))}:s.side==='left'?{x0:viewport.xmin,x1:s.x,y0:viewport.ymin,y1:viewport.ymax}:{x0:s.x,x1:viewport.xmax,y0:viewport.ymin,y1:viewport.ymax};
+      const contains=(x,y)=>s.type==='circle'?Math.hypot(x-s.cx,y-s.cy)<=s.r:s.type==='polygon'?polygonContains(s.points,x,y):true;
+      for(let x=box.x0+.35;x<box.x1;x+=.65)for(let y=box.y0+.35;y<box.y1;y+=.6)if(contains(x,y))fieldSymbol(x,y,region.field,color);
+      label(region.label||region.id,box.x0+.12,box.y1-.18,color,'left');
+    }
+  }
+  function drawGeometry(c){
+    for(const segment of segments().filter(item=>item.type==='arc')){
+      const g=segment.geometry;ctx.strokeStyle=particleById.get(segment.particle_id)?.color||c.muted;ctx.lineWidth=px(1);ctx.setLineDash([px(5),px(4)]);ctx.globalAlpha=.45;ctx.beginPath();ctx.arc(g.center[0],g.center[1],g.radius,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.fillStyle=c.muted;ctx.beginPath();ctx.arc(g.center[0],g.center[1],px(3),0,Math.PI*2);ctx.fill();if(g.radius_label)label(g.radius_label,g.center[0],g.center[1]+.18,c.muted)}
+  }
+  function draw(){
+    const m=metrics(),c=colors(),scale=Math.min((m.w-34)/(viewport.xmax-viewport.xmin),(m.h-34)/(viewport.ymax-viewport.ymin)),cx=(viewport.xmin+viewport.xmax)/2,cy=(viewport.ymin+viewport.ymax)/2,time=progress*totalTime();viewScale=scale;
+    ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,-scale*zoom);ctx.translate(-cx,-cy);
+    for(const region of model.regions)drawShape(region,c);
+    for(const segment of segments()){const color=particleById.get(segment.particle_id)?.color||c.one;ctx.save();ctx.globalAlpha=.18;stroke(segment.points,color,1.4);ctx.restore();const f=segmentFraction(segment,time);if(f>0)stroke(segment.points,color,3.1,f)}
+    if(layer==='geometry')drawGeometry(c);
+    for(const particle of particles){const state=particleState(particle.id,time);if(!state)continue;const p=state.point,color=particleById.get(particle.id).color;ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,px(7),0,Math.PI*2);ctx.fill();label(particle.label||particle.id,p.x,p.y+px(16),color);if(layer==='field'){arrow(p,{x:p.x+state.tangent.x*px(34),y:p.y+state.tangent.y*px(34)},color,'v');const force=state.segment.force_direction;if(Array.isArray(force))arrow(p,{x:p.x+force[0]*px(30),y:p.y+force[1]*px(30)},c.force,'F')}}
+    for(const event of events().filter(event=>Array.isArray(event.position))){const hot=event.id===model.event_model.stop_event_id;ctx.fillStyle=hot?c.force:c.muted;ctx.beginPath();ctx.arc(event.position[0],event.position[1],px(hot?5:3),0,Math.PI*2);ctx.fill();if(layer==='geometry'||hot)label(event.short_label||event.label,event.position[0],event.position[1]-.17,hot?c.force:c.muted)}
+    ctx.restore();
+    const event=[...events()].reverse().find(item=>time+1e-8>=item.time)||events()[0],active=segments().find(item=>time>=item.kinematics.start_time-1e-8&&time<=item.kinematics.end_time+1e-8)||segments().at(-1);
+    root.querySelector('#phase-piecewise').textContent=active?.label||active?.id||'等待';root.querySelector('#event-piecewise').textContent=event?.label||'';root.querySelector('#result-piecewise').textContent=currentCase().conclusion||'';root.querySelector('#progress-piecewise').value=Math.round(progress*1000);root.querySelector('#progress-label-piecewise').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label-piecewise').textContent=`${root.querySelector('#duration-piecewise').value} 秒`;
+  }
+  function setPlaying(value){playing=value;lastTime=0;root.querySelector('#play-piecewise').textContent=value?'暂停':'播放'}
+  function stops(){const max=totalTime();return events().filter(event=>pauseIds.has(event.id)).map(event=>event.time/max)}
+  function jump(direction){const values=stops(),eps=.002,target=direction>0?values.find(x=>x>progress+eps):[...values].reverse().find(x=>x<progress-eps);if(target!==undefined){progress=target;lastPause=values.indexOf(target);setPlaying(false);draw()}}
+  function animate(ts){if(playing){if(!lastTime)lastTime=ts;const old=progress;progress+=(ts-lastTime)/(Number(root.querySelector('#duration-piecewise').value)*1000);lastTime=ts;const values=stops();if(root.querySelector('#auto-pause-piecewise').checked){const hit=values.findIndex((x,i)=>i!==lastPause&&x>old+1e-5&&x<=progress);if(hit>=0){progress=values[hit];lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
+  root.querySelector('#piecewise-title').textContent=model.title;
+  const select=root.querySelector('#case-piecewise');for(const item of cases){const option=document.createElement('option');option.value=item.id;option.textContent=item.label||item.id;select.append(option)}select.onchange=()=>{caseId=select.value;progress=0;lastPause=-1;setPlaying(false);zoom=1;panX=panY=0;draw()};
+  const duration=root.querySelector('#duration-piecewise');duration.value=String(model.simulation.default_duration_seconds);
+  root.querySelectorAll('[data-layer]').forEach(button=>button.onclick=()=>{layer=button.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===button));draw()});
+  root.querySelector('#play-piecewise').onclick=()=>{if(progress>=1){progress=0;lastPause=-1}setPlaying(!playing);draw()};root.querySelector('#replay-piecewise').onclick=()=>{progress=0;lastPause=-1;setPlaying(true);draw()};root.querySelector('#progress-piecewise').oninput=e=>{progress=Number(e.target.value)/1000;lastPause=-1;setPlaying(false);draw()};duration.oninput=draw;root.querySelector('#previous-event-piecewise').onclick=()=>jump(-1);root.querySelector('#next-event-piecewise').onclick=()=>jump(1);root.querySelector('#zoom-in-piecewise').onclick=()=>{zoom=clamp(zoom*1.22,.55,4);draw()};root.querySelector('#zoom-out-piecewise').onclick=()=>{zoom=clamp(zoom/1.22,.55,4);draw()};root.querySelector('#fit-piecewise').onclick=()=>{zoom=1;panX=panY=0;draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.55,4);draw()};canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,panX,panY}};canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1&&drag){panX=drag.panX+e.clientX-drag.x;panY=drag.panY+e.clientY-drag.y;draw()}};const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
+  const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
+  draw();new ResizeObserver(draw).observe(root);requestAnimationFrame(animate);
+})();
+</script>
+
+</main></body>
+</html>

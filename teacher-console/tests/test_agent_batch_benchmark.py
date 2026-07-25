@@ -105,6 +105,27 @@ class AgentBatchBenchmarkTest(unittest.TestCase):
         report = benchmark.summarize(benchmark.load_records(self.jobs))
         self.assertEqual(report["kinds"]["source.clean"]["failure_types"]["worker_interrupted"], 1)
 
+    def test_prefers_canonical_outcome_usage_and_failure(self):
+        self.write_job(
+            "outcome",
+            {
+                "status": "failed",
+                "outcome": {
+                    "failure_type": "provider_budget_exceeded",
+                    "usage": {"total_tokens": 275, "measurement": "provider-reported"},
+                },
+                "result": {
+                    "status": "failed",
+                    "failure_type": "unknown_failed",
+                    "usage": {"total_tokens": 10},
+                },
+            },
+        )
+        report = benchmark.summarize(benchmark.load_records(self.jobs))
+        source = report["kinds"]["source.clean"]
+        self.assertEqual(source["usage_total_tokens"], 275)
+        self.assertEqual(source["failure_types"], {"provider_budget_exceeded": 1})
+
     def test_summarizes_failure_repair_outcomes(self):
         self.write_job(
             "recovered",

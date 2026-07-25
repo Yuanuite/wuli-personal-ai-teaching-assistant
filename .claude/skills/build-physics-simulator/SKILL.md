@@ -76,6 +76,8 @@ Supported model types must use the deterministic builder:
 | `opposite-circular-magnetic` | field trajectory renderer | circular magnetic regions with opposite field directions and return/closure questions |
 | `electric-to-bounded-magnetic` | field trajectory renderer | electric-field acceleration followed by bounded magnetic circular motion |
 | `planar-magnetic-multi-particle` | planar magnetic multi-particle renderer | adjacent half-plane magnetic regions, multiple charged particles, circular-arc ledgers, and meeting events |
+| `piecewise-field-particle-2d` | piecewise 2D field renderer | charged particles moving through arbitrary 2D electric/magnetic regions with line, circular-arc, or sampled trajectories, multiple cases, reflections, pauses, and stopping events |
+| `piecewise-field-particle-3d` | piecewise 3D field renderer | charged particles moving through boxes, planes, cylinders, or wireframe regions with analytic lines, accelerated paths, oriented circular arcs, helices, multiple particles, and orbitable camera views — 生成或修改前先读 [references/3d-viewport-conventions.md](references/3d-viewport-conventions.md) 遵守左手系、正视/俯视约定和拖拽规则 |
 
 ```bash
 python3 <skill-dir>/scripts/build_simulator.py \

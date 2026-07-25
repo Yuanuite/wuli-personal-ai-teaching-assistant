@@ -39,6 +39,7 @@ class PublicSiteTest(unittest.TestCase):
                 "title": "带电粒子在磁场中的运动",
                 "subject": "高中物理",
                 "knowledge_points": ["洛伦兹力", "圆周运动"],
+                "created_at": "2026-07-19T09:00:00+08:00",
                 "source": {"stored_files": ["assets/original.png"]},
             },
         )
@@ -105,6 +106,32 @@ class PublicSiteTest(unittest.TestCase):
         self.assertTrue((self.site / "questions" / public_id / "content.md").is_file())
         catalog = json.loads((self.site / "catalog.json").read_text(encoding="utf-8"))
         self.assertEqual([item["id"] for item in catalog["questions"]], [public_id])
+        self.assertEqual(catalog["questions"][0]["uploaded_at"], "2026-07-19")
+
+    @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
+    def test_catalog_keeps_default_order_by_upload_time(self, _pdf):
+        self.approve_public_image()
+        prepared = public_site.prepare_publication(self.library, self.entry_id, self.site)
+        write_json(
+            self.site / "catalog.json",
+            {
+                "schema_version": 1,
+                "questions": [
+                    {
+                        "id": "question-newer-upload",
+                        "title": "较晚上传、较早发布",
+                        "uploaded_at": "2026-07-20T09:00:00+08:00",
+                        "published_at": "2026-07-18T09:00:00+08:00",
+                    }
+                ],
+            },
+        )
+        public_site.publish_prepared(self.library, self.entry_id, "teacher", "隐私已检查", self.site)
+        catalog = json.loads((self.site / "catalog.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            [item["id"] for item in catalog["questions"]],
+            ["question-newer-upload", prepared["public_id"]],
+        )
 
     @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
     def test_changed_preview_must_be_prepared_again(self, _pdf):
@@ -123,6 +150,88 @@ class PublicSiteTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "private reference"):
             public_site.prepare_publication(self.library, self.entry_id, self.site)
+
+    @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
+    def test_public_svg_replaces_internal_entry_id(self, _pdf):
+        self.approve_public_image()
+        source = self.entry / "assets" / "explanation.svg"
+        source.write_text(
+            f'<svg xmlns="http://www.w3.org/2000/svg"><text>{self.entry_id}</text></svg>',
+            encoding="utf-8",
+        )
+        prepared = public_site.prepare_publication(self.library, self.entry_id, self.site)
+        public_id = prepared["public_id"]
+        copied = (
+            self.entry / public_site.DRAFT_DIR / "questions" / public_id / "assets" / "asset-1.svg"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn(self.entry_id, copied)
+        self.assertIn(public_id, copied)
+
+    def test_svg_allowlist_accepts_passive_local_styles_and_fragments(self):
+        source = self.entry / "assets" / "safe.svg"
+        source.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+            "<defs><style>.line{stroke:#123456;fill:none}</style>"
+            '<marker id="tip"><path d="M0 0L3 1L0 2Z"/></marker></defs>'
+            '<line class="line" x1="1" y1="1" x2="18" y2="18" marker-end="url(#tip)"/>'
+            "</svg>",
+            encoding="utf-8",
+        )
+        public_site._safe_svg(source)
+
+    def test_svg_allowlist_rejects_active_or_external_content(self):
+        malicious = {
+            "script.svg": '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+            "event.svg": '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>',
+            "foreign.svg": (
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                '<foreignObject><p xmlns="http://www.w3.org/1999/xhtml">x</p></foreignObject></svg>'
+            ),
+            "xlink.svg": (
+                '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+                '<use xlink:href="https://example.com/a.svg#x"/></svg>'
+            ),
+            "encoded.svg": (
+                '<svg xmlns="http://www.w3.org/2000/svg">'
+                '<a href="jav&#x61;script:alert(1)"><text>x</text></a></svg>'
+            ),
+            "external-css.svg": (
+                '<svg xmlns="http://www.w3.org/2000/svg"><style>'
+                ".x{fill:url(https://example.com/a.svg#x)}</style></svg>"
+            ),
+            "entity.svg": (
+                '<!DOCTYPE svg [<!ENTITY leak SYSTEM "file:///etc/passwd">]>'
+                '<svg xmlns="http://www.w3.org/2000/svg"><text>&leak;</text></svg>'
+            ),
+            "animation.svg": (
+                '<svg xmlns="http://www.w3.org/2000/svg"><animate attributeName="href" '
+                'values="safe;javascript:alert(1)"/></svg>'
+            ),
+        }
+        for name, content in malicious.items():
+            with self.subTest(name=name):
+                source = self.entry / "assets" / name
+                source.write_text(content, encoding="utf-8")
+                with self.assertRaises(ValueError):
+                    public_site._safe_svg(source)
+
+    def test_svg_allowlist_rejects_oversized_and_deep_documents(self):
+        oversized = self.entry / "assets" / "oversized.svg"
+        oversized.write_bytes(b"<svg>" + b"x" * public_site.SVG_MAX_BYTES + b"</svg>")
+        with self.assertRaisesRegex(ValueError, "too large"):
+            public_site._safe_svg(oversized)
+
+        deep = self.entry / "assets" / "deep.svg"
+        deep.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg">'
+            + "<g>" * (public_site.SVG_MAX_DEPTH + 1)
+            + "</g>" * (public_site.SVG_MAX_DEPTH + 1)
+            + "</svg>",
+            encoding="utf-8",
+        )
+        with self.assertRaisesRegex(ValueError, "complexity"):
+            public_site._safe_svg(deep)
 
     @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
     def test_publication_requires_public_image_review(self, _pdf):

@@ -108,6 +108,11 @@ class KnowledgeStoreTest(unittest.TestCase):
         self.assertEqual(evidence["results"][0]["recent_events"][0]["task_type"], "answer.save")
         self.assertIn("entries/20260722-knowledge-store", evidence["evidence_sources"][0])
         self.assertEqual(evidence["evolve_observations"], [])
+        self.assertEqual(evidence["evidence_set"]["candidate_entry_count"], 1)
+        self.assertEqual(
+            evidence["evidence_set"]["traceable_document_count"],
+            evidence["evidence_set"]["document_count"],
+        )
 
     def test_kb_rebuild_refreshes_knowledge_store_fail_soft(self):
         report = kb.rebuild_index(self.library)
@@ -151,8 +156,13 @@ class KnowledgeStoreTest(unittest.TestCase):
         self.assertNotIn(similar.name, serialized)
         self.assertNotIn("学生私有文件夹", serialized)
         self.assertNotIn("wuli-memory.db", serialized)
+        self.assertEqual(evidence["context_budget"]["policy"], "deterministic-evidence-v1")
+        self.assertLessEqual(evidence["context_budget"]["serialized_chars"], 4000)
+        self.assertEqual(evidence["references"][0]["content_hash"][:7], "sha256:")
+        self.assertEqual(evidence["evidence_set"]["kind"], "candidate-evidence-set")
+        self.assertEqual(evidence["evidence_set"]["reference_count"], len(evidence["references"]))
 
-    def test_query_additively_migrates_an_older_derived_database(self):
+    def test_query_is_read_only_and_requires_explicit_rebuild_for_incomplete_store(self):
         knowledge_store.rebuild(self.library)
         target = knowledge_store.db_path(self.library)
         connection = knowledge_store.connect(target)
@@ -162,7 +172,8 @@ class KnowledgeStoreTest(unittest.TestCase):
         finally:
             connection.close()
         evidence = knowledge_store.query(self.library, "动量守恒", mode="teaching", top_k=2)
-        self.assertTrue(evidence["results"])
+        self.assertEqual(evidence["status"], "unavailable")
+        self.assertEqual(evidence["reason"], "knowledge-store-incomplete")
         connection = knowledge_store.connect(target)
         try:
             table = connection.execute(
@@ -170,7 +181,29 @@ class KnowledgeStoreTest(unittest.TestCase):
             ).fetchone()
         finally:
             connection.close()
-        self.assertIsNotNone(table)
+        self.assertIsNone(table)
+        knowledge_store.rebuild(self.library)
+        self.assertTrue(knowledge_store.query(self.library, "动量守恒", mode="teaching", top_k=2)["results"])
+
+    def test_new_archive_event_marks_store_stale_until_explicit_rebuild(self):
+        knowledge_store.rebuild(self.library)
+        self.assertEqual(knowledge_store.query(self.library, "动量守恒")["freshness"]["status"], "current")
+        candidate_archive.append_event(
+            self.library,
+            self.entry,
+            task_type="answer.revision-request",
+            actor="teacher",
+            event_type="feedback",
+            status="revision-requested",
+            feedback={"categories": ["physics-correction"]},
+        )
+        stale = knowledge_store.query(self.library, "动量守恒")
+        self.assertEqual(stale["freshness"]["status"], "stale")
+        unavailable = knowledge_store.build_agent_evidence(
+            self.library, self.entry.name, "动量守恒", task_type="answer.revise"
+        )
+        self.assertEqual(unavailable["status"], "unavailable")
+        self.assertEqual(unavailable["reason"], "knowledge-store-stale")
 
     def test_fts_ranking_prefers_the_more_relevant_entry(self):
         weak = self.library / "entries" / "aaa-weak-match"
@@ -201,6 +234,110 @@ class KnowledgeStoreTest(unittest.TestCase):
         evidence = knowledge_store.query(self.library, "楞次定律 电磁感应", top_k=3)
 
         self.assertEqual(evidence["results"][0]["entry_id"], strong.name)
+
+    def test_teaching_query_expands_teacher_phrasing_to_canonical_labels(self):
+        spatial = self.library / "entries" / "direction-spatial-match"
+        spatial.mkdir(parents=True)
+        kb.write_text(spatial / "problem.md", "# 空间方向题\n\n判断通电导体在磁场中的转动方向。")
+        kb.write_json(
+            spatial / "record.json",
+            {
+                "schema_version": 1,
+                "id": spatial.name,
+                "kind": "error",
+                "status": "ready",
+                "title": "通电导体方向判断",
+                "subject": "高中物理",
+                "knowledge_points": ["安培力"],
+                "error_types": ["方向判断", "空间想象"],
+            },
+        )
+        knowledge_store.rebuild(self.library)
+
+        evidence = knowledge_store.query(self.library, "磁场方向性理解", mode="teaching", top_k=3)
+
+        self.assertEqual(evidence["results"][0]["entry_id"], spatial.name)
+        self.assertEqual(evidence["query_expansions"], ["方向判断", "符号方向", "空间想象"])
+
+    def test_teaching_intent_removes_task_phrasing_and_adds_reviewed_aliases(self):
+        intent, removed, additions = knowledge_store._teaching_intent_query(
+            "帮我找一道关于粒子反复进出磁场的题目"
+        )
+        self.assertNotIn("帮我找一道", intent)
+        self.assertNotIn("题目", intent)
+        self.assertIn("反复进出磁场", intent)
+        self.assertIn("圆形有界磁场", intent)
+        self.assertIn("帮我找一道", removed)
+        self.assertIn("带电粒子", additions)
+        self.assertIn("轨迹衔接", additions)
+
+    def test_query_runs_independent_routes_and_exposes_rrf_contributions(self):
+        fixtures = (
+            (
+                "cross-route-match",
+                {"knowledge_points": ["回旋半径判据"]},
+                "# 题目\n\n利用回旋半径判据判断粒子能否离开磁场。",
+                "",
+            ),
+            (
+                "problem-route-match",
+                {},
+                "# 题目\n\n使用回旋半径判据。",
+                "",
+            ),
+            (
+                "solution-route-match",
+                {},
+                "# 题目\n\n判断粒子运动范围。",
+                "解析采用回旋半径判据，将轨迹半径与区域宽度比较。",
+            ),
+        )
+        for entry_id, metadata, problem, solution in fixtures:
+            entry = self.library / "entries" / entry_id
+            entry.mkdir(parents=True)
+            kb.write_text(entry / "problem.md", problem)
+            if solution:
+                kb.write_text(entry / "solution.md", solution)
+            kb.write_json(
+                entry / "record.json",
+                {
+                    "schema_version": 1,
+                    "id": entry_id,
+                    "kind": "error",
+                    "status": "ready",
+                    "title": f"检索路由样本 {entry_id}",
+                    "subject": "高中物理",
+                    **metadata,
+                },
+            )
+        knowledge_store.rebuild(self.library)
+
+        evidence = knowledge_store.query(
+            self.library,
+            "回旋半径判据",
+            mode="teaching",
+            top_k=5,
+            ranking_policy="multi-route",
+        )
+
+        self.assertEqual(evidence["retrieval"]["strategy"], "multi-route-bm25-rrf-v1")
+        self.assertEqual([route["id"] for route in evidence["retrieval"]["routes"]], [
+            "metadata",
+            "problem",
+            "solution",
+        ])
+        self.assertEqual(evidence["query_plan"]["raw_query"], "回旋半径判据")
+        self.assertEqual(evidence["results"][0]["entry_id"], "cross-route-match")
+        by_id = {item["entry_id"]: item for item in evidence["results"]}
+        self.assertEqual(
+            {item["route"] for item in by_id["cross-route-match"]["route_matches"]},
+            {"metadata", "problem"},
+        )
+        self.assertEqual(
+            {item["route"] for item in by_id["solution-route-match"]["route_matches"]},
+            {"solution"},
+        )
+        self.assertTrue(all("route" in document for item in evidence["results"] for document in item["matched_documents"]))
 
 
 if __name__ == "__main__":

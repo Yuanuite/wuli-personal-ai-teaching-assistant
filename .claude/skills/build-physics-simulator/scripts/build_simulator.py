@@ -17,6 +17,8 @@ RENDERERS = {
     "opposite-circular-magnetic": SKILL_DIR / "assets" / "field-trajectory-template.html",
     "electric-to-bounded-magnetic": SKILL_DIR / "assets" / "field-trajectory-template.html",
     "planar-magnetic-multi-particle": SKILL_DIR / "assets" / "planar-magnetic-template.html",
+    "piecewise-field-particle-2d": SKILL_DIR / "assets" / "piecewise-particle-2d-template.html",
+    "piecewise-field-particle-3d": SKILL_DIR / "assets" / "piecewise-particle-3d-template.html",
 }
 
 

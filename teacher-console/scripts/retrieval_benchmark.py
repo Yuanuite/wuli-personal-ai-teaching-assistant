@@ -188,6 +188,7 @@ def run_benchmark(
     *,
     top_k: int = 5,
     include_draft: bool = False,
+    ranking_policy: str = "baseline",
 ) -> dict[str, Any]:
     top_k = max(5, int(top_k))
     validation = validate_cases(library, cases)
@@ -200,7 +201,13 @@ def run_benchmark(
     ]
     per_case: list[dict[str, Any]] = []
     for case in eligible:
-        evidence = knowledge_store.query(library, str(case["query"]), mode="teaching", top_k=top_k)
+        evidence = knowledge_store.query(
+            library,
+            str(case["query"]),
+            mode="teaching",
+            top_k=top_k,
+            ranking_policy=ranking_policy,
+        )
         retrieved = [str(item.get("entry_id", "")) for item in evidence.get("results", []) if item.get("entry_id")]
         relevant = set(case["relevant_entry_ids"])
         ranks = [index + 1 for index, entry_id in enumerate(retrieved) if entry_id in relevant]
@@ -237,6 +244,7 @@ def run_benchmark(
         "report_type": "retrieval-fixed-set-benchmark",
         "generated_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "top_k": top_k,
+        "ranking_policy": ranking_policy,
         "include_draft": include_draft,
         "fixed_set_ready": fixed_set_ready,
         "threshold_evaluable": threshold_evaluable,
@@ -283,6 +291,7 @@ def print_markdown(report: dict[str, Any]) -> None:
     print("# Retrieval Fixed-set Benchmark")
     print()
     print(f"- eligible: {report['eligible_cases']}; excluded: {report['excluded_cases']}")
+    print(f"- ranking_policy: {report['ranking_policy']}")
     print(f"- fixed_set_ready: {report['fixed_set_ready']}; threshold_evaluable: {report['threshold_evaluable']}")
     print(f"- upgrade_recommended: {report['upgrade_recommended']}")
     print(
@@ -312,6 +321,11 @@ def parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="run the fixed-set retrieval benchmark")
     run.add_argument("--top-k", type=int, default=5)
     run.add_argument("--include-draft", action="store_true")
+    run.add_argument(
+        "--ranking-policy",
+        choices=("baseline", "multi-route", "intent-augmented"),
+        default="baseline",
+    )
     run.add_argument("--format", choices=("json", "markdown"), default="json")
     run.add_argument("--record", action="store_true")
     return value
@@ -339,14 +353,26 @@ def main() -> int:
         result = validate_cases(library, cases)
         print(json.dumps(result, ensure_ascii=False, indent=2, sort_keys=True))
         return 0 if result["valid"] else 2
-    report = run_benchmark(library, cases, top_k=max(1, args.top_k), include_draft=args.include_draft)
+    report = run_benchmark(
+        library,
+        cases,
+        top_k=max(1, args.top_k),
+        include_draft=args.include_draft,
+        ranking_policy=args.ranking_policy,
+    )
     if args.record:
         if not report["fixed_set_ready"]:
             raise ValueError(
                 "--record requires at least 30 teacher-approved cases; draft results are not durable evidence"
             )
         report["archive_event"] = record_report(
-            library, report, {"case_count": report["eligible_cases"], "top_k": report["top_k"]}
+            library,
+            report,
+            {
+                "case_count": report["eligible_cases"],
+                "top_k": report["top_k"],
+                "ranking_policy": report["ranking_policy"],
+            },
         )
     if args.format == "markdown":
         print_markdown(report)

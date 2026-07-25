@@ -8,6 +8,7 @@ const { chromium } = require("playwright");
 const baseUrl = process.argv[2] || "http://127.0.0.1:8787/";
 const screenshot = process.argv[3] || "/private/tmp/teacher-console-browser-check.png";
 const visualizationScreenshot = screenshot.replace(/(\.[^.]+)?$/, "-visualization$1");
+const difficultyScreenshot = screenshot.replace(/(\.[^.]+)?$/, "-difficulty$1");
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1366, height: 768 }, deviceScaleFactor: 1 });
 const errors = [];
@@ -25,6 +26,21 @@ const agentHealthDetail = await page.locator("#agent-health-detail").textContent
 const dynamicEntry = page.locator(".entry-card", { hasText: "带电粒子在同心圆复合场中的运动" });
 await dynamicEntry.click();
 await page.waitForFunction(() => document.querySelector("#entry-title")?.textContent?.includes("带电粒子在同心圆复合场中的运动"));
+await page.locator('[data-tab="answer"]').click();
+const difficultyToggle = page.locator("#difficulty-assessment-toggle");
+const difficultyPlacement = await page.evaluate(() => {
+  const teacher = document.querySelector('[data-solution="teacher"]')?.getBoundingClientRect();
+  const difficulty = document.querySelector("#difficulty-assessment-toggle")?.getBoundingClientRect();
+  return {
+    visible: Boolean(difficulty?.width && difficulty?.height),
+    besideTeacher: Boolean(teacher && difficulty && Math.abs(teacher.top - difficulty.top) < 4 && difficulty.left >= teacher.right),
+  };
+});
+await difficultyToggle.click();
+const difficultyPanelVisible = await page.locator("#difficulty-assessment").isVisible();
+const difficultyExpanded = await difficultyToggle.getAttribute("aria-expanded");
+const difficultyDimensionCount = await page.locator(".difficulty-dimension").count();
+await page.screenshot({ path: difficultyScreenshot, fullPage: false });
 await page.locator('[data-tab="visualization"]').click();
 const frameElement = page.locator("#visualization-frame");
 await frameElement.waitFor({ state: "visible" });
@@ -85,10 +101,14 @@ await page.screenshot({ path: screenshot, fullPage: false });
 await browser.close();
 
 const report = {
-  status: errors.length || folders < 2 || entryCards < 2 || !agentHealthDetail?.includes("Agent") || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !deliveryNavigationOk || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
+  status: errors.length || folders < 2 || entryCards < 2 || !agentHealthDetail?.includes("Agent") || !difficultyPlacement.visible || !difficultyPlacement.besideTeacher || !difficultyPanelVisible || difficultyExpanded !== "true" || difficultyDimensionCount !== 6 || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !deliveryNavigationOk || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
   folders,
   entryCards,
   agentHealthDetail,
+  difficultyPlacement,
+  difficultyPanelVisible,
+  difficultyExpanded,
+  difficultyDimensionCount,
   sandbox,
   simulator,
   visualizationTabHidden,
@@ -109,6 +129,7 @@ const report = {
   errors,
   screenshot,
   visualizationScreenshot,
+  difficultyScreenshot,
 };
 console.log(JSON.stringify(report, null, 2));
 if (report.status !== "passed") process.exitCode = 1;

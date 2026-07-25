@@ -1398,6 +1398,47 @@ async function selectEntry(id) {
   renderMarkdown(state.current.problem, $("problem-preview"));
   $("publication-privacy-confirmed").checked = false;
   syncTabAvailability(); enforceActiveTabPrerequisite(); renderProgress(); renderImages(); showSolution(state.solution); renderVisualization(); renderDownloads(); renderPublicationImages(); renderPublication(); renderEntries(); renderActiveJob();
+  renderDifficultyAssessment();
+}
+
+function renderDifficultyAssessment() {
+  const assessment = state.current?.difficulty_assessment;
+  const container = $("difficulty-dimensions");
+  container.replaceChildren();
+  $("difficulty-summary").value = assessment?.summary || "";
+  $("difficulty-summary-hint").textContent = assessment?.calibration?.note || "评分采用 0–5、步长 0.1 的证据化量表；不会影响答案复核流程，可直接修改后保存。";
+  $("difficulty-status").textContent = assessment
+    ? `${assessment.score}/100 · ${assessment.level}${assessment.status === "teacher-edited" ? " · 教师已修改" : " · 默认采用"}${assessment.confidence ? ` · 置信度 ${Math.round(assessment.confidence * 100)}%` : ""}`
+    : "解析生成后自动评估";
+  $("difficulty-tab-score").textContent = assessment ? String(assessment.score) : "";
+  $("difficulty-assessment-toggle").setAttribute(
+    "aria-label",
+    assessment ? `题目难度，${assessment.score}/100，${assessment.level}` : "题目难度，解析生成后自动评估",
+  );
+  if (!assessment?.dimensions?.length) return;
+  for (const dimension of assessment.dimensions) {
+    const card = document.createElement("label"); card.className = "difficulty-dimension"; card.dataset.dimension = dimension.id;
+    const title = document.createElement("strong"); title.textContent = `${dimension.label} · ${dimension.weight}%`;
+    const score = document.createElement("input"); score.type = "number"; score.min = "0"; score.max = "5"; score.step = "0.1"; score.value = String(dimension.score); score.setAttribute("aria-label", `${dimension.label}评分（0 至 5，步长 0.1）`);
+    const judgment = document.createElement("textarea"); judgment.maxLength = 180; judgment.value = dimension.core_judgment || ""; judgment.setAttribute("aria-label", `${dimension.label}核心判断`);
+    const evidence = document.createElement("small"); evidence.className = "difficulty-evidence";
+    evidence.textContent = (dimension.evidence || []).map(item => item.excerpt || item.text).filter(Boolean).join(" ");
+    card.append(title, score, judgment, evidence); container.append(card);
+  }
+}
+
+function difficultyAssessmentPayload() {
+  const assessment = state.current?.difficulty_assessment;
+  return {
+    generated_at: assessment?.generated_at || "",
+    summary: $("difficulty-summary").value.trim(),
+    dimensions: [...document.querySelectorAll(".difficulty-dimension")].map(card => ({
+      id: card.dataset.dimension,
+      score: Number(card.querySelector('input[type="number"]').value),
+      core_judgment: card.querySelector("textarea").value.trim(),
+      evidence: state.current?.difficulty_assessment?.dimensions?.find(item => item.id === card.dataset.dimension)?.evidence || [],
+    })),
+  };
 }
 
 function renderProgress() {
@@ -2079,6 +2120,13 @@ document.querySelectorAll(".solution-tab").forEach(button => button.addEventList
   }
   showSolution(button.dataset.solution);
 }));
+$("difficulty-assessment-toggle").addEventListener("click", () => {
+  const panel = $("difficulty-assessment");
+  const willOpen = panel.hidden;
+  panel.hidden = !willOpen;
+  $("difficulty-assessment-toggle").classList.toggle("active", willOpen);
+  $("difficulty-assessment-toggle").setAttribute("aria-expanded", String(willOpen));
+});
 
 const updateProblemPreview = debounce(() => renderMarkdown($("problem-editor").value, $("problem-preview")));
 const updateAnswerPreview = debounce(() => renderMarkdown($("answer-editor").value, $("solution-view")));
@@ -2120,6 +2168,13 @@ $("run-analysis").addEventListener("click", () => {
 $("save-answer").addEventListener("click", () => {
   if (!requirePrerequisite("answer")) return;
   saveCurrentAnswer();
+});
+$("refresh-difficulty-assessment").addEventListener("click", () => {
+  entryAction("refresh-difficulty-assessment", {}, "已按当前题干与解析重算难度量表");
+});
+$("save-difficulty-assessment").addEventListener("click", () => {
+  if (!state.current?.difficulty_assessment) { toast("请先生成解析，系统会自动创建难度量表。", true); return; }
+  entryAction("save-difficulty-assessment", { assessment: difficultyAssessmentPayload() }, "难度量表已保存");
 });
 $("approve-answer").addEventListener("click", async () => {
   if (!requirePrerequisite("answer")) return;

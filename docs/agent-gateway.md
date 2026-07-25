@@ -26,14 +26,16 @@ Gateway 只负责 provider 探测、隔离执行、候选文件运输、失败�
 
 1. 页面提交任务并立即获得 `202` 与 job ID；后台作业写入 `student-error-library/.cache/agent-jobs/`。
 2. Gateway 按任务 `input_paths` 白名单，把必需的普通文件复制到系统临时目录中的隔离候选区；不会整目录复制条目，也不会跟随符号链接。
-3. 原始题图、流程/批准记录、发布草稿和无关内部文件不会放入 Agent 可见候选区；只提供教师已经复核的题干、当前答案/模型、必要元数据和只读规则副本。答案返修和可视化建模还可获得一份经过隐私裁剪和字符预算限制的 `.agent-context/knowledge-evidence.json`；缺失时任务正常继续。
+3. 原始题图、流程/批准记录、发布草稿和无关内部文件不会放入 Agent 可见候选区；只提供教师已经复核的题干、当前答案/模型、必要元数据和只读规则副本。首次解析、答案返修和可视化建模还可获得一份经过隐私裁剪和字符预算限制的 `.agent-context/knowledge-evidence.json`；缺失时任务正常继续。
 4. provider 只能生成任务声明的白名单文件。批准记录、流程记录、原始题图和其他条目均不在写集合中。
 5. 候选内容通过答案结构或物理模型验证，并确认 canonical 条目在任务期间未变化后，才在单题事务锁内执行带回滚的白名单批量提升；这不宣称文件系统支持目录级原子事务。
 6. 生命周期总控重建索引或确定性仿真，并把结果送回教师复核；Agent 不能自行批准。
 
-`analysis.generate` 采用专门的 `wuli.analysis.v1` 契约：模型只返回一份学生版正文、教师审计增量、五类教学元数据和 2–6 个图示节点。Gateway 在无文件工具模式下取得该对象；`analysis_artifacts.py` 再确定性合成教师版与兼容版、只合并允许的记录字段，并生成安全的 `assets/explanatory.svg`。模型不再重复生成三份 Markdown，也不再负责文件写入或 SVG 语法。
+`analysis.generate` 采用专门的 `wuli.analysis.v2` 契约：模型只返回一份学生版正文、教师审计增量、私有方法自检、五类教学元数据和 2–6 个图示节点。方法自检必须比较可行路径并选择最短的高中范围解法；学生版缺少“最短主线”、超过五步或使用积分、导数等超纲方法时会被确定性拒绝。Gateway 在无文件工具模式下取得该对象；`analysis_artifacts.py` 再确定性合成教师版与兼容版、只合并允许的记录字段，并生成安全的 `assets/explanatory.svg`。
 
-结构化结果在确定性落盘前写入本地 `.cache/analysis-checkpoints/`。检查点绑定题干、记录、教师指令、模型和档位摘要；上述任一输入变化都会使旧检查点失效。若 provider 已成功而后续落盘、校验或服务中断，下一次提交优先从检查点恢复，不再次调用模型；正式提升成功后立即删除检查点。`analysis-request.json.stages` 保存生成、答案落盘、图示落盘、校验和提升各阶段状态，以及可用的耗时和 token 用量。
+若条目已经存在 `physics-model.json`，重新生成解析时必须把该模型作为只读结构化上下文一并送入候选区。模型中的事件分支和答案语义用于一致性校验：候选答案若与其明确的选项判断冲突会被拒绝；已有物理过程 SVG 会被保留，不能被通用逻辑节点流程图覆盖。该门禁能阻止“答案返修时遗漏已建模后续事件”的回归，但不能替代无模型题目的独立语义 verifier。
+
+结构化结果在确定性落盘前写入本地 `.cache/analysis-checkpoints/`。检查点绑定题干、记录、教师指令、模型、档位和 evidence pack 摘要；上述任一输入变化都会使旧检查点失效。若 provider 已成功而后续落盘、校验或服务中断，下一次提交优先从检查点恢复，不再次调用模型；正式提升成功后立即删除检查点。`analysis-request.json.stages` 保存生成、答案落盘、图示落盘、校验和提升各阶段状态，以及可用的耗时和 token 用量。
 
 provider 在没有产生候选修改前快速失败时，Gateway 才会尝试下一个 provider。一旦出现候选修改、越权写入或领域校验失败，本次 Gateway 调用立即停止，防止两个模型叠加修改。Provider 超时、已报告 token 用量或运行超过成本阈值的失败也会停止后续降级，避免一次失败叠加多次完整推理；整条 Gateway 调用同时受任务总时间预算约束，而不是让每个 provider 分别用满总预算。默认成本阈值为 30 秒，可通过 `TEACHER_CONSOLE_AGENT_COSTLY_FAILOVER_SECONDS` 调整。
 
@@ -45,6 +47,7 @@ provider 在没有产生候选修改前快速失败时，Gateway 才会尝试下
 |---|---|
 | `provider_unavailable` | 没有可用 provider 或隐私门禁排除了全部候选 |
 | `provider_timeout` / `provider_rate_limited` / `provider_budget_exceeded` / `provider_execution_failed` | provider 超时、限流、超过单次费用上限或非零退出 |
+| `structured_output_schema_invalid` | provider 在推理前拒绝结构化输出 Schema；此类确定性配置错误不计为已消耗推理预算，修复契约前不应直接重试 |
 | `adapter_protocol_error` | JSON adapter 输出无法解析或不符合协议 |
 | `candidate_no_change` | 任务要求修改，但 provider 未形成候选文件变化 |
 | `output_truncated` | 输出截断导致候选或校验不完整 |
@@ -54,6 +57,8 @@ provider 在没有产生候选修改前快速失败时，Gateway 才会尝试下
 | `worker_interrupted` / `task_exception` | 服务重启中断，或生命周期回调异常 |
 
 Benchmark 对旧作业仍保留文本推断兼容；新作业优先使用 Gateway/调度器在失败发生时写入的结构化分类。`failure_type` 只描述失败阶段；是否执行一次性纠正由 `failure_intelligence.py` 的固定策略决定，结果写入 `failure_repair`。完整边界见 [`failure-intelligence.md`](failure-intelligence.md)。
+
+每个终态作业还写入统一的 `outcome`。该结构由 `teacher-console/agent_outcome.py` 单点生成，只记录 provider、模型、结构化失败、provider 报告的 Token、尝试次数、阶段耗时、预算保护、检查点恢复和 evidence 预算，不保存 prompt、stdout、stderr 或学生正文。`usage.measurement` 明确区分 `provider-reported` 与 `unavailable`；系统不会把字符估算伪装成 provider 实测 Token。批量基准优先读取 `outcome`，旧作业继续兼容原有字段。
 
 同一个知识库只允许一个教师工作台服务持有 OS 文件锁；同题事务锁覆盖同步页面写入、canonical 摘要复查、候选提升和生命周期后处理。服务停止时会等待已经运行的 Agent 作业安全结束后再释放实例锁，不让旧 worker 与新服务同时提升。
 
@@ -102,7 +107,7 @@ Gateway 会探测 CLI 版本及所需参数。普通文件任务中，`codex` �
 | 任务 `kind` | 输出方式 | Claude/Codex 本地工具 | OpenAI-compatible / LiteLLM |
 |---|---|---|---|
 | `source.clean` | 文件候选 | 受限文件工具；不自动加载完整 Skill | 返回允许文件的候选内容；不能运行本地工具 |
-| `analysis.generate` | `wuli.analysis.v1` 结构化对象 | **禁用工具**；规则与题干按预算内联 | 一次结构化请求 |
+| `analysis.generate` | `wuli.analysis.v2` 结构化对象 | **禁用工具**；规则、题干与裁剪后的 RAG 证据按预算内联 | 一次结构化请求 |
 | `answer.revise` | 文件候选 | 受限文件工具；expert 档可读总控 Skill | 返回允许文件的候选内容；不能运行本地工具 |
 | `visualization.model` | `physics-model.json` 候选 | 受限文件工具，可读仿真 Skill 与 schema | 可生成 JSON 候选；不能自行运行构建器或浏览器 |
 
@@ -138,7 +143,40 @@ Gateway 通过 stdin 发送一个 JSON 对象，核心字段包括：
 }
 ```
 
-adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr：
+adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr。
+
+`analysis.generate` 是例外的专用结构化契约：它不返回 `files`，而是直接返回
+`student_solution`、`teacher_audit`、`method_check`、`metadata` 和 `diagram`。完整字段与校验规则以
+`teacher-console/analysis_artifacts.py` 中的 `ANALYSIS_OUTPUT_SCHEMA` 为真源；若仍返回旧式
+`files`，Gateway 会在候选物化前以 `adapter_protocol_error` 拒绝结果。
+
+```json
+{
+  "status": "completed",
+  "message": "已生成结构化分层解析",
+  "student_solution": "# 解析（学生版）\n\n## 答案速览\n……",
+  "teacher_audit": "教师复核时需要检查……",
+  "method_check": {
+    "selected_path": "由守恒关系直接列式",
+    "high_school_basis": ["机械能守恒"],
+    "discarded_methods": ["舍弃逐时刻积分"],
+    "student_step_count": 2
+  },
+  "metadata": {
+    "knowledge_points": ["牛顿第二定律"],
+    "error_types": ["受力分析"],
+    "difficulty": "基础",
+    "grade": "高一",
+    "title": "牛顿第二定律"
+  },
+  "diagram": {
+    "title": "解题逻辑",
+    "nodes": ["确定对象", "完成受力分析", "列方程", "检查结果"]
+  }
+}
+```
+
+其他文件候选任务继续返回 `files`：
 
 ```json
 {
@@ -156,7 +194,14 @@ adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr：
 }
 ```
 
-不具备任务所需能力时返回 `{"status":"unsupported","message":"原因","files":[]}`。不得返回 diff、绝对路径、批准记录或交付命令。
+`analysis.generate` 不具备能力时，按 Schema 把五个内容字段设为 `null`；文件候选任务则返回
+`{"status":"unsupported","message":"原因","files":[]}`。不得返回 diff、绝对路径、批准记录或交付命令。
+
+修改 `wuli.analysis.v2` 时必须同时更新
+`teacher-console/tests/fixtures/fake_agent_adapter.py` 与
+`teacher-console/e2e/fake_agent_adapter.py`。前者覆盖 Gateway/作业单元测试，后者驱动真实
+HTTP、生命周期和浏览器流程；只更新其中一个会造成单元测试通过而 E2E 停在
+`needs-analysis-and-answer`。提交前需同时运行 Python 测试和 3 条隔离 E2E。
 
 `TEACHER_CONSOLE_AGENT_COMMAND` 旧模板仍兼容，但 prompt 可能出现在进程参数中，且无法提供结构化能力声明；新接入不要继续采用它。
 

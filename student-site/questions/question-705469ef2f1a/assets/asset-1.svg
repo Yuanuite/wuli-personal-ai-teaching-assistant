@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 650" font-family="PingFang SC, Heiti SC, STHeiti, Arial, sans-serif">
+  <defs>
+    <marker id="arrowRed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#c0392b"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#27ae60"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2980b9"/>
+    </marker>
+    <marker id="arrowPurple" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#8e44ad"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="30" text-anchor="middle" font-size="16" font-weight="bold" fill="#2c3e50">磁控法测电子比荷 — 关键关系示意图</text>
+
+  <!-- =============== LEFT PANEL =============== -->
+  <g transform="translate(350, 350)">
+    <!-- Tube wall (dashed) -->
+    <circle cx="0" cy="0" r="180" fill="none" stroke="#2c3e50" stroke-width="2.5" stroke-dasharray="10,5"/>
+
+    <!-- Electron orbit circle -->
+    <circle cx="0" cy="90" r="90" fill="#3498db" fill-opacity="0.12" stroke="#2980b9" stroke-width="2"/>
+
+    <!-- Point O -->
+    <circle cx="0" cy="0" r="5" fill="#e74c3c"/>
+    <text x="-35" y="-15" text-anchor="end" font-size="12" font-weight="bold" fill="#c0392b">O</text>
+    <text x="-35" y="0" text-anchor="end" font-size="9" fill="#c0392b">(electron source)</text>
+
+    <!-- Point C -->
+    <circle cx="0" cy="90" r="4" fill="#27ae60"/>
+    <text x="-15" y="100" text-anchor="end" font-size="11" fill="#27ae60">C (orbit center)</text>
+
+    <!-- r arrow (O to C, double-headed) -->
+    <line x1="20" y1="10" x2="20" y2="80" stroke="#27ae60" stroke-width="1.8"/>
+    <polygon points="16,15 20,5 24,15" fill="#27ae60"/>
+    <polygon points="16,75 20,85 24,75" fill="#27ae60"/>
+    <text x="30" y="50" font-size="12" font-weight="bold" fill="#27ae60">r</text>
+
+    <!-- R arrow -->
+    <line x1="20" y1="-20" x2="170" y2="-20" stroke="#2c3e50" stroke-width="2"/>
+    <polygon points="165,-24 175,-20 165,-16" fill="#2c3e50"/>
+    <polygon points="25,-24 15,-20 25,-16" fill="#2c3e50"/>
+    <text x="95" y="-28" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">R</text>
+
+    <!-- 2r = R arrow -->
+    <line x1="-30" y1="10" x2="-30" y2="178" stroke="#e74c3c" stroke-width="2"/>
+    <polygon points="-34,15 -30,5 -26,15" fill="#e74c3c"/>
+    <polygon points="-34,173 -30,183 -26,173" fill="#e74c3c"/>
+    <text x="-40" y="95" text-anchor="end" font-size="12" font-weight="bold" fill="#e74c3c">2r = R</text>
+
+    <!-- v0 arrow -->
+    <line x1="0" y1="0" x2="65" y2="0" stroke="#e74c3c" stroke-width="2.5"/>
+    <polygon points="60,-5 70,0 60,5" fill="#e74c3c"/>
+    <text x="35" y="-12" font-size="12" fill="#e74c3c">v0</text>
+
+    <!-- FL arrow -->
+    <line x1="3" y1="20" x2="3" y2="75" stroke="#8e44ad" stroke-width="2"/>
+    <polygon points="-1,70 3,80 7,70" fill="#8e44ad"/>
+    <text x="8" y="55" font-size="11" fill="#8e44ad">FL</text>
+
+    <!-- B field symbol -->
+    <text x="-225" y="-215" font-size="12" fill="#2c3e50">B ⊗ (垂直纸面向里)</text>
+
+    <!-- Critical condition box -->
+    <rect x="-105" y="185" width="210" height="30" rx="6" fill="#f3e5f5" stroke="#8e44ad" stroke-width="1.2"/>
+    <text x="0" y="205" text-anchor="middle" font-size="12" font-weight="bold" fill="#8e44ad">临界: 2·mv0/(eB0) = R</text>
+  </g>
+
+  <!-- Left panel label -->
+  <text x="350" y="600" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">(a) 临界情况 B=B0：电子恰好不碰筒壁</text>
+
+  <!-- =============== RIGHT PANEL =============== -->
+  <g transform="translate(1050, 350)">
+    <!-- Subtle cylinder interior -->
+    <rect x="-200" y="-250" width="400" height="500" fill="#ecf0f1" fill-opacity="0.3"/>
+
+    <!-- Hit region band -->
+    <rect x="-200" y="-250" width="400" height="500" fill="#e74c3c" fill-opacity="0.1" stroke="#c0392b" stroke-width="1.5" stroke-dasharray="8,4"/>
+
+    <!-- Left wall -->
+    <line x1="-200" y1="-300" x2="-200" y2="300" stroke="#2c3e50" stroke-width="3"/>
+    <!-- Right wall -->
+    <line x1="200" y1="-300" x2="200" y2="300" stroke="#2c3e50" stroke-width="3"/>
+
+    <!-- Center axis -->
+    <line x1="0" y1="-300" x2="0" y2="300" stroke="#95a5a6" stroke-width="1" stroke-dasharray="4,6"/>
+
+    <!-- Point O -->
+    <circle cx="0" cy="0" r="5" fill="#e74c3c"/>
+    <text x="-15" y="-18" text-anchor="end" font-size="12" font-weight="bold" fill="#c0392b">O</text>
+
+    <!-- R annotation -->
+    <line x1="10" y1="-180" x2="192" y2="-180" stroke="#2c3e50" stroke-width="1.8"/>
+    <polygon points="188,-184 198,-180 188,-176" fill="#2c3e50"/>
+    <polygon points="15,-184 5,-180 15,-176" fill="#2c3e50"/>
+    <text x="100" y="-190" text-anchor="middle" font-size="12" font-weight="bold" fill="#2c3e50">R</text>
+
+    <!-- z_max double arrow -->
+    <line x1="-230" y1="-250" x2="-230" y2="250" stroke="#c0392b" stroke-width="1.8"/>
+    <polygon points="-234,-245 -230,-255 -226,-245" fill="#27ae60"/>
+    <polygon points="-234,245 -230,255 -226,245" fill="#27ae60"/>
+    <text x="-250" y="0" text-anchor="middle" font-size="11" font-weight="bold" fill="#c0392b" transform="rotate(-90, -250, 0)">2z_max</text>
+
+    <!-- z_max value -->
+    <text x="-195" y="-235" font-size="10" fill="#c0392b">z_max = (pi*sqrt(3)/2) R</text>
+
+    <!-- Band label -->
+    <text x="-170" y="50" font-size="12" font-weight="bold" fill="#c0392b">Electron</text>
+    <text x="-165" y="68" font-size="12" font-weight="bold" fill="#c0392b">impact region</text>
+
+    <!-- Trajectory curves -->
+    <g stroke-width="1.0" fill="none" opacity="0.55">
+      <!-- alpha = 35 deg (blue) -->
+      <path d="M0,0 Q30,30 80,100 Q120,150 180,220" stroke="#2980b9"/>
+      <path d="M0,0 Q-30,30 -80,100 Q-120,150 -180,220" stroke="#2980b9"/>
+      <path d="M0,0 Q30,-30 80,-100 Q120,-150 180,-220" stroke="#2980b9"/>
+      <path d="M0,0 Q-30,-30 -80,-100 Q-120,-150 -180,-220" stroke="#2980b9"/>
+      <!-- alpha = 50 deg (green) -->
+      <path d="M0,0 Q40,20 100,60 Q150,105 195,150" stroke="#27ae60"/>
+      <path d="M0,0 Q-40,20 -100,60 Q-150,105 -195,150" stroke="#27ae60"/>
+      <path d="M0,0 Q40,-20 100,-60 Q150,-105 195,-150" stroke="#27ae60"/>
+      <path d="M0,0 Q-40,-20 -100,-60 Q-150,-105 -195,-150" stroke="#27ae60"/>
+      <!-- alpha = 70 deg (yellow) -->
+      <path d="M0,0 Q60,10 140,25 Q185,40 200,60" stroke="#e67e22"/>
+      <path d="M0,0 Q-60,10 -140,25 Q-185,40 -200,60" stroke="#e67e22"/>
+      <path d="M0,0 Q60,-10 140,-25 Q185,-40 200,-60" stroke="#e67e22"/>
+      <path d="M0,0 Q-60,-10 -140,-25 Q-185,-40 -200,-60" stroke="#e67e22"/>
+    </g>
+
+    <!-- Angle constraint -->
+    <text x="240" y="-80" font-size="11" fill="#2c3e50" text-anchor="middle">Electrons with</text>
+    <text x="240" y="-62" font-size="11" fill="#2c3e50" text-anchor="middle">alpha ≥ 30deg</text>
+    <text x="240" y="-44" font-size="11" fill="#2c3e50" text-anchor="middle">hit the wall</text>
+
+    <!-- Area formula -->
+    <rect x="-140" y="260" width="280" height="30" rx="6" fill="#f3e5f5" stroke="#8e44ad" stroke-width="1.2"/>
+    <text x="0" y="281" text-anchor="middle" font-size="12" font-weight="bold" fill="#8e44ad">S = 2πR · 2z_max = 2√3 π² R²</text>
+  </g>
+
+  <!-- Right panel label -->
+  <text x="1050" y="600" text-anchor="middle" font-size="13" font-weight="bold" fill="#2c3e50">(b) B = B0/2：电子落点区域</text>
+</svg>

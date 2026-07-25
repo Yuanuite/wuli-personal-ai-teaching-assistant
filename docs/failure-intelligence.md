@@ -20,7 +20,8 @@
 | `output_truncated` | 首轮成本很低时要求缩短输出并闭合必需结构，重试一次 |
 | `candidate_no_change` | 首轮成本很低时提醒实际修改允许文件，重试一次 |
 | `unauthorized_change`、`canonical_changed` | 永不自动重试；等待教师刷新或修正范围 |
-| provider 超时、限流、超过费用预算、不可用、协议/执行失败 | Gateway 已做安全 provider 降级；记录后延迟重提或修复配置，避免立即重复计费；费用超限不得通过自动提高预算解决 |
+| provider 超时、限流、超过费用预算、不可用、协议/执行失败 | 记录后延迟重提或修复配置，避免立即重复计费；只有结果中的 `attempts` 能证明是否实际发生 provider 降级，提示文案不再笼统声称“已完成降级”；费用超限不得通过自动提高预算解决 |
+| `structured_output_schema_invalid` | provider 在推理前拒绝 Schema；不计为已消耗推理预算、不自动重试，先修复结构化契约 |
 | `simulation_build_failed`、`worker_interrupted`、`task_exception` | 保留证据，交给确定性构建排查或重新提交，不猜测成功 |
 
 `max_retries=1` 是硬边界，不是必须重试的承诺。首轮报告任意正 token 用量，或单次 provider 运行达到 30 秒时，`failure_repair.status=not-retried-budget-protected`，避免用第二次完整推理修复已有候选。失败证据不能放宽路径、批准答案、交付或发布，也不能覆盖当前教师意见。

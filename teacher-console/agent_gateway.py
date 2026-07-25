@@ -70,6 +70,8 @@ def classify_agent_failure(result: dict) -> str:
         result.get("error"),
         result.get("stdout"),
         result.get("stderr"),
+        result.get("terminal_reason"),
+        result.get("subtype"),
         *validation,
     ]
     for attempt in attempts:
@@ -79,15 +81,30 @@ def classify_agent_failure(result: dict) -> str:
                     attempt.get("error"),
                     attempt.get("stdout"),
                     attempt.get("stderr"),
+                    attempt.get("terminal_reason"),
+                    attempt.get("subtype"),
                 )
             )
     text = " ".join(str(value) for value in text_parts if value).lower()
 
+    if "invalid_json_schema" in text or (
+        "invalid schema for response_format" in text
+        or ("response_format" in text and "'allof' is not permitted" in text)
+    ):
+        return "structured_output_schema_invalid"
     if "timeout" in text or "timed out" in text or "超时" in text:
         return "provider_timeout"
     if "rate limit" in text or "rate_limit" in text or "429" in text or "限流" in text:
         return "provider_rate_limited"
-    if "exceeded usd budget" in text or "budget exceeded" in text or "超出费用预算" in text:
+    budget_markers = {
+        "exceeded usd budget",
+        "budget exceeded",
+        "reached maximum budget",
+        "error_max_budget_usd",
+        "budget_exhausted",
+        "超出费用预算",
+    }
+    if any(marker in text for marker in budget_markers):
         return "provider_budget_exceeded"
     if "truncated" in text or "截断" in text:
         return "output_truncated"
@@ -201,6 +218,10 @@ class AgentGateway:
     @staticmethod
     def _attempt_consumed_material_budget(attempt: dict, threshold_seconds: float) -> bool:
         """Return whether another provider call would likely duplicate material spend."""
+        if attempt.get("failure_type") == "structured_output_schema_invalid":
+            # The request was rejected before inference. Startup or model-list
+            # latency must not be mistaken for consumed reasoning budget.
+            return False
         if attempt.get("failure_type") == "provider_timeout":
             return True
         usage = attempt.get("token_usage")
@@ -1013,6 +1034,19 @@ class AgentGateway:
                 "reference_count": max(0, min(reference_count, 20)),
                 "task_type": str(evidence_context.get("task_type", task.get("kind", "")))[:80],
             }
+            budget = evidence_context.get("budget")
+            if isinstance(budget, dict):
+                model_metadata["evidence_context"]["budget"] = {
+                    key: budget[key]
+                    for key in ("requested_chars", "serialized_chars", "truncated")
+                    if (
+                        key == "truncated"
+                        and isinstance(budget[key], bool)
+                        or key != "truncated"
+                        and isinstance(budget[key], int)
+                        and not isinstance(budget[key], bool)
+                    )
+                }
         entry = Path(task["entry_dir"]).resolve()
         if not entry.is_dir():
             raise FileNotFoundError(entry)

@@ -77,6 +77,31 @@ class RetrievalBenchmarkTest(unittest.TestCase):
         self.assertEqual(report["overall"]["recall"]["@5"], 1.0)
         self.assertFalse(report["fixed_set_ready"])
 
+    def test_run_can_evaluate_experimental_multi_route_policy_without_activating_it(self):
+        report = benchmark.run_benchmark(
+            self.library,
+            self.cases(),
+            top_k=5,
+            ranking_policy="multi-route",
+        )
+        self.assertEqual(report["ranking_policy"], "multi-route")
+        self.assertEqual(report["overall"]["recall"]["@5"], 1.0)
+        active = knowledge_store.query(self.library, "动量守恒 非弹性碰撞", top_k=5)
+        self.assertEqual(active["retrieval"]["selected_policy"], "baseline")
+        self.assertEqual(active["retrieval"]["activation_status"], "active")
+
+    def test_run_can_evaluate_intent_augmented_policy_without_activating_it(self):
+        report = benchmark.run_benchmark(
+            self.library,
+            self.cases(),
+            top_k=5,
+            ranking_policy="intent-augmented",
+        )
+        self.assertEqual(report["ranking_policy"], "intent-augmented")
+        self.assertEqual(report["overall"]["recall"]["@5"], 1.0)
+        active = knowledge_store.query(self.library, "动量守恒 非弹性碰撞", top_k=5)
+        self.assertEqual(active["retrieval"]["selected_policy"], "baseline")
+
     def test_seed_is_draft_and_covers_all_categories(self):
         cases = benchmark.seed_cases(self.library, limit=4)
         self.assertEqual(len(cases), 4)

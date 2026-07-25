@@ -17,6 +17,10 @@ Evaluator 是悟理“教学进化系统”的第一块轻基建：它把一次�
 
 认知负担目前只是启发式提示，例如答案过短或过长；物理语义正确性仍由教师复核和后续专门 verifier 承担。
 
+Evaluator 不再输出容易被误解为物理正确性的 `correctness`，只输出
+`process_compliance`。物理内容质量来自教师批准、打回、修改痕迹和未来的独立 verifier，
+不要求教师额外填写星级。
+
 ## 输出文件
 
 关键生命周期动作会自动刷新：
@@ -48,7 +52,7 @@ output/<题目>/evaluation.json  # 已交付时
     "status": "passed",
     "scores": {
       "completeness": 5,
-      "correctness": 5,
+      "process_compliance": 5,
       "student_cognitive_load": 5,
       "safety": 5,
       "deliverability": 5
@@ -58,6 +62,8 @@ output/<题目>/evaluation.json  # 已交付时
   }
 }
 ```
+
+后续质量闭环不要求教师额外填写四档评分，而是从打回次数、语义修改、修改比例、重生成和最终批准自动推断“重做 / 大幅修改后采用 / 小幅修改后采用 / 原样采用”，并记录证据与置信度；未操作或尚未复核不能被解释为低分。
 
 ## 手动命令
 

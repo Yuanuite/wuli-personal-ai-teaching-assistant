@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import hashlib
 import json
 import mimetypes
 import os
@@ -33,10 +34,12 @@ sys.path.insert(0, str(CONSOLE_DIR))
 
 import analysis_artifacts  # noqa: E402
 import candidate_archive  # noqa: E402
+import difficulty_assessment  # noqa: E402
 import evaluator  # noqa: E402
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
 import public_site  # noqa: E402
+import teacher_feedback  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 from failure_intelligence import run_with_failure_repair  # noqa: E402
@@ -74,11 +77,53 @@ PUBLICATION_LOCK = threading.RLock()
 AGENT_GATEWAY = AgentGateway(environment_resolver=lambda: resolved_environment(LIBRARY))
 _JOB_MANAGER: AgentJobManager | None = None
 _JOB_MANAGER_LOCK = threading.Lock()
+
+
+class IndexRebuildDebouncer:
+    """Coalesce bursty source.clean completions into one library rebuild."""
+
+    def __init__(self, delay_seconds: float):
+        self.delay_seconds = max(0.05, float(delay_seconds))
+        self._lock = threading.Lock()
+        self._timer: threading.Timer | None = None
+        self._pending = False
+
+    def schedule(self) -> None:
+        with self._lock:
+            self._pending = True
+            if self._timer is not None:
+                self._timer.cancel()
+            self._timer = threading.Timer(self.delay_seconds, self.flush)
+            self._timer.daemon = True
+            self._timer.start()
+
+    def flush(self) -> None:
+        with self._lock:
+            timer, pending = self._timer, self._pending
+            self._timer = None
+            self._pending = False
+            if timer is not None and timer is not threading.current_thread():
+                timer.cancel()
+        if pending:
+            with LIBRARY_INDEX_LOCK:
+                kb.rebuild_index(LIBRARY)
+
+
+def _source_clean_debounce_seconds() -> float:
+    try:
+        return float(os.environ.get("TEACHER_CONSOLE_SOURCE_CLEAN_INDEX_DEBOUNCE_SECONDS", "2"))
+    except ValueError:
+        return 2.0
+
+
+SOURCE_CLEAN_INDEX_DEBOUNCER = IndexRebuildDebouncer(_source_clean_debounce_seconds())
 SUPPORTED_SIMULATOR_MODEL_TYPES = [
     "concentric-radial-multi-field",
     "opposite-circular-magnetic",
     "electric-to-bounded-magnetic",
     "planar-magnetic-multi-particle",
+    "piecewise-field-particle-2d",
+    "piecewise-field-particle-3d",
 ]
 DELIVERY_CATALOG = {
     "student-package.zip": {
@@ -207,6 +252,7 @@ def gateway_routing_fields(gateway: dict) -> dict:
         "evidence_context",
         "failure_repair",
         "budget_guard",
+        "outcome",
         "materialization",
         "resumed_from_checkpoint",
     )
@@ -224,12 +270,16 @@ def run_agent_gateway(entry: Path, task: dict, validator, *, materializer=None) 
                 current_validator,
                 materializer=materializer,
             )
-    return run_with_failure_repair(
+    result = run_with_failure_repair(
         task,
         validator,
         library=entry.parent.parent,
         run_once=run_once,
     )
+    from agent_outcome import build_agent_request_outcome
+
+    result["outcome"] = build_agent_request_outcome(result)
+    return result
 
 
 def archive_agent_result(
@@ -264,6 +314,7 @@ def archive_agent_result(
             "failure_repair",
             "evidence_context",
             "budget_guard",
+            "outcome",
         )
         if key in gateway
     }
@@ -273,6 +324,10 @@ def archive_agent_result(
         for key in ("routing_tier", "model_id", "model_display_name")
         if key in request
     }
+    feedback_text = str(request.get("note") or request.get("message") or "")
+    links = {}
+    if request.get("feedback_event_id"):
+        links["feedback_event_id"] = request["feedback_event_id"]
     try:
         evaluation = evaluator.evaluate_entry(library, entry.name, write=True)
         evaluation_summary = {
@@ -301,6 +356,14 @@ def archive_agent_result(
             result=compact_result,
             evaluation=evaluation_summary,
             changed_files=gateway.get("changed_files", []),
+            feedback={
+                "categories": teacher_feedback.feedback_categories(
+                    feedback_text, changed_files=gateway.get("changed_files", [])
+                )
+            }
+            if feedback_text
+            else {},
+            links=links,
             failure_reasons=[]
             if status == "completed"
             else [str(gateway.get("message") or gateway.get("failure_type") or "Agent 任务失败")],
@@ -365,6 +428,11 @@ def agent_scheduler_config() -> dict:
 
 def _evidence_prompt_note(kind: str) -> str:
     """One-line reminder that current canonical content wins over historical evidence."""
+    if kind == "analysis.generate":
+        return (
+            "当前题干优先于历史证据。历史片段只用于召回可迁移的高中方法、适用条件和易错点；"
+            "必须独立验算，不得复制历史答案。"
+        )
     if kind == "answer.revise":
         return "当前题干与教师意见优先于历史证据。历史片段只用于核对方法、易错点和适用条件。"
     if kind == "visualization.model":
@@ -378,6 +446,7 @@ def agent_evidence_payload(entry: Path, kind: str, routing_tier: str = "auto") -
     Failure to retrieve is non-blocking; returns ``status=unavailable``.
     """
     task_type_map = {
+        "analysis.generate": "analysis.generate",
         "answer.revise": "answer.revise",
         "visualization.model": "visualization.model",
     }
@@ -501,11 +570,19 @@ def _agent_task(
     }
     if evidence:
         task["context_payloads"] = {".agent-context/knowledge-evidence.json": evidence}
-        task["evidence_context"] = {
+        evidence_context = {
             "status": str(evidence.get("status", "unavailable"))[:40],
             "reference_count": min(len(evidence.get("references", [])), 20),
             "task_type": str(evidence.get("task_type", kind))[:80],
         }
+        context_budget = evidence.get("context_budget")
+        if isinstance(context_budget, dict):
+            evidence_context["budget"] = {
+                key: context_budget[key]
+                for key in ("requested_chars", "serialized_chars", "truncated")
+                if key in context_budget
+            }
+        task["evidence_context"] = evidence_context
     return task
 
 
@@ -523,13 +600,23 @@ def answer_asset_names(entry: Path) -> set[str]:
 
 
 def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
+    has_physics_model = (entry / "physics-model.json").is_file()
     prompt = (
         f"处理错题知识库条目。{instruction}\n"
         "已复核题干见 problem.md。检索已有方法，独立解题。\n"
         "返回一份结构化解析：完整学生版、仅教师增补的审计内容、教学元数据和解题逻辑节点。"
         "不要直接编辑文件，不要重复输出教师版或兼容版；程序会确定性生成这些产物与解释图。\n"
+        "生成前必须做方法自检：比较至少两条可行路径，选高中课程范围内认知负担最低、推导最短的一条；"
+        "积分、导数等高阶方法即使可行也必须舍弃，改用图像面积、平均值、守恒或标准高中结论。\n"
+        + (
+            "本条目已有 physics-model.json；它记录已建模的事件、轨迹和答案语义。"
+            "必须逐分支核对并保持一致，不得遗漏返回某区域后的后续运动。\n"
+            if has_physics_model else ""
+        )
+        +
         "遵循授权上下文中的答案模板与格式要求。"
     )
+    evidence = agent_evidence_payload(entry, "analysis.generate", routing_tier)
     task = _agent_task(
         entry,
         "analysis.generate",
@@ -547,18 +634,22 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
             "student-solution.md",
             "teacher-solution.md",
             "solution.md",
+            *(["physics-model.json"] if has_physics_model else []),
             *sorted(answer_asset_names(entry)),
         ],
         denied_paths=sorted(source_asset_names(entry)),
         routing_tier=routing_tier,
         model_config=model_config,
+        evidence=evidence,
     )
     task["output_contract"] = analysis_artifacts.output_contract()
     task["structured_context_paths"] = [
         "problem.md",
         "record.json",
+        *(["physics-model.json"] if has_physics_model else []),
         ".agent-context/answer-template.md",
         ".agent-context/secondary-conclusions.json",
+        ".agent-context/knowledge-evidence.json",
     ]
     return task
 
@@ -621,7 +712,9 @@ def answer_revision_task(
         "根据以上意见修订错题解析。核对已批准题干，修改 student-solution.md、teacher-solution.md，"
         "保持 solution.md 与教师版一致。可修改或新增 assets/ 中的解释 SVG/PNG。"
         f"{model_note}"
-        "采用高中生应知的低认知负担解法，遵循 .agent-context/ 中的答案模板与格式要求。"
+        "采用高中生应知的低认知负担解法；先比较可行路径并自检，学生版只保留最短主线，"
+        "不得使用积分、导数、微分方程、矩阵、复数法或大学力学方法，主线不超过五步。"
+        "遵循 .agent-context/ 中的答案模板与格式要求。"
     )
     allowed = ["solution.md", "student-solution.md", "teacher-solution.md", "assets/**"]
     if has_model:
@@ -745,6 +838,8 @@ def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entr
         errors.append("solution.md is missing")
     if teacher.is_file() and solution.is_file() and teacher.read_bytes() != solution.read_bytes():
         errors.append("solution.md must be identical to teacher-solution.md")
+    if student.is_file() and "student-solution.md" in _changed:
+        errors.extend(analysis_artifacts.student_method_errors(student.read_text(encoding="utf-8")))
     if canonical_entry is not None:
         baseline = kb.load_json(canonical_entry / "record.json", {})
         if "record.json" in _changed:
@@ -847,6 +942,8 @@ def save_answer_entry(library: Path, entry: Path, data: dict) -> dict:
     if base_digest and base_digest != process_uploads.answer_digest(entry):
         raise ValueError("答案已在其他位置发生变化，请刷新后再编辑")
     target = entry / ("student-solution.md" if layer == "student" else "teacher-solution.md")
+    before_text = target.read_text(encoding="utf-8") if target.is_file() else ""
+    before_digest = process_uploads.answer_digest(entry)
     kb.write_text(target, markdown)
     if layer == "teacher":
         kb.write_text(entry / "solution.md", markdown)
@@ -861,14 +958,90 @@ def save_answer_entry(library: Path, entry: Path, data: dict) -> dict:
         }
         kb.write_json(model_path, model)
     marked = mark_answer_needs_review(library, entry, "答案已在教师工作台编辑，等待重新复核")
+    assessment = assess_entry_difficulty(entry)
     evaluation = evaluator.evaluate_entry(library, entry.name, write=True)
+    semantic_diff = teacher_feedback.semantic_text_diff(before_text, markdown, path=target.name)
+    semantic_diff["change_ratio"] = round(
+        semantic_diff["changed_lines"] / max(semantic_diff["total_lines"], 1), 4
+    )
+    semantic_diff["status"] = "computed"
+    source_event = candidate_archive.latest_event(
+        entry, task_types={"analysis.generate", "answer.revise"}, event_type="agent-result"
+    )
+    archive = candidate_archive.append_event(
+        library,
+        entry,
+        task_type="answer.save",
+        actor="teacher",
+        event_type="edit",
+        status="saved",
+        summary=f"教师保存{layer}答案层",
+        request={"layer": layer, "base_digest": before_digest},
+        result={"answer_digest": marked["review"]["answer_digest"], "semantic_diff": semantic_diff},
+        evaluation={
+            key: evaluation.get(key)
+            for key in ("status", "scores", "teacher_review_required", "failure_reasons", "warning_reasons")
+        },
+        changed_files=[target.name, *(["solution.md"] if layer == "teacher" else [])],
+        feedback={"categories": semantic_diff["categories"]},
+        links={"candidate_event_id": source_event.get("event_id")} if source_event else {},
+    )
     return {
         "status": "saved",
         "layer": layer,
         "answer_digest": marked["review"]["answer_digest"],
         "state": marked["state"],
         "evaluation": evaluation,
+        "difficulty_assessment": assessment,
+        "semantic_diff": semantic_diff,
+        "archive": archive,
     }
+
+
+def assess_entry_difficulty(entry: Path, *, force: bool = False) -> dict:
+    """Refresh the non-blocking objective-difficulty rubric after answer changes."""
+    record = kb.load_json(entry / "record.json", {})
+    problem = (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").is_file() else ""
+    answer_path = entry / "student-solution.md"
+    answer = answer_path.read_text(encoding="utf-8") if answer_path.is_file() else ""
+    model_path = entry / "physics-model.json"
+    model = kb.load_json(model_path, {}) if model_path.is_file() else None
+    previous = record.get("difficulty_assessment")
+    if not force and difficulty_assessment.current(previous, problem, answer, model):
+        return previous
+    if isinstance(previous, dict) and previous.get("status") == "teacher-edited":
+        history = record.setdefault("difficulty_assessment_history", [])
+        if isinstance(history, list):
+            history.append({"reason": "题目、解析或模型已变化，保留原教师校准", "assessment": previous})
+            record["difficulty_assessment_history"] = history[-10:]
+    assessment = difficulty_assessment.auto_assess(record, problem, answer, model)
+    if isinstance(previous, dict) and previous.get("status") == "teacher-edited":
+        assessment["calibration"] = {"status": "needs-recalibration", "note": "题目、解析或模型已变化；已保留先前教师校准，建议复核此新基线。"}
+    record["difficulty_assessment"] = assessment
+    # Keep the legacy label coherent for existing stats and retrieval views.
+    record["difficulty"] = assessment["level"]
+    record["updated_at"] = difficulty_assessment.now_iso()
+    kb.write_json(entry / "record.json", record)
+    with LIBRARY_INDEX_LOCK:
+        kb.rebuild_index(entry.parent.parent)
+    return assessment
+
+
+def save_difficulty_assessment(entry: Path, data: dict) -> dict:
+    record = kb.load_json(entry / "record.json", {})
+    problem = (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").is_file() else ""
+    answer_path = entry / "student-solution.md"
+    answer = answer_path.read_text(encoding="utf-8") if answer_path.is_file() else ""
+    model_path = entry / "physics-model.json"
+    model = kb.load_json(model_path, {}) if model_path.is_file() else None
+    assessment = difficulty_assessment.normalize_teacher_edit(data.get("assessment"), problem, answer, model)
+    record["difficulty_assessment"] = assessment
+    record["difficulty"] = assessment["level"]
+    record["updated_at"] = difficulty_assessment.now_iso()
+    kb.write_json(entry / "record.json", record)
+    with LIBRARY_INDEX_LOCK:
+        kb.rebuild_index(entry.parent.parent)
+    return {"status": "saved", "difficulty_assessment": assessment}
 
 
 def retrieval_review_snapshot(library: Path) -> dict:
@@ -990,7 +1163,7 @@ def _normalize_latex(text: str) -> str:
     return text
 
 
-def _save_agent_baseline(entry: Path, changed_files: list[str]) -> Path | None:
+def _save_agent_baseline(entry: Path, changed_files: list[str], *, task_type: str = "") -> Path | None:
     """Snapshot agent-promoted files as the baseline for later teacher-edit diff."""
     if not changed_files:
         return None
@@ -1004,6 +1177,25 @@ def _save_agent_baseline(entry: Path, changed_files: list[str]) -> Path | None:
             target = baseline_dir / relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
+    relevant_at_baseline = {
+        path
+        for path in ("solution.md", "student-solution.md", "teacher-solution.md", "physics-model.json")
+        if (entry / path).is_file()
+    }
+    if (entry / "assets").is_dir():
+        relevant_at_baseline.update(
+            path.relative_to(entry).as_posix() for path in (entry / "assets").glob("explanat*.*") if path.is_file()
+        )
+    kb.write_json(
+        baseline_dir / "baseline.json",
+        {
+            "schema_version": 1,
+            "task_type": task_type,
+            "changed_files": sorted(set(changed_files)),
+            "relevant_files_at_baseline": sorted(relevant_at_baseline),
+            "created_at": kb.now_iso(),
+        },
+    )
     return baseline_dir
 
 
@@ -1016,22 +1208,61 @@ def _compute_agent_diff(entry: Path) -> dict:
     baseline_dir = entry / ".agent-baseline"
     if not baseline_dir.exists():
         return {"status": "no-baseline", "changed_lines": 0, "total_lines": 0, "change_ratio": 0.0}
+    metadata = kb.load_json(baseline_dir / "baseline.json", {})
+    tracked = {
+        path.relative_to(baseline_dir).as_posix()
+        for path in baseline_dir.rglob("*")
+        if path.is_file() and path.name != "baseline.json"
+    }
+    tracked.update(str(item) for item in metadata.get("changed_files", []) if isinstance(item, str))
+    for path in ("solution.md", "student-solution.md", "teacher-solution.md", "physics-model.json"):
+        if (entry / path).is_file() and (baseline_dir / path).is_file():
+            tracked.add(path)
+    baseline_relevant = set(metadata.get("relevant_files_at_baseline", []))
+    current_relevant = {
+        path
+        for path in ("solution.md", "student-solution.md", "teacher-solution.md", "physics-model.json")
+        if (entry / path).is_file()
+    }
+    if (entry / "assets").is_dir():
+        current_relevant.update(
+            path.relative_to(entry).as_posix() for path in (entry / "assets").glob("explanat*.*") if path.is_file()
+        )
+    tracked.update(current_relevant - baseline_relevant)
+
     total_changed = 0
     total_lines = 0
-    for baseline_file in sorted(baseline_dir.rglob("*")):
-        if not baseline_file.is_file():
-            continue
-        relative = baseline_file.relative_to(baseline_dir).as_posix()
+    categories: set[str] = set()
+    critical_correction = False
+    file_changes = []
+    for relative in sorted(tracked):
+        baseline_file = baseline_dir / relative
         current_file = entry / relative
-        baseline_bytes = baseline_file.read_bytes()
+        baseline_bytes = baseline_file.read_bytes() if baseline_file.is_file() else b""
         try:
             baseline_text = baseline_bytes.decode("utf-8")
         except UnicodeDecodeError:
             baseline_text = None
+        if not baseline_file.is_file():
+            current_bytes = current_file.read_bytes()
+            try:
+                current_text = current_bytes.decode("utf-8")
+            except UnicodeDecodeError:
+                current_text = None
+            units = max(len(current_text.splitlines()), 1) if current_text is not None else 1
+            total_changed += units
+            total_lines += units
+            semantic = teacher_feedback.semantic_text_diff("", current_text or "", path=relative)
+            categories.update(semantic["categories"])
+            critical_correction = critical_correction or semantic["critical_correction"]
+            file_changes.append({"path": relative, "change": "added", "changed_units": units})
+            continue
         if not current_file.is_file():
             units = max(len(baseline_text.splitlines()), 1) if baseline_text is not None else 1
             total_changed += units
             total_lines += units
+            categories.update(teacher_feedback.feedback_categories("", changed_files=[relative]))
+            file_changes.append({"path": relative, "change": "deleted", "changed_units": units})
             continue
         current_bytes = current_file.read_bytes()
         try:
@@ -1039,8 +1270,12 @@ def _compute_agent_diff(entry: Path) -> dict:
         except UnicodeDecodeError:
             current_text = None
         if baseline_text is None or current_text is None:
-            total_changed += 0 if baseline_bytes == current_bytes else 1
+            changed_units = 0 if baseline_bytes == current_bytes else 1
+            total_changed += changed_units
             total_lines += 1
+            if changed_units:
+                categories.update(teacher_feedback.feedback_categories("", changed_files=[relative]))
+                file_changes.append({"path": relative, "change": "modified", "changed_units": changed_units})
             continue
         old_norm = _normalize_latex(baseline_text)
         new_norm = _normalize_latex(current_text)
@@ -1053,12 +1288,22 @@ def _compute_agent_diff(entry: Path) -> dict:
                 changed += max(i2 - i1, j2 - j1)
         total_changed += changed
         total_lines += max(len(old_lines), 1)
+        if changed:
+            semantic = teacher_feedback.semantic_text_diff(old_norm, new_norm, path=relative)
+            categories.update(semantic["categories"])
+            critical_correction = critical_correction or semantic["critical_correction"]
+            file_changes.append({"path": relative, "change": "modified", "changed_units": changed})
     change_ratio = round(total_changed / max(total_lines, 1), 4)
     return {
         "status": "computed",
         "changed_lines": total_changed,
         "total_lines": total_lines,
         "change_ratio": change_ratio,
+        "changed_files": [item["path"] for item in file_changes],
+        "file_changes": file_changes,
+        "categories": sorted(categories),
+        "critical_correction": critical_correction,
+        "source_task": metadata.get("task_type", ""),
     }
 
 
@@ -1101,6 +1346,7 @@ def entry_summary(entry: Path) -> dict:
         "next_action": state["next_action"],
         "source_review": state["source_review"],
         "answer_review": state["answer_review"],
+        "difficulty_assessment": record.get("difficulty_assessment"),
         "thumbnail": images[0] if images else None,
     }
 
@@ -1150,6 +1396,7 @@ def entry_detail(entry: Path) -> dict:
         publication["local_site_url"] = f"/api/public-site/viewer.html?id={quote(publication['public_id'])}"
     summary.update({
         "record": record,
+        "difficulty_assessment": record.get("difficulty_assessment"),
         "problem": (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").exists() else "",
         "student_solution": (entry / "student-solution.md").read_text(encoding="utf-8")
         if (entry / "student-solution.md").exists()
@@ -1485,14 +1732,19 @@ class Handler(SimpleHTTPRequestHandler):
                 result = {"status": "blocked", "errors": ["请先确认正式题干，再编辑解析"]}
             else:
                 result = self.save_answer(entry, data)
+        elif action == "save-difficulty-assessment":
+            result = save_difficulty_assessment(entry, data)
+        elif action == "refresh-difficulty-assessment":
+            result = {"status": "refreshed", "difficulty_assessment": assess_entry_difficulty(entry, force=True)}
         elif action == "approve-answer":
             agent_diff = _compute_agent_diff(entry)
             with LIBRARY_INDEX_LOCK:
                 result = process_uploads.approve_answer(LIBRARY, entry.name, reviewer, note, agent_diff=agent_diff)
             # Clean up baseline snapshot after approval — diff is now stored in answer-review.json
-            baseline_dir = entry / ".agent-baseline"
-            if baseline_dir.exists():
-                shutil.rmtree(baseline_dir)
+            if result.get("status") == "approved":
+                baseline_dir = entry / ".agent-baseline"
+                if baseline_dir.exists():
+                    shutil.rmtree(baseline_dir)
         elif action == "request-revision":
             tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
@@ -1653,6 +1905,8 @@ class Handler(SimpleHTTPRequestHandler):
             )
             request["archive_event_id"] = archive.get("event_id")
             kb.write_json(entry / "source-clean-request.json", request)
+            if succeeded:
+                SOURCE_CLEAN_INDEX_DEBOUNCER.schedule()
             ctx.info(
                 "stage=source.clean entry_id=%s status=%s provider=%s",
                 entry.name,
@@ -1684,11 +1938,19 @@ class Handler(SimpleHTTPRequestHandler):
             }
             kb.write_json(entry / "analysis-request.json", request)
             task = analysis_task(entry, instruction, routing_tier, model_config)
+            evidence_payload = task.get("context_payloads", {}).get(
+                ".agent-context/knowledge-evidence.json",
+                {},
+            )
+            evidence_digest = hashlib.sha256(
+                json.dumps(evidence_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            ).hexdigest()
             fingerprint = analysis_artifacts.input_fingerprint(
                 entry,
                 instruction=instruction,
                 model_id=model_id,
                 routing_tier=routing_tier,
+                evidence_digest=evidence_digest,
             )
             checkpoint = analysis_artifacts.load_generation_checkpoint(
                 entry,
@@ -1738,9 +2000,10 @@ class Handler(SimpleHTTPRequestHandler):
             succeeded = gateway["status"] == "completed"
             if succeeded:
                 analysis_artifacts.clear_generation_checkpoint(entry)
+                request["difficulty_assessment"] = assess_entry_difficulty(entry)
                 marked = mark_answer_needs_review(LIBRARY, entry, "Agent 已生成分层解析，等待教师复核")
                 resulting_state = marked["state"]
-                _save_agent_baseline(entry, gateway.get("changed_files", []))
+                _save_agent_baseline(entry, gateway.get("changed_files", []), task_type="analysis.generate")
             else:
                 resulting_state = process_uploads.pipeline_state(entry)
             request.update({
@@ -1838,9 +2101,15 @@ class Handler(SimpleHTTPRequestHandler):
                     "routing_tier": routing_tier,
                     "model_id": model_id,
                     "model_display_name": model_config.get("display_name") if model_config else "",
+                    "feedback_event_id": requested.get("archive", {}).get("event_id"),
                 }
                 request_path = entry / "answer-revision-request.json"
                 kb.write_json(request_path, request)
+                # Teacher feedback is the explicit batch-refresh point: make
+                # the just-recorded lesson available before constructing this
+                # revision's read-only evidence pack.
+                with LIBRARY_INDEX_LOCK:
+                    kb.rebuild_index(library)
                 gateway = run_agent_gateway(
                     entry,
                     answer_revision_task(entry, note, request_path, routing_tier, model_config),
@@ -1868,9 +2137,10 @@ class Handler(SimpleHTTPRequestHandler):
                 succeeded = gateway["status"] == "completed"
                 resulting_state = process_uploads.pipeline_state(entry)
                 if succeeded:
+                    request["difficulty_assessment"] = assess_entry_difficulty(entry)
                     marked = mark_answer_needs_review(library, entry, "大模型已按教师意见修订，等待教师重新复核")
                     resulting_state = marked["state"]
-                    _save_agent_baseline(entry, gateway.get("changed_files", []))
+                    _save_agent_baseline(entry, gateway.get("changed_files", []), task_type="answer.revise")
                 request.update({
                     "status": "completed" if succeeded else "failed",
                     "completed_at": kb.now_iso(),
@@ -1954,6 +2224,26 @@ class Handler(SimpleHTTPRequestHandler):
                     "model_id": model_id,
                     "model_display_name": model_config.get("display_name") if model_config else "",
                 }
+                previous_candidate = candidate_archive.latest_event(
+                    entry, task_types={"visualization.model"}, event_type="agent-result"
+                )
+                feedback_event = candidate_archive.append_event(
+                    library,
+                    entry,
+                    task_type="visualization.feedback",
+                    actor="teacher",
+                    event_type="feedback",
+                    status="requested",
+                    summary="教师提交可视化修改意见",
+                    request={"message": message, "base_digest": current["artifact_digest"]},
+                    feedback={"categories": teacher_feedback.feedback_categories(message, changed_files=["physics-model.json"])},
+                    links={"candidate_event_id": previous_candidate.get("event_id")} if previous_candidate else {},
+                )
+                request["feedback_event_id"] = feedback_event["event_id"]
+                # Keep query() strictly read-only while ensuring this feedback
+                # and prior visual lessons are current for the next model turn.
+                with LIBRARY_INDEX_LOCK:
+                    kb.rebuild_index(library)
                 request_path = entry / "visualization-request.json"
                 kb.write_json(request_path, request)
                 kb.write_json(conversation_path, conversation)
@@ -2161,6 +2451,7 @@ def main() -> int:
             if _JOB_MANAGER is not None:
                 logger.info("Waiting for background Agent jobs to finish…")
                 _JOB_MANAGER.shutdown(wait=True)
+            SOURCE_CLEAN_INDEX_DEBOUNCER.flush()
     finally:
         release_instance_lock(instance_lock)
     return 0

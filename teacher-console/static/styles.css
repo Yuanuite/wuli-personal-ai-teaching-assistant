@@ -302,15 +302,43 @@ label { display: grid; gap: 3px; color: var(--muted); font-size: 10px; }
 input[type="text"], label input { width: 100%; padding: 7px 8px; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
 .status-text { color: var(--green); font-size: 11px; }
 
-#tab-answer { display: grid; grid-template-rows: auto 34px minmax(0, 1fr) auto; gap: 7px; }
+#tab-answer {
+  display: grid;
+  grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "approval";
+  grid-template-rows: auto 34px auto minmax(0, 1fr) auto;
+  gap: 7px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.answer-toolbar { grid-area: toolbar; }
+.solution-bar { grid-area: solution; }
+.difficulty-assessment { grid-area: difficulty; }
+.answer-markdown-workbench { grid-area: workbench; }
+.approval-box { grid-area: approval; }
 .answer-toolbar, .delivery-head { padding: 9px 11px; box-shadow: none; }
 .answer-toolbar p, .delivery-head p { margin: 2px 0 0; font-size: 10px; }
+.difficulty-assessment { max-height:min(38vh,320px); margin:0; padding:10px 12px; overflow:auto; scrollbar-gutter:stable; border:1px solid var(--line); border-radius:11px; background:var(--panel); }
+.difficulty-assessment[hidden] { display:none; }
+.difficulty-assessment-head { display:flex; align-items:center; justify-content:space-between; gap:12px; font-weight:800; }
+.difficulty-assessment-head small { color:var(--muted); font-weight:500; }
+.difficulty-assessment > .muted { margin:8px 0; font-size:12px; }
+.difficulty-dimensions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+.difficulty-dimension { display:grid; grid-template-columns:42px 1fr; gap:6px 8px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.difficulty-dimension strong { grid-column:span 2; font-size:12px; }
+.difficulty-dimension input[type="number"] { width:42px; height:30px; padding:3px; text-align:center; }
+.difficulty-dimension textarea,.difficulty-summary-label textarea { width:100%; min-height:46px; resize:vertical; }
+.difficulty-evidence { grid-column:span 2; color:var(--muted); font-size:11px; line-height:1.45; }
+.difficulty-summary-label { display:grid; gap:5px; margin:10px 0; font-size:12px; font-weight:700; }
+@media (max-width:760px) { .difficulty-dimensions { grid-template-columns:1fr; } }
 .solution-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .solution-switch { display: flex; gap: 4px; }
-.solution-tab { padding: 6px 10px; color: var(--muted); background: #eae8e1; font-size: 11px; }
+.solution-tab,.difficulty-toggle { padding:6px 10px; display:inline-flex; align-items:center; gap:5px; color:var(--muted); background:#eae8e1; font-size:11px; }
 .solution-tab.active { color: white; background: var(--green); }
+.difficulty-toggle.active { color:var(--green-dark); background:var(--green-soft); box-shadow:inset 0 0 0 1px #b8d2c0; }
+.difficulty-toggle small { min-width:0; color:inherit; font-size:9px; font-variant-numeric:tabular-nums; }
 #save-answer { padding: 6px 10px; font-size: 11px; }
 .approval-box { display: grid; grid-template-columns: 120px minmax(180px, 1fr) auto; gap: 7px; align-items: end; box-shadow: none; padding: 8px 10px; }
+#answer-note { width: 100%; min-height: 26px; max-height: 140px; resize: vertical; padding: 7px 8px; color: var(--ink); background: white; border: 1px solid var(--line); border-radius: 7px; font: 11px/1.45 inherit; }
 .button-row { display: flex; gap: 6px; }
 .button-row button { padding: 7px 10px; font-size: 11px; }
 .revision-help { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.4; }
@@ -446,7 +474,7 @@ input[type="text"], label input { width: 100%; padding: 7px 8px; color: var(--in
   .image-panel { min-height: 55vh; }
   .editor-panel { min-height: 85vh; }
   .markdown-workbench { grid-template-columns: 1fr; grid-template-rows: minmax(320px, 1fr) minmax(360px, 1fr); }
-  #tab-answer { grid-template-rows: auto auto minmax(800px, auto) auto; }
+  #tab-answer { grid-template-rows: auto auto auto minmax(800px, auto) auto; }
   .review-actions, .approval-box { grid-template-columns: 1fr; }
   .review-actions button, .approval-box .button-row { grid-column: auto; }
   .button-row { flex-direction: column; }

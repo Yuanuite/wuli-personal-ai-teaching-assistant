@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" role="img" aria-labelledby="title desc">
+  <title id="title">电子在电场和磁场中的关键运动关系</title>
+  <desc id="desc">左图表示电子在电场中沿正y方向运动时，z方向的两种可能轨迹；右图表示磁场横截面内电子A的回旋圆、最大轴距点，以及电子B需要满足的共圆心条件。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-slate" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#475569"/>
+    </marker>
+    <style>
+      .cn { font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .title { font-size: 25px; font-weight: 700; }
+      .panel { font-size: 19px; font-weight: 700; }
+      .label { font-size: 16px; }
+      .small { font-size: 14px; }
+      .axis { stroke: #475569; stroke-width: 2; }
+      .guide { stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 6 5; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="560" rx="20" fill="#f8fafc"/>
+  <text x="500" y="38" text-anchor="middle" class="cn title">电场分段轨迹与磁场共圆心条件</text>
+
+  <!-- Left panel: electric-field motion in the yz plane -->
+  <rect x="28" y="60" width="456" height="470" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="256" y="91" text-anchor="middle" class="cn panel">① 电场区：看 y–z 平面</text>
+
+  <rect x="73" y="112" width="356" height="145" fill="#eff6ff"/>
+  <rect x="73" y="257" width="356" height="145" fill="#fff7ed"/>
+  <line x1="73" y1="257" x2="429" y2="257" stroke="#64748b" stroke-width="2"/>
+  <text x="91" y="137" class="cn label" fill="#1d4ed8">电场 I（z &gt; 0）</text>
+  <text x="91" y="281" class="cn label" fill="#c2410c">电场 II（z &lt; 0）</text>
+
+  <line x1="73" y1="426" x2="437" y2="426" class="axis" marker-end="url(#arrow-slate)"/>
+  <line x1="73" y1="426" x2="73" y2="103" class="axis" marker-end="url(#arrow-slate)"/>
+  <text x="441" y="432" class="cn label">y</text>
+  <text x="61" y="103" class="cn label">z</text>
+  <text x="64" y="448" text-anchor="middle" class="cn small">−2l</text>
+  <text x="429" y="448" text-anchor="middle" class="cn small">0</text>
+
+  <!-- A / case 1 -->
+  <path d="M73 155 Q250 160 429 257" fill="none" stroke="#2563eb" stroke-width="4" marker-end="url(#arrow-blue)"/>
+  <circle cx="73" cy="155" r="5" fill="#2563eb"/>
+  <text x="84" y="153" class="cn label">P（A）</text>
+  <text x="236" y="181" class="cn small" fill="#1d4ed8">A；B 的情况一</text>
+  <text x="328" y="238" class="cn small" fill="#1d4ed8">首次到 z = 0</text>
+
+  <!-- B case 2 -->
+  <path d="M73 219 Q180 225 260 257 Q345 310 429 257" fill="none" stroke="#dc2626" stroke-width="4" marker-end="url(#arrow-red)"/>
+  <circle cx="73" cy="219" r="5" fill="#dc2626"/>
+  <text x="84" y="216" class="cn label">Q（B）</text>
+  <text x="245" y="337" text-anchor="middle" class="cn small" fill="#b91c1c">情况二：进入电场 II 后返回 z = 0</text>
+  <circle cx="429" cy="257" r="6" fill="#0f172a"/>
+  <text x="438" y="250" class="cn label">进入磁场</text>
+
+  <rect x="63" y="466" width="386" height="43" rx="9" fill="#f1f5f9"/>
+  <text x="256" y="493" text-anchor="middle" class="cn label">两种情况的总时间都为  t₀ = 2l / v₀</text>
+
+  <!-- Right panel: magnetic cross-section -->
+  <rect x="516" y="60" width="456" height="470" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="744" y="91" text-anchor="middle" class="cn panel">② 磁场区：看 x–z 横截面</text>
+  <text x="744" y="116" text-anchor="middle" class="cn small">沿 y 方向的运动不影响到 y 轴的距离</text>
+
+  <line x1="557" y1="304" x2="936" y2="304" class="axis" marker-end="url(#arrow-slate)"/>
+  <line x1="873" y1="455" x2="873" y2="145" class="axis" marker-end="url(#arrow-slate)"/>
+  <text x="940" y="310" class="cn label">x</text>
+  <text x="882" y="151" class="cn label">z</text>
+
+  <!-- A circle: O=(0,0), center C=(-r,0), farthest M=(-2r,0) -->
+  <circle cx="748" cy="304" r="125" fill="#eff6ff" fill-opacity="0.55" stroke="#2563eb" stroke-width="4"/>
+  <circle cx="873" cy="304" r="6" fill="#0f172a"/>
+  <circle cx="748" cy="304" r="6" fill="#7c3aed"/>
+  <circle cx="623" cy="304" r="6" fill="#dc2626"/>
+  <text x="884" y="326" class="cn label">O（入射点）</text>
+  <text x="738" y="326" text-anchor="end" class="cn label">C（共同圆心）</text>
+  <text x="614" y="326" text-anchor="end" class="cn label">M（最远点）</text>
+  <line x1="748" y1="284" x2="873" y2="284" class="guide"/>
+  <text x="811" y="275" text-anchor="middle" class="cn label">r</text>
+  <line x1="623" y1="345" x2="873" y2="345" class="guide"/>
+  <text x="748" y="368" text-anchor="middle" class="cn label">OM = 2r</text>
+
+  <!-- velocity and force at entry -->
+  <line x1="873" y1="304" x2="873" y2="385" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="884" y="371" class="cn small" fill="#1d4ed8">A 入射</text>
+  <text x="884" y="390" class="cn small" fill="#1d4ed8">v<tspan baseline-shift="sub" font-size="11">z</tspan> = −v₀</text>
+  <line x1="868" y1="304" x2="792" y2="304" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow-red)"/>
+  <text x="794" y="294" text-anchor="middle" class="cn small" fill="#b91c1c">洛伦兹力</text>
+
+  <!-- Generic B entry / center relation -->
+  <circle cx="915" cy="408" r="5" fill="#059669"/>
+  <line x1="915" y1="408" x2="915" y2="361" stroke="#059669" stroke-width="3" marker-end="url(#arrow-slate)"/>
+  <line x1="915" y1="408" x2="748" y2="304" stroke="#059669" stroke-width="2" stroke-dasharray="7 5"/>
+  <text x="946" y="430" text-anchor="end" class="cn small" fill="#047857">B 的入射状态（示意）</text>
+  <text x="744" y="472" text-anchor="middle" class="cn label">距离保持不变的关键：A、B 的回旋圆心都在 C</text>
+  <text x="744" y="499" text-anchor="middle" class="cn small">圆心横坐标：x<tspan baseline-shift="sub" font-size="11">c</tspan> = x + mv<tspan baseline-shift="sub" font-size="11">z</tspan> / (eB)</text>
+</svg>

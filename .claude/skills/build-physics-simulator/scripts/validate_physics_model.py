@@ -188,6 +188,301 @@ def validate_planar_magnetic(data: dict, errors: list[str]) -> None:
         errors.append("planar-magnetic-multi-particle: stop_event_id should be a pause event")
 
 
+def validate_piecewise_particle_2d(data: dict, errors: list[str]) -> None:
+    facts = data.get("facts", {})
+    viewport = facts.get("viewport", {})
+    try:
+        xmin, xmax = float(viewport["xmin"]), float(viewport["xmax"])
+        ymin, ymax = float(viewport["ymin"]), float(viewport["ymax"])
+        if not xmin < xmax or not ymin < ymax:
+            errors.append("piecewise-field-particle-2d: viewport bounds must increase")
+    except (KeyError, TypeError, ValueError):
+        errors.append("piecewise-field-particle-2d: facts.viewport needs numeric xmin/xmax/ymin/ymax")
+
+    particles = facts.get("particles", [])
+    if not isinstance(particles, list) or not particles:
+        errors.append("piecewise-field-particle-2d: facts.particles must not be empty")
+        particles = []
+    particle_ids = {str(item.get("id")) for item in particles if isinstance(item, dict) and item.get("id")}
+    if len(particle_ids) != len(particles):
+        errors.append("piecewise-field-particle-2d: every particle needs a unique id")
+
+    timeline = sorted(data.get("event_model", {}).get("timeline", []), key=lambda item: item.get("order", 0))
+    event_ids = {str(event.get("id")) for event in timeline}
+    event_times_by_case: dict[str, list[float]] = {}
+    for event in timeline:
+        try:
+            event_time = float(event["time"])
+            if event_time < 0:
+                errors.append(f"{event.get('id', '<event>')}: event time must be nonnegative")
+            event_cases = event.get("case_ids") or ["*"]
+            for case_id in event_cases:
+                event_times_by_case.setdefault(str(case_id), []).append(event_time)
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{event.get('id', '<event>')}: event needs numeric time")
+        position = event.get("position")
+        if position is not None and not (
+            isinstance(position, list)
+            and len(position) == 2
+            and all(isinstance(value, (int, float)) and math.isfinite(value) for value in position)
+        ):
+            errors.append(f"{event.get('id', '<event>')}: position must be finite [x, y]")
+    for case_id, event_times in event_times_by_case.items():
+        if event_times != sorted(event_times):
+            errors.append(f"piecewise-field-particle-2d: timeline times must be nondecreasing for case {case_id}")
+
+    cases = data.get("event_model", {}).get("cases", [])
+    case_ids = {str(case.get("id")) for case in cases if isinstance(case, dict) and case.get("id")}
+    if len(case_ids) != len(cases):
+        errors.append("piecewise-field-particle-2d: every case needs a unique id")
+
+    region_ids = {str(region.get("id")) for region in data.get("regions", [])}
+    supported_shapes = {"rect", "circle", "half-plane", "polygon"}
+    for region in data.get("regions", []):
+        shape = region.get("shape", {})
+        if not isinstance(shape, dict) or shape.get("type") not in supported_shapes:
+            errors.append(f"{region.get('id', '<region>')}: unsupported 2D region shape")
+
+    supported_segments = {"line", "arc", "polyline"}
+    segments = data.get("trajectory", {}).get("segments", [])
+    if not segments:
+        errors.append("piecewise-field-particle-2d: trajectory.segments is required")
+    for segment in segments:
+        segment_id = str(segment.get("id", "<segment>"))
+        if str(segment.get("particle_id", "")) not in particle_ids:
+            errors.append(f"{segment_id}: particle_id is unknown")
+        if segment.get("type") not in supported_segments:
+            errors.append(f"{segment_id}: unsupported segment type")
+        if segment.get("region") not in region_ids:
+            errors.append(f"{segment_id}: region is unknown")
+        if segment.get("start_event") not in event_ids or segment.get("end_event") not in event_ids:
+            errors.append(f"{segment_id}: start_event/end_event must reference timeline")
+        segment_cases = segment.get("case_ids", [])
+        if not isinstance(segment_cases, list) or not segment_cases or any(case not in case_ids for case in segment_cases):
+            errors.append(f"{segment_id}: case_ids must reference at least one known case")
+        kinematics = segment.get("kinematics", {})
+        try:
+            start_time = float(kinematics["start_time"])
+            end_time = float(kinematics["end_time"])
+            if start_time < 0 or end_time <= start_time:
+                errors.append(f"{segment_id}: kinematics must satisfy 0 <= start_time < end_time")
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{segment_id}: kinematics needs numeric start_time/end_time")
+
+        geometry = segment.get("geometry", {})
+        if segment.get("type") == "line":
+            for key in ("start", "end"):
+                point = geometry.get(key)
+                if not (
+                    isinstance(point, list)
+                    and len(point) == 2
+                    and all(isinstance(value, (int, float)) and math.isfinite(value) for value in point)
+                ):
+                    errors.append(f"{segment_id}: line geometry.{key} must be finite [x, y]")
+        elif segment.get("type") == "arc":
+            center = geometry.get("center")
+            if not (
+                isinstance(center, list)
+                and len(center) == 2
+                and all(isinstance(value, (int, float)) and math.isfinite(value) for value in center)
+            ):
+                errors.append(f"{segment_id}: arc center must be finite [x, y]")
+            for key in ("radius", "start_deg", "end_deg"):
+                if not isinstance(geometry.get(key), (int, float)) or not math.isfinite(float(geometry.get(key))):
+                    errors.append(f"{segment_id}: arc geometry.{key} must be finite")
+            if isinstance(geometry.get("radius"), (int, float)) and float(geometry["radius"]) <= 0:
+                errors.append(f"{segment_id}: arc radius must be positive")
+        else:
+            points = geometry.get("points", [])
+            if not (
+                isinstance(points, list)
+                and len(points) >= 2
+                and all(
+                    isinstance(point, list)
+                    and len(point) == 2
+                    and all(isinstance(value, (int, float)) and math.isfinite(value) for value in point)
+                    for point in points
+                )
+            ):
+                errors.append(f"{segment_id}: polyline points must contain at least two finite [x, y] points")
+
+    pause_ids = set(data.get("simulation", {}).get("pause_event_ids", []))
+    unknown_pauses = pause_ids - event_ids
+    if unknown_pauses:
+        errors.append(f"piecewise-field-particle-2d: unknown pause events: {sorted(unknown_pauses)}")
+    stop_id = data.get("event_model", {}).get("stop_event_id")
+    if stop_id and stop_id not in pause_ids:
+        errors.append("piecewise-field-particle-2d: stop_event_id should be a pause event")
+
+
+def validate_piecewise_particle_3d(data: dict, errors: list[str]) -> None:
+    def vector3(value) -> bool:
+        return (
+            isinstance(value, list)
+            and len(value) == 3
+            and all(isinstance(item, (int, float)) and math.isfinite(float(item)) for item in value)
+        )
+
+    facts = data.get("facts", {})
+    particles = facts.get("particles", [])
+    if not isinstance(particles, list) or not particles:
+        errors.append("piecewise-field-particle-3d: facts.particles must not be empty")
+        particles = []
+    particle_ids = {str(item.get("id")) for item in particles if isinstance(item, dict) and item.get("id")}
+    if len(particle_ids) != len(particles):
+        errors.append("piecewise-field-particle-3d: every particle needs a unique id")
+
+    axes = facts.get("axes", {})
+    if not vector3(axes.get("origin")) or not vector3(axes.get("lengths")):
+        errors.append("piecewise-field-particle-3d: facts.axes needs finite origin and lengths vectors")
+    elif any(float(value) <= 0 for value in axes["lengths"]):
+        errors.append("piecewise-field-particle-3d: facts.axes.lengths must be positive")
+
+    timeline = sorted(data.get("event_model", {}).get("timeline", []), key=lambda item: item.get("order", 0))
+    event_ids = {str(event.get("id")) for event in timeline}
+    cases = data.get("event_model", {}).get("cases", [])
+    case_ids = {str(case.get("id")) for case in cases if isinstance(case, dict) and case.get("id")}
+    if len(case_ids) != len(cases):
+        errors.append("piecewise-field-particle-3d: every case needs a unique id")
+    for case in cases:
+        try:
+            if float(case["duration"]) <= 0:
+                errors.append(f"{case.get('id', '<case>')}: duration must be positive")
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{case.get('id', '<case>')}: duration must be numeric")
+
+    times_by_case: dict[str, list[float]] = {case_id: [] for case_id in case_ids}
+    for event in timeline:
+        event_id = event.get("id", "<event>")
+        if not vector3(event.get("position")):
+            errors.append(f"{event_id}: position must be finite [x, y, z]")
+        raw_time = event.get("time")
+        if isinstance(raw_time, dict):
+            for case_id, value in raw_time.items():
+                if case_id not in case_ids:
+                    errors.append(f"{event_id}: time references unknown case {case_id}")
+                    continue
+                try:
+                    time_value = float(value)
+                    if time_value < 0:
+                        errors.append(f"{event_id}: event time must be nonnegative")
+                    times_by_case.setdefault(case_id, []).append(time_value)
+                except (TypeError, ValueError):
+                    errors.append(f"{event_id}: event time for {case_id} must be numeric")
+        else:
+            try:
+                time_value = float(raw_time)
+                if time_value < 0:
+                    errors.append(f"{event_id}: event time must be nonnegative")
+                for case_id in event.get("case_ids") or case_ids:
+                    if case_id not in case_ids:
+                        errors.append(f"{event_id}: case_ids references unknown case {case_id}")
+                    else:
+                        times_by_case.setdefault(case_id, []).append(time_value)
+            except (TypeError, ValueError):
+                errors.append(f"{event_id}: event needs numeric or per-case time")
+    for case_id, values in times_by_case.items():
+        if values != sorted(values):
+            errors.append(f"piecewise-field-particle-3d: timeline times must be nondecreasing for case {case_id}")
+
+    supported_shapes = {"box", "plane", "cylinder", "wireframe"}
+    region_ids: set[str] = set()
+    for region in data.get("regions", []):
+        region_id = str(region.get("id", ""))
+        if not region_id or region_id in region_ids:
+            errors.append("piecewise-field-particle-3d: every region needs a unique id")
+        region_ids.add(region_id)
+        shape = region.get("shape", {})
+        shape_type = shape.get("type")
+        if shape_type not in supported_shapes:
+            errors.append(f"{region_id or '<region>'}: unsupported 3D region shape")
+        elif shape_type == "box" and (not vector3(shape.get("min")) or not vector3(shape.get("max"))):
+            errors.append(f"{region_id}: box needs finite min/max vectors")
+        elif shape_type == "plane" and not all(vector3(shape.get(key)) for key in ("origin", "u", "v")):
+            errors.append(f"{region_id}: plane needs finite origin/u/v vectors")
+        elif shape_type == "cylinder":
+            if not vector3(shape.get("center")) or not vector3(shape.get("axis")):
+                errors.append(f"{region_id}: cylinder needs finite center/axis vectors")
+            for key in ("radius", "length"):
+                if not isinstance(shape.get(key), (int, float)) or float(shape[key]) <= 0:
+                    errors.append(f"{region_id}: cylinder {key} must be positive")
+        elif shape_type == "wireframe":
+            edges = shape.get("edges", [])
+            if not isinstance(edges, list) or not edges or any(
+                not isinstance(edge, list) or len(edge) != 2 or not all(vector3(point) for point in edge)
+                for edge in edges
+            ):
+                errors.append(f"{region_id}: wireframe needs finite 3D edge pairs")
+        field = region.get("field", {})
+        if isinstance(field, dict) and field.get("direction") is not None and not vector3(field.get("direction")):
+            errors.append(f"{region_id}: field.direction must be finite [x, y, z]")
+
+    supported_paths = {"line", "quadratic", "arc3d", "helix", "points"}
+    segments = data.get("trajectory", {}).get("segments", [])
+    if not segments:
+        errors.append("piecewise-field-particle-3d: trajectory.segments is required")
+    for segment in segments:
+        segment_id = str(segment.get("id", "<segment>"))
+        if str(segment.get("particle_id", "")) not in particle_ids:
+            errors.append(f"{segment_id}: particle_id is unknown")
+        if segment.get("type") != "polyline":
+            errors.append(f"{segment_id}: 3D renderer uses polyline segments with analytic geometry")
+        if segment.get("region") not in region_ids:
+            errors.append(f"{segment_id}: region is unknown")
+        if segment.get("start_event") not in event_ids or segment.get("end_event") not in event_ids:
+            errors.append(f"{segment_id}: start_event/end_event must reference timeline")
+        segment_cases = segment.get("case_ids", [])
+        if not isinstance(segment_cases, list) or not segment_cases or any(case not in case_ids for case in segment_cases):
+            errors.append(f"{segment_id}: case_ids must reference at least one known case")
+        try:
+            start_time = float(segment["kinematics"]["start_time"])
+            end_time = float(segment["kinematics"]["end_time"])
+            if start_time < 0 or end_time <= start_time:
+                errors.append(f"{segment_id}: kinematics must satisfy 0 <= start_time < end_time")
+        except (KeyError, TypeError, ValueError):
+            errors.append(f"{segment_id}: kinematics needs numeric start_time/end_time")
+
+        geometry = segment.get("geometry", {})
+        kind = geometry.get("path_kind")
+        if kind not in supported_paths:
+            errors.append(f"{segment_id}: unsupported 3D path_kind")
+        elif kind == "line" and not all(vector3(geometry.get(key)) for key in ("start", "end")):
+            errors.append(f"{segment_id}: line needs finite start/end vectors")
+        elif kind == "quadratic":
+            if not all(vector3(geometry.get(key)) for key in ("start", "velocity", "acceleration")):
+                errors.append(f"{segment_id}: quadratic needs finite start/velocity/acceleration vectors")
+            if not isinstance(geometry.get("duration"), (int, float)) or float(geometry["duration"]) <= 0:
+                errors.append(f"{segment_id}: quadratic duration must be positive")
+        elif kind == "arc3d":
+            if not all(vector3(geometry.get(key)) for key in ("center", "basis_u", "basis_v")):
+                errors.append(f"{segment_id}: arc3d needs finite center/basis_u/basis_v vectors")
+            for key in ("radius", "start_deg", "end_deg"):
+                if not isinstance(geometry.get(key), (int, float)) or not math.isfinite(float(geometry[key])):
+                    errors.append(f"{segment_id}: arc3d {key} must be finite")
+            if isinstance(geometry.get("radius"), (int, float)) and float(geometry["radius"]) <= 0:
+                errors.append(f"{segment_id}: arc3d radius must be positive")
+        elif kind == "helix":
+            if not all(vector3(geometry.get(key)) for key in ("center_start", "axis", "basis_u", "basis_v")):
+                errors.append(f"{segment_id}: helix needs finite center_start/axis/basis vectors")
+            for key in ("radius", "start_deg", "end_deg", "advance"):
+                if not isinstance(geometry.get(key), (int, float)) or not math.isfinite(float(geometry[key])):
+                    errors.append(f"{segment_id}: helix {key} must be finite")
+            if isinstance(geometry.get("radius"), (int, float)) and float(geometry["radius"]) <= 0:
+                errors.append(f"{segment_id}: helix radius must be positive")
+        elif kind == "points":
+            points = geometry.get("points", [])
+            if not isinstance(points, list) or len(points) < 2 or not all(vector3(point) for point in points):
+                errors.append(f"{segment_id}: points path needs at least two finite [x, y, z] points")
+
+    pause_ids = set(data.get("simulation", {}).get("pause_event_ids", []))
+    unknown_pauses = pause_ids - event_ids
+    if unknown_pauses:
+        errors.append(f"piecewise-field-particle-3d: unknown pause events: {sorted(unknown_pauses)}")
+    stop_id = data.get("event_model", {}).get("stop_event_id")
+    if stop_id and stop_id not in pause_ids:
+        errors.append("piecewise-field-particle-3d: stop_event_id should be a pause event")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("model", type=Path)
@@ -225,6 +520,10 @@ def main() -> None:
         validate_electric_magnetic(data, errors)
     elif model_type == "planar-magnetic-multi-particle":
         validate_planar_magnetic(data, errors)
+    elif model_type == "piecewise-field-particle-2d":
+        validate_piecewise_particle_2d(data, errors)
+    elif model_type == "piecewise-field-particle-3d":
+        validate_piecewise_particle_3d(data, errors)
     else:
         errors.append(f"unsupported model_type: {model_type}")
 

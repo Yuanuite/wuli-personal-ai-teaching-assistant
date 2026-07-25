@@ -11,6 +11,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from xml.etree import ElementTree
 
 import kb
 import pdf_export
@@ -52,10 +53,113 @@ FORBIDDEN_TEXT = (
     "visualization-review",
     "physics-model.json",
 )
+SVG_NAMESPACE = "http://www.w3.org/2000/svg"
+SVG_MAX_BYTES = 2 * 1024 * 1024
+SVG_MAX_ELEMENTS = 20_000
+SVG_MAX_DEPTH = 128
+SVG_MAX_TEXT = 200_000
+SVG_ALLOWED_ELEMENTS = {
+    "circle",
+    "clipPath",
+    "defs",
+    "desc",
+    "ellipse",
+    "g",
+    "line",
+    "linearGradient",
+    "marker",
+    "mask",
+    "path",
+    "pattern",
+    "polygon",
+    "polyline",
+    "radialGradient",
+    "rect",
+    "stop",
+    "style",
+    "subscript",
+    "svg",
+    "text",
+    "title",
+    "tspan",
+}
+SVG_ALLOWED_ATTRIBUTES = {
+    "aria-label",
+    "aria-labelledby",
+    "baseline-shift",
+    "class",
+    "clip-path",
+    "cx",
+    "cy",
+    "d",
+    "fill",
+    "fill-opacity",
+    "font-family",
+    "font-size",
+    "font-style",
+    "font-weight",
+    "height",
+    "id",
+    "letter-spacing",
+    "marker-end",
+    "marker-mid",
+    "marker-start",
+    "markerHeight",
+    "markerUnits",
+    "markerWidth",
+    "mask",
+    "offset",
+    "opacity",
+    "orient",
+    "patternContentUnits",
+    "patternTransform",
+    "patternUnits",
+    "points",
+    "preserveAspectRatio",
+    "r",
+    "refX",
+    "refY",
+    "role",
+    "rx",
+    "ry",
+    "stop-color",
+    "stop-opacity",
+    "stroke",
+    "stroke-dasharray",
+    "stroke-linecap",
+    "stroke-linejoin",
+    "stroke-miterlimit",
+    "stroke-opacity",
+    "stroke-width",
+    "style",
+    "text-anchor",
+    "transform",
+    "viewBox",
+    "width",
+    "x",
+    "x1",
+    "x2",
+    "y",
+    "y1",
+    "y2",
+}
+SVG_LOCAL_URL_ATTRIBUTES = {"clip-path", "fill", "marker-end", "marker-mid", "marker-start", "mask", "stroke"}
+SVG_FORBIDDEN_CSS = re.compile(
+    r"(?:@import|@namespace|expression\s*\(|url\s*\(\s*(?![\"']?#[-A-Za-z0-9_.:]+[\"']?\s*\))"
+    r"|javascript\s*:|data\s*:|https?\s*:|//|behavior\s*:|-moz-binding)",
+    re.IGNORECASE,
+)
 
 
 def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
+
+
+def _public_date(value: Any) -> str:
+    """Expose day-level ordering only; exact local upload time stays private."""
+    text = str(value or "").strip()
+    match = re.match(r"^\d{4}-\d{2}-\d{2}", text)
+    return match.group(0) if match else ""
 
 
 def write_json(path: Path, value: Any) -> None:
@@ -275,14 +379,81 @@ def initialize_site(site: Path = DEFAULT_SITE) -> dict[str, Any]:
 
 
 def _safe_svg(path: Path) -> None:
-    text = path.read_text(encoding="utf-8", errors="replace").lower()
-    forbidden = ("<script", "javascript:", "<foreignobject")
-    if any(token in text for token in forbidden):
-        raise ValueError(f"unsafe SVG cannot be published: {path.name}")
-    if re.search(r"\bon[a-z]+\s*=", text):
-        raise ValueError(f"unsafe SVG event handler cannot be published: {path.name}")
-    if re.search(r"\b(?:href|src)\s*=\s*['\"]\s*(?:https?:|//|data:)", text):
-        raise ValueError(f"external SVG resource cannot be published: {path.name}")
+    """Fail closed unless *path* is a bounded, passive SVG document.
+
+    This is deliberately a parser-backed allowlist.  String blacklists miss
+    namespaces, character references and newly introduced active SVG elements.
+    """
+    if path.stat().st_size > SVG_MAX_BYTES:
+        raise ValueError(f"SVG is too large to publish safely: {path.name}")
+    raw = path.read_bytes()
+    if re.search(br"<!\s*(?:DOCTYPE|ENTITY)\b", raw, re.IGNORECASE):
+        raise ValueError(f"SVG document types and entities are not allowed: {path.name}")
+    try:
+        root = ElementTree.fromstring(raw)
+    except (ElementTree.ParseError, ValueError) as exc:
+        raise ValueError(f"invalid SVG cannot be published: {path.name}") from exc
+
+    element_count = 0
+    text_count = 0
+    stack = [(root, 1)]
+    while stack:
+        element, depth = stack.pop()
+        element_count += 1
+        text_count += len(element.text or "") + len(element.tail or "")
+        if element_count > SVG_MAX_ELEMENTS or depth > SVG_MAX_DEPTH or text_count > SVG_MAX_TEXT:
+            raise ValueError(f"SVG exceeds safe complexity limits: {path.name}")
+
+        namespace, local_name = _svg_name(element.tag)
+        if namespace not in {"", SVG_NAMESPACE} or local_name not in SVG_ALLOWED_ELEMENTS:
+            raise ValueError(f"SVG element is not allowed: {local_name or element.tag}")
+        for raw_name, value in element.attrib.items():
+            attribute_namespace, attribute = _svg_name(raw_name)
+            if attribute_namespace or attribute not in SVG_ALLOWED_ATTRIBUTES or attribute.lower().startswith("on"):
+                raise ValueError(f"SVG attribute is not allowed: {attribute or raw_name}")
+            _validate_svg_attribute(attribute, value, path)
+        if local_name == "style":
+            _validate_svg_css(element.text or "", path)
+        stack.extend((child, depth + 1) for child in list(element))
+
+
+def _svg_name(name: Any) -> tuple[str, str]:
+    if not isinstance(name, str):
+        return "unsupported", ""
+    if name.startswith("{") and "}" in name:
+        namespace, local_name = name[1:].split("}", 1)
+        return namespace, local_name
+    return "", name
+
+
+def _validate_svg_css(value: str, path: Path) -> None:
+    if len(value) > 100_000 or SVG_FORBIDDEN_CSS.search(value):
+        raise ValueError(f"unsafe SVG CSS cannot be published: {path.name}")
+    if any(character in value for character in ("\x00", "\r")):
+        raise ValueError(f"invalid SVG CSS cannot be published: {path.name}")
+
+
+def _validate_svg_attribute(name: str, value: str, path: Path) -> None:
+    if len(value) > 20_000 or any(character in value for character in ("\x00", "\r", "\n", "<", ">")):
+        raise ValueError(f"invalid SVG attribute cannot be published: {name}")
+    lowered = value.casefold()
+    if any(token in lowered for token in ("javascript:", "data:", "vbscript:", "file:", "https:", "http:", "//")):
+        raise ValueError(f"external SVG value cannot be published: {path.name}")
+    if name == "style":
+        _validate_svg_css(value, path)
+    if name in SVG_LOCAL_URL_ATTRIBUTES and "url(" in lowered:
+        if not re.fullmatch(r"\s*url\(\s*[\"']?#[A-Za-z0-9_.:-]+[\"']?\s*\)\s*", value, re.IGNORECASE):
+            raise ValueError(f"only local SVG fragment references are allowed: {path.name}")
+
+
+def _copy_public_asset(source: Path, destination: Path, entry: Path, identifier: str) -> None:
+    if source.suffix.lower() != ".svg":
+        shutil.copy2(source, destination)
+        return
+    _safe_svg(source)
+    text = source.read_text(encoding="utf-8", errors="strict")
+    text = text.replace(entry.name, identifier)
+    destination.write_text(text, encoding="utf-8")
 
 
 def _public_markdown(entry: Path) -> tuple[str, list[tuple[Path, str]]]:
@@ -391,7 +562,7 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
     markdown, assets = _public_markdown(entry)
     (question_dir / "content.md").write_text(markdown, encoding="utf-8")
     for source, name in assets:
-        shutil.copy2(source, assets_dir / name)
+        _copy_public_asset(source, assets_dir / name, entry, identifier)
     if not assets:
         assets_dir.rmdir()
     pdf = _generate_pdf(question_dir)
@@ -399,6 +570,17 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
     if simulator:
         _copy_public_simulator(simulator, question_dir / "simulation.html", identifier)
     record = kb.load_json(entry / "record.json", {})
+    assessment = record.get("difficulty_assessment", {}) if isinstance(record.get("difficulty_assessment"), dict) else {}
+    public_dimensions = []
+    for dimension in assessment.get("dimensions", []) if isinstance(assessment.get("dimensions"), list) else []:
+        if not isinstance(dimension, dict):
+            continue
+        public_dimensions.append({
+            "id": str(dimension.get("id", ""))[:64],
+            "label": str(dimension.get("label", ""))[:40],
+            "score": max(0, min(5, float(dimension.get("score", 0)))),
+            "core_judgment": str(dimension.get("core_judgment", ""))[:180],
+        })
     item = {
         "id": identifier,
         "title": str(record.get("title") or "物理错题"),
@@ -407,7 +589,14 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
         "content": f"questions/{identifier}/content.md",
         "pdf": f"questions/{identifier}/{PUBLIC_PDF_NAME}" if pdf.get("status") == "generated" else None,
         "simulation": f"questions/{identifier}/simulation.html" if simulator else None,
+        "uploaded_at": _public_date(record.get("created_at") or record.get("updated_at")),
         "published_at": now_iso(),
+        "difficulty": {
+            "score": int(assessment.get("score", 0)),
+            "level": str(assessment.get("level", ""))[:20],
+            "summary": str(assessment.get("summary", ""))[:300],
+            "dimensions": public_dimensions,
+        } if public_dimensions else None,
     }
     return {"item": item, "pdf": pdf, "assets": [name for _, name in assets]}
 
@@ -501,7 +690,13 @@ def publish_prepared(
     item["published_at"] = now_iso()
     questions = [question for question in catalog.get("questions", []) if question.get("id") != identifier]
     questions.append(item)
-    questions.sort(key=lambda question: str(question.get("published_at", "")), reverse=True)
+    questions.sort(
+        key=lambda question: (
+            str(question.get("uploaded_at") or question.get("published_at") or ""),
+            str(question.get("published_at") or ""),
+        ),
+        reverse=True,
+    )
     write_json(catalog_path, {"schema_version": 1, "generated_at": now_iso(), "questions": questions})
     review = {
         "schema_version": 1,

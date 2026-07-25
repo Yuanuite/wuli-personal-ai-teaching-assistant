@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -151,6 +152,44 @@ class AgentGatewayTest(unittest.TestCase):
             }),
             "provider_budget_exceeded",
         )
+        for marker in (
+            "Reached maximum budget ($0.5)",
+            "error_max_budget_usd",
+            "budget_exhausted",
+        ):
+            self.assertEqual(
+                classify_agent_failure({
+                    "status": "failed",
+                    "returncode": 1,
+                    "stderr": marker,
+                    "requires_change": True,
+                    "changed_files": [],
+                }),
+                "provider_budget_exceeded",
+            )
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "terminal_reason": "budget_exhausted",
+                "subtype": "error_max_budget_usd",
+                "requires_change": True,
+                "changed_files": [],
+            }),
+            "provider_budget_exceeded",
+        )
+        self.assertEqual(
+            classify_agent_failure({
+                "status": "failed",
+                "returncode": 1,
+                "stderr": (
+                    "failed to refresh available models: timeout waiting for child process to exit\n"
+                    "invalid_request_error code=invalid_json_schema: "
+                    "Invalid schema for response_format 'codex_output_schema': "
+                    "'allOf' is not permitted"
+                ),
+            }),
+            "structured_output_schema_invalid",
+        )
         self.assertEqual(
             classify_agent_failure({
                 "status": "failed",
@@ -158,6 +197,17 @@ class AgentGatewayTest(unittest.TestCase):
                 "changed_files": [],
             }),
             "candidate_no_change",
+        )
+
+    def test_schema_rejection_does_not_count_as_material_inference_spend(self):
+        self.assertFalse(
+            AgentGateway._attempt_consumed_material_budget(
+                {
+                    "failure_type": "structured_output_schema_invalid",
+                    "duration_seconds": 41.311,
+                },
+                30.0,
+            )
         )
 
     def test_timeout_stops_before_costly_provider_failover(self):
@@ -644,8 +694,18 @@ class AgentJobManagerTest(unittest.TestCase):
         self.assertEqual(stored["status"], "completed")
         self.assertEqual(stored["result"]["provider"], "fake")
 
-    def test_source_clean_can_run_for_multiple_entries_in_parallel(self):
+    def test_source_clean_can_run_for_multiple_entries_in_parallel_after_canary(self):
         manager = AgentJobManager(self.directory, max_workers=4, kind_limits={"source.clean": 2})
+        canary = manager.submit(
+            "source.clean",
+            "entry-canary",
+            lambda: {"status": "completed", "provider": "fake"},
+        )
+        deadline = time.time() + 2
+        while manager.get(canary["job"]["id"])["status"] != "completed" and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(manager.get(canary["job"]["id"])["status"], "completed")
+
         first_started = threading.Event()
         second_started = threading.Event()
         release = threading.Event()
@@ -772,6 +832,48 @@ class AgentJobManagerTest(unittest.TestCase):
         record = manager.get(submitted["job"]["id"])
         self.assertEqual(record["failure_type"], "provider_timeout")
         self.assertEqual(AgentJobManager.public(record)["failure_type"], "provider_timeout")
+        self.assertEqual(record["outcome"]["failure_type"], "provider_timeout")
+        self.assertEqual(record["outcome"]["usage"]["measurement"], "unavailable")
+
+    def test_job_outcome_aggregates_attempt_usage_without_prompt_content(self):
+        manager = AgentJobManager(self.directory, max_workers=1)
+        submitted = manager.submit(
+            "analysis.generate",
+            "entry-outcome",
+            lambda: {
+                "status": "failed",
+                "provider": "claude",
+                "model_id": "example-model",
+                "failure_type": "provider_execution_failed",
+                "attempts": [
+                    {
+                        "provider": "codex",
+                        "duration_seconds": 2.5,
+                        "token_usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120},
+                    },
+                    {
+                        "provider": "claude",
+                        "duration_seconds": 3.5,
+                        "token_usage": {"input_tokens": 80, "output_tokens": 10, "total_tokens": 90},
+                    },
+                ],
+                "budget_guard": {"reason": "failed-attempt-consumed-material-budget"},
+                "evidence_context": {
+                    "status": "ready",
+                    "reference_count": 2,
+                    "budget": {"requested_chars": 8000, "serialized_chars": 4200, "truncated": True},
+                },
+            },
+        )
+        manager.shutdown(wait=True)
+        outcome = manager.get(submitted["job"]["id"])["outcome"]
+        self.assertEqual(outcome["usage"]["total_tokens"], 210)
+        self.assertEqual(outcome["usage"]["measurement"], "provider-reported")
+        self.assertEqual(outcome["attempts"]["providers"], ["codex", "claude"])
+        self.assertEqual(outcome["attempts"]["provider_seconds"], 6.0)
+        self.assertEqual(outcome["controls"]["budget_guard_reason"], "failed-attempt-consumed-material-budget")
+        self.assertEqual(outcome["evidence_context"]["serialized_chars"], 4200)
+        self.assertNotIn("prompt", json.dumps(outcome))
 
     def test_provider_quota_releases_the_provider_reserved_at_start(self):
         manager = AgentJobManager(
@@ -792,6 +894,190 @@ class AgentJobManagerTest(unittest.TestCase):
         self.assertEqual(manager.get(submitted["job"]["id"])["provider"], "fallback")
         self.assertEqual(manager.running_by_provider.get("configured"), 0)
         self.assertEqual(manager.running_by_provider.get("fallback", 0), 0)
+
+    def test_adaptive_concurrency_degrades_to_serial_then_recovers(self):
+        manager = AgentJobManager(
+            self.directory,
+            scheduler_config={
+                "global_max_running": 4,
+                "kind_limits": {"analysis.generate": 4},
+                "adaptive_concurrency": {
+                    "enabled": True,
+                    "initial": 1,
+                    "first_success_limit": 2,
+                    "max_limit": 4,
+                    "successes_to_max": 2,
+                },
+            },
+        )
+        group = "regeneration-batch"
+
+        def submit(entry_id, result):
+            job = manager.submit(
+                "analysis.generate",
+                entry_id,
+                lambda: result,
+                metadata={"concurrency_group": group},
+            )
+            manager.shutdown(wait=True)
+            return manager.get(job["job"]["id"])
+
+        canary = submit("entry-canary", {"status": "completed"})
+        self.assertEqual(canary["scheduler_event"]["event"], "canary_succeeded")
+        self.assertEqual(canary["scheduler_event"]["concurrency_after"], 2)
+
+        # A fresh manager is required because shutdown is terminal; seed the
+        # already-proven limit directly to focus this test on failure recovery.
+        manager = AgentJobManager(
+            self.directory / "recovery",
+            scheduler_config={
+                "global_max_running": 4,
+                "kind_limits": {"analysis.generate": 4},
+            },
+        )
+        manager._adaptive_states[group] = {
+            "limit": 2,
+            "successes_at_two": 0,
+            "epoch": 0,
+            "mode": "ramp_up",
+            "degradation_count": 0,
+        }
+        failed = manager.submit(
+            "analysis.generate",
+            "entry-failed",
+            lambda: {"status": "failed", "failure_type": "provider_timeout"},
+            metadata={"concurrency_group": group},
+        )
+        manager.shutdown(wait=True)
+        failed_record = manager.get(failed["job"]["id"])
+        self.assertEqual(failed_record["scheduler_event"]["event"], "structural_failure_degraded")
+        self.assertEqual(failed_record["scheduler_event"]["concurrency_before"], 2)
+        self.assertEqual(failed_record["scheduler_event"]["concurrency_after"], 1)
+
+        manager = AgentJobManager(
+            self.directory / "serial-recovery",
+            scheduler_config={
+                "global_max_running": 4,
+                "kind_limits": {"analysis.generate": 4},
+            },
+        )
+        manager._adaptive_states[group] = {
+            "limit": 1,
+            "successes_at_two": 0,
+            "epoch": 1,
+            "mode": "serial_probe",
+            "degradation_count": 1,
+        }
+        recovered = manager.submit(
+            "analysis.generate",
+            "entry-recovered",
+            lambda: {"status": "completed"},
+            metadata={"concurrency_group": group},
+        )
+        manager.shutdown(wait=True)
+        recovered_record = manager.get(recovered["job"]["id"])
+        self.assertEqual(recovered_record["scheduler_event"]["event"], "serial_probe_succeeded")
+        self.assertEqual(recovered_record["scheduler_event"]["concurrency_after"], 2)
+
+    def test_content_failure_does_not_reduce_adaptive_concurrency(self):
+        manager = AgentJobManager(self.directory, max_workers=4)
+        group = "content-failure-batch"
+        manager._adaptive_states[group] = {
+            "limit": 4,
+            "successes_at_two": 0,
+            "epoch": 0,
+            "mode": "full",
+            "degradation_count": 0,
+        }
+        submitted = manager.submit(
+            "analysis.generate",
+            "entry-invalid",
+            lambda: {"status": "failed", "failure_type": "candidate_validation_failed"},
+            metadata={"concurrency_group": group},
+        )
+        manager.shutdown(wait=True)
+        record = manager.get(submitted["job"]["id"])
+        self.assertNotIn("scheduler_event", record)
+        self.assertEqual(manager._adaptive_states[group]["limit"], 4)
+
+    def test_pre_failure_inflight_success_cannot_end_serial_recovery(self):
+        manager = AgentJobManager(self.directory, max_workers=4)
+        group = "inflight-failure-batch"
+        manager._adaptive_states[group] = {
+            "limit": 2,
+            "successes_at_two": 0,
+            "epoch": 0,
+            "mode": "ramp_up",
+            "degradation_count": 0,
+        }
+        failed_started = threading.Event()
+        success_started = threading.Event()
+        release_success = threading.Event()
+
+        def structural_failure():
+            failed_started.set()
+            self.assertTrue(success_started.wait(2))
+            return {"status": "failed", "failure_type": "provider_timeout"}
+
+        def inflight_success():
+            success_started.set()
+            release_success.wait(2)
+            return {"status": "completed"}
+
+        failed = manager.submit(
+            "analysis.generate",
+            "entry-structural",
+            structural_failure,
+            metadata={"concurrency_group": group},
+        )
+        succeeded = manager.submit(
+            "analysis.generate",
+            "entry-inflight",
+            inflight_success,
+            metadata={"concurrency_group": group},
+        )
+        self.assertTrue(failed_started.wait(2))
+        self.assertTrue(success_started.wait(2))
+        deadline = time.time() + 2
+        while manager.get(failed["job"]["id"])["status"] != "failed" and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(manager.get(failed["job"]["id"])["status"], "failed")
+        release_success.set()
+        manager.shutdown(wait=True)
+
+        self.assertEqual(manager._adaptive_states[group]["limit"], 1)
+        self.assertNotIn("scheduler_event", manager.get(succeeded["job"]["id"]))
+
+    def test_two_successes_at_limit_two_raise_limit_to_four(self):
+        manager = AgentJobManager(self.directory, max_workers=4)
+        group = "ramp-to-four"
+        manager._adaptive_states[group] = {
+            "limit": 2,
+            "successes_at_two": 0,
+            "epoch": 0,
+            "mode": "ramp_up",
+            "degradation_count": 0,
+        }
+        first = manager.submit(
+            "analysis.generate",
+            "entry-ramp-1",
+            lambda: {"status": "completed"},
+            metadata={"concurrency_group": group},
+        )
+        second = manager.submit(
+            "analysis.generate",
+            "entry-ramp-2",
+            lambda: {"status": "completed"},
+            metadata={"concurrency_group": group},
+        )
+        manager.shutdown(wait=True)
+
+        self.assertEqual(manager._adaptive_states[group]["limit"], 4)
+        events = [
+            manager.get(job["job"]["id"]).get("scheduler_event", {}).get("event")
+            for job in (first, second)
+        ]
+        self.assertIn("consecutive_successes_ramped", events)
 
 
 if __name__ == "__main__":

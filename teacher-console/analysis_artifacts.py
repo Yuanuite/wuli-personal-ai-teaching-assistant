@@ -11,11 +11,19 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-ANALYSIS_CONTRACT = "wuli.analysis.v1"
+ANALYSIS_CONTRACT = "wuli.analysis.v2"
 EXPLANATION_PATH = "assets/explanatory.svg"
 METADATA_FIELDS = ("knowledge_points", "error_types", "difficulty", "grade", "title")
 LIST_METADATA_FIELDS = {"knowledge_points", "error_types"}
-REQUIRED_STUDENT_HEADINGS = ("答案速览", "详细解答", "易错点")
+REQUIRED_STUDENT_HEADINGS = ("答案速览", "一眼识别", "详细解答", "易错点", "30 秒自测")
+STUDENT_STEP_PATTERN = re.compile(r"^###\s+第\s*[一二三四五六七八九十0-9]+\s*步", re.MULTILINE)
+ADVANCED_STUDENT_METHODS = (
+    (re.compile(r"\\int\b|积分"), "积分"),
+    (re.compile(r"导数|求导|微分(?:方程)?"), "导数或微分"),
+    (re.compile(r"矩阵|行列式"), "矩阵或行列式"),
+    (re.compile(r"复数法|欧拉公式"), "复数法"),
+    (re.compile(r"拉格朗日|哈密顿"), "大学力学方法"),
+)
 
 ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -23,10 +31,35 @@ ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
     "properties": {
         "status": {"type": "string", "enum": ["completed", "unsupported"]},
         "message": {"type": "string"},
-        "student_solution": {"type": "string"},
-        "teacher_audit": {"type": "string"},
+        "student_solution": {"type": ["string", "null"]},
+        "teacher_audit": {"type": ["string", "null"]},
+        "method_check": {
+            "type": ["object", "null"],
+            "additionalProperties": False,
+            "properties": {
+                "selected_path": {"type": "string"},
+                "high_school_basis": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 8,
+                },
+                "discarded_methods": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 8,
+                },
+                "student_step_count": {"type": "integer", "minimum": 1, "maximum": 5},
+            },
+            "required": [
+                "selected_path",
+                "high_school_basis",
+                "discarded_methods",
+                "student_step_count",
+            ],
+        },
         "metadata": {
-            "type": "object",
+            "type": ["object", "null"],
             "additionalProperties": False,
             "properties": {
                 "knowledge_points": {
@@ -48,7 +81,7 @@ ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
             "required": list(METADATA_FIELDS),
         },
         "diagram": {
-            "type": "object",
+            "type": ["object", "null"],
             "additionalProperties": False,
             "properties": {
                 "title": {"type": "string"},
@@ -62,19 +95,18 @@ ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
             "required": ["title", "nodes"],
         },
     },
-    "required": ["status", "message"],
-    "allOf": [
-        {
-            "if": {"properties": {"status": {"const": "completed"}}},
-            "then": {
-                "required": [
-                    "student_solution",
-                    "teacher_audit",
-                    "metadata",
-                    "diagram",
-                ]
-            },
-        }
+    # Codex/OpenAI structured outputs reject conditional ``allOf`` schemas and
+    # require every declared property. Nullable branch fields keep
+    # ``unsupported`` compact; normalize_payload() enforces non-null completed
+    # content deterministically after transport validation.
+    "required": [
+        "status",
+        "message",
+        "student_solution",
+        "teacher_audit",
+        "method_check",
+        "metadata",
+        "diagram",
     ],
 }
 
@@ -87,7 +119,25 @@ def output_contract() -> dict[str, Any]:
             "只输出符合 JSON Schema 的对象。student_solution 是完整学生版 Markdown；"
             "不要重复题目原图，不要写教师审计，不要引用尚不存在的图片。"
             "teacher_audit 只写教师复核内容，不要复制学生版。"
+            "先比较可行路径并填写 method_check：selected_path 写最终最短主线，"
+            "high_school_basis 列出所用高中结论，discarded_methods 记录已舍弃的冗长或超纲方法，"
+            "student_step_count 必须与学生版“第 N 步”标题数一致且不超过 5。"
+            "学生版优先几何、守恒、图像面积、平均值和标准二级结论；禁止使用积分、导数、"
+            "微分方程、矩阵、复数法或大学力学方法。能一式完成的关系不要拆成多步代数。"
+            "证据优先于层级模板：详细解答必须占主体篇幅；每个小问和每个选项判断至少保留"
+            "一条可核验的等式、几何关系或事件链。不得用“并不对应”“显然可得”“角度账本可得”"
+            "代替关键推导；若删去某行会使结论只能靠猜，该行必须保留。"
+            "一眼识别最多三条短句，易错点最多三条，30 秒自测只写一个问题；这些辅助区不得"
+            "重复详细解答或挤占关键证明。"
+            "公式只使用网页可稳定渲染的 LaTeX；不要使用 \\notag、\\tag 或编号控制命令，"
+            "并在提交前检查是否出现 otag、aqquad 等反斜杠丢失残片。"
             "diagram.nodes 用 2–6 个短语概括解题逻辑链，程序会确定性生成 SVG。"
+            "复杂电学题的图示先把实际过程抽象为等效电路：用节点短语明确电动势源、"
+            "内阻、负载、测量端及其连接关系；例如不同材料圆环分别等效为感应电动势源"
+            "与对应内阻，并区分感应电动势和端电压。"
+            "若上下文包含 physics-model.json，它是已建模的物理事件真源：答案选项、"
+            "事件分支和返回后的后续运动必须与其一致，且不得用逻辑流程图覆盖已有物理示意图。"
+            "status=unsupported 时将 student_solution、teacher_audit、method_check、metadata、diagram 设为 null。"
         ),
     }
 
@@ -116,6 +166,78 @@ def _clean_list(value: Any, *, field: str) -> list[str]:
     return cleaned[:12]
 
 
+def _clean_optional_list(value: Any, *, field: str) -> list[str]:
+    if not isinstance(value, list):
+        raise ValueError(f"{field} must be a list")
+    cleaned: list[str] = []
+    for item in value:
+        text = _clean_text(item, field=field, maximum=160)
+        if text not in cleaned:
+            cleaned.append(text)
+    return cleaned[:8]
+
+
+def student_method_errors(student: str) -> list[str]:
+    """Return deterministic student-layer method and cognitive-load violations."""
+    errors: list[str] = []
+    if "最短主线" not in student:
+        errors.append("student_solution must state 最短主线 in 一眼识别")
+    step_count = len(STUDENT_STEP_PATTERN.findall(student))
+    if step_count < 1:
+        errors.append("student_solution must use numbered 第 N 步 headings")
+    elif step_count > 5:
+        errors.append(f"student_solution main line has {step_count} steps; maximum is 5")
+    for pattern, label in ADVANCED_STUDENT_METHODS:
+        if pattern.search(student):
+            errors.append(f"student_solution uses non-high-school method: {label}")
+    if re.search(r"(?m)^\s*otag\s*$", student):
+        errors.append("student_solution contains broken LaTeX fragment: otag")
+    if "aqquad" in student:
+        errors.append("student_solution contains broken LaTeX fragment: aqquad")
+    return errors
+
+
+def _option_verdicts(text: str) -> dict[str, bool]:
+    """Extract explicit A-H verdicts from compact Chinese answer summaries."""
+    verdicts: dict[str, bool] = {}
+    for segment in re.split(r"[；;\n]", text.upper()):
+        match = re.search(
+            r"([A-H](?:\s*[、,，]\s*[A-H])*)[^；;\n]{0,32}?(正确|错误|对|错)",
+            segment,
+        )
+        if not match:
+            continue
+        labels = re.findall(r"[A-H]", match.group(1))
+        positive = match.group(2) in {"正确", "对"}
+        verdicts.update({label: positive for label in labels})
+    return verdicts
+
+
+def physics_model_consistency_errors(staging: Path, student: str) -> list[str]:
+    """Keep a regenerated answer aligned with an existing reviewed physics model."""
+    model_path = staging / "physics-model.json"
+    if not model_path.is_file():
+        return []
+    try:
+        model = json.loads(model_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return ["physics-model.json is unreadable"]
+    quick_answers = model.get("student_solution", {}).get("quick_answers", [])
+    if not isinstance(quick_answers, list):
+        return []
+    expected = _option_verdicts("；".join(str(item) for item in quick_answers))
+    actual = _option_verdicts(student[:2000])
+    if expected and all(label in actual for label in expected) and actual != expected:
+        differences = [
+            label for label, verdict in expected.items() if actual.get(label) is not verdict
+        ]
+        return [
+            "student_solution contradicts physics-model option verdicts: "
+            + ", ".join(differences)
+        ]
+    return []
+
+
 def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("structured analysis output must be an object")
@@ -130,7 +252,36 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     missing = [heading for heading in REQUIRED_STUDENT_HEADINGS if heading not in student]
     if missing:
         raise ValueError("student_solution missing heading: " + ", ".join(missing))
+    method_errors = student_method_errors(student)
+    if method_errors:
+        raise ValueError("; ".join(method_errors))
     audit = _clean_text(payload.get("teacher_audit"), field="teacher_audit", minimum=30)
+
+    raw_method_check = payload.get("method_check")
+    if not isinstance(raw_method_check, dict):
+        raise ValueError("method_check must be an object")
+    selected_path = _clean_text(
+        raw_method_check.get("selected_path"),
+        field="method_check.selected_path",
+        maximum=500,
+    )
+    high_school_basis = _clean_list(
+        raw_method_check.get("high_school_basis"),
+        field="method_check.high_school_basis",
+    )[:8]
+    discarded_methods = _clean_optional_list(
+        raw_method_check.get("discarded_methods"),
+        field="method_check.discarded_methods",
+    )
+    reported_step_count = raw_method_check.get("student_step_count")
+    actual_step_count = len(STUDENT_STEP_PATTERN.findall(student))
+    if isinstance(reported_step_count, bool) or not isinstance(reported_step_count, int):
+        raise ValueError("method_check.student_step_count must be an integer")
+    if reported_step_count != actual_step_count:
+        raise ValueError(
+            "method_check.student_step_count does not match student_solution: "
+            f"{reported_step_count} != {actual_step_count}"
+        )
 
     raw_metadata = payload.get("metadata")
     if not isinstance(raw_metadata, dict):
@@ -162,6 +313,12 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
         "message": message,
         "student_solution": student,
         "teacher_audit": audit,
+        "method_check": {
+            "selected_path": selected_path,
+            "high_school_basis": high_school_basis,
+            "discarded_methods": discarded_methods,
+            "student_step_count": reported_step_count,
+        },
         "metadata": metadata,
         "diagram": {"title": diagram_title[:120], "nodes": diagram_nodes},
     }
@@ -245,11 +402,21 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
     student = _insert_explanation_reference(
         _ensure_heading(normalized["student_solution"], "# 解析（学生版）")
     )
+    consistency_errors = physics_model_consistency_errors(staging, student)
+    if consistency_errors:
+        raise ValueError("; ".join(consistency_errors))
     audit = normalized["teacher_audit"]
     if audit.startswith("#"):
         audit = re.sub(r"^#+\s*", "", audit, count=1).strip()
     teacher = f"{student}\n\n## 教师审计\n\n{audit}\n"
-    diagram = _render_diagram(normalized["diagram"])
+    existing_diagram = staging / EXPLANATION_PATH
+    # A reviewed physics model already owns a semantic trajectory/circuit image.
+    # Preserve that physical SVG instead of replacing it with a logic-chain card.
+    diagram = (
+        existing_diagram.read_text(encoding="utf-8")
+        if (staging / "physics-model.json").is_file() and existing_diagram.is_file()
+        else _render_diagram(normalized["diagram"])
+    )
 
     artifacts = {
         "record.json": json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -312,16 +479,17 @@ def input_fingerprint(
     instruction: str,
     model_id: str,
     routing_tier: str,
+    evidence_digest: str = "",
 ) -> str:
     """Fingerprint inputs that make a generated analysis safe to replay."""
     digest = hashlib.sha256()
-    for name in ("problem.md", "record.json"):
+    for name in ("problem.md", "record.json", "physics-model.json"):
         path = entry / name
         digest.update(name.encode("utf-8"))
         digest.update(b"\0")
         digest.update(path.read_bytes() if path.is_file() else b"")
         digest.update(b"\0")
-    for value in (instruction, model_id, routing_tier, ANALYSIS_CONTRACT):
+    for value in (instruction, model_id, routing_tier, ANALYSIS_CONTRACT, evidence_digest):
         digest.update(value.encode("utf-8"))
         digest.update(b"\0")
     return digest.hexdigest()

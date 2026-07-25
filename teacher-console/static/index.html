@@ -280,9 +280,17 @@
             <div class="solution-switch">
               <button class="solution-tab active" data-solution="student">学生版</button>
               <button class="solution-tab" data-solution="teacher">教师版</button>
+              <button id="difficulty-assessment-toggle" class="difficulty-toggle" type="button" aria-controls="difficulty-assessment" aria-expanded="false">题目难度<small id="difficulty-tab-score"></small></button>
             </div>
             <button id="save-answer" class="secondary">保存当前 Markdown</button>
           </div>
+          <section id="difficulty-assessment" class="difficulty-assessment" hidden>
+            <div class="difficulty-assessment-head"><strong>客观难度量表</strong><small id="difficulty-status">解析生成后自动评估</small></div>
+            <p id="difficulty-summary-hint" class="muted">评分采用 0–5、步长 0.1 的证据化量表；不会影响答案复核流程，可直接修改后保存。</p>
+            <div id="difficulty-dimensions" class="difficulty-dimensions"></div>
+            <label class="difficulty-summary-label">难度总结<textarea id="difficulty-summary" rows="2" maxlength="300"></textarea></label>
+            <div class="button-row"><button id="refresh-difficulty-assessment" class="secondary" type="button">按当前题目重算</button><button id="save-difficulty-assessment" class="primary" type="button">保存难度量表</button></div>
+          </section>
           <div class="markdown-workbench answer-markdown-workbench">
             <section class="markdown-column">
               <div class="column-label"><strong>Markdown 源文档</strong><span id="draft-status">已载入</span></div>
@@ -295,7 +303,7 @@
           </div>
           <div class="approval-box">
             <label>复核人<input id="answer-reviewer" value="teacher"></label>
-            <label>修改意见（交给本地大模型）<input id="answer-note" placeholder="批准时可留空；修改时请明确指出公式、步骤或解释图问题"></label>
+            <label>修改意见（交给本地大模型）<textarea id="answer-note" rows="1" placeholder="批准时可留空；修改时请明确指出公式、步骤或解释图问题"></textarea></label>
             <div class="button-row">
               <button id="request-revision" class="danger-secondary">交给大模型修改</button>
               <button id="approve-answer" class="primary">答案正确，进入可视化复核</button>

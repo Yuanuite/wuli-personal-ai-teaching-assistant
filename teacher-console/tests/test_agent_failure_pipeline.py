@@ -118,6 +118,10 @@ class AgentFailurePipelineTest(unittest.TestCase):
             '{"schema_version":1,"id":"entry-1","source":{"stored_files":[]}}\n',
             encoding="utf-8",
         )
+        (self.entry / "physics-model.json").write_text(
+            '{"student_solution":{"quick_answers":["A 错；B 正确"]}}\n',
+            encoding="utf-8",
+        )
         task = teacher_console_server.analysis_task(
             self.entry,
             "生成解析",
@@ -125,16 +129,35 @@ class AgentFailurePipelineTest(unittest.TestCase):
             model_config={"provider": "claude", "model": "expert-model"},
         )
 
-        self.assertEqual(task["output_contract"]["name"], "wuli.analysis.v1")
+        self.assertEqual(task["output_contract"]["name"], "wuli.analysis.v2")
+        schema = task["output_contract"]["schema"]
+        self.assertNotIn("allOf", schema)
+        self.assertEqual(set(schema["required"]), set(schema["properties"]))
+        self.assertEqual(
+            set(schema["properties"]["metadata"]["required"]),
+            set(schema["properties"]["metadata"]["properties"]),
+        )
+        self.assertEqual(
+            set(schema["properties"]["diagram"]["required"]),
+            set(schema["properties"]["diagram"]["properties"]),
+        )
+        self.assertEqual(
+            set(schema["properties"]["method_check"]["required"]),
+            set(schema["properties"]["method_check"]["properties"]),
+        )
         self.assertEqual(
             task["structured_context_paths"],
             [
                 "problem.md",
                 "record.json",
+                "physics-model.json",
                 ".agent-context/answer-template.md",
                 ".agent-context/secondary-conclusions.json",
+                ".agent-context/knowledge-evidence.json",
             ],
         )
+        evidence = task["context_payloads"][".agent-context/knowledge-evidence.json"]
+        self.assertEqual(evidence["task_type"], "analysis.generate")
         self.assertNotIn(".agent-context/library-skill.md", task["context_files"])
         self.assertIn("assets/explanatory.svg", task["allowed_paths"])
 

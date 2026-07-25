@@ -10,15 +10,15 @@ student artifacts.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
+import uuid
 from pathlib import Path
 from typing import Any
 
 import kb
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 ENTRY_ARCHIVE = "candidate-archive.jsonl"
 LIBRARY_ARCHIVE = "indexes/candidate-archive.jsonl"
 LIBRARY_ENTRY_ID = "__library__"
@@ -54,9 +54,8 @@ def sanitize(value: Any) -> Any:
     return value
 
 
-def _event_id(entry_id: str, event: dict[str, Any]) -> str:
-    digest = hashlib.sha256(json.dumps(event, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
-    return f"{entry_id}-{digest[:12]}"
+def _event_id(entry_id: str) -> str:
+    return f"{entry_id}-{uuid.uuid4().hex}"
 
 
 def _append_jsonl(path: Path, event: dict[str, Any]) -> None:
@@ -64,6 +63,15 @@ def _append_jsonl(path: Path, event: dict[str, Any]) -> None:
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(event, ensure_ascii=False, sort_keys=True))
         handle.write("\n")
+
+
+def _mark_store_dirty(library: Path, event_id: str) -> None:
+    marker = library / "indexes" / "wuli-memory.dirty.json"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(
+        json.dumps({"schema_version": 1, "last_event_id": event_id, "marked_at": kb.now_iso()}, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
 
 def _status_from_payload(status: str, failure_reasons: list[str]) -> str:
@@ -88,6 +96,8 @@ def append_event(
     request: dict[str, Any] | None = None,
     result: dict[str, Any] | None = None,
     evaluation: dict[str, Any] | None = None,
+    feedback: dict[str, Any] | None = None,
+    links: dict[str, Any] | None = None,
     changed_files: list[str] | None = None,
     failure_reasons: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -108,10 +118,19 @@ def append_event(
         "request": sanitize(request or {}),
         "result": sanitize(result or {}),
         "evaluation": evaluation_summary,
+        "feedback": sanitize(feedback or {}),
+        "links": sanitize(links or {}),
     }
-    payload["event_id"] = _event_id(entry.name, payload)
+    payload["event_id"] = _event_id(entry.name)
     _append_jsonl(entry / ENTRY_ARCHIVE, payload)
-    _append_jsonl(library / LIBRARY_ARCHIVE, payload)
+    library_payload = dict(payload)
+    if actor == "teacher" and isinstance(library_payload.get("request"), dict):
+        library_payload["request"] = {
+            key: value for key, value in library_payload["request"].items() if key not in {"note", "message", "instruction"}
+        }
+        library_payload["request"]["private_feedback_location"] = f"entries/{entry.name}/{ENTRY_ARCHIVE}"
+    _append_jsonl(library / LIBRARY_ARCHIVE, library_payload)
+    _mark_store_dirty(library, payload["event_id"])
     return payload
 
 
@@ -126,6 +145,8 @@ def append_library_event(
     request: dict[str, Any] | None = None,
     result: dict[str, Any] | None = None,
     evaluation: dict[str, Any] | None = None,
+    feedback: dict[str, Any] | None = None,
+    links: dict[str, Any] | None = None,
     changed_files: list[str] | None = None,
     failure_reasons: list[str] | None = None,
 ) -> dict[str, Any]:
@@ -145,9 +166,12 @@ def append_library_event(
         "request": sanitize(request or {}),
         "result": sanitize(result or {}),
         "evaluation": sanitize(evaluation or {}),
+        "feedback": sanitize(feedback or {}),
+        "links": sanitize(links or {}),
     }
-    payload["event_id"] = _event_id(LIBRARY_ENTRY_ID, payload)
+    payload["event_id"] = _event_id(LIBRARY_ENTRY_ID)
     _append_jsonl(library / LIBRARY_ARCHIVE, payload)
+    _mark_store_dirty(library, payload["event_id"])
     return payload
 
 
@@ -171,6 +195,16 @@ def read_library_events(library: Path) -> list[dict[str, Any]]:
         if line.strip():
             events.append(json.loads(line))
     return events
+
+
+def latest_event(entry: Path, *, task_types: set[str] | None = None, event_type: str | None = None) -> dict[str, Any] | None:
+    for event in reversed(read_events(entry)):
+        if task_types is not None and event.get("task_type") not in task_types:
+            continue
+        if event_type is not None and event.get("event_type") != event_type:
+            continue
+        return event
+    return None
 
 
 def main() -> int:

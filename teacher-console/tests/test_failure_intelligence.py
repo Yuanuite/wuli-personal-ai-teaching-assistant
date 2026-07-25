@@ -29,6 +29,15 @@ class FailureIntelligenceTest(unittest.TestCase):
             "denied_paths": ["record.json"],
         }
 
+    def test_schema_failure_requires_contract_repair_and_timeout_does_not_claim_failover(self):
+        schema = repair_decision("structured_output_schema_invalid")
+        self.assertFalse(schema["auto_retry"])
+        self.assertIn("修复契约后再提交", schema["action"])
+
+        timeout = repair_decision("provider_timeout")
+        self.assertFalse(timeout["auto_retry"])
+        self.assertNotIn("已完成 provider 降级", timeout["action"])
+
     def tearDown(self):
         self.temp.cleanup()
 

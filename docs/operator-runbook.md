@@ -77,6 +77,23 @@ python3 teacher-console/scripts/retrieval_benchmark.py \
 
 草稿位于 `student-error-library/evals/retrieval-cases.jsonl`。启动教师端后，点击顶栏“检索评测”：左侧逐条选择查询，右侧会显示带原题图、题干摘要、知识点和错因标签的可勾选题目卡；核对 `query`，勾选所有真正相关的题，再“批准并看下一条”。网页保存和命令行工具共用同一 JSONL，卡片不会展示教师版解析，也不会向学生站发布评测数据。不要批量直接改状态；少于 30 条 approved 时，工具拒绝 `--record` 和检索后端升级结论。格式示例见 [`retrieval-eval.example.jsonl`](retrieval-eval.example.jsonl)。
 
+答案生成或检索逻辑变更后，按三层分别验收，不能用一项指标代替另一项：
+
+1. **生成契约**：验证 `wuli.analysis.v2` 的私有方法自检、学生版固定结构、最短主线、五步上限和超纲方法拒绝；同步运行单元测试与 3 条 E2E。
+2. **检索能力**：在同一批 `approved` 固定集上比较改前/改后的 Hit@k、Recall@k、MRR、空结果率和 `teacher_phrase` 分类。Hit@5 达到 1 只表示每个查询至少命中一个相关条目；多相关条目仍可能漏召回，必须继续看 Recall@5。
+3. **教学质量**：检索指标提升只证明“更容易找到证据”，不能证明答案因此更短或更正确。需要固定模型、档位、prompt 和题目做成对生成，再比较确定性校验、Evaluator、教师修改量、首轮采用率与最终批准。
+
+每次回归都保留固定集版本、改动说明和完整指标；不要挑选单题或只报告最有利的 k 值。当前题干、当前答案和教师意见始终高于历史 evidence，Knowledge Store 不可用时主任务应 fail-soft。
+
+Evidence 上下文预算预检（只读，不调用 provider，也不修改线上策略）：
+
+```bash
+python3 teacher-console/scripts/evidence_budget_benchmark.py \
+  --cases teacher-console/tests/fixtures/evidence-budget-eval.example.jsonl
+```
+
+预检复用生产环境的确定性裁剪逻辑，报告原始/最终字符数、估算 token、截断状态和内容哈希。示例文件只验证工具链；是否启用更激进的语义压缩，必须使用教师批准的真实样本并满足质量门槛后另行决策。样本不足或门槛未通过时保持当前策略。
+
 查看慢循环证据是否达到策略建议门槛：
 
 ```bash
@@ -86,7 +103,7 @@ python3 teacher-console/scripts/slow_loop_report.py \
 
 该命令只读，不调用模型也不修改路由、并发、检索参数或审批。达到 20 个已完成 RAG 任务和 10 个明确教师闭环后，才可显式加 `--record` 保存为 `evolve.observation.slow-loop`；记录仍不等于应用策略。
 
-若最近一次已记录周报包含策略建议，教师可明确确认其进入离线试验：
+若当前最新的已记录周报包含策略建议，教师可明确确认其进入离线试验：
 
 ```bash
 python3 teacher-console/scripts/slow_loop_report.py \
@@ -180,6 +197,20 @@ npm run test:e2e
 不负责操作 UI/API，也不会把测试数据或教师操作写入正式题库。更细的隔离边界见
 [`../teacher-console/e2e/README.md`](../teacher-console/e2e/README.md)。
 
+修改 Agent 输出契约后不能只跑 Gateway 单元测试。`analysis.generate` 的确定性替身分别位于
+`teacher-console/tests/fixtures/fake_agent_adapter.py` 和
+`teacher-console/e2e/fake_agent_adapter.py`，两者都必须与
+`teacher-console/analysis_artifacts.py` 的 `wuli.analysis.v2` 同步。推荐验证顺序：
+
+```bash
+python3 -m pytest teacher-console/tests/ -q
+npm run test:e2e
+```
+
+若 CI 的单元测试通过而 3 条 E2E 同时停在解析阶段，优先查看作业的 `failure_type`、`message`
+和保存的临时工作区。`adapter_protocol_error`（例如 `student_solution must be a string`）
+通常表示 E2E adapter 仍在返回旧式 `files`，并非生命周期或浏览器本身发生三处独立故障。
+
 在完成原图核对、记录分类、分层答案和解释图后先批准答案：
 
 ```bash
@@ -241,7 +272,7 @@ python3 .claude/skills/manage-student-error-library/scripts/knowledge_store.py \
   --library student-error-library query "动量守恒 非弹性碰撞" --mode teaching --top-k 5
 ```
 
-返回结果包含命中文档片段、知识点/错因标签、Evaluator 摘要和最近候选事件。它只辅助检索与审计，不代表教师审批，也不替代 `record.json`、Markdown、`evaluation.json` 和 `candidate-archive.jsonl` 真源。
+返回结果包含命中文档片段、知识点/错因标签、Evaluator 摘要和近期候选事件。它只辅助检索与审计，不代表教师审批，也不替代 `record.json`、Markdown、`evaluation.json` 和 `candidate-archive.jsonl` 真源。
 
 ## 发布只读学生端
 

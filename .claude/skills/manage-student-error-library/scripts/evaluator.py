@@ -363,7 +363,12 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
     agent_diff = answer_review_raw.get("agent_diff")
     if isinstance(agent_diff, dict) and agent_diff.get("status") == "computed":
         change_ratio = float(agent_diff.get("change_ratio", 0.0))
-        analysis_req = kb.load_json(entry / "analysis-request.json", {}) or {}
+        request_name = (
+            "answer-revision-request.json"
+            if agent_diff.get("source_task") == "answer.revise"
+            else "analysis-request.json"
+        )
+        analysis_req = kb.load_json(entry / request_name, {}) or {}
         req_start = analysis_req.get("requested_at", "")
         req_end = analysis_req.get("completed_at", "")
         duration = 0.0
@@ -376,6 +381,12 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
                 duration = max(0.0, (t_end - t_start).total_seconds())
             except (ValueError, TypeError):
                 pass
+        outcome = analysis_req.get("outcome") if isinstance(analysis_req.get("outcome"), dict) else {}
+        usage = outcome.get("usage") if isinstance(outcome.get("usage"), dict) else {}
+        tokens = usage.get("total_tokens") if usage.get("measurement") == "provider-reported" else None
+        provider_seconds = outcome.get("attempts", {}).get("provider_seconds")
+        if isinstance(provider_seconds, (int, float)):
+            duration = float(provider_seconds)
         if duration > 0:
             max_duration = 1800.0
             time_factor = max(0.0, 1.0 - duration / max_duration)
@@ -391,7 +402,8 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
             efficiency_details = (
                 f"耗时 {duration:.0f}s，教师改动率 {change_ratio:.1%}；"
                 f"时间因子={time_factor:.2f}，质量因子={quality_factor:.2f}；"
-                f"效率分={efficiency_score:.1f}/5"
+                f"效率分={efficiency_score:.1f}/5；"
+                f"token={tokens if isinstance(tokens, int) else '未测量'}；请求={request_name}"
             )
             checks[-1].update({"status": efficiency_status, "details": efficiency_details})
 
@@ -401,12 +413,6 @@ def evaluate_entry(root: Path, entry_id: str, output_dir: Path | None = None, *,
     teacher_review_required = status != "passed" or any(item["id"].endswith("_hint") for item in checks)
     scores: dict[str, float] = {
         "completeness": _score_from_checks(checks, {"entry_structure", "layered_answer", "delivery_artifacts"}),
-        # Keep the v1 score key for manifests, reports, and downstream readers.
-        # Process compliance is a new, more precise label for the same current
-        # deterministic checks, so it is additive rather than a schema rename.
-        "correctness": _score_from_checks(
-            checks, {"source_review", "answer_review_current", "interactive_visualization"}
-        ),
         "process_compliance": _score_from_checks(
             checks, {"source_review", "answer_review_current", "interactive_visualization"}
         ),

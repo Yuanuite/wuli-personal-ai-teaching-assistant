@@ -45,7 +45,11 @@ E2E 只允许在独立临时知识库和输出目录中运行。教师真实处�
 
 教师端 Agent 任务统一经过 `teacher-console/agent_gateway.py`：provider 只能在输入文件白名单构造的系统临时候选区工作，候选通过允许路径、受保护记录字段、领域验证和 canonical 摘要检查后，才在单题事务锁内提升。`provider` 表示执行运行时而非上游模型厂商；是否开放文件工具由任务契约决定，`analysis.generate` 必须保持无工具结构化输出，不能因使用 Claude/Codex CLI 而放宽。CLI/API 参数不得重新散落进 `server.py`；Agent 永远不能调用 `approve-*`、`finish` 或发布。新 provider 优先实现 JSON stdin/stdout adapter，额外环境变量必须显式加入 allowlist。
 
-Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——不要在 prompt 中重复已被 `allowed_paths`、`denied_paths` 和领域 validator 结构性兜底的约束。`answer.revise` 和 `visualization.model` 会自动注入经过裁剪的 Knowledge Store 历史证据（`.agent-context/knowledge-evidence.json`），当前题干和教师意见始终优先。
+Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——不要在 prompt 中重复已被 `allowed_paths`、`denied_paths` 和领域 validator 结构性兜底的约束。`analysis.generate`、`answer.revise` 和 `visualization.model` 会自动注入经过裁剪的 Knowledge Store 历史证据（`.agent-context/knowledge-evidence.json`），当前题干、当前答案和教师意见始终优先。
+
+`analysis.generate` 必须保持 `wuli.analysis.v2` 契约：私有 `method_check` 先比较可行路径，学生版只输出最短高中方法；缺少最短主线、超过五步或使用积分、导数等超纲方法的候选由确定性校验拒绝。契约变化必须同步单元测试与 E2E 的两个 fake adapter。
+
+`knowledge_points`、`error_types`、`difficulty`、`grade` 是可编辑的 Agent 建议，不设置独立强制确认门禁；教师实际修改与最终批准才作为稳定教学观测。
 
 OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OCR 错误并从题干提取内容相关标题，再进入人工 source review。网页上点击标题文字可直接改名。
 

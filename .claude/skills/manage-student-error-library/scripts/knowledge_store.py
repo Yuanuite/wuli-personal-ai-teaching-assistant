@@ -9,6 +9,7 @@ Deleting ``indexes/wuli-memory.db`` must never lose teaching data.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sqlite3
 from pathlib import Path
@@ -17,15 +18,63 @@ from typing import Any
 import candidate_archive
 import kb
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 DEFAULT_DB_RELATIVE = Path("indexes") / "wuli-memory.db"
+DIRTY_MARKER_RELATIVE = Path("indexes") / "wuli-memory.dirty.json"
 DOCUMENT_KINDS = (
+    "metadata",
     "problem",
     "solution",
     "student_solution",
     "teacher_solution",
     "source_review",
     "physics_model",
+)
+TEACHING_QUERY_EXPANSIONS = (
+    ("多阶段", ("分段运动", "多过程", "多区域", "过程衔接", "多过程计时")),
+    ("方向性", ("方向判断", "符号方向", "空间想象")),
+    ("粒子", ("带电粒子",)),
+)
+TEACHING_QUERY_NOISE = (
+    "帮我找一道",
+    "检索关于",
+    "我想看一些",
+    "想找一些",
+    "找一些",
+    "容易错的题",
+    "容易出现",
+    "相关的题目",
+    "相关的题",
+    "相关题目",
+    "相关",
+    "有哪些",
+    "检索",
+    "关于",
+    "题目",
+)
+TEACHING_INTENT_EXPANSIONS = (
+    ("反复进出", ("多区域", "周期轨迹", "圆形有界磁场", "轨迹衔接")),
+)
+RRF_K = 60
+RETRIEVAL_ROUTES = (
+    {
+        "id": "metadata",
+        "label": "标签与教学元数据",
+        "kinds": ("metadata",),
+        "weight": 1.0,
+    },
+    {
+        "id": "problem",
+        "label": "题干与情境",
+        "kinds": ("problem", "source_review"),
+        "weight": 1.0,
+    },
+    {
+        "id": "solution",
+        "label": "解析与方法",
+        "kinds": ("solution", "student_solution", "teacher_solution", "physics_model"),
+        "weight": 1.0,
+    },
 )
 
 
@@ -56,6 +105,20 @@ def connect(path: Path) -> sqlite3.Connection:
     connection.execute("PRAGMA foreign_keys=ON")
     connection.execute("PRAGMA busy_timeout=5000")
     return connection
+
+
+def connect_readonly(path: Path) -> sqlite3.Connection:
+    connection = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA query_only=ON")
+    connection.execute("PRAGMA busy_timeout=5000")
+    return connection
+
+
+def _ensure_column(connection: sqlite3.Connection, table: str, column: str, declaration: str) -> None:
+    columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in columns:
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {declaration}")
 
 
 def _fts_available(connection: sqlite3.Connection) -> bool:
@@ -126,6 +189,9 @@ def init_schema(connection: sqlite3.Connection) -> bool:
           changed_files_json TEXT NOT NULL,
           failure_reasons_json TEXT NOT NULL,
           evaluation_json TEXT NOT NULL,
+          feedback_json TEXT NOT NULL DEFAULT '{}',
+          links_json TEXT NOT NULL DEFAULT '{}',
+          result_json TEXT NOT NULL DEFAULT '{}',
           FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
         );
         CREATE TABLE IF NOT EXISTS teaching_memory (
@@ -166,6 +232,9 @@ def init_schema(connection: sqlite3.Connection) -> bool:
         CREATE INDEX IF NOT EXISTS idx_evolve_observation_time ON evolve_observation(created_at);
         """
     )
+    _ensure_column(connection, "candidate_event", "feedback_json", "TEXT NOT NULL DEFAULT '{}'")
+    _ensure_column(connection, "candidate_event", "links_json", "TEXT NOT NULL DEFAULT '{}'")
+    _ensure_column(connection, "candidate_event", "result_json", "TEXT NOT NULL DEFAULT '{}'")
     if has_fts:
         connection.execute(
             """
@@ -188,7 +257,34 @@ def _document_payloads(entry: Path, record: dict[str, Any]) -> list[dict[str, st
         "physics_model": "physics-model.json",
     }
     title = str(record.get("title", entry.name))
+    physics_model = kb.load_json(entry / "physics-model.json", {}) or {}
+    model_teaching = physics_model.get("teaching", {}) if isinstance(physics_model, dict) else {}
+    metadata_sections = (
+        ("知识点", record.get("knowledge_points", [])),
+        ("错因", record.get("error_types", [])),
+        ("方法", record.get("methods", model_teaching.get("methods", []))),
+        (
+            "二级结论",
+            record.get("secondary_conclusions", model_teaching.get("secondary_conclusions", [])),
+        ),
+    )
+    metadata_lines = [
+        f"{label}：" + "；".join(str(item) for item in values if str(item).strip())
+        for label, values in metadata_sections
+        if isinstance(values, list) and any(str(item).strip() for item in values)
+    ]
     payloads: list[dict[str, str]] = []
+    if metadata_lines:
+        metadata_content = "\n".join(metadata_lines)
+        payloads.append({
+            "entry_id": entry.name,
+            "kind": "metadata",
+            "path": "record.json",
+            "title": title,
+            "content": metadata_content,
+            "token_text": " ".join(kb.tokenize(" ".join([title, metadata_content]))),
+            "updated_at": record.get("updated_at") or "",
+        })
     for kind, name in files.items():
         path = entry / name
         if not path.exists():
@@ -319,8 +415,9 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
                     """
                     INSERT OR REPLACE INTO candidate_event(
                       event_id, entry_id, task_type, actor, event_type, status, raw_status,
-                      created_at, summary, changed_files_json, failure_reasons_json, evaluation_json
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      created_at, summary, changed_files_json, failure_reasons_json, evaluation_json,
+                      feedback_json, links_json, result_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         event.get("event_id"),
@@ -335,6 +432,9 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
                         _json(event.get("changed_files", [])),
                         _json(event.get("failure_reasons", [])),
                         _json(event.get("evaluation", {})),
+                        _json(event.get("feedback", {})),
+                        _json(event.get("links", {})),
+                        _json(event.get("result", {})),
                     ),
                 )
                 event_count += 1
@@ -406,10 +506,14 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
                 observation_count += 1
 
         generated_at = kb.now_iso()
+        library_events = candidate_archive.read_library_events(root)
+        last_event_id = str(library_events[-1].get("event_id", "")) if library_events else ""
         connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('generated_at', ?)", (generated_at,))
+        connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('last_archive_event_id', ?)", (last_event_id,))
         connection.commit()
     finally:
         connection.close()
+    (root / DIRTY_MARKER_RELATIVE).unlink(missing_ok=True)
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -442,6 +546,35 @@ def _fts_query(query: str) -> str:
     return " OR ".join(f'"{token}"' for token in tokens[:24])
 
 
+def _expanded_teaching_query(query: str) -> tuple[str, list[str]]:
+    """Expand common teacher phrasing into canonical library vocabulary."""
+    normalized = query.strip()
+    additions: list[str] = []
+    for trigger, aliases in TEACHING_QUERY_EXPANSIONS:
+        if trigger in query:
+            additions.extend(alias for alias in aliases if alias not in normalized and alias not in additions)
+    return " ".join([normalized, *additions]).strip(), additions
+
+
+def _teaching_intent_query(query: str) -> tuple[str, list[str], list[str]]:
+    """Remove task phrasing and add only reviewed, deterministic physics aliases."""
+    normalized = query
+    removed: list[str] = []
+    for phrase in TEACHING_QUERY_NOISE:
+        if phrase in normalized:
+            normalized = normalized.replace(phrase, " ")
+            removed.append(phrase)
+    additions: list[str] = []
+    for trigger, aliases in TEACHING_QUERY_EXPANSIONS:
+        if trigger in query:
+            additions.extend(alias for alias in aliases if alias not in normalized and alias not in additions)
+    for trigger, aliases in TEACHING_INTENT_EXPANSIONS:
+        if trigger in query:
+            additions.extend(alias for alias in aliases if alias not in normalized and alias not in additions)
+    normalized = " ".join(normalized.split()).strip() or query.strip()
+    return " ".join([normalized, *additions]).strip(), removed, additions
+
+
 def _snippet(text: str, query: str, limit: int = 180) -> str:
     compact = " ".join(text.split())
     for token in kb.tokenize(query):
@@ -452,11 +585,382 @@ def _snippet(text: str, query: str, limit: int = 180) -> str:
     return compact[:limit] + ("…" if len(compact) > limit else "")
 
 
+def _query_plan(
+    text: str,
+    retrieval_text: str,
+    query_expansions: list[str],
+    intent_text: str,
+    removed_phrases: list[str],
+    intent_expansions: list[str],
+    mode: str,
+) -> dict[str, Any]:
+    """Return the deterministic, auditable query plan used by every route."""
+    return {
+        "raw_query": text,
+        "retrieval_text": retrieval_text,
+        "intent_query": intent_text,
+        "mode": mode,
+        "expansions": query_expansions,
+        "removed_task_phrases": removed_phrases,
+        "intent_expansions": intent_expansions,
+        "tokens": list(dict.fromkeys(kb.tokenize(retrieval_text)))[:24],
+        "routes": [
+            {
+                "id": str(route["id"]),
+                "label": str(route["label"]),
+                "document_kinds": list(route["kinds"]),
+                "weight": float(route["weight"]),
+            }
+            for route in RETRIEVAL_ROUTES
+        ],
+    }
+
+
+def _evidence_coverage(
+    route_matches: list[dict[str, Any]], matched_documents: list[dict[str, Any]]
+) -> dict[str, Any]:
+    slot_by_route = {
+        "metadata": "concepts-and-labels",
+        "problem": "problem-context",
+        "solution": "solution-method",
+    }
+    required = list(slot_by_route.values())
+    routes = {
+        str(item.get("route", ""))
+        for item in [*route_matches, *matched_documents]
+    }
+    covered = [slot for route, slot in slot_by_route.items() if route in routes]
+    return {
+        "required_slots": required,
+        "covered_slots": covered,
+        "missing_slots": [slot for slot in required if slot not in covered],
+        "coverage_ratio": round(len(covered) / len(required), 4),
+        "route_diversity": len(routes & set(slot_by_route)),
+    }
+
+
+def _evidence_set_diagnostics(results: list[dict[str, Any]]) -> dict[str, Any]:
+    required = ["concepts-and-labels", "problem-context", "solution-method"]
+    covered = {
+        slot
+        for result in results
+        for slot in result.get("evidence_coverage", {}).get("covered_slots", [])
+    }
+    documents = [document for result in results for document in result.get("matched_documents", [])]
+    fingerprints = {
+        (str(document.get("kind", "")), str(document.get("snippet", "")).strip())
+        for document in documents
+    }
+    return {
+        "candidate_entry_count": len(results),
+        "document_count": len(documents),
+        "unique_document_count": len(fingerprints),
+        "exact_duplicate_count": max(0, len(documents) - len(fingerprints)),
+        "required_slots": required,
+        "covered_slots": [slot for slot in required if slot in covered],
+        "missing_slots": [slot for slot in required if slot not in covered],
+        "coverage_ratio": round(len(covered) / len(required), 4),
+        "traceable_document_count": sum(
+            1 for document in documents if document.get("path") and document.get("kind")
+        ),
+    }
+
+
+def _reference_set_diagnostics(references: list[dict[str, Any]]) -> dict[str, Any]:
+    required = ["concepts-and-labels", "problem-context", "solution-method"]
+    covered = {
+        slot
+        for reference in references
+        for slot in reference.get("coverage", {}).get("covered_slots", [])
+    }
+    return {
+        "kind": "candidate-evidence-set",
+        "reference_count": len(references),
+        "required_slots": required,
+        "covered_slots": [slot for slot in required if slot in covered],
+        "missing_slots": [slot for slot in required if slot not in covered],
+        "coverage_ratio": round(len(covered) / len(required), 4),
+    }
+
+
+def _fallback_lexical_score(content: str, title: str, retrieval_text: str) -> float:
+    tokens = list(dict.fromkeys(kb.tokenize(retrieval_text)))
+    if not tokens:
+        return 0.0
+    lowered_content = content.lower()
+    lowered_title = title.lower()
+    return float(sum(lowered_content.count(token) + 4 * lowered_title.count(token) for token in tokens))
+
+
+def _route_rows(
+    connection: sqlite3.Connection,
+    *,
+    fts: str,
+    retrieval_text: str,
+    kinds: tuple[str, ...],
+    limit: int,
+    use_fts: bool,
+) -> list[dict[str, Any]]:
+    placeholders = ",".join("?" for _ in kinds)
+    if use_fts:
+        rows = connection.execute(
+            f"""
+            SELECT d.entry_id, d.kind, d.path, d.title, d.content,
+                   bm25(document_fts, 0.0, 0.0, 1.0, 1.0, 1.0) AS rank
+            FROM document_fts
+            JOIN document d
+              ON d.entry_id = document_fts.entry_id AND d.kind = document_fts.kind
+            WHERE document_fts MATCH ? AND d.kind IN ({placeholders})
+            ORDER BY rank
+            LIMIT ?
+            """,
+            (fts, *kinds, limit),
+        ).fetchall()
+        return [
+            {
+                "entry_id": row["entry_id"],
+                "kind": row["kind"],
+                "path": row["path"],
+                "title": row["title"],
+                "content": row["content"],
+                "raw_score": max(-float(row["rank"] or 0.0), 0.0),
+            }
+            for row in rows
+        ]
+
+    rows = connection.execute(
+        f"""
+        SELECT entry_id, kind, path, title, content
+        FROM document
+        WHERE kind IN ({placeholders})
+        """,
+        kinds,
+    ).fetchall()
+    scored = [
+        {
+            "entry_id": row["entry_id"],
+            "kind": row["kind"],
+            "path": row["path"],
+            "title": row["title"],
+            "content": row["content"],
+            "raw_score": _fallback_lexical_score(row["content"], row["title"], retrieval_text),
+        }
+        for row in rows
+    ]
+    return sorted(
+        (row for row in scored if row["raw_score"] > 0),
+        key=lambda row: (-float(row["raw_score"]), str(row["entry_id"]), str(row["kind"])),
+    )[:limit]
+
+
+def _retrieve_routes(
+    connection: sqlite3.Connection,
+    *,
+    fts: str,
+    retrieval_text: str,
+    top_k: int,
+    use_fts: bool,
+) -> tuple[dict[str, dict[str, Any]], list[dict[str, Any]]]:
+    """Run independent lexical routes, then fuse their entry ranks with RRF."""
+    fused: dict[str, dict[str, Any]] = {}
+    diagnostics: list[dict[str, Any]] = []
+    route_limit = max(top_k * 4, top_k)
+    for route in RETRIEVAL_ROUTES:
+        rows = _route_rows(
+            connection,
+            fts=fts,
+            retrieval_text=retrieval_text,
+            kinds=tuple(route["kinds"]),
+            limit=route_limit,
+            use_fts=use_fts,
+        )
+        route_entries: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            entry = route_entries.setdefault(
+                str(row["entry_id"]),
+                {"raw_score": 0.0, "documents": [], "title": str(row["title"])},
+            )
+            entry["raw_score"] += float(row["raw_score"])
+            entry["documents"].append(row)
+        ranked_route = sorted(
+            route_entries.items(),
+            key=lambda pair: (-float(pair[1]["raw_score"]), pair[0]),
+        )
+        diagnostics.append({
+            "id": route["id"],
+            "label": route["label"],
+            "document_kinds": list(route["kinds"]),
+            "weight": float(route["weight"]),
+            "candidate_count": len(ranked_route),
+            "top_entry_ids": [entry_id for entry_id, _ in ranked_route[:top_k]],
+        })
+        for rank, (entry_id, route_match) in enumerate(ranked_route, 1):
+            contribution = float(route["weight"]) / (RRF_K + rank)
+            item = fused.setdefault(
+                entry_id,
+                {
+                    "score": 0.0,
+                    "lexical_score": 0.0,
+                    "rrf_score": 0.0,
+                    "matched_documents": [],
+                    "best_title": route_match["title"],
+                    "route_matches": [],
+                },
+            )
+            item["lexical_score"] += float(route_match["raw_score"])
+            item["rrf_score"] += contribution
+            # BM25 magnitude preserves strong lexical evidence inside a route;
+            # RRF adds a small, stable reward for agreement across independent routes.
+            item["score"] = item["lexical_score"] + item["rrf_score"]
+            item["route_matches"].append({
+                "route": route["id"],
+                "rank": rank,
+                "raw_score": round(float(route_match["raw_score"]), 6),
+                "rrf_contribution": round(contribution, 8),
+            })
+            for document in route_match["documents"]:
+                item["matched_documents"].append({
+                    "kind": document["kind"],
+                    "path": document["path"],
+                    "route": route["id"],
+                    "raw_score": round(float(document["raw_score"]), 6),
+                    "snippet": _snippet(document["content"], retrieval_text),
+                })
+    return fused, diagnostics
+
+
+def _route_id_for_kind(kind: str) -> str:
+    for route in RETRIEVAL_ROUTES:
+        if kind in route["kinds"]:
+            return str(route["id"])
+    return "unknown"
+
+
+def _retrieve_global(
+    connection: sqlite3.Connection,
+    *,
+    fts: str,
+    retrieval_text: str,
+    top_k: int,
+    use_fts: bool,
+) -> dict[str, dict[str, Any]]:
+    """Preserve the proven single-pool BM25 baseline as the production gate."""
+    limit = max(top_k * 4, top_k)
+    if use_fts:
+        rows = connection.execute(
+            """
+            SELECT d.entry_id, d.kind, d.path, d.title, d.content,
+                   bm25(document_fts, 8.0, 1.0, 1.0) AS rank
+            FROM document_fts
+            JOIN document d
+              ON d.entry_id = document_fts.entry_id AND d.kind = document_fts.kind
+            WHERE document_fts MATCH ?
+            ORDER BY rank
+            LIMIT ?
+            """,
+            (fts, limit),
+        ).fetchall()
+        scored_rows = [
+            {
+                "entry_id": row["entry_id"],
+                "kind": row["kind"],
+                "path": row["path"],
+                "title": row["title"],
+                "content": row["content"],
+                "raw_score": max(-float(row["rank"] or 0.0), 0.0),
+            }
+            for row in rows
+        ]
+    else:
+        pattern = f"%{retrieval_text}%"
+        rows = connection.execute(
+            """
+            SELECT entry_id, kind, path, title, content
+            FROM document
+            WHERE content LIKE ? OR token_text LIKE ?
+            LIMIT ?
+            """,
+            (pattern, pattern, limit),
+        ).fetchall()
+        scored_rows = [
+            {
+                "entry_id": row["entry_id"],
+                "kind": row["kind"],
+                "path": row["path"],
+                "title": row["title"],
+                "content": row["content"],
+                "raw_score": 0.5,
+            }
+            for row in rows
+        ]
+
+    grouped: dict[str, dict[str, Any]] = {}
+    for row in scored_rows:
+        item = grouped.setdefault(
+            str(row["entry_id"]),
+            {
+                "score": 0.0,
+                "lexical_score": 0.0,
+                "rrf_score": 0.0,
+                "matched_documents": [],
+                "best_title": str(row["title"]),
+                "route_matches": [],
+            },
+        )
+        item["score"] += float(row["raw_score"])
+        item["lexical_score"] += float(row["raw_score"])
+        item["matched_documents"].append({
+            "kind": row["kind"],
+            "path": row["path"],
+            "route": _route_id_for_kind(str(row["kind"])),
+            "raw_score": round(float(row["raw_score"]), 6),
+            "snippet": _snippet(str(row["content"]), retrieval_text),
+        })
+    return grouped
+
+
+def _rank_grouped(grouped: dict[str, dict[str, Any]]) -> list[tuple[str, dict[str, Any]]]:
+    return sorted(grouped.items(), key=lambda pair: (-float(pair[1]["score"]), pair[0]))
+
+
+def _intent_augmented_ranking(
+    baseline_grouped: dict[str, dict[str, Any]],
+    intent_grouped: dict[str, dict[str, Any]],
+    top_k: int,
+) -> list[tuple[str, dict[str, Any]]]:
+    """Keep the stable head, then reserve up to two slots for normalized intent."""
+    baseline = _rank_grouped(baseline_grouped)
+    intent = _rank_grouped(intent_grouped)
+    reserve = min(2, max(1, top_k // 2))
+    keep_count = max(1, top_k - reserve)
+    selected: list[tuple[str, dict[str, Any]]] = [
+        (entry_id, {**match, "selection_origin": "baseline"})
+        for entry_id, match in baseline[:keep_count]
+    ]
+    selected_ids = {entry_id for entry_id, _ in selected}
+    for entry_id, match in intent:
+        if entry_id in selected_ids:
+            continue
+        selected.append((entry_id, {**match, "selection_origin": "intent"}))
+        selected_ids.add(entry_id)
+        if len(selected) >= top_k:
+            break
+    for entry_id, match in baseline[keep_count:]:
+        if entry_id in selected_ids:
+            continue
+        selected.append((entry_id, {**match, "selection_origin": "baseline"}))
+        selected_ids.add(entry_id)
+        if len(selected) >= top_k:
+            break
+    return selected[:top_k]
+
+
 def _recent_events(connection: sqlite3.Connection, entry_id: str, limit: int = 5) -> list[dict[str, Any]]:
     rows = connection.execute(
         """
         SELECT event_id, task_type, actor, event_type, status, raw_status, created_at,
-               summary, changed_files_json, failure_reasons_json, evaluation_json
+               summary, changed_files_json, failure_reasons_json, evaluation_json,
+               feedback_json, links_json, result_json
         FROM candidate_event
         WHERE entry_id = ?
         ORDER BY COALESCE(created_at, '') DESC, event_id DESC
@@ -477,6 +981,9 @@ def _recent_events(connection: sqlite3.Connection, entry_id: str, limit: int = 5
             "changed_files": _loads(row["changed_files_json"], []),
             "failure_reasons": _loads(row["failure_reasons_json"], []),
             "evaluation": _loads(row["evaluation_json"], {}),
+            "feedback": _loads(row["feedback_json"], {}),
+            "links": _loads(row["links_json"], {}),
+            "result": _loads(row["result_json"], {}),
         }
         for row in rows
     ]
@@ -535,67 +1042,129 @@ def _recent_evolve_observations(connection: sqlite3.Connection, limit: int = 5) 
 
 
 def query(
-    root: Path, text: str, *, mode: str = "auto", top_k: int = 5, explicit_db: Path | None = None
+    root: Path,
+    text: str,
+    *,
+    mode: str = "auto",
+    top_k: int = 5,
+    explicit_db: Path | None = None,
+    ranking_policy: str = "baseline",
 ) -> dict[str, Any]:
     root = root.expanduser().resolve()
     target = db_path(root, explicit_db)
     if not target.exists():
-        rebuild(root, target)
-    fts = _fts_query(text)
-    connection = connect(target)
+        return {
+            "schema_version": SCHEMA_VERSION,
+            "status": "unavailable",
+            "reason": "knowledge-store-missing",
+            "query": text,
+            "mode": mode,
+            "results": [],
+            "freshness": {"status": "missing", "database": str(target)},
+        }
+    retrieval_text, query_expansions = (
+        _expanded_teaching_query(text) if mode in {"auto", "teaching"} else (text, [])
+    )
+    intent_text, removed_phrases, intent_expansions = (
+        _teaching_intent_query(text)
+        if mode in {"auto", "teaching"}
+        else (text, [], [])
+    )
+    query_plan = _query_plan(
+        text,
+        retrieval_text,
+        query_expansions,
+        intent_text,
+        removed_phrases,
+        intent_expansions,
+        mode,
+    )
+    fts = _fts_query(retrieval_text)
+    intent_fts = _fts_query(intent_text)
+    connection = connect_readonly(target)
     try:
-        # A derived database may predate the current additive schema. Ensure
-        # missing tables/indexes exist without deleting or rebuilding its data.
-        init_schema(connection)
-        connection.commit()
+        schema_row = connection.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
+        if not schema_row or int(schema_row["value"]) < SCHEMA_VERSION:
+            return {
+                "schema_version": SCHEMA_VERSION,
+                "status": "unavailable",
+                "reason": "knowledge-store-schema-stale",
+                "query": text,
+                "mode": mode,
+                "results": [],
+                "freshness": {"status": "schema-stale", "database": str(target)},
+            }
+        tables = {
+            row["name"]
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type IN ('table','view')").fetchall()
+        }
+        required_tables = {"meta", "entry", "document", "candidate_event", "scheduler_benchmark", "evolve_observation"}
+        if not required_tables.issubset(tables):
+            return {
+                "schema_version": SCHEMA_VERSION,
+                "status": "unavailable",
+                "reason": "knowledge-store-incomplete",
+                "query": text,
+                "mode": mode,
+                "results": [],
+                "freshness": {"status": "schema-stale", "database": str(target)},
+            }
+        generated_row = connection.execute("SELECT value FROM meta WHERE key='generated_at'").fetchone()
+        indexed_event_row = connection.execute(
+            "SELECT value FROM meta WHERE key='last_archive_event_id'"
+        ).fetchone()
+        dirty = kb.load_json(root / DIRTY_MARKER_RELATIVE, {})
+        freshness = {
+            "status": "stale" if dirty else "current",
+            "indexed_at": generated_row["value"] if generated_row else "",
+            "indexed_event_id": indexed_event_row["value"] if indexed_event_row else "",
+            "latest_event_id": dirty.get("last_event_id") if isinstance(dirty, dict) else "",
+            "database": str(target),
+        }
         has_fts = connection.execute("SELECT value FROM meta WHERE key='fts5'").fetchone()
-        use_fts = bool(fts and has_fts and has_fts["value"] == "1")
-        if use_fts:
-            rows = connection.execute(
-                """
-                SELECT d.entry_id, d.kind, d.path, d.title, d.content,
-                       bm25(document_fts, 8.0, 1.0, 1.0) AS rank
-                FROM document_fts
-                JOIN document d
-                  ON d.entry_id = document_fts.entry_id AND d.kind = document_fts.kind
-                WHERE document_fts MATCH ?
-                ORDER BY rank
-                LIMIT ?
-                """,
-                (fts, max(top_k * 4, top_k)),
-            ).fetchall()
-        else:
-            pattern = f"%{text}%"
-            rows = connection.execute(
-                """
-                SELECT entry_id, kind, path, title, content, 0.0 AS rank
-                FROM document
-                WHERE content LIKE ? OR token_text LIKE ?
-                LIMIT ?
-                """,
-                (pattern, pattern, max(top_k * 4, top_k)),
-            ).fetchall()
-
-        grouped: dict[str, dict[str, Any]] = {}
-        for row in rows:
-            item = grouped.setdefault(
-                row["entry_id"],
-                {"score": 0.0, "matched_documents": [], "best_title": row["title"]},
+        fts_available = bool(has_fts and has_fts["value"] == "1")
+        use_fts = bool(fts and fts_available)
+        multi_route_grouped, route_diagnostics = _retrieve_routes(
+            connection,
+            fts=fts,
+            retrieval_text=retrieval_text,
+            top_k=top_k,
+            use_fts=use_fts,
+        )
+        baseline_grouped = _retrieve_global(
+            connection,
+            fts=fts,
+            retrieval_text=retrieval_text,
+            top_k=top_k,
+            use_fts=use_fts,
+        )
+        intent_grouped = (
+            baseline_grouped
+            if intent_text == retrieval_text
+            else _retrieve_global(
+                connection,
+                fts=intent_fts,
+                retrieval_text=intent_text,
+                top_k=top_k,
+                use_fts=bool(intent_fts and fts_available),
             )
-            # FTS5 bm25() is negative and lower values are more relevant.
-            # Negating preserves that ordering; clamping the raw rank to zero
-            # would flatten every match to the same score.
-            score = max(-float(row["rank"] or 0.0), 0.0) if use_fts else 0.5
-            item["score"] += score
-            item["matched_documents"].append({
-                "kind": row["kind"],
-                "path": row["path"],
-                "snippet": _snippet(row["content"], text),
-            })
-
-        ranked = sorted(grouped.items(), key=lambda pair: (-pair[1]["score"], pair[0]))[:top_k]
+        )
+        if ranking_policy not in {"baseline", "multi-route", "intent-augmented"}:
+            raise ValueError(f"unsupported ranking_policy: {ranking_policy}")
+        grouped = multi_route_grouped if ranking_policy == "multi-route" else baseline_grouped
+        if ranking_policy in {"baseline", "intent-augmented"}:
+            for entry_id, match in grouped.items():
+                shadow = multi_route_grouped.get(entry_id, {})
+                match["route_matches"] = shadow.get("route_matches", [])
+                match["rrf_score"] = float(shadow.get("rrf_score", 0.0))
+        if ranking_policy == "intent-augmented":
+            ranked = _intent_augmented_ranking(baseline_grouped, intent_grouped, top_k)
+        else:
+            ranked = _rank_grouped(grouped)[:top_k]
+        shadow_ranked = _rank_grouped(multi_route_grouped)[:top_k]
+        intent_ranked = _rank_grouped(intent_grouped)[:top_k]
         results: list[dict[str, Any]] = []
-        for entry_id, match in ranked:
+        for selected_rank, (entry_id, match) in enumerate(ranked, 1):
             entry_row = connection.execute("SELECT * FROM entry WHERE id = ?", (entry_id,)).fetchone()
             if not entry_row:
                 continue
@@ -614,6 +1183,14 @@ def query(
                     "warning_reasons": _loads(eval_row["warning_reasons_json"], []),
                     "teacher_review_required": bool(eval_row["teacher_review_required"]),
                 }
+            route_matches = sorted(
+                match.get("route_matches", []),
+                key=lambda item: (item["rank"], item["route"]),
+            )
+            matched_documents = sorted(
+                match["matched_documents"],
+                key=lambda item: (-float(item["raw_score"]), item["route"], item["kind"]),
+            )[:3]
             results.append({
                 "entry_id": entry_id,
                 "title": entry_row["title"],
@@ -621,6 +1198,10 @@ def query(
                 "status": entry_row["status"],
                 "library_folder": entry_row["library_folder"],
                 "score": round(float(match["score"]), 4),
+                "lexical_score": round(float(match["lexical_score"]), 4),
+                "rrf_score": round(float(match["rrf_score"]), 6),
+                "selected_rank": selected_rank,
+                "selection_origin": str(match.get("selection_origin", ranking_policy)),
                 "path": f"entries/{entry_id}",
                 "knowledge_points": _loads(entry_row["knowledge_points_json"], []),
                 "error_types": _loads(entry_row["error_types_json"], []),
@@ -634,7 +1215,9 @@ def query(
                 },
                 "evaluation": evaluation,
                 "recent_events": _recent_events(connection, entry_id),
-                "matched_documents": match["matched_documents"][:3],
+                "route_matches": route_matches,
+                "matched_documents": matched_documents,
+                "evidence_coverage": _evidence_coverage(route_matches, matched_documents),
             })
         scheduler_benchmarks = _recent_scheduler_benchmarks(connection)
         evolve_observations = _recent_evolve_observations(connection)
@@ -649,10 +1232,33 @@ def query(
     return {
         "schema_version": SCHEMA_VERSION,
         "query": text,
+        "query_expansions": query_expansions,
+        "query_plan": query_plan,
         "mode": mode,
+        "status": "ok",
         "generated_at": kb.now_iso(),
         "database": str(target),
+        "freshness": freshness,
         "results": results,
+        "retrieval": {
+            "strategy": {
+                "baseline": "baseline-bm25-with-shadows-v2",
+                "multi-route": "multi-route-bm25-rrf-v1",
+                "intent-augmented": "stable-head-intent-augmentation-v1",
+            }[ranking_policy],
+            "selected_policy": ranking_policy,
+            "activation_status": "active" if ranking_policy == "baseline" else "experimental",
+            "lexical_backend": "sqlite-fts5-bm25" if use_fts else "deterministic-local-scan",
+            "rrf_k": RRF_K,
+            "candidate_count": len(grouped),
+            "routes": route_diagnostics,
+            "shadow_top_entry_ids": [entry_id for entry_id, _ in shadow_ranked],
+            "intent_query": intent_text,
+            "intent_candidate_count": len(intent_grouped),
+            "intent_top_entry_ids": [entry_id for entry_id, _ in intent_ranked],
+            "intent_reserved_slots": min(2, max(1, top_k // 2)),
+        },
+        "evidence_set": _evidence_set_diagnostics(results),
         "scheduler_benchmarks": scheduler_benchmarks,
         "evolve_observations": evolve_observations,
         "evidence_sources": sorted({
@@ -661,6 +1267,7 @@ def query(
         "required_checks": required_checks,
         "notes": [
             "SQLite is a derived local index; canonical truth remains Markdown/JSON/JSONL.",
+            "Independent metadata/problem/solution routes are fused at entry level with auditable RRF.",
             "Chinese retrieval uses existing kb.tokenize bigrams plus SQLite FTS5 when available.",
         ],
     }
@@ -701,10 +1308,20 @@ def build_agent_evidence(
         retrieved = query(root, text, mode="teaching", top_k=max(1, top_k + 2), explicit_db=target)
     except (OSError, sqlite3.Error, ValueError):
         return {**base, "status": "unavailable", "reason": "knowledge-store-query-failed"}
+    if retrieved.get("status") != "ok":
+        return {**base, "status": "unavailable", "reason": retrieved.get("reason", "knowledge-store-unavailable")}
+    if retrieved.get("freshness", {}).get("status") != "current":
+        return {
+            **base,
+            "status": "unavailable",
+            "reason": "knowledge-store-stale",
+            "freshness": retrieved.get("freshness", {}),
+        }
 
     references: list[dict[str, Any]] = []
     budget = max(1000, min(int(char_budget), 20000))
-    for result in retrieved.get("results", []):
+    eligible_results = [result for result in retrieved.get("results", []) if result.get("entry_id") != entry_id]
+    for result in eligible_results:
         if result.get("entry_id") == entry_id:
             continue
         recent_lessons = []
@@ -714,6 +1331,8 @@ def build_agent_evidence(
                 "status": str(event.get("status", "")),
                 "summary": str(event.get("summary", ""))[:240],
                 "failure_reasons": [str(item)[:240] for item in event.get("failure_reasons", [])[:3]],
+                "feedback": event.get("feedback", {}),
+                "adoption": event.get("feedback", {}).get("adoption", {}),
             }
             if any(value for value in lesson.values()):
                 recent_lessons.append(lesson)
@@ -736,15 +1355,55 @@ def build_agent_evidence(
                 {"kind": str(doc.get("kind", "")), "snippet": str(doc.get("snippet", ""))[:240]}
                 for doc in result.get("matched_documents", [])[:3]
             ],
+            "coverage": result.get("evidence_coverage", {}),
             "recent_lessons": recent_lessons,
         }
+        reference_bytes = json.dumps(reference, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        reference["content_hash"] = f"sha256:{hashlib.sha256(reference_bytes).hexdigest()}"
         candidate = {**base, "references": [*references, reference]}
-        if len(json.dumps(candidate, ensure_ascii=False)) > budget:
+        # Reserve a small, fixed envelope for the audit metadata appended below.
+        if len(json.dumps(candidate, ensure_ascii=False)) > max(400, budget - 600):
             break
         references.append(reference)
         if len(references) >= top_k:
             break
-    return {**base, "references": references}
+    payload = {
+        **base,
+        "references": references,
+        "evidence_set": _reference_set_diagnostics(references),
+        "context_budget": {
+            "policy": "deterministic-evidence-v1",
+            "measurement": "serialized-json-characters",
+            "requested_chars": budget,
+            "reference_limit": max(1, int(top_k)),
+            "section_priority": [
+                "title-and-labels",
+                "methods",
+                "secondary-conclusions",
+                "matched-evidence",
+                "evaluator-findings",
+                "recent-lessons",
+            ],
+            "protected_scope": "current canonical problem, answer, and teacher instruction are outside this pack",
+            "candidate_reference_count": len(eligible_results),
+            "included_reference_count": len(references),
+            "omitted_reference_count": max(0, len(eligible_results) - len(references)),
+            "truncated": len(references) < len(eligible_results),
+            "serialized_chars": 0,
+        },
+    }
+    for _ in range(3):
+        payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
+    while payload["context_budget"]["serialized_chars"] > budget and payload["references"]:
+        payload["references"].pop()
+        payload["evidence_set"] = _reference_set_diagnostics(payload["references"])
+        payload["context_budget"]["included_reference_count"] = len(payload["references"])
+        payload["context_budget"]["omitted_reference_count"] = max(
+            0, len(eligible_results) - len(payload["references"])
+        )
+        payload["context_budget"]["truncated"] = True
+        payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
+    return payload
 
 
 def main() -> int:

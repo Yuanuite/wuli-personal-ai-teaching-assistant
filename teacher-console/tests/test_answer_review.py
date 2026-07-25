@@ -36,10 +36,14 @@ class AnswerReviewGateTest(unittest.TestCase):
         )
         problem = "# 测试题\n\n这是一个长度足够的高中物理测试题干，用于验证教师答案复核摘要在答案修改后会自动失效。"
         solution = (
-            "# 解析\n\n## 答案速览\n结论正确。\n\n## 详细解答\n"
-            "第一步定义物理量，第二步列出规律，第三步完成计算，并用量纲和边界条件进行双重检查。"
-            "这里补充足够的解释文字，确保正式答案结构可以通过交付前校验。\n\n"
-            "## 易错点\n注意方向与适用条件。\n\n![解释图](assets/explanatory.svg)\n"
+            "# 解析\n\n## 答案速览\n结论正确。\n\n"
+            "## 一眼识别\n- 最短主线：定义对象 → 直接应用高中规律 → 检查结论。\n\n"
+            "## 详细解答\n### 第 1 步\n定义物理量后直接列出关键规律并完成计算，"
+            "再用量纲和边界条件进行双重检查。这里补充足够的解释文字，"
+            "确保正式答案结构可以通过交付前校验。\n\n"
+            "## 易错点\n注意方向与适用条件。\n\n"
+            "## 30 秒自测\n改变正方向后哪些符号需要同步改变？\n\n"
+            "![解释图](assets/explanatory.svg)\n"
         )
         kb.write_text(self.entry / "problem.md", problem)
         kb.write_text(self.entry / "solution.md", solution)
@@ -351,7 +355,11 @@ class ValidateAnswerCandidateTest(unittest.TestCase):
         # All three answer files, teacher == solution
         kb.write_text(
             self.staging / "student-solution.md",
-            "# 学生版\n\n## 答案速览\n正确。\n\n## 详细解答\n计算过程。\n\n## 易错点\n注意单位。\n\n![图](assets/explanatory.svg)",
+            "# 学生版\n\n## 答案速览\n正确。\n\n## 一眼识别\n"
+            "- 最短主线：识别过程 → 应用动能定理。\n\n"
+            "## 详细解答\n### 第 1 步\n根据动能定理直接列式并计算。\n\n"
+            "## 易错点\n注意单位。\n\n## 30 秒自测\n速度加倍时动能如何变化？\n\n"
+            "![图](assets/explanatory.svg)",
         )
         kb.write_text(
             self.staging / "teacher-solution.md",
@@ -419,6 +427,33 @@ class ValidateAnswerCandidateTest(unittest.TestCase):
         )
         errors = teacher_console_server.validate_answer_candidate(self.staging, [])
         self.assertIn("solution.md must be identical to teacher-solution.md", errors)
+
+    def test_rejects_advanced_student_method(self):
+        path = self.staging / "student-solution.md"
+        kb.write_text(
+            path,
+            path.read_text(encoding="utf-8").replace(
+                "根据动能定理直接列式并计算。",
+                "使用积分 $W=\\int F\\,dx$ 计算。",
+            ),
+        )
+        errors = teacher_console_server.validate_answer_candidate(
+            self.staging,
+            ["student-solution.md"],
+        )
+        self.assertIn("student_solution uses non-high-school method: 积分", errors)
+
+    def test_rejects_missing_shortest_path_self_check(self):
+        path = self.staging / "student-solution.md"
+        kb.write_text(
+            path,
+            path.read_text(encoding="utf-8").replace("最短主线", "解题主线"),
+        )
+        errors = teacher_console_server.validate_answer_candidate(
+            self.staging,
+            ["student-solution.md"],
+        )
+        self.assertIn("student_solution must state 最短主线 in 一眼识别", errors)
 
     def test_all_three_missing_checks_present_among_kb_errors(self):
         for name in ("student-solution.md", "teacher-solution.md", "solution.md"):

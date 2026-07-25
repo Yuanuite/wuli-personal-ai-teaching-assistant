@@ -144,6 +144,7 @@ try {
   assert.equal(catalog.questions.length, 1);
   assert.equal(catalog.questions[0].id, publicId);
   assert.equal(catalog.questions[0].simulation, null);
+  assert.match(catalog.questions[0].uploaded_at, /^\d{4}-\d{2}-\d{2}$/);
   const inspected = inspectDelivery(entryId);
   assert.equal(inspected.evaluation.status, "passed");
   assert.deepEqual(browserErrors, []);

@@ -11,6 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
+from agent_outcome import build_agent_request_outcome
 from log import logger
 
 
@@ -22,8 +23,8 @@ DEFAULT_KIND_LIMITS = {
     # Source cleanup is an entry-local, low-risk batch operation.  Let uploaded
     # batches fan out while keeping same-entry protection in place.
     "source.clean": 4,
-    # Higher-risk jobs can touch answers or shared physics semantics; keep them
-    # conservative until their own batch semantics are explicitly designed.
+    # Higher-risk jobs can touch answers or shared physics semantics. Their
+    # static ceiling is four; adaptive canary/recovery decides the live limit.
     "analysis.generate": 4,
     "answer.revise": 4,
     "visualization.model": 4,
@@ -35,6 +36,24 @@ DEFAULT_KIND_PRIORITIES = {
     "visualization.model": 50,
 }
 DEFAULT_PROVIDER_LIMITS: dict[str, int] = {}
+DEFAULT_ADAPTIVE_CONCURRENCY = {
+    "enabled": True,
+    "initial": 1,
+    "first_success_limit": 2,
+    "max_limit": 4,
+    "successes_to_max": 2,
+}
+STRUCTURAL_FAILURE_TYPES = {
+    "provider_timeout",
+    "provider_rate_limited",
+    "provider_budget_exceeded",
+    "provider_unavailable",
+    "provider_execution_failed",
+    "adapter_protocol_error",
+    "structured_output_schema_invalid",
+    "worker_interrupted",
+    "task_exception",
+}
 
 
 def _clean_positive_int(value, fallback: int, *, minimum: int = 1, maximum: int = 64) -> int:
@@ -47,12 +66,13 @@ def _clean_positive_int(value, fallback: int, *, minimum: int = 1, maximum: int 
 
 def default_scheduler_config() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "global_max_running": 6,
         "entry_max_running": 1,
         "kind_limits": dict(DEFAULT_KIND_LIMITS),
         "kind_priorities": dict(DEFAULT_KIND_PRIORITIES),
         "provider_limits": dict(DEFAULT_PROVIDER_LIMITS),
+        "adaptive_concurrency": dict(DEFAULT_ADAPTIVE_CONCURRENCY),
     }
 
 
@@ -72,6 +92,21 @@ def normalize_scheduler_config(raw: dict | None) -> dict:
         )
     for key, value in (raw.get("provider_limits") or {}).items():
         base["provider_limits"][str(key)] = _clean_positive_int(value, 1, maximum=16)
+    adaptive = raw.get("adaptive_concurrency")
+    if isinstance(adaptive, dict):
+        base["adaptive_concurrency"]["enabled"] = adaptive.get("enabled") is not False
+        base["adaptive_concurrency"]["initial"] = _clean_positive_int(
+            adaptive.get("initial"), 1, maximum=4
+        )
+        base["adaptive_concurrency"]["first_success_limit"] = _clean_positive_int(
+            adaptive.get("first_success_limit"), 2, maximum=4
+        )
+        base["adaptive_concurrency"]["max_limit"] = _clean_positive_int(
+            adaptive.get("max_limit"), 4, maximum=16
+        )
+        base["adaptive_concurrency"]["successes_to_max"] = _clean_positive_int(
+            adaptive.get("successes_to_max"), 2, maximum=16
+        )
     return base
 
 
@@ -101,11 +136,14 @@ class AgentJobManager:
         self.kind_limits = dict(config["kind_limits"])
         self.kind_priorities = dict(config["kind_priorities"])
         self.provider_limits = dict(config["provider_limits"])
+        self.adaptive_config = dict(config["adaptive_concurrency"])
         self.lock = threading.RLock()
         self.condition = threading.Condition(self.lock)
         self.active_by_entry: dict[str, str] = {}
         self.running_by_kind: dict[str, int] = {}
         self.running_by_provider: dict[str, int] = {}
+        self.running_by_group: dict[str, int] = {}
+        self._adaptive_states: dict[str, dict[str, int | str]] = {}
         self.pending_callbacks: dict[str, Callable[[], dict]] = {}
         self.queued_jobs: list[str] = []
         self._task_cooldowns: dict[tuple[str, str], tuple[float, str]] = {}  # (entry_id, kind) → (expires_at, reason)
@@ -147,6 +185,10 @@ class AgentJobManager:
                     "error": "教师工作台在任务完成前重启；请重新提交本轮请求。",
                     "failure_type": "worker_interrupted",
                 })
+                record["outcome"] = build_agent_request_outcome(
+                    {"status": "failed", "failure_type": "worker_interrupted"},
+                    record=record,
+                )
                 self._write(record)
 
     def submit(self, kind: str, entry_id: str, callback: Callable[[], dict], *, metadata: dict | None = None) -> dict:
@@ -209,11 +251,45 @@ class AgentJobManager:
         return str(record.get("provider", "") or "")
 
     @staticmethod
+    def _adaptive_group(record: dict) -> str:
+        explicit = str(record.get("concurrency_group", "") or "").strip()
+        if explicit:
+            return explicit
+        batch_id = str(record.get("batch_id", "") or "").strip()
+        if batch_id:
+            return f"batch:{batch_id}"
+        return f"kind:{record.get('kind', '')}"
+
+    def _adaptive_state_locked(self, record: dict) -> dict[str, int | str]:
+        group = self._adaptive_group(record)
+        state = self._adaptive_states.get(group)
+        if state is None:
+            state = {
+                "limit": int(self.adaptive_config["initial"]),
+                "successes_at_two": 0,
+                "epoch": 0,
+                "mode": "canary",
+                "degradation_count": 0,
+            }
+            self._adaptive_states[group] = state
+        return state
+
+    def _adaptive_limit_locked(self, record: dict) -> int:
+        if not self.adaptive_config.get("enabled", True):
+            return self.max_workers
+        state = self._adaptive_state_locked(record)
+        return min(
+            int(state["limit"]),
+            int(self.adaptive_config["max_limit"]),
+            self.kind_limits.get(str(record.get("kind", "")), self.max_workers),
+        )
+
+    @staticmethod
     def _read_cooldown_seconds() -> int:
         import os
 
         try:
-            seconds = int(os.environ.get("TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS", "300"))
+            seconds = int(os.environ.get("TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS", "30"))
         except ValueError:
             seconds = 300
         return max(30, min(seconds, 3600))
@@ -246,6 +322,9 @@ class AgentJobManager:
     def _can_run_locked(self, record: dict) -> bool:
         kind = str(record.get("kind", ""))
         if self.running_by_kind.get(kind, 0) >= self.kind_limits.get(kind, self.max_workers):
+            return False
+        group = self._adaptive_group(record)
+        if self.running_by_group.get(group, 0) >= self._adaptive_limit_locked(record):
             return False
         provider = self._provider_for(record)
         if provider and self.running_by_provider.get(provider, 0) >= self.provider_limits.get(
@@ -290,11 +369,73 @@ class AgentJobManager:
         record = self.get(job_id)
         kind = str(record.get("kind", ""))
         provider = self._provider_for(record)
+        group = self._adaptive_group(record)
+        state = self._adaptive_state_locked(record)
         self.running_by_kind[kind] = self.running_by_kind.get(kind, 0) + 1
+        self.running_by_group[group] = self.running_by_group.get(group, 0) + 1
         if provider:
             self.running_by_provider[provider] = self.running_by_provider.get(provider, 0) + 1
-        record.update({"status": "running", "started_at": now_iso()})
+        record.update({
+            "status": "running",
+            "started_at": now_iso(),
+            "adaptive_concurrency": {
+                "group": group,
+                "limit_at_start": int(state["limit"]),
+                "epoch": int(state["epoch"]),
+                "mode": str(state["mode"]),
+            },
+        })
         self._write(record)
+
+    def _update_adaptive_state_locked(self, record: dict) -> None:
+        if not self.adaptive_config.get("enabled", True):
+            return
+        adaptive = record.get("adaptive_concurrency")
+        if not isinstance(adaptive, dict):
+            return
+        group = str(adaptive.get("group", "") or "")
+        state = self._adaptive_states.get(group)
+        if not state:
+            return
+        before = int(state["limit"])
+        event = ""
+        failure_type = str(record.get("failure_type", "") or "")
+        if record.get("status") == "failed" and failure_type in STRUCTURAL_FAILURE_TYPES:
+            state["limit"] = 1
+            state["successes_at_two"] = 0
+            state["epoch"] = int(state["epoch"]) + 1
+            state["mode"] = "serial_probe"
+            state["degradation_count"] = int(state["degradation_count"]) + 1
+            event = "structural_failure_degraded"
+        elif (
+            record.get("status") == "completed"
+            and int(adaptive.get("epoch", -1)) == int(state["epoch"])
+        ):
+            if before == 1:
+                state["limit"] = min(
+                    int(self.adaptive_config["first_success_limit"]),
+                    int(self.adaptive_config["max_limit"]),
+                )
+                state["successes_at_two"] = 0
+                state["mode"] = "recovering" if str(state["mode"]) == "serial_probe" else "ramp_up"
+                event = "serial_probe_succeeded" if str(adaptive.get("mode")) == "serial_probe" else "canary_succeeded"
+            elif before == int(self.adaptive_config["first_success_limit"]):
+                state["successes_at_two"] = int(state["successes_at_two"]) + 1
+                if int(state["successes_at_two"]) >= int(self.adaptive_config["successes_to_max"]):
+                    state["limit"] = int(self.adaptive_config["max_limit"])
+                    state["mode"] = "full"
+                    state["successes_at_two"] = 0
+                    event = "consecutive_successes_ramped"
+        if event:
+            record["scheduler_event"] = {
+                "event": event,
+                "group": group,
+                "concurrency_before": before,
+                "concurrency_after": int(state["limit"]),
+                "failure_type": failure_type or None,
+                "degradation_count": int(state["degradation_count"]),
+                "recorded_at": now_iso(),
+            }
 
     def _run(self, job_id: str, callback: Callable[[], dict]) -> None:
         record = self.get(job_id)
@@ -322,6 +463,7 @@ class AgentJobManager:
                     or "; ".join(result.get("errors", []))
                     or "Agent 任务未完成"
                 )
+            record["outcome"] = build_agent_request_outcome(result, record=record)
         except Exception as exc:  # noqa: BLE001
             record.update({
                 "status": "failed",
@@ -329,15 +471,22 @@ class AgentJobManager:
                 "error": str(exc),
                 "failure_type": "task_exception",
             })
+            record["outcome"] = build_agent_request_outcome(
+                {"status": "failed", "failure_type": "task_exception"},
+                record=record,
+            )
         finally:
             with self.lock:
                 kind = str(record.get("kind", ""))
                 provider = self._provider_for(record)
+                group = self._adaptive_group(record)
                 self.running_by_kind[kind] = max(0, self.running_by_kind.get(kind, 0) - 1)
+                self.running_by_group[group] = max(0, self.running_by_group.get(group, 0) - 1)
                 if running_provider:
                     self.running_by_provider[running_provider] = max(
                         0, self.running_by_provider.get(running_provider, 0) - 1
                     )
+                self._update_adaptive_state_locked(record)
                 self._write(record)
                 if self.active_by_entry.get(record["entry_id"]) == job_id:
                     self.active_by_entry.pop(record["entry_id"], None)
@@ -402,6 +551,9 @@ class AgentJobManager:
                 "completed_at",
                 "error",
                 "failure_type",
+                "outcome",
+                "adaptive_concurrency",
+                "scheduler_event",
             )
             if record.get(key) is not None
         }

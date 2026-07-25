@@ -9,6 +9,7 @@ canonical entries, approvals, or publication state.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import importlib.util
 import json
 import sys
@@ -41,6 +42,35 @@ scheduler_reporter = _load_script("agent_batch_benchmark")
 
 def _rate(value: Any) -> float:
     return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else 0.0
+
+
+def _observation_window(*reports: dict[str, Any]) -> dict[str, Any]:
+    starts: list[str] = []
+    ends: list[str] = []
+    source_fingerprints = []
+    for report in reports:
+        window = report.get("observation_window", {}) if isinstance(report, dict) else {}
+        start = str(window.get("start", "") or "")
+        end = str(window.get("end", "") or report.get("generated_at", "") or "")
+        if start:
+            starts.append(start)
+        if end:
+            ends.append(end)
+        source_fingerprints.append(
+            {
+                key: report.get(key)
+                for key in ("report_type", "generated_at", "evidence_counts", "overall", "kinds", "operational")
+                if key in report
+            }
+        )
+    digest = hashlib.sha256(
+        json.dumps(source_fingerprints, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    return {
+        "start": min(starts) if starts else "",
+        "end": max(ends) if ends else "",
+        "input_fingerprint": f"sha256:{digest}",
+    }
 
 
 def _previous_slow_reports(library: Path) -> list[dict[str, Any]]:
@@ -83,6 +113,7 @@ def analyze(
     teacher_strategy_confirmed: bool = False,
 ) -> dict[str, Any]:
     previous_reports = previous_reports or []
+    observation_window = _observation_window(rag, retrieval, scheduler)
     operations = rag.get("operational", {}) if isinstance(rag.get("operational"), dict) else {}
     teaching = rag.get("teaching_outcomes", {}) if isinstance(rag.get("teaching_outcomes"), dict) else {}
     retrieved_completed = sum(
@@ -197,7 +228,15 @@ def analyze(
     strategy_codes = sorted(item["code"] for item in recommendations if item["area"] in {"rag", "retrieval"})
     previous = previous_reports[-1] if previous_reports else {}
     previous_codes = sorted(previous.get("strategy_recommendation_codes", [])) if isinstance(previous, dict) else []
-    same_direction_twice = bool(strategy_codes and strategy_codes == previous_codes)
+    previous_window = previous.get("observation_window", {}) if isinstance(previous, dict) else {}
+    independent_period = bool(
+        previous_window
+        and previous_window.get("input_fingerprint") != observation_window.get("input_fingerprint")
+        and previous_window.get("end")
+        and observation_window.get("start")
+        and str(previous_window["end"]) < str(observation_window["start"])
+    )
+    same_direction_twice = bool(strategy_codes and strategy_codes == previous_codes and independent_period)
     current_recall = retrieval.get("overall", {}).get("recall", {}).get("@5")
     previous_recall = previous.get("retrieval_recall_at_5") if isinstance(previous, dict) else None
     fixed_set_non_regression = bool(
@@ -253,6 +292,8 @@ def analyze(
         "recommendation_codes": codes,
         "strategy_recommendation_codes": strategy_codes,
         "recommendations": recommendations,
+        "observation_window": observation_window,
+        "independent_from_previous": independent_period,
         "retrieval_recall_at_5": current_recall,
         "blockers": blockers,
         "safety": {
@@ -294,6 +335,13 @@ def record_report(library: Path, report: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             "--record requires either 20 completed RAG tasks + 10 teacher closures, or 5 terminal Agent attempts with a structured failure"
         )
+    fingerprint = report.get("observation_window", {}).get("input_fingerprint")
+    if fingerprint and any(
+        event.get("task_type") == "evolve.observation.slow-loop"
+        and event.get("result", {}).get("observation_window", {}).get("input_fingerprint") == fingerprint
+        for event in candidate_archive.read_library_events(library)
+    ):
+        raise ValueError("the same observation window has already been recorded")
     event = candidate_archive.append_library_event(
         library,
         task_type="evolve.observation.slow-loop",

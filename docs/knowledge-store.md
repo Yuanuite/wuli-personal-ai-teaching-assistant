@@ -17,7 +17,7 @@ student-error-library/indexes/wuli-memory.db
 | 表 | 来源 | 用途 |
 |---|---|---|
 | `entry` | `record.json` | 条目标题、状态、科目、文件夹、知识点、错因 |
-| `document` / `document_fts` | `problem.md`、答案 Markdown、`source-review.md`、`physics-model.json` | 题干/解析/模型的可引用文本证据 |
+| `document` / `document_fts` | `record.json` 教学标签、`problem.md`、答案 Markdown、`source-review.md`、`physics-model.json` | 标签、题干、解析与模型的可引用文本证据 |
 | `evaluation` | `evaluation.json` | 结构、复核、可视化、交付和安全检查摘要 |
 | `candidate_event` | `candidate-archive.jsonl` | 教师反馈、Agent 候选、构建、发布和交付历史 |
 | `teaching_memory` | `record.json` + `physics-model.json` | 知识点、错因、难度、二级结论和是否可视化 |
@@ -42,23 +42,32 @@ python3 .claude/skills/manage-student-error-library/scripts/knowledge_store.py \
 
 `kb.py rebuild`、`validate`、`finalize` 和生命周期中触发的索引刷新会顺带刷新 Knowledge Store；SQLite 失败时只记录 `knowledge_store.status=skipped`，不阻断原有交付流程。
 
-查询会先执行增量 schema 检查，只补充新版本缺少的表和索引，不删除、不重建已有数据；因此旧版派生数据库升级后也能立即检索。完整数据刷新仍由 `kb.py rebuild` 负责。
+Schema 初始化/迁移只在显式重建路径执行。`query()` 使用 SQLite `mode=ro` 和
+`query_only`，缺库、旧 schema 或不完整库返回 `unavailable`，不会创建或修改文件。
+Candidate Archive 追加后写入 freshness dirty marker；查询会明确返回 `stale`，Agent evidence
+拒绝使用陈旧索引，直到显式批量刷新完成。`candidate_event` 保存脱敏反馈类别、关联和结果摘要。
+知识点、错因、难度与年级保留为 Agent 建议；为保证主流程流畅度，不设置独立强制确认门禁。
 
 ## Evidence pack 结构
 
 查询返回 JSON，核心字段包括：
 
 - `results[].matched_documents`：命中的题干/答案/模型片段，可作为引用证据；
-- `results[].knowledge_points`、`error_types`：教学分析的稳定标签；
+- `query_expansions`：教师自然表述到题库规范词的确定性扩展，便于审计实际检索意图；
+- `query_plan`：本次查询使用的原始表达、扩展表达、检索 token 和独立路由；
+- `retrieval`：实际生效策略、词法后端、RRF 参数、各路候选数与影子策略前列条目；
+- `results[].route_matches`：条目在标签、题干和解析路由中的名次、原始分和 RRF 贡献；
+- `evidence_set`、`results[].evidence_coverage`：候选证据集合对标签、题干和方法槽位的覆盖、缺口、重复与来源可回溯计数；
+- `results[].knowledge_points`、`error_types`：Agent 建议且可由教师修改的教学标签；
 - `results[].evaluation`：当前条目的质量评分、失败项和教师复核要求；
-- `results[].recent_events`：最近教师/Agent/构建/发布事件，用于避免重复犯同一类错误；
-- `scheduler_benchmarks`：最近的全库 Agent 调度基准，用于判断自动模式、并发和 provider 策略；
-- `evolve_observations`：最近的 RAG/策略效果观察报告，用于判断样本是否足够；
+- `results[].recent_events`：近期教师/Agent/构建/发布事件，用于避免重复犯同一类错误；
+- `scheduler_benchmarks`：近期的全库 Agent 调度基准，用于判断自动模式、并发和 provider 策略；
+- `evolve_observations`：近期的 RAG/策略效果观察报告，用于判断样本是否足够；
 - `required_checks`：提示下游 AI 必须基于证据回答，不能把检索结果当成审批。
 
 ## Agent 证据注入
 
-答案返修 `answer.revise` 和可视化建模 `visualization.model` 在任务构造时调用 `build_agent_evidence()`，把裁剪后的结果作为只读 `.agent-context/knowledge-evidence.json` 放入 Gateway 隔离候选区。当前条目经教师复核的题干、答案和教师本轮要求始终优先，历史证据只能用于核对方法、易错点、适用条件和既往失败教训。
+首次解析 `analysis.generate`、答案返修 `answer.revise` 和可视化建模 `visualization.model` 在任务构造时调用 `build_agent_evidence()`，把裁剪后的结果作为只读 `.agent-context/knowledge-evidence.json` 放入 Gateway 隔离候选区。当前条目经教师复核的题干、当前答案和教师本轮要求始终优先，历史证据只能用于召回可迁移的高中方法、易错点、适用条件和既往失败教训。首次解析仍须独立验算，不能复制历史答案。
 
 证据包遵守以下边界：
 
@@ -66,19 +75,79 @@ python3 .claude/skills/manage-student-error-library/scripts/knowledge_store.py \
 - 不包含内部 entry ID、文件夹名、数据库路径、事件 ID、原图或完整 Candidate Archive；
 - 只保留相似题标题、知识点、错因、方法、二级结论、Evaluator 警告/失败摘要、匹配片段和近期教训；
 - 经济模式最多 2 条、约 3500 字符，其他模式最多 4 条、约 9000 字符；
+- evidence pack 写入 `context_budget`，记录请求上限、实际序列化字符数、候选/纳入/省略引用数和是否截断；引用带内容哈希，便于比较同一证据版本，但当前不提供模型自行取回原文的工具；
+- 预算策略只作用于历史 evidence；当前题干、当前答案和教师本轮指令不在该 pack 内，不能被 evidence 裁剪逻辑修改；
 - Knowledge Store 缺失或查询失败时返回 `status=unavailable`，不触发全库重建，也不阻塞 Agent 主任务。
+- Knowledge Store freshness 为 `stale` 时同样返回不可用，不能把旧证据冒充当前证据。
 
-作业结果只记录 `evidence_context.status/reference_count/task_type`，用于后续比较“有检索/无检索”的成功率和返修次数；具体证据内容不会进入作业公开结果。首个版本只注入返修和可视化任务，待 Evaluator 数据证明收益后再决定是否扩展到首次解析。
+作业结果只记录 `evidence_context.status/reference_count/task_type`，用于后续比较“有检索/无检索”的成功率和返修次数；具体证据内容不会进入作业公开结果。首次解析检查点还绑定 evidence pack 摘要，检索内容变化后不会误用旧生成结果。
 
 观察报告由 `teacher-console/scripts/rag_effectiveness_report.py` 生成。它把作业记录中的耗时/用量与 Candidate Archive 中的 Evaluator、教师返修和最终批准关联起来；默认只读，显式 `--record` 才沉淀为 `evolve.observation.rag`。报告属于观察性证据，不能单独证明 RAG 导致结果变好。
 
+确定性 evidence 预算先用只读预检验证，不直接上线语义压缩。教师按 [`evidence-budget-eval.example.jsonl`](evidence-budget-eval.example.jsonl) 建立至少 20 条 `approved` 样本，为每条查询标注必须保留的历史事实，然后运行：
+
+```bash
+python3 teacher-console/scripts/evidence_budget_benchmark.py \
+  --library student-error-library \
+  --candidate-chars 8000 \
+  --format markdown
+```
+
+预检比较 20,000 字符基线与候选预算，要求必须事实保留率 100%、候选全部不超预算且序列化字符中位节省至少 25%。通过只表示可以进入固定模型、固定 prompt 的成对答案评测；脚本不调用模型、不写 Candidate Archive，也不能证明教学质量没有下降。草稿样本即使结果良好也不能授权策略变化。
+
 固定检索集由 `teacher-console/scripts/retrieval_benchmark.py` 管理，默认文件为 `student-error-library/evals/retrieval-cases.jsonl`。它复用同一个 `query()` 接口，因此可以在不改 Gateway 和页面的情况下比较后续 FTS、标签、混合排序或向量后端。机器生成的 `draft` 只可用于探索；至少 30 条教师核对并标记为 `approved` 的查询才允许把聚合结果记录为 `evolve.observation.retrieval`。持久事件不保存查询正文、相关条目 ID 或逐题结果，只保存聚合指标和漏召回 case ID。
+
+评测必须固定同一批 approved case 做前后对照，并同时报告 Hit@k、Recall@k、MRR、空结果率和分类指标。Hit@5=1 仍可能漏掉一个查询对应的其他相关条目，因此不能替代 Recall@5；教师自然语言召回改善也应单独看 `teacher_phrase`。这些指标只评价检索，不评价最终解析内容；答案质量需另做固定模型、固定 prompt 的成对生成，并关联教师返修与批准结果。
+
+### 多路召回的影子门禁
+
+当前 `query()` 会并行计算三条可审计的词法路由：
+
+1. `metadata`：知识点、错因、方法和二级结论；
+2. `problem`：题干与原文复核；
+3. `solution`：学生版、教师版、统一解析和物理模型。
+
+三路在条目层使用 RRF 融合，但默认 `ranking_policy=baseline`，继续以已经通过固定集验证的单池 BM25 排序作为 Agent evidence 真正结果；多路排名只作为影子诊断返回。不得因为多路实现已经存在就自动激活。
+
+可以用同一固定集显式比较：
+
+```bash
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library run \
+  --ranking-policy baseline --format markdown
+
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library run \
+  --ranking-policy multi-route --format markdown
+
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library run \
+  --ranking-policy intent-augmented --format markdown
+```
+
+截至 2026-07-25，基线 Recall@5/MRR 为 `0.8292/0.8633`，首版多路策略为
+`0.7875/0.8561`。因此多路框架保留为实验能力，生产排序不变。只有固定集
+Recall@5 至少达到 `0.85`、MRR 不低于当前基线且分类指标无明显退化后，才允许
+经教师确认切换默认策略。
+
+第二轮增加了确定性意图视图：移除“帮我找一道、相关题目”等任务套话，保留稳定
+基线前三名，再从意图视图补入最多两条不重复候选；“反复进出”等经过固定集验证的
+教师表达会扩展为多区域、周期轨迹、有界磁场和轨迹衔接。该
+`intent-augmented` 策略在同一固定集上达到 Recall@5 `0.8653`、MRR `0.8650`，
+`teacher_phrase` Recall@5 从 `0.6250` 提升到 `0.7321`，已达到离线指标门槛。
+由于同一固定集参与了本轮规则校准，这组结果不是独立 holdout 证明；它仍保持
+`experimental`，需新增教师确认查询批次不退化并经教师确认后，才能成为
+`build_agent_evidence()` 默认排序。
+
+`build_agent_evidence()` 的输出现在明确标记为 `candidate-evidence-set`，并记录
+引用集合对 `concepts-and-labels`、`problem-context`、`solution-method` 三个槽位
+的覆盖情况。这是诊断与后续集合选择的地基；当前不会为了填满槽位强行加入低相关证据。
 
 ## 和 RAG / Evolve 的关系
 
 当前层解决“可靠取证”和“低成本检索”，不负责自动生成优化方案。后续接入顺序建议：
 
-1. Agent Gateway 已在答案返修和可视化建模前接收裁剪后的 evidence pack；首次解析和审计建议是否接入由后续 Evaluator 数据决定；
+1. Agent Gateway 已在首次解析、答案返修和可视化建模前接收裁剪后的 evidence pack；
 2. Evaluator 继续给每次产物打确定性分；
 3. Candidate Archive 记录教师反馈与候选结果；
 4. Evolve 循环只在以上证据齐全时比较候选，不直接修改 canonical 文件或审批状态。

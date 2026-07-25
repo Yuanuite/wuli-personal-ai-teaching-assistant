@@ -27,10 +27,11 @@ NEVER_RETRY_FAILURES = {
     "unauthorized_change": "候选越过允许路径，禁止自动重试",
 }
 DEFERRED_FAILURES = {
-    "provider_timeout": "Gateway 已完成 provider 降级；稍后重试可避免重复计费",
+    "provider_timeout": "本次未自动重试；确认 provider 恢复后再提交，避免重复计费",
     "provider_rate_limited": "等待限流窗口结束后再提交",
     "provider_budget_exceeded": "当前模型未在单次费用上限内完成；不要提高预算，改用更小任务或结构化 provider",
     "provider_unavailable": "先修复或切换模型配置",
+    "structured_output_schema_invalid": "结构化输出 Schema 与 provider 不兼容；修复契约后再提交，直接重试不会成功",
     "adapter_protocol_error": "先修复 provider adapter 协议",
     "provider_execution_failed": "先检查 provider 运行环境",
     "provider_failed": "需要更多诊断信息后再提交",

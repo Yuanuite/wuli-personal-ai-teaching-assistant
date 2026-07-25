@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">交变电磁场中的分段轨迹</title>
+  <desc id="desc">左侧展示第一问两段反向曲率圆弧，右侧展示第二问三维轨迹及电场速度时间关系。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10Z" fill="#dc2626"/>
+    </marker>
+    <style>
+      .title{font:700 28px system-ui,sans-serif;fill:#0f172a}.sub{font:700 21px system-ui,sans-serif;fill:#1e293b}
+      .text{font:17px system-ui,sans-serif;fill:#334155}.small{font:15px system-ui,sans-serif;fill:#475569}
+      .plate{stroke:#0f172a;stroke-width:5}.guide{stroke:#94a3b8;stroke-width:2;stroke-dasharray:7 7}
+      .blue{stroke:#2563eb;stroke-width:7;fill:none;stroke-linecap:round}.red{stroke:#dc2626;stroke-width:7;fill:none;stroke-linecap:round}
+      .purple{stroke:#7c3aed;stroke-width:6;fill:none;stroke-linecap:round}.point{fill:#0f172a}
+    </style>
+  </defs>
+  <rect width="1200" height="720" fill="#f8fafc"/>
+  <text x="600" y="45" text-anchor="middle" class="title">磁场反向不等于磁场消失：轨迹仍是连续圆弧</text>
+
+  <rect x="35" y="75" width="540" height="600" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="60" y="115" class="sub">（1）r=d/2：120° + 30°</text>
+  <line x1="90" y1="590" x2="500" y2="590" class="plate"/>
+  <line x1="90" y1="190" x2="500" y2="190" class="plate"/>
+  <text x="510" y="196" class="sub">P</text><text x="510" y="596" class="sub">Q</text>
+  <line x1="105" y1="590" x2="105" y2="190" class="guide"/>
+  <text x="75" y="398" class="text">d</text>
+  <path d="M105 590 A200 200 0 0 1 278.2 290" class="blue" marker-end="url(#arrow-blue)"/>
+  <path d="M278.2 290 A200 200 0 0 0 251.4 190" class="red" marker-end="url(#arrow-red)"/>
+  <circle cx="105" cy="590" r="6" class="point"/><circle cx="278.2" cy="290" r="6" class="point"/><circle cx="251.4" cy="190" r="6" class="point"/>
+  <text x="118" y="615" class="text">发射</text>
+  <text x="295" y="285" class="text">B 反向</text>
+  <text x="265" y="175" class="text">首次垂直打板</text>
+  <text x="125" y="545" class="small">+B₀：曲率向上</text>
+  <text x="335" y="245" class="small">−B₀：曲率反向</text>
+  <text x="80" y="650" class="text">t = 5πd/(12v₀)，x = (√3−1)d/2</text>
+
+  <rect x="600" y="75" width="565" height="600" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="625" y="115" class="sub">（2）r=d/3：半圆 + 四分之一圆</text>
+  <line x1="655" y1="470" x2="1090" y2="470" class="plate"/>
+  <line x1="655" y1="170" x2="1090" y2="170" class="plate"/>
+  <text x="1100" y="176" class="sub">P</text><text x="1100" y="476" class="sub">Q</text>
+  <path d="M865 470 A100 100 0 1 1 865 270" class="blue" marker-end="url(#arrow-blue)"/>
+  <path d="M865 270 A100 100 0 0 0 765 170" class="red" marker-end="url(#arrow-red)"/>
+  <path d="M865 470 C930 440 945 360 920 300 C895 240 835 205 765 170" class="purple" opacity=".65"/>
+  <line x1="765" y1="170" x2="700" y2="125" stroke="#7c3aed" stroke-width="3" marker-end="url(#arrow-red)"/>
+  <text x="615" y="210" class="small">紫线：含纸面外位移的</text>
+  <text x="615" y="232" class="small">三维投影示意</text>
+  <text x="880" y="260" class="text">B 反向</text>
+  <text x="730" y="155" class="text">v 只沿 +y</text>
+  <text x="630" y="515" class="text">纸面内末点：(−d/3, d)</text>
+
+  <line x1="665" y1="620" x2="1095" y2="620" stroke="#334155" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <line x1="700" y1="655" x2="700" y2="535" stroke="#334155" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <path d="M700 620 L865 550 L1030 620" fill="none" stroke="#f59e0b" stroke-width="5"/>
+  <line x1="865" y1="535" x2="865" y2="640" class="guide"/>
+  <text x="680" y="548" class="small">v_z</text><text x="1098" y="640" class="small">t</text>
+  <text x="840" y="655" class="small">T_E/2</text><text x="1015" y="655" class="small">T_E</text>
+  <text x="735" y="590" class="small">+E₀</text><text x="955" y="590" class="small">−E₀</text>
+  <text x="735" y="690" class="text">三角形面积：z = π²qE₀d²/(16mv₀²)</text>
+</svg>

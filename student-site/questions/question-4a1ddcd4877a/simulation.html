@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>三维复合场中电子的类平抛、螺旋运动与共圆心条件</title>
+<style>
+:root{color-scheme:light;--background:#fff;--foreground:#1a1c1f;--card:#f5f6f7;--card-foreground:#1a1c1f;--primary:#277fbd;--primary-foreground:#fff;--muted-foreground:#5f6670;--border:#cfd5dc;--ring:#277fbd;--destructive:#d6531d;--viz-series-1:#277fbd;--viz-series-2:#c87821;--viz-series-3:#348c50;--viz-series-4:#a53b78}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--background:#181818;--foreground:#f7f7f7;--card:#292929;--card-foreground:#f7f7f7;--primary:#82c2f0;--primary-foreground:#101010;--muted-foreground:#b3b6ba;--border:#4a4d50;--ring:#82c2f0;--destructive:#ff925c;--viz-series-1:#82c2f0;--viz-series-2:#efaa65;--viz-series-3:#7bd092;--viz-series-4:#e58cba}}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--background);color:var(--foreground)}body{padding:16px;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}main{width:min(100%,1100px);margin:0 auto}.viz-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}.form-label{display:inline-flex;align-items:center;gap:5px}.form-range{flex:1 1 180px;min-width:120px;accent-color:var(--primary)}.btn{appearance:none;border:1px solid var(--border);border-radius:8px;padding:7px 11px;background:var(--card);color:var(--card-foreground);font:inherit;cursor:pointer}.btn:focus-visible,.form-range:focus-visible{outline:3px solid var(--ring);outline-offset:2px}.btn-primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}.card{border:1px solid var(--border);border-radius:10px;background:var(--card);color:var(--card-foreground)}@media(max-width:520px){body{padding:10px}.viz-controls{align-items:stretch}.form-label,.form-range{flex-basis:100%}}
+</style>
+</head>
+<body><main>
+<section id="piecewise-particle-3d" class="piecewise-sim">
+  <script type="application/json" id="piecewise-particle-3d-model">{"schema_version":1,"model_type":"piecewise-field-particle-3d","entry_id":"question-4a1ddcd4877a","title":"分段电场后的双电子共圆心螺旋运动","source":{"publication":"student-site"},"regions":[{"id":"electric-I","label":"电场 I：z>0，E 沿 +z","color":"#d19a38","field":{"kind":"electric","label":"E1 +z","origin":[0,-1,0.35],"direction":[0,0,1],"arrow_length":0.65},"shape":{"type":"box","min":[-2,-2,0],"max":[1,0,1.25]}},{"id":"electric-II","label":"电场 II：z<0，E 沿 -z","color":"#ca7659","field":{"kind":"electric","label":"E2 -z","origin":[0,-1,-0.35],"direction":[0,0,-1],"arrow_length":0.65},"shape":{"type":"box","min":[-2,-2,-1],"max":[1,0,0]}},{"id":"magnetic-y","label":"y>0：B 沿 +y","color":"#527db7","field":{"kind":"magnetic","label":"B +y","origin":[-0.5,1,0],"direction":[0,1,0],"arrow_length":1.1},"shape":{"type":"box","min":[-2.5,0,-1.5],"max":[1,6.6,1.5]}}],"facts":{"axes":{"origin":[0,0,0],"lengths":[2.5,6.8,1.8]},"particles":[{"id":"electron-A","label":"A","sign":"−","color":"#d83e35"},{"id":"electron-B","label":"B","sign":"−","color":"#356fbd"}],"normalized_l":1,"normalized_r":1,"representative_k":2,"electric_I_strength":"mv0²/(2el)","a_max_position":[-2,3.141592654,0],"shared_gyro_center":[-1,0]},"technique_ids":["magnetic-arc-time"],"event_model":{"stop_event_id":"distance-summary","timeline":[{"id":"A-start","order":0,"time":0,"label":"A 从 P 点进入电场 I","phase":"A 类平抛","region":"electric-I","position":[0,-2,1],"p_candidate":false},{"id":"B-start-I","order":1,"time":0.5,"label":"B 稍后从与 A 相同位置发射","phase":"第一组：始终在电场 I","region":"electric-I","position":[0,-2,1],"p_candidate":false,"case_ids":["B-same-field"]},{"id":"B-start-cross","order":1,"time":0.5,"label":"B 从第二组初始位置发射","phase":"第二组：先 I 后 II","region":"electric-I","position":[-1.5,-2,0.25],"p_candidate":false,"case_ids":["B-cross-field"]},{"id":"B-cross-zero","order":2,"time":1.5,"label":"B 穿过 z=0 进入电场 II","phase":"电场分段切换","region":"electric-II","position":[-1.5,-1,0],"p_candidate":false,"case_ids":["B-cross-field"]},{"id":"A-enter-B","order":3,"time":2,"label":"A 从 O 点进入磁场","phase":"A 开始螺旋运动","region":"magnetic-y","position":[0,0,0],"p_candidate":false},{"id":"B-enter-same","order":4,"time":2.5,"label":"B 从 O 点进入磁场","phase":"同轨迹、相位滞后","region":"magnetic-y","position":[0,0,0],"p_candidate":false,"case_ids":["B-same-field"]},{"id":"B-enter-cross","order":4,"time":2.5,"label":"B 返回 z=0 并进入磁场","phase":"不同半径、同回旋圆心","region":"magnetic-y","position":[-1.5,0,0],"p_candidate":false,"case_ids":["B-cross-field"]},{"id":"A-max-axis","order":5,"time":5.141592654,"label":"A 转过半周，与 y 轴距离最大","phase":"A 最大轴距","region":"magnetic-y","position":[-2,3.141592654,0],"p_candidate":false,"case_ids":["A-maximum"]},{"id":"distance-summary","order":6,"time":{"A-maximum":5.141592654,"B-same-field":8.283185307,"B-cross-field":8.283185307},"label":"共角速度与共圆心保证距离恒定","phase":"结论","region":"magnetic-y","position":[-2,3.141592654,0],"p_candidate":false}],"cases":[{"id":"A-maximum","label":"（2）A 的最大轴距","duration":5.141592654,"conclusion":"半周后位于 (-2r,πr,0)，其中 r=mv0/(eB)"},{"id":"B-same-field","label":"（3）第一组：B 始终在 I","duration":8.283185307,"conclusion":"(x0,z0)=(0,l)，B 与 A 同轨迹但相位滞后，距离恒定"},{"id":"B-cross-field","label":"（3）第二组：B 先 I 后 II","duration":8.283185307,"conclusion":"k=2 示意时 (x0,z0)=(-3r/2,l/4)，两回旋圆心同为 (-r,0)"}]},"trajectory":{"segments":[{"id":"A-electric","particle_id":"electron-A","type":"polyline","region":"electric-I","start_event":"A-start","end_event":"A-enter-B","case_ids":["A-maximum","B-same-field","B-cross-field"],"geometry":{"path_kind":"quadratic","start":[0,-2,1],"velocity":[0,1,0],"acceleration":[0,0,-0.5],"duration":2},"kinematics":{"start_time":0,"end_time":2}},{"id":"A-helix-half","particle_id":"electron-A","type":"polyline","region":"magnetic-y","start_event":"A-enter-B","end_event":"A-max-axis","case_ids":["A-maximum"],"geometry":{"path_kind":"helix","center_start":[-1,0,0],"axis":[0,1,0],"basis_u":[1,0,0],"basis_v":[0,0,-1],"radius":1,"start_deg":0,"end_deg":180,"advance":3.141592654},"kinematics":{"start_time":2,"end_time":5.141592654}},{"id":"A-helix-full","particle_id":"electron-A","type":"polyline","region":"magnetic-y","start_event":"A-enter-B","end_event":"distance-summary","case_ids":["B-same-field","B-cross-field"],"geometry":{"path_kind":"helix","center_start":[-1,0,0],"axis":[0,1,0],"basis_u":[1,0,0],"basis_v":[0,0,-1],"radius":1,"start_deg":0,"end_deg":360,"advance":6.283185307},"kinematics":{"start_time":2,"end_time":8.283185307}},{"id":"B-electric-same","particle_id":"electron-B","type":"polyline","region":"electric-I","start_event":"B-start-I","end_event":"B-enter-same","case_ids":["B-same-field"],"geometry":{"path_kind":"quadratic","start":[0,-2,1],"velocity":[0,1,0],"acceleration":[0,0,-0.5],"duration":2},"kinematics":{"start_time":0.5,"end_time":2.5}},{"id":"B-helix-same","particle_id":"electron-B","type":"polyline","region":"magnetic-y","start_event":"B-enter-same","end_event":"distance-summary","case_ids":["B-same-field"],"geometry":{"path_kind":"helix","center_start":[-1,0,0],"axis":[0,1,0],"basis_u":[1,0,0],"basis_v":[0,0,-1],"radius":1,"start_deg":0,"end_deg":331.3521102,"advance":5.783185307},"kinematics":{"start_time":2.5,"end_time":8.283185307}},{"id":"B-electric-I-cross","particle_id":"electron-B","type":"polyline","region":"electric-I","start_event":"B-start-cross","end_event":"B-cross-zero","case_ids":["B-cross-field"],"geometry":{"path_kind":"quadratic","start":[-1.5,-2,0.25],"velocity":[0,1,0],"acceleration":[0,0,-0.5],"duration":1},"kinematics":{"start_time":0.5,"end_time":1.5}},{"id":"B-electric-II-cross","particle_id":"electron-B","type":"polyline","region":"electric-II","start_event":"B-cross-zero","end_event":"B-enter-cross","case_ids":["B-cross-field"],"geometry":{"path_kind":"quadratic","start":[-1.5,-1,0],"velocity":[0,1,-0.5],"acceleration":[0,0,1],"duration":1},"kinematics":{"start_time":1.5,"end_time":2.5}},{"id":"B-helix-cross","particle_id":"electron-B","type":"polyline","region":"magnetic-y","start_event":"B-enter-cross","end_event":"distance-summary","case_ids":["B-cross-field"],"geometry":{"path_kind":"helix","center_start":[-1,0,0],"axis":[0,1,0],"basis_u":[-1,0,0],"basis_v":[0,0,1],"radius":0.5,"start_deg":0,"end_deg":331.3521102,"advance":5.783185307},"kinematics":{"start_time":2.5,"end_time":8.283185307}}]},"student_solution":{"quick_answers":["E1=mv0²/(2el)","A 最大轴距位置 (-2r,πr,0)","两组 (x0,z0)=(0,l) 或 [-2(k+1)r/(k+2),k²l/(k+2)²]"],"recognition":["电场类平抛、沿 B 匀速与垂直 B 回旋、双电子相对运动"],"main_steps":[{"title":"A 的电场段","formulae":["l=at0²/2"]},{"title":"A 的螺旋线","formulae":["r=mv0/(eB)"]},{"title":"距离恒定","formulae":["两电子回旋角速度相同且圆心相同"]}],"pitfalls":["距离恒定要求共圆心，不要求两电子速度或回旋半径相同"],"self_check":"第二组 k=2 时，B 入磁场速度 vz=+v0/2，圆心仍为 x=-r。"},"simulation":{"default_duration_seconds":26,"layers":["trajectory","field","geometry"],"default_layer":"trajectory","pause_event_ids":["A-enter-B","B-cross-zero","B-enter-same","B-enter-cross","A-max-axis","distance-summary"],"camera":{"target":[-0.6,1.8,0],"yaw_deg":-38,"pitch_deg":24,"scale":1.55}}}</script>
+  <header class="sim-head">
+    <div><b id="piecewise-3d-title"></b><small>三维区域、轨迹、事件与结论均来自 统一物理模型</small></div>
+    <label>情形
+      <select id="piecewise-3d-case" aria-label="选择三维题目情形"></select>
+    </label>
+  </header>
+  <div class="sim-workspace">
+    <div class="scene-pane">
+      <canvas id="piecewise-3d-canvas" role="img" aria-label="三维分段电磁场粒子运动交互仿真"></canvas>
+      <div class="status-grid card" aria-live="polite">
+        <div><small>当前阶段</small><b id="piecewise-3d-phase"></b></div>
+        <div><small>关键事件</small><b id="piecewise-3d-event"></b></div>
+        <div><small>本情形结论</small><b id="piecewise-3d-result"></b></div>
+      </div>
+    </div>
+    <aside class="control-panel card" aria-label="三维仿真控制台">
+      <div class="primary-controls">
+        <button class="btn btn-primary" id="piecewise-3d-play" type="button">播放</button>
+        <button class="btn" id="piecewise-3d-replay" type="button">重播</button>
+        <label class="auto-pause"><input id="piecewise-3d-auto-pause" type="checkbox" checked> 关键点暂停</label>
+      </div>
+      <div class="scrub-control">
+        <label for="piecewise-3d-progress">进度 <b id="piecewise-3d-progress-label">0%</b></label>
+        <input class="form-range" id="piecewise-3d-progress" type="range" min="0" max="1000" value="0">
+      </div>
+      <div class="layer-tabs" role="group" aria-label="三维逐层显示">
+        <button class="btn active" data-layer="trajectory" type="button">1 轨迹</button>
+        <button class="btn" data-layer="field" type="button">2 场与方向</button>
+        <button class="btn" data-layer="geometry" type="button">3 几何</button>
+      </div>
+      <details class="more-controls">
+        <summary>视角与更多控制</summary>
+        <div class="view-controls">
+          <button class="btn" data-view="iso" type="button">立体</button>
+          <button class="btn" data-view="front" type="button">正视</button>
+          <button class="btn" data-view="top" type="button">俯视</button>
+        </div>
+        <div class="control-group">
+          <label for="piecewise-3d-duration">总时长 <b id="piecewise-3d-duration-label"></b></label>
+          <input class="form-range" id="piecewise-3d-duration" type="range" min="8" max="90">
+        </div>
+        <div class="control-group button-pair">
+          <button class="btn" id="piecewise-3d-previous" type="button">← 上一事件</button>
+          <button class="btn" id="piecewise-3d-next" type="button">下一事件 →</button>
+        </div>
+        <div class="control-group zoom-controls">
+          <button class="btn" id="piecewise-3d-zoom-out" type="button" aria-label="缩小">−</button>
+          <button class="btn" id="piecewise-3d-fit" type="button">适合窗口</button>
+          <button class="btn" id="piecewise-3d-zoom-in" type="button" aria-label="放大">＋</button>
+        </div>
+      </details>
+    </aside>
+  </div>
+</section>
+<style>
+  #piecewise-particle-3d{display:grid;gap:10px;width:100%}
+  #piecewise-particle-3d .sim-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+  #piecewise-particle-3d .sim-head small{display:block;color:var(--muted-foreground);font-weight:400;margin-top:2px}
+  #piecewise-particle-3d .sim-head label{display:flex;gap:7px;align-items:center;white-space:nowrap}
+  #piecewise-particle-3d select{max-width:270px}
+  #piecewise-particle-3d .sim-workspace{display:grid;grid-template-columns:minmax(0,1fr) minmax(265px,310px);gap:10px;align-items:start}
+  #piecewise-particle-3d .scene-pane{display:grid;gap:8px;min-width:0}
+  #piecewise-particle-3d .control-panel{position:sticky;top:8px;display:grid;gap:11px;padding:11px;align-content:start;min-width:0}
+  #piecewise-particle-3d .primary-controls{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  #piecewise-particle-3d .scrub-control,#piecewise-particle-3d .control-group{display:grid;gap:5px}
+  #piecewise-particle-3d .layer-tabs,#piecewise-particle-3d .view-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  #piecewise-particle-3d .layer-tabs .btn,#piecewise-particle-3d .view-controls .btn{padding-inline:5px}
+  #piecewise-particle-3d .more-controls{border-top:1px solid var(--border);padding-top:8px}
+  #piecewise-particle-3d .more-controls summary{cursor:pointer;color:var(--muted-foreground);font-weight:600;list-style-position:inside}
+  #piecewise-particle-3d .more-controls[open] summary{margin-bottom:9px}
+  #piecewise-particle-3d .more-controls .control-group,#piecewise-particle-3d .more-controls .view-controls{margin-top:9px}
+  #piecewise-particle-3d .button-pair{grid-template-columns:1fr 1fr}
+  #piecewise-particle-3d .zoom-controls{grid-template-columns:auto 1fr auto}
+  #piecewise-particle-3d .active{box-shadow:0 0 0 2px var(--ring) inset}
+  #piecewise-particle-3d canvas{width:100%;aspect-ratio:16/10;display:block;border:1px solid var(--border);border-radius:10px;touch-action:none;cursor:grab;background:linear-gradient(180deg,#f8fbff,#eef5fb)}
+  #piecewise-particle-3d canvas:active{cursor:grabbing}
+  #piecewise-particle-3d .status-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:10px 12px}
+  #piecewise-particle-3d .status-grid small,#piecewise-particle-3d .status-grid b{display:block}
+  #piecewise-particle-3d .status-grid small{color:var(--muted-foreground)}
+  #piecewise-particle-3d .auto-pause{white-space:nowrap}
+  @media(max-width:760px){
+    #piecewise-particle-3d{gap:8px}
+    #piecewise-particle-3d .sim-head{display:grid;gap:6px}
+    #piecewise-particle-3d .sim-head small{display:none}
+    #piecewise-particle-3d .sim-head label{justify-content:space-between}
+    #piecewise-particle-3d select{min-width:0;max-width:75vw}
+    #piecewise-particle-3d .sim-workspace{display:block}
+    #piecewise-particle-3d .status-grid{grid-template-columns:1fr 1fr;gap:6px 10px;padding:8px 10px;font-size:12px}
+    #piecewise-particle-3d .status-grid>div:last-child{grid-column:1/-1}
+    #piecewise-particle-3d .control-panel{position:sticky;bottom:0;top:auto;z-index:5;margin-top:8px;padding:9px;gap:8px;max-height:58svh;overflow:auto;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+    #piecewise-particle-3d .primary-controls{flex-wrap:nowrap}
+    #piecewise-particle-3d .primary-controls .auto-pause{margin-left:auto;font-size:12px}
+    #piecewise-particle-3d .scrub-control{grid-template-columns:auto minmax(0,1fr);align-items:center}
+    #piecewise-particle-3d .scrub-control label{white-space:nowrap;font-size:12px}
+  }
+</style>
+<script>
+(() => {
+  const root=document.getElementById('piecewise-particle-3d');
+  const model=JSON.parse(root.querySelector('#piecewise-particle-3d-model').textContent);
+  const canvas=root.querySelector('#piecewise-3d-canvas'),ctx=canvas.getContext('2d');
+  const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rad=d=>d*Math.PI/180;
+  const add=(a,b)=>a.map((v,i)=>v+b[i]),sub=(a,b)=>a.map((v,i)=>v-b[i]),mul=(a,s)=>a.map(v=>v*s);
+  const dot=(a,b)=>a.reduce((s,v,i)=>s+v*b[i],0),norm=a=>Math.hypot(...a);
+  const unit=a=>{const n=norm(a)||1;return mul(a,1/n)};
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const lerp=(a,b,f)=>a.map((v,i)=>v+(b[i]-v)*f);
+  const cases=model.event_model.cases||[],timeline=[...model.event_model.timeline].sort((a,b)=>a.order-b.order);
+  const allSegments=model.trajectory?.segments||[],particles=model.facts?.particles||[];
+  const camera=model.simulation?.camera||{},center=camera.target||[0,0,0];
+  let caseId=cases[0].id,progress=0,playing=false,lastTime=0,lastPause=-1,layer=model.simulation.default_layer||'trajectory';
+  let duration=model.simulation.default_duration_seconds||30,yaw=rad(camera.yaw_deg??-38),pitch=rad(camera.pitch_deg??28),zoom=1;
+  let drag=null,pointers=new Map();
+  const byId=id=>root.querySelector(id),currentCase=()=>cases.find(c=>c.id===caseId)||cases[0];
+  const segments=()=>allSegments.filter(s=>(s.case_ids||[]).includes(caseId));
+  const eventTime=e=>typeof e.time==='object'?Number(e.time[caseId]??0):Number(e.time??0);
+  const events=()=>timeline.filter(e=>!e.case_ids||(e.case_ids||[]).includes(caseId));
+  const caseDuration=()=>Number(currentCase().duration||Math.max(...events().map(eventTime),1));
+  function pathPoint(g,f){
+    const kind=g.path_kind||'points',u=clamp(f,0,1);
+    if(kind==='line')return lerp(g.start,g.end,u);
+    if(kind==='quadratic'){const t=(g.duration??1)*u;return add(add(g.start,mul(g.velocity,t)),mul(g.acceleration,.5*t*t))}
+    if(kind==='arc3d'){const a=rad(g.start_deg+(g.end_deg-g.start_deg)*u);return add(g.center,add(mul(g.basis_u,g.radius*Math.cos(a)),mul(g.basis_v,g.radius*Math.sin(a))))}
+    if(kind==='helix'){const a=rad(g.start_deg+(g.end_deg-g.start_deg)*u);return add(add(g.center_start,mul(unit(g.axis),Number(g.advance||0)*u)),add(mul(g.basis_u,g.radius*Math.cos(a)),mul(g.basis_v,g.radius*Math.sin(a))))}
+    const pts=g.points||[[0,0,0],[0,0,0]],x=u*(pts.length-1),i=Math.min(pts.length-2,Math.floor(x));return lerp(pts[i],pts[i+1],x-i);
+  }
+  function sample(g,n=64){return Array.from({length:n+1},(_,i)=>pathPoint(g,i/n))}
+  function project(p,w,h){
+    const q=sub(p,center),cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
+    const x=cy*q[0]-sy*q[1],y=sy*q[0]+cy*q[1],z=q[2],yy=cp*y-sp*z,zz=sp*y+cp*z;
+    const scale=Math.min(w,h)*.16*zoom/(camera.scale||1);
+    return{x:w/2+x*scale,y:h/2-zz*scale,depth:yy};
+  }
+  function line3(points,color='#687383',width=1,dash=[]){
+    if(points.length<2)return;const {w,h}=metrics(),q=points.map(p=>project(p,w,h));
+    ctx.save();ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.stroke();ctx.restore();
+  }
+  function arrow3(a,b,color,label){
+    const {w,h}=metrics(),p=project(a,w,h),q=project(b,w,h),ang=Math.atan2(q.y-p.y,q.x-p.x);
+    ctx.save();ctx.strokeStyle=ctx.fillStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(q.x,q.y);ctx.lineTo(q.x-9*Math.cos(ang-.45),q.y-9*Math.sin(ang-.45));ctx.lineTo(q.x-9*Math.cos(ang+.45),q.y-9*Math.sin(ang+.45));ctx.closePath();ctx.fill();
+    if(label){ctx.font='600 12px system-ui';ctx.fillText(label,q.x+5,q.y-5)}ctx.restore();
+  }
+  function boxEdges(min,max){const p=[];for(const x of [min[0],max[0]])for(const y of [min[1],max[1]])for(const z of [min[2],max[2]])p.push([x,y,z]);return [[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]].map(([a,b])=>[p[a],p[b]])}
+  function drawRegion(region){
+    const s=region.shape||{},color=region.color||'#6790b5';
+    if(s.type==='box')for(const edge of boxEdges(s.min,s.max))line3(edge,color,1,[5,4]);
+    else if(s.type==='plane'){line3([s.origin,add(s.origin,s.u),add(add(s.origin,s.u),s.v),add(s.origin,s.v),s.origin],color,1,[5,4])}
+    else if(s.type==='wireframe')for(const edge of s.edges||[])line3(edge,color,1,[5,4]);
+    else if(s.type==='cylinder'){
+      const axis=unit(s.axis),helper=Math.abs(axis[2])<.9?[0,0,1]:[1,0,0],u=unit(cross(axis,helper)),v=unit(cross(axis,u)),half=Number(s.length)/2;
+      for(const k of [-1,1]){const c=add(s.center,mul(axis,k*half));line3(Array.from({length:49},(_,i)=>add(c,add(mul(u,s.radius*Math.cos(i*Math.PI/24)),mul(v,s.radius*Math.sin(i*Math.PI/24))))),color,1,[5,4])}
+      for(const a of [0,Math.PI/2,Math.PI,3*Math.PI/2]){const off=add(mul(u,s.radius*Math.cos(a)),mul(v,s.radius*Math.sin(a)));line3([add(add(s.center,mul(axis,-half)),off),add(add(s.center,mul(axis,half)),off)],color,1,[5,4])}
+    }
+    if(layer!=='trajectory'&&region.field?.direction){
+      const o=region.field.origin||s.center||s.origin||s.min||[0,0,0],d=unit(region.field.direction),len=Number(region.field.arrow_length||1);
+      arrow3(o,add(o,mul(d,len)),region.field.kind==='electric'?'#d58b20':'#356bb3',region.field.label||region.label);
+    }
+  }
+  function metrics(){const w=Math.max(320,Math.round(canvas.getBoundingClientRect().width)),h=Math.round(w*10/16),d=devicePixelRatio||1;if(canvas.width!==Math.round(w*d)||canvas.height!==Math.round(h*d)){canvas.width=Math.round(w*d);canvas.height=Math.round(h*d);ctx.setTransform(d,0,0,d,0,0)}return{w,h}}
+  function drawAxes(){const a=model.facts?.axes||{origin:[0,0,0],lengths:[2,2,2]},o=a.origin||[0,0,0],l=a.lengths||[2,2,2];arrow3(o,add(o,[l[0],0,0]),'#d45454','x');arrow3(o,add(o,[0,l[1],0]),'#40905a','y');arrow3(o,add(o,[0,0,l[2]]),'#4a70c5','z')}
+  function draw(){
+    const {w,h}=metrics();ctx.clearRect(0,0,w,h);ctx.fillStyle='#f8fbff';ctx.fillRect(0,0,w,h);
+    drawAxes();for(const region of model.regions||[])drawRegion(region);
+    const now=progress*caseDuration(),visible=[];
+    for(const s of segments()){
+      const t0=Number(s.kinematics.start_time),t1=Number(s.kinematics.end_time);if(now<t0)continue;
+      const f=clamp((now-t0)/(t1-t0),0,1),pts=sample(s.geometry,64),cut=Math.max(1,Math.floor(f*64));
+      line3(pts.slice(0,cut+1),s.color||particles.find(p=>p.id===s.particle_id)?.color||'#e33b34',3);
+      visible.push({s,p:pathPoint(s.geometry,f),done:f>=1});
+      if(layer==='geometry'&&s.geometry.center)line3([s.geometry.center,pathPoint(s.geometry,f)],'#8d99a6',1,[4,4]);
+    }
+    for(const item of visible){
+      const p=project(item.p,w,h),particle=particles.find(x=>x.id===item.s.particle_id)||{};
+      ctx.save();ctx.fillStyle=particle.color||item.s.color||'#e33b34';ctx.beginPath();ctx.arc(p.x,p.y,7,0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff';ctx.font='700 10px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(particle.sign||'•',p.x,p.y);ctx.restore();
+    }
+    const ev=events().filter(e=>eventTime(e)<=now+1e-8).at(-1)||events()[0],next=events().find(e=>eventTime(e)>now+1e-8);
+    byId('#piecewise-3d-phase').textContent=ev?.phase||ev?.label||'准备';
+    byId('#piecewise-3d-event').textContent=next?next.label:(ev?.label||'完成');
+    byId('#piecewise-3d-result').textContent=currentCase().conclusion||'';
+    byId('#piecewise-3d-progress-label').textContent=Math.round(progress*100)+'%';
+    byId('#piecewise-3d-progress').value=Math.round(progress*1000);
+  }
+  function setPlaying(value){playing=value;byId('#piecewise-3d-play').textContent=playing?'暂停':'播放';if(playing){lastTime=performance.now();requestAnimationFrame(tick)}}
+  function tick(now){if(!playing)return;const delta=(now-lastTime)/1000;lastTime=now;const before=progress*caseDuration();progress=clamp(progress+delta/duration,0,1);const after=progress*caseDuration();
+    if(byId('#piecewise-3d-auto-pause').checked){const hit=events().find(e=>{const t=eventTime(e);return (model.simulation.pause_event_ids||[]).includes(e.id)&&t>before&&t<=after&&t!==lastPause});if(hit){progress=eventTime(hit)/caseDuration();lastPause=eventTime(hit);setPlaying(false)}}
+    if(progress>=1)setPlaying(false);draw();if(playing)requestAnimationFrame(tick)}
+  const select=byId('#piecewise-3d-case');for(const c of cases){const o=document.createElement('option');o.value=c.id;o.textContent=c.label||c.id;select.append(o)}
+  select.onchange=()=>{caseId=select.value;progress=0;lastPause=-1;setPlaying(false);draw()};
+  byId('#piecewise-3d-title').textContent=model.title;byId('#piecewise-3d-play').onclick=()=>setPlaying(!playing);byId('#piecewise-3d-replay').onclick=()=>{progress=0;lastPause=-1;setPlaying(false);draw()};
+  byId('#piecewise-3d-progress').oninput=e=>{progress=Number(e.target.value)/1000;setPlaying(false);draw()};
+  const durationInput=byId('#piecewise-3d-duration');durationInput.value=duration;byId('#piecewise-3d-duration-label').textContent=duration+' 秒';durationInput.oninput=e=>{duration=Number(e.target.value);byId('#piecewise-3d-duration-label').textContent=duration+' 秒'};
+  root.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===b));draw()});
+  const views={iso:[-38,28],front:[0,0],top:[0,88]};root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{[yaw,pitch]=views[b.dataset.view].map(rad);draw()});
+  byId('#piecewise-3d-previous').onclick=()=>{const now=progress*caseDuration(),list=events().map(eventTime).filter(t=>t<now-1e-7);progress=(list.at(-1)||0)/caseDuration();setPlaying(false);draw()};
+  byId('#piecewise-3d-next').onclick=()=>{const now=progress*caseDuration(),t=events().map(eventTime).find(x=>x>now+1e-7)??caseDuration();progress=t/caseDuration();setPlaying(false);draw()};
+  byId('#piecewise-3d-zoom-out').onclick=()=>{zoom=clamp(zoom*.85,.45,4);draw()};byId('#piecewise-3d-zoom-in').onclick=()=>{zoom=clamp(zoom*1.18,.45,4);draw()};byId('#piecewise-3d-fit').onclick=()=>{zoom=1;yaw=rad(camera.yaw_deg??-38);pitch=rad(camera.pitch_deg??28);draw()};
+  canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.45,4);draw()};
+  canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,yaw,pitch}};
+  canvas.onpointermove=e=>{if(!pointers.has(e.pointerId)||!drag)return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1){yaw=drag.yaw+(e.clientX-drag.x)*.008;pitch=clamp(drag.pitch-(e.clientY-drag.y)*.008,rad(-89),rad(89));draw()}};
+  const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
+  const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
+  new ResizeObserver(draw).observe(canvas);draw();
+})();
+</script>
+
+</main></body>
+</html>

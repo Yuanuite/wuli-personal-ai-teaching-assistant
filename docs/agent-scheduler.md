@@ -16,7 +16,7 @@ student-error-library/config/agent-scheduler.json
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "global_max_running": 6,
   "entry_max_running": 1,
   "kind_limits": {
@@ -31,7 +31,14 @@ student-error-library/config/agent-scheduler.json
     "answer.revise": 80,
     "visualization.model": 50
   },
-  "provider_limits": {}
+  "provider_limits": {},
+  "adaptive_concurrency": {
+    "enabled": true,
+    "initial": 1,
+    "first_success_limit": 2,
+    "max_limit": 4,
+    "successes_to_max": 2
+  }
 }
 ```
 
@@ -42,6 +49,19 @@ student-error-library/config/agent-scheduler.json
 - `kind_limits` 控制每类任务的并发上限；
 - `kind_priorities` 控制可运行任务之间的默认优先级，数值越大越先运行；
 - `provider_limits` 是 provider 资源池接口；只有作业 metadata 显式带 provider 时才会参与限流。当前大多数 provider 仍在 Gateway 内部自动选择，因此该字段先作为长期调度接口保留。
+
+## 自适应并发
+
+每个 `concurrency_group` 独立执行 `1 → 2 → 4` 的探测与恢复策略；未显式指定时按任务 kind 分组：
+
+- 首道金丝雀成功后升到 2；
+- 并发度 2 下连续成功 2 道后升到 4；
+- provider 超时、限流、预算耗尽、不可用、协议/执行异常等结构性失败会立即停止派发该组新任务并降到串行；
+- 已经在途的任务允许结束，但其结果不会冒充降级后的串行探针；
+- 降级后的下一道新任务成功，恢复并发度 2，随后重新按连续成功门槛升到 4；
+- 内容校验失败只隔离单题，不降低整组并发。
+
+每次升降速都会写入终态作业的 `scheduler_event`，包括失效类型、调整前后并发度和累计降级次数。状态只驻留于当前服务进程；重启后从金丝雀重新开始，避免凭旧状态直接扩大并发。
 
 ## 环境变量覆盖
 
@@ -78,9 +98,11 @@ python3 teacher-console/scripts/agent_batch_benchmark.py \
 
 这会追加一个全库级 `scheduler.benchmark` 事件到 `student-error-library/indexes/candidate-archive.jsonl`，并刷新 Knowledge Store 的 `scheduler_benchmark` 派生表。该事件不属于任何单题，不会写入条目目录，也不会进入学生端公开内容。
 
+统计优先读取 Gateway 产出的统一 `outcome`；旧作业缺少该字段时才兼容解析历史结果，避免调度器、候选档案和评测脚本各自推断失败语义。
+
 ## 和 Evolve 闭环的关系
 
-Phase 1 只做静态配置和优先级队列。`rag_effectiveness_report.py` 已开始把 Knowledge Store 证据状态、Candidate Archive、Evaluator 和教师复核结果汇总为只读观察报告；样本门槛未满足前不自动改调度策略。后续可在固定测试集和连续报告支持下调整：
+当前层只做确定性的优先级队列和 `1 → 2 → 4` 故障反馈，不根据教学质量样本自动修改长期策略。`rag_effectiveness_report.py` 已开始把 Knowledge Store 证据状态、Candidate Archive、Evaluator 和教师复核结果汇总为只读观察报告；样本门槛未满足前不自动改变模型路由或长期调度参数。后续可在固定测试集和连续报告支持下调整：
 
 - 每类任务的推荐并发；
 - 每类任务的模型/供应商优先级；

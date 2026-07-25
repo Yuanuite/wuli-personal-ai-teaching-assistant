@@ -104,6 +104,9 @@ export async function uploadAndApproveSource(page, { filename, problem, note }) 
 export async function runAnalysisAndApprove(page, entryId) {
   await page.locator("#run-analysis").click();
   await waitForState(entryId, "needs-answer-review");
+  await page.waitForFunction(() =>
+    document.querySelector("#answer-editor")?.value.includes("## 答案速览"),
+  );
   await page.locator("#approve-answer").click();
   return waitForState(entryId, "ready-to-finish");
 }

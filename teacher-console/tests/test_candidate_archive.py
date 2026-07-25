@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest import mock
 
@@ -90,6 +91,24 @@ class CandidateArchiveTest(unittest.TestCase):
         self.assertEqual(event["request"]["api_key"], "[redacted]")
         self.assertEqual(event["result"]["authorization"], "[redacted]")
         self.assertTrue((self.library / "indexes" / "candidate-archive.jsonl").is_file())
+
+    def test_identical_concurrent_events_have_unique_ids(self):
+        def append_same_event(_index):
+            return candidate_archive.append_event(
+                self.library,
+                self.entry,
+                task_type="agent.test",
+                actor="agent",
+                event_type="agent-result",
+                status="succeeded",
+                summary="并发相同事件",
+            )
+
+        with ThreadPoolExecutor(max_workers=8) as executor:
+            events = list(executor.map(append_same_event, range(32)))
+
+        event_ids = [event["event_id"] for event in events]
+        self.assertEqual(len(event_ids), len(set(event_ids)))
 
     def test_approve_answer_records_archive_event(self):
         result = process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")

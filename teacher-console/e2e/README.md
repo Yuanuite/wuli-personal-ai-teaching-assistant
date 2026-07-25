@@ -13,6 +13,13 @@ HTTP、入库、后台任务、候选提升、生命周期门禁、文件导出�
 `student-error-library/`、`output/` 或 `student-site/`。可视化场景会运行生产仿真构建器和浏览器运行时检查；公开发布场景会确认原图字节未变，
 并扫描公开树中是否出现条目 ID、原始文件名、教师版、内部记录或本地路径。
 
+`fake_agent_adapter.py` 必须镜像生产任务契约，而不是自定义一套测试格式。尤其是
+`analysis.generate` 应返回 `wuli.analysis.v2` 的 `student_solution`、`teacher_audit`、
+`method_check`、`metadata` 和 `diagram`，不能返回文件候选任务使用的旧式 `files`。`method_check`
+必须证明学生版采用高中范围内的最短主线，并与实际“第 N 步”数量一致。修改结构化解析契约时，
+需同步更新本文件、`teacher-console/tests/fixtures/fake_agent_adapter.py` 和相关契约测试；
+否则单元测试可能通过，但 E2E 会在解析候选物化前失败。
+
 教师在真实工作台里处理、复核或交付题目不会调用本目录的 runner，也不会把一次操作录制或追加成测试。
 只有维护者执行下面的命令，或 CI 显式启动时才运行 E2E；临时场景结束后不会形成正式题库条目。
 
@@ -33,6 +40,9 @@ npm run test:e2e
 ```
 
 报告写入 `test-results/e2e/`。失败时临时工作区会复制到该目录，便于定位生命周期断点。
+若日志出现 `adapter_protocol_error`，先检查报告中的 Agent 作业结果和当前生命周期状态；
+例如 `student_solution must be a string` 且状态仍为 `needs-analysis-and-answer`，通常表示测试
+adapter 尚未跟随结构化解析契约更新，而不是浏览器步骤或交付门禁本身失败。
 单独调试某个场景：
 
 ```bash

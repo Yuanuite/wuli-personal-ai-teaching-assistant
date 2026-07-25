@@ -84,7 +84,8 @@ class EvaluatorTest(unittest.TestCase):
         self.assertTrue((self.entry / "evaluation.json").is_file())
         self.assertEqual(report["checks"][0]["id"], "entry_structure")
         self.assertEqual(report["summary"]["failed"], 0)
-        self.assertIn("correctness", report["scores"])
+        self.assertNotIn("correctness", report["scores"])
+        self.assertIn("process_compliance", report["scores"])
         self.assertNotIn("efficiency", report["scores"])
 
     def test_efficiency_uses_the_computed_continuous_score(self):

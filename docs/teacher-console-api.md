@@ -95,6 +95,8 @@ POST /api/entries/<entry-id>/<action>
 | `approve-source` | `problem`、`reviewer`、`note` | 保存并批准正式题干；仍含待核对内容时由生命周期拒绝 |
 | `analyze` | 可选 `instruction`、`routing_tier` | 创建 `analysis.generate` 后台作业；模型返回结构化解析，程序确定性生成学生版、教师版、兼容版和解释 SVG；不会自动生成交互仿真。若存在与当前输入匹配的生成检查点，优先零 Token 恢复 |
 | `save-answer` | `layer`、`markdown`、可选 `base_digest` | 保存学生版或教师版 Markdown，并撤销旧答案批准 |
+| `refresh-difficulty-assessment` | 无 | 依据当前题干、学生版解析和可用物理模型重算六维客观难度量表；各维为 0–5、步长 0.1，附可追溯证据；不改变答案复核状态 |
+| `save-difficulty-assessment` | `assessment` | 教师保存修改后的总分、六维评分、核心判断和难度总结；评分须在 0–5 且步长为 0.1；不新增审批门禁 |
 | `approve-answer` | `reviewer`、`note` | 批准当前题干、答案、模型和引用图片的联合摘要 |
 | `request-revision` | 修改意见、可选 `routing_tier` 及页面提供的版本摘要 | 创建 `answer.revise` 后台作业，在隔离区返修答案和解释图 |
 | `build-visualization` | 可选 `message`、`runtime_check`、`routing_tier` | 无模型时创建 `visualization.model` 作业；有模型时直接确定性构建预审仿真 |
@@ -134,6 +136,8 @@ POST /api/entries/<entry-id>/<action>
 ```
 
 轮询结果状态为 `queued`、`running`、`completed` 或 `failed`。只有 `completed` 且 `result.status=completed` 才表示候选已通过 Gateway 并提升；之后仍必须按题目状态重新进行教师复核。失败结果可带稳定的 `failure_type`，同时保留 `message`、`validation_errors` 和 `unauthorized_changes` 供教师排障。同一题存在运行中作业时，其他写操作返回 `409`。服务重启会把旧 `queued/running` 作业标记为 `failed`、`failure_type=worker_interrupted`，不会自动重放。
+
+Agent 作业结果还包含顶层 `outcome`。它统一提供 `status`、`stage`、`provider`、`attempt_count`、`fallback_used`、`error_category`、隐私裁剪后的 `error_summary`，以及可用的 token/时延指标。该对象用于前端排障、候选档案和离线 benchmark 对齐，不包含完整 prompt、证据正文、密钥、环境变量或系统临时候选路径。
 
 ## 最小调用示例
 

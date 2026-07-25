@@ -1,0 +1,15 @@
+{
+  "rubric_version": "evidence-rubric.v2",
+  "cases": [
+    {
+      "id": "alternating-field-particle-piecewise-motion",
+      "entry_id": "20260722-7-22物理练习题-p3-f5a4ce56",
+      "expected": {
+        "score": 93,
+        "level": "挑战",
+        "dimensions": [4.8, 4.5, 5.0, 5.0, 4.3, 4.0],
+        "required_evidence_sources": ["problem", "student_solution", "physics_model"]
+      }
+    }
+  ]
+}
