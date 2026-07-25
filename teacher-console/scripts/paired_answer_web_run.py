@@ -10,6 +10,8 @@ read-only.  The promoted Agent answer is copied from the temporary
 from __future__ import annotations
 
 import argparse
+import copy
+import hashlib
 import json
 import os
 import shutil
@@ -34,6 +36,11 @@ import server as teacher_server  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 from runtime_environment import resolved_environment  # noqa: E402
+
+EVIDENCE_COHORTS = {
+    "current": "web-current",
+    "disabled": "web-no-rag",
+}
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -132,6 +139,52 @@ def configure_server(library: Path, workspace: Path) -> None:
     )
 
 
+def fixed_evidence_snapshot(entry: Path, evidence_mode: str) -> dict[str, Any]:
+    """Build the exact evidence payload that the isolated web click will receive."""
+    snapshot = teacher_server.agent_evidence_payload(entry, "analysis.generate", "auto")
+    if evidence_mode == "current":
+        return snapshot
+    if evidence_mode != "disabled":
+        raise ValueError(f"unsupported evidence mode: {evidence_mode}")
+    budget = dict(snapshot.get("context_budget", {}))
+    candidate_count = int(budget.get("candidate_reference_count", 0) or 0)
+    budget.update({
+        "included_reference_count": 0,
+        "omitted_reference_count": candidate_count,
+        "truncated": bool(candidate_count),
+    })
+    disabled = {
+        "schema_version": 1,
+        "kind": "agent-evidence",
+        "task_type": "analysis.generate",
+        "status": "disabled-for-benchmark",
+        "references": [],
+        "instructions": list(snapshot.get("instructions", [])),
+        "evidence_set": {
+            "kind": "candidate-evidence-set",
+            "reference_count": 0,
+            "required_slots": [
+                "concepts-and-labels",
+                "problem-context",
+                "solution-method",
+            ],
+            "covered_slots": [],
+            "missing_slots": [
+                "concepts-and-labels",
+                "problem-context",
+                "solution-method",
+            ],
+            "coverage_ratio": 0.0,
+        },
+        "context_budget": budget,
+    }
+    for _ in range(2):
+        disabled["context_budget"]["serialized_chars"] = len(
+            json.dumps(disabled, ensure_ascii=False)
+        )
+    return disabled
+
+
 def run_case(
     *,
     source_library: Path,
@@ -139,13 +192,22 @@ def run_case(
     entry_id: str,
     node: str,
     timeout_seconds: int,
+    evidence_mode: str = "current",
 ) -> dict[str, Any]:
+    artifact_prefix = EVIDENCE_COHORTS[evidence_mode]
     artifact_dir = experiment / "artifacts" / entry_id
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    failed_workspace = artifact_dir / "failed-workspace"
+    failed_workspace = artifact_dir / f"{artifact_prefix}-failed-workspace"
     if failed_workspace.exists():
         shutil.rmtree(failed_workspace)
-    for stale in ("web.md", "web.meta.json", "web-browser.json", "web-failure.png"):
+    for stale in (
+        f"{artifact_prefix}.md",
+        f"{artifact_prefix}.meta.json",
+        f"{artifact_prefix}.evidence.json",
+        f"{artifact_prefix}-browser.json",
+        f"{artifact_prefix}-completed.png",
+        f"{artifact_prefix}-failure.png",
+    ):
         (artifact_dir / stale).unlink(missing_ok=True)
     driver = PROJECT_ROOT / "teacher-console" / "e2e" / "paired-answer-web.e2e.mjs"
 
@@ -153,6 +215,31 @@ def run_case(
         workspace = Path(temp_name)
         library = prepare_workspace(source_library, workspace, entry_id)
         configure_server(library, workspace)
+        entry = library / "entries" / entry_id
+        evidence_snapshot = fixed_evidence_snapshot(entry, evidence_mode)
+        evidence_text = json.dumps(
+            evidence_snapshot,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        ) + "\n"
+        evidence_digest = hashlib.sha256(evidence_text.encode("utf-8")).hexdigest()
+        (artifact_dir / f"{artifact_prefix}.evidence.json").write_text(
+            evidence_text,
+            encoding="utf-8",
+        )
+        original_evidence_builder = teacher_server.agent_evidence_payload
+
+        def use_fixed_evidence(
+            requested_entry: Path,
+            kind: str,
+            routing_tier: str = "auto",
+        ) -> dict[str, Any]:
+            if requested_entry.name == entry_id and kind == "analysis.generate":
+                return copy.deepcopy(evidence_snapshot)
+            return original_evidence_builder(requested_entry, kind, routing_tier)
+
+        teacher_server.agent_evidence_payload = use_fixed_evidence
         httpd = ThreadingHTTPServer(("127.0.0.1", 0), teacher_server.Handler)
         thread = threading.Thread(target=httpd.serve_forever, daemon=True)
         thread.start()
@@ -161,6 +248,7 @@ def run_case(
             "E2E_BASE_URL": f"http://127.0.0.1:{httpd.server_port}",
             "E2E_ENTRY_ID": entry_id,
             "E2E_ARTIFACT_DIR": str(artifact_dir),
+            "E2E_ARTIFACT_PREFIX": artifact_prefix,
             "E2E_TIMEOUT_MS": str(timeout_seconds * 1000),
         })
         try:
@@ -186,13 +274,16 @@ def run_case(
             thread.join(timeout=5)
             teacher_server._JOB_MANAGER.shutdown(wait=True)
             teacher_server._JOB_MANAGER = None
+            teacher_server.agent_evidence_payload = original_evidence_builder
 
-        entry = library / "entries" / entry_id
         request = load_json(entry / "analysis-request.json")
         baseline = entry / ".agent-baseline" / "student-solution.md"
         status = {
             "schema_version": 1,
             "entry_id": entry_id,
+            "cohort": artifact_prefix,
+            "evidence_mode": evidence_mode,
+            "evidence_snapshot_sha256": evidence_digest,
             "source": "teacher-console-browser-click",
             "status": "completed"
             if completed.returncode == 0 and baseline.is_file()
@@ -209,8 +300,8 @@ def run_case(
             "stderr": completed.stderr[-4000:],
         }
         if baseline.is_file():
-            shutil.copy2(baseline, artifact_dir / "web.md")
-        (artifact_dir / "web.meta.json").write_text(
+            shutil.copy2(baseline, artifact_dir / f"{artifact_prefix}.md")
+        (artifact_dir / f"{artifact_prefix}.meta.json").write_text(
             json.dumps(status, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
@@ -232,6 +323,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-cases", type=int, default=0)
     parser.add_argument("--node", default=os.environ.get("E2E_NODE") or shutil.which("node"))
     parser.add_argument("--timeout-seconds", type=int, default=1800)
+    parser.add_argument(
+        "--evidence-mode",
+        choices=tuple(EVIDENCE_COHORTS),
+        default="current",
+        help="Use the current RAG snapshot or an otherwise identical empty evidence pack.",
+    )
     return parser.parse_args()
 
 
@@ -261,6 +358,7 @@ def main() -> int:
             entry_id=entry_id,
             node=str(args.node),
             timeout_seconds=max(60, args.timeout_seconds),
+            evidence_mode=args.evidence_mode,
         )
         results.append(result)
         print(json.dumps(result, ensure_ascii=False), flush=True)

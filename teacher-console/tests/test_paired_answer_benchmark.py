@@ -46,13 +46,30 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
             {"captured": 1, "missing": 0},
         )
         imported = benchmark.evaluate(self.library, self.experiment)
-        self.assertEqual(imported["readiness"]["missing_web"], 1)
-        web_meta = self.experiment / "artifacts" / "entry-1" / "web.meta.json"
+        self.assertEqual(imported["readiness"]["missing_web_current"], 1)
+        web_meta = self.experiment / "artifacts" / "entry-1" / "web-current.meta.json"
         web_meta.write_text(json.dumps({
             "schema_version": 1,
             "entry_id": "entry-1",
+            "cohort": "web-current",
             "source": "teacher-console-browser-click",
             "status": "completed",
+            "evidence_mode": "current",
+            "evidence_context": {"status": "ready", "reference_count": 2},
+        }), encoding="utf-8")
+        no_rag = self.experiment / "artifacts" / "entry-1" / "web-no-rag.md"
+        no_rag.write_text("# 无 RAG\nA 错；B 对。\n\n$$v=at$$\n", encoding="utf-8")
+        no_rag.with_suffix(".meta.json").write_text(json.dumps({
+            "schema_version": 1,
+            "entry_id": "entry-1",
+            "cohort": "web-no-rag",
+            "source": "teacher-console-browser-click",
+            "status": "completed",
+            "evidence_mode": "disabled",
+            "evidence_context": {
+                "status": "disabled-for-benchmark",
+                "reference_count": 0,
+            },
         }), encoding="utf-8")
         direct = self.experiment / "artifacts" / "entry-1" / "direct.md"
         direct.parent.mkdir(parents=True, exist_ok=True)
@@ -63,9 +80,15 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
         report = benchmark.evaluate(self.library, self.experiment)
         by_cohort = {item["cohort"]: item for item in report["records"]}
         self.assertTrue(by_cohort["direct"]["metrics"]["option_verdict_match"])
-        self.assertFalse(by_cohort["web"]["metrics"]["option_verdict_match"])
+        self.assertFalse(by_cohort["web-current"]["metrics"]["option_verdict_match"])
+        self.assertTrue(by_cohort["web-no-rag"]["metrics"]["option_verdict_match"])
+        self.assertEqual(
+            by_cohort["web-current"]["generation"]["evidence_reference_count"],
+            2,
+        )
         self.assertTrue(report["direct_is_reference_baseline_only"])
         self.assertEqual(report["readiness"]["pair_ready_count"], 1)
+        self.assertEqual(report["readiness"]["three_way_ready_count"], 1)
         self.assertEqual(report["readiness"]["comparison_ready_count"], 0)
 
     def test_refresh_references_uses_only_teacher_passed_answer(self):

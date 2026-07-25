@@ -3,12 +3,14 @@
 目标是回答一个可证伪的问题：教师工作台中的 RAG、结构化契约、物化与校验加入后，
 答案是否真的优于同一模型直接阅读题干的输出。
 
-## 三层答案
+## 真值与候选组
 
-| 层级 | 定义 | 用途 |
+| 组别 | 定义 | 用途 |
 |---|---|---|
 | `direct` | 同一模型只读取 `problem.md` 和题干不可缺少的原题图，不使用 RAG、既有答案、物理模型或工作流模板 | 直出基线，不是真值 |
-| `web` | 隔离题库重置到“题干已复核、尚无答案/物理模型”，再从网页点击“生成解析”得到的 `.agent-baseline/student-solution.md` | 被测流水线 |
+| `web-no-rag` | 隔离题库中从网页点击“生成解析”，注入结构相同但不含历史引用的证据包 | 测量网页工作流本身 |
+| `web-current` | 同一网页流程，注入运行开始时冻结的当前 RAG 证据快照 | 测量当前 RAG 的增量 |
+| `web-candidate` | 同一网页流程，注入未来候选精排/证据集策略的冻结快照 | 策略完成后使用；当前不得伪造 |
 | `teacher-reviewed` | 当前教师已经批准的 `student-solution.md` | 正确性与教学质量真值 |
 
 必须固定模型 ID、模型版本、参数和题干摘要。模型不一致的结果不能归因于工作流。
@@ -36,7 +38,7 @@
 - 候选到教师答案的语义修改比例；
 - 是否涉及物理结论、数值、方向或条件的关键纠正。
 
-最终比较由教师盲评，隐藏 `direct/web` 标签，检查：
+最终比较由教师盲评，隐藏所有候选组标签，检查：
 
 1. 结论和数值正确；
 2. 关键事件或分支完整；
@@ -61,7 +63,11 @@ python3 teacher-console/scripts/paired_answer_benchmark.py \
 
 python3 teacher-console/scripts/paired_answer_web_run.py \
   --experiment student-error-library/evals/answer-paired-v1 \
-  --only-with-direct
+  --only-with-direct --evidence-mode disabled
+
+python3 teacher-console/scripts/paired_answer_web_run.py \
+  --experiment student-error-library/evals/answer-paired-v1 \
+  --only-with-direct --evidence-mode current
 
 python3 teacher-console/scripts/paired_answer_benchmark.py \
   --library student-error-library \
@@ -69,10 +75,14 @@ python3 teacher-console/scripts/paired_answer_benchmark.py \
   run --format markdown
 ```
 
-同模型直出结果保存为 `artifacts/<entry-id>/direct.md`。网页答案只有同时具备
-`web.meta.json`、来源为 `teacher-console-browser-click` 且状态为 `completed` 才进入统计；
+同模型直出结果保存为 `artifacts/<entry-id>/direct.md`。网页候选分别保存为
+`web-no-rag.md` 和 `web-current.md`；每轮还保存对应的 `.evidence.json` 与 SHA-256，
+保证报告使用的就是生成时实际注入的脱敏证据快照。网页答案只有来源为
+`teacher-console-browser-click`、状态为 `completed` 且 cohort 一致才进入统计；
 从正式条目的历史 `.agent-baseline` 导入不能冒充本轮网页点击。报告的
-`comparison_ready` 还要求直出输入完整且教师标准答案摘要未过期。
+`pair_ready` 表示直出与当前 RAG 已齐备；`comparison_ready` 要求直出、无 RAG 和当前
+RAG 三组齐备、直出输入完整且教师标准答案摘要未过期。`web-candidate` 不参与当前
+三组就绪判断，直到候选精排策略真实存在。
 
 首轮分层试验、人工复核结论及检索证据计数记录在
 `student-error-library/evals/answer-paired-v1/result-summary.md`。若网页运行的

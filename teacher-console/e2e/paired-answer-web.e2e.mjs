@@ -10,6 +10,7 @@ const { chromium } = require("playwright");
 const baseUrl = process.env.E2E_BASE_URL;
 const entryId = process.env.E2E_ENTRY_ID;
 const artifactDir = process.env.E2E_ARTIFACT_DIR;
+const artifactPrefix = process.env.E2E_ARTIFACT_PREFIX || "web-current";
 const timeoutMs = Number(process.env.E2E_TIMEOUT_MS || 1_800_000);
 for (const [name, value] of Object.entries({ baseUrl, entryId, artifactDir })) {
   if (!value) throw new Error(`missing required environment: ${name}`);
@@ -55,11 +56,11 @@ try {
   const detail = await getJson(`/api/entries/${encodeURIComponent(entryId)}`);
   assert.equal(detail.state, "needs-answer-review");
   await page.screenshot({
-    path: path.join(artifactDir, "web-completed.png"),
+    path: path.join(artifactDir, `${artifactPrefix}-completed.png`),
     fullPage: true,
   });
   fs.writeFileSync(
-    path.join(artifactDir, "web-browser.json"),
+    path.join(artifactDir, `${artifactPrefix}-browser.json`),
     `${JSON.stringify({
       status: "completed",
       entry_id: entryId,
@@ -71,11 +72,11 @@ try {
   );
 } catch (error) {
   await page.screenshot({
-    path: path.join(artifactDir, "web-failure.png"),
+    path: path.join(artifactDir, `${artifactPrefix}-failure.png`),
     fullPage: true,
   }).catch(() => {});
   fs.writeFileSync(
-    path.join(artifactDir, "web-browser.json"),
+    path.join(artifactDir, `${artifactPrefix}-browser.json`),
     `${JSON.stringify({
       status: "failed",
       entry_id: entryId,

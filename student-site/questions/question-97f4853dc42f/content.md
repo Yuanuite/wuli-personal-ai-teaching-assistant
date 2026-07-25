@@ -102,22 +102,32 @@ $$\boxed{F_{\text{安}} = \frac{k}{\sqrt{2a}}\,x}.$$
 
 ### 第 5 步：外力做功
 
-棒匀加速，由牛顿第二定律（$x$ 方向）：
+由（2）知
 
-$$F - F_{\text{安}} = ma \quad\Longrightarrow\quad F = ma + \frac{k}{\sqrt{2a}}\,x.$$
+$$
+F_{\text{安}}=\frac{k}{\sqrt{2a}}x.
+$$
 
-从 $x=0$ 到 $x=2l$ 外力做功：
+其 $F_{\text{安}}-x$ 图像为三角形，故克服安培力做功
 
-$$\begin{aligned}
-W &= \int_{0}^{2l} F\,\mathrm{d}x
-= \int_{0}^{2l} \left(ma + \frac{k}{\sqrt{2a}}\,x\right)\mathrm{d}x \\[4pt]
-&= ma\cdot 2l + \frac{k}{\sqrt{2a}}\cdot\frac{(2l)^{2}}{2} \\[4pt]
-&= 2mal + \frac{2kl^{2}}{\sqrt{2a}}.
-\end{aligned}$$
+$$
+W_{\text{安}}
+=\frac12(2l)\cdot\frac{2kl}{\sqrt{2a}}
+=\frac{2kl^2}{\sqrt{2a}}.
+$$
 
-$$\boxed{W = 2mal + \frac{2kl^{2}}{\sqrt{2a}}}.$$
+又由 $v^2=2a(2l)$ 得
 
-等价视角（动能定理）：$W = \Delta E_{k} + W_{\text{克安}}$，其中 $\Delta E_{k}=\frac{1}{2}m(2\sqrt{al})^{2}=2mal$，$W_{\text{克安}}=\int_{0}^{2l}F_{\text{安}}\,\mathrm{d}x=\frac{2kl^{2}}{\sqrt{2a}}$，一致。
+$$
+\Delta E_k=\frac12mv^2=2mal.
+$$
+
+由动能定理：
+
+$$
+\boxed{W_F=2mal+\frac{2kl^2}{\sqrt{2a}}}.
+$$
+
 
 ## 易错点
 

@@ -27,6 +27,8 @@ import analysis_artifacts  # noqa: E402
 import teacher_feedback  # noqa: E402
 
 LEVEL_ORDER = ("基础", "较易", "中等", "较难", "挑战")
+WEB_COHORTS = ("web-no-rag", "web-current", "web-candidate")
+REPORT_COHORTS = ("direct", *WEB_COHORTS)
 FORMULA = re.compile(
     r"\$\$(.+?)\$\$|\$([^$\n]+)\$|\\\[(.+?)\\\]|\\\((.+?)\\\)",
     re.DOTALL,
@@ -149,7 +151,7 @@ def seed(library: Path, experiment: Path, per_level: int) -> dict[str, Any]:
         "schema_version": 1,
         "kind": "paired-answer-benchmark",
         "ground_truth": "teacher-reviewed-student-solution",
-        "cohorts": ["direct", "web"],
+        "cohorts": ["direct", "web-no-rag", "web-current", "web-candidate"],
         "cases": cases,
     }
     (experiment / "manifest.json").write_text(
@@ -219,10 +221,10 @@ def capture_web(library: Path, experiment: Path) -> dict[str, int]:
         if not source.is_file():
             missing += 1
             continue
-        target = experiment / "artifacts" / entry_id / "web.md"
+        target = experiment / "artifacts" / entry_id / "web-current.md"
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(source, target)
-        (target.parent / "web.meta.json").write_text(
+        (target.parent / "web-current.meta.json").write_text(
             json.dumps(
                 {
                     "schema_version": 1,
@@ -240,14 +242,26 @@ def capture_web(library: Path, experiment: Path) -> dict[str, int]:
     return {"captured": captured, "missing": missing}
 
 
-def browser_web_ready(candidate_path: Path) -> tuple[bool, str]:
+def web_candidate_path(artifact_dir: Path, cohort: str) -> Path:
+    candidate = artifact_dir / f"{cohort}.md"
+    if cohort == "web-current" and not candidate.is_file():
+        legacy = artifact_dir / "web.md"
+        if legacy.is_file():
+            return legacy
+    return candidate
+
+
+def browser_web_ready(candidate_path: Path, cohort: str) -> tuple[bool, str]:
     if not candidate_path.is_file():
         return False, "missing"
-    metadata = load_json(candidate_path.with_name("web.meta.json"))
+    metadata = load_json(candidate_path.with_suffix(".meta.json"))
     if metadata.get("source") != "teacher-console-browser-click":
         return False, str(metadata.get("source", "missing-provenance"))
     if metadata.get("status") != "completed":
         return False, str(metadata.get("status", "incomplete"))
+    metadata_cohort = metadata.get("cohort")
+    if metadata_cohort and metadata_cohort != cohort:
+        return False, f"cohort-mismatch:{metadata_cohort}"
     return True, "teacher-console-browser-click"
 
 
@@ -264,10 +278,22 @@ def evaluate(library: Path, experiment: Path) -> dict[str, Any]:
         stale_reference = digest_text(reference) != case.get("reference_digest")
         available = {}
         provenance = {}
-        for cohort in ("direct", "web"):
-            candidate_path = experiment / "artifacts" / entry_id / f"{cohort}.md"
-            if cohort == "web":
-                available[cohort], provenance[cohort] = browser_web_ready(candidate_path)
+        artifact_dir = experiment / "artifacts" / entry_id
+        candidate_paths = {
+            cohort: (
+                artifact_dir / "direct.md"
+                if cohort == "direct"
+                else web_candidate_path(artifact_dir, cohort)
+            )
+            for cohort in REPORT_COHORTS
+        }
+        for cohort in REPORT_COHORTS:
+            candidate_path = candidate_paths[cohort]
+            if cohort in WEB_COHORTS:
+                available[cohort], provenance[cohort] = browser_web_ready(
+                    candidate_path,
+                    cohort,
+                )
             else:
                 available[cohort] = candidate_path.is_file()
                 provenance[cohort] = "direct-model-output" if available[cohort] else "missing"
@@ -279,31 +305,39 @@ def evaluate(library: Path, experiment: Path) -> dict[str, Any]:
                 "stale_reference": stale_reference,
                 "metrics": compare(candidate_path.read_text(encoding="utf-8"), reference),
             }
-            if cohort == "web":
-                metadata = load_json(candidate_path.with_name("web.meta.json"))
+            if cohort in WEB_COHORTS:
+                metadata = load_json(candidate_path.with_suffix(".meta.json"))
                 evidence = metadata.get("evidence_context", {})
                 record["generation"] = {
                     "source": metadata.get("source"),
                     "model_id": metadata.get("model_id"),
                     "provider": metadata.get("provider"),
                     "routing_tier": metadata.get("routing_tier"),
+                    "evidence_mode": metadata.get("evidence_mode"),
+                    "evidence_snapshot_sha256": metadata.get("evidence_snapshot_sha256"),
                     "evidence_status": evidence.get("status"),
                     "evidence_reference_count": evidence.get("reference_count"),
                 }
             records.append(record)
         direct_input_status = case.get("direct_input_status", "needs-review")
-        pair_ready = all(available.values())
+        pair_ready = available.get("direct", False) and available.get("web-current", False)
+        three_way_ready = pair_ready and available.get("web-no-rag", False)
         readiness.append({
             "entry_id": entry_id,
             "difficulty_level": case["difficulty_level"],
             "direct": available.get("direct", False),
-            "web": available.get("web", False),
+            "web_no_rag": available.get("web-no-rag", False),
+            "web_current": available.get("web-current", False),
+            "web_candidate": available.get("web-candidate", False),
             "pair_ready": pair_ready,
+            "three_way_ready": three_way_ready,
             "comparison_ready": (
-                pair_ready and direct_input_status == "complete" and not stale_reference
+                three_way_ready and direct_input_status == "complete" and not stale_reference
             ),
             "direct_provenance": provenance.get("direct", "missing"),
-            "web_provenance": provenance.get("web", "missing"),
+            "web_no_rag_provenance": provenance.get("web-no-rag", "missing"),
+            "web_current_provenance": provenance.get("web-current", "missing"),
+            "web_candidate_provenance": provenance.get("web-candidate", "missing"),
             "direct_input_status": direct_input_status,
             "stale_reference": stale_reference,
         })
@@ -342,9 +376,12 @@ def evaluate(library: Path, experiment: Path) -> dict[str, Any]:
         "readiness": {
             "case_count": len(readiness),
             "pair_ready_count": sum(item["pair_ready"] for item in readiness),
+            "three_way_ready_count": sum(item["three_way_ready"] for item in readiness),
             "comparison_ready_count": sum(item["comparison_ready"] for item in readiness),
             "missing_direct": sum(not item["direct"] for item in readiness),
-            "missing_web": sum(not item["web"] for item in readiness),
+            "missing_web_no_rag": sum(not item["web_no_rag"] for item in readiness),
+            "missing_web_current": sum(not item["web_current"] for item in readiness),
+            "missing_web_candidate": sum(not item["web_candidate"] for item in readiness),
             "stale_reference_count": sum(item["stale_reference"] for item in readiness),
             "cases": readiness,
         },
@@ -361,8 +398,12 @@ def print_markdown(report: dict[str, Any]) -> None:
     ready = report["readiness"]
     print(
         f"- pair readiness: {ready['pair_ready_count']}/{ready['case_count']}; "
+        f"three-way ready={ready['three_way_ready_count']}; "
         f"comparison ready={ready['comparison_ready_count']}; "
-        f"missing direct={ready['missing_direct']}; missing web={ready['missing_web']}"
+        f"missing direct={ready['missing_direct']}; "
+        f"missing no-RAG={ready['missing_web_no_rag']}; "
+        f"missing current-RAG={ready['missing_web_current']}; "
+        f"missing candidate-RAG={ready['missing_web_candidate']}"
     )
     print()
     print("| difficulty | cohort | n | option match | formula recall | critical correction | semantic diff |")

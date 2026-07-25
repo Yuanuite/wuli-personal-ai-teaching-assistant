@@ -14,6 +14,36 @@ SPEC.loader.exec_module(web_run)
 
 
 class PairedAnswerWebRunTest(unittest.TestCase):
+    def test_disabled_evidence_snapshot_contains_no_historical_reference(self):
+        original = web_run.teacher_server.agent_evidence_payload
+        web_run.teacher_server.agent_evidence_payload = lambda *_args, **_kwargs: {
+            "schema_version": 1,
+            "kind": "agent-evidence",
+            "task_type": "analysis.generate",
+            "status": "ready",
+            "references": [{"reference": "similar-1", "title": "历史题"}],
+            "instructions": ["历史证据只能辅助核对。"],
+            "context_budget": {
+                "candidate_reference_count": 1,
+                "included_reference_count": 1,
+                "omitted_reference_count": 0,
+                "serialized_chars": 500,
+            },
+        }
+        try:
+            snapshot = web_run.fixed_evidence_snapshot(
+                Path("/tmp/entries/entry-1"),
+                "disabled",
+            )
+        finally:
+            web_run.teacher_server.agent_evidence_payload = original
+
+        self.assertEqual(snapshot["status"], "disabled-for-benchmark")
+        self.assertEqual(snapshot["references"], [])
+        self.assertEqual(snapshot["context_budget"]["included_reference_count"], 0)
+        self.assertEqual(snapshot["context_budget"]["omitted_reference_count"], 1)
+        self.assertNotIn("历史题", json.dumps(snapshot, ensure_ascii=False))
+
     def test_prepare_workspace_isolated_and_keeps_rag_snapshot(self):
         with tempfile.TemporaryDirectory() as temp_name:
             root = Path(temp_name)

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-26T02:33:22+08:00",
+  "generated_at": "2026-07-26T03:09:41+08:00",
   "questions": [
     {
       "id": "question-83c1f4acef52",
@@ -17,7 +17,7 @@
       "pdf": "questions/question-83c1f4acef52/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-24",
-      "published_at": "2026-07-26T02:33:22+08:00",
+      "published_at": "2026-07-26T03:09:41+08:00",
       "difficulty": {
         "score": 30,
         "level": "较易",
@@ -78,9 +78,9 @@
       "pdf": "questions/question-97f4853dc42f/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-24",
-      "published_at": "2026-07-26T02:33:17+08:00",
+      "published_at": "2026-07-26T03:09:37+08:00",
       "difficulty": {
-        "score": 45,
+        "score": 46,
         "level": "中等",
         "summary": "中等：主要难点在题型距离与表征转换、运算与规范表达。",
         "dimensions": [
@@ -99,7 +99,7 @@
           {
             "id": "type_distance",
             "label": "题型距离与表征转换",
-            "score": 3.2,
+            "score": 3.5,
             "core_judgment": "需在时序图、轨迹、坐标或条件模型之间转换，并完成迁移或反推。"
           },
           {
@@ -138,7 +138,7 @@
       "pdf": "questions/question-1edcc8241bf2/带答案错题.pdf",
       "simulation": "questions/question-1edcc8241bf2/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:33:13+08:00",
+      "published_at": "2026-07-26T03:09:34+08:00",
       "difficulty": {
         "score": 63,
         "level": "较难",
@@ -198,7 +198,7 @@
       "pdf": "questions/question-4a1ddcd4877a/带答案错题.pdf",
       "simulation": "questions/question-4a1ddcd4877a/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:33:09+08:00",
+      "published_at": "2026-07-26T03:09:30+08:00",
       "difficulty": {
         "score": 72,
         "level": "较难",
@@ -258,7 +258,7 @@
       "pdf": "questions/question-ad7a812f59c4/带答案错题.pdf",
       "simulation": "questions/question-ad7a812f59c4/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:33:05+08:00",
+      "published_at": "2026-07-26T03:09:27+08:00",
       "difficulty": {
         "score": 40,
         "level": "较易",
@@ -318,7 +318,7 @@
       "pdf": "questions/question-705469ef2f1a/带答案错题.pdf",
       "simulation": "questions/question-705469ef2f1a/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:33:01+08:00",
+      "published_at": "2026-07-26T03:09:23+08:00",
       "difficulty": {
         "score": 64,
         "level": "较难",
@@ -379,7 +379,7 @@
       "pdf": "questions/question-e56b48a68a30/带答案错题.pdf",
       "simulation": "questions/question-e56b48a68a30/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:32:57+08:00",
+      "published_at": "2026-07-26T03:09:20+08:00",
       "difficulty": {
         "score": 69,
         "level": "较难",
@@ -439,7 +439,7 @@
       "pdf": "questions/question-ccdf4cfc702c/带答案错题.pdf",
       "simulation": "questions/question-ccdf4cfc702c/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:32:53+08:00",
+      "published_at": "2026-07-26T03:09:16+08:00",
       "difficulty": {
         "score": 93,
         "level": "挑战",
@@ -500,7 +500,7 @@
       "pdf": "questions/question-ee6ad43d9d37/带答案错题.pdf",
       "simulation": "questions/question-ee6ad43d9d37/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:32:38+08:00",
+      "published_at": "2026-07-26T03:09:02+08:00",
       "difficulty": {
         "score": 70,
         "level": "较难",
@@ -560,7 +560,7 @@
       "pdf": "questions/question-5ae5a537378a/带答案错题.pdf",
       "simulation": "questions/question-5ae5a537378a/simulation.html",
       "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T02:32:33+08:00",
+      "published_at": "2026-07-26T03:08:59+08:00",
       "difficulty": {
         "score": 70,
         "level": "较难",
@@ -619,7 +619,7 @@
       "pdf": "questions/question-fc379ca42475/带答案错题.pdf",
       "simulation": "questions/question-fc379ca42475/simulation.html",
       "uploaded_at": "2026-07-20",
-      "published_at": "2026-07-26T02:32:29+08:00",
+      "published_at": "2026-07-26T03:08:55+08:00",
       "difficulty": {
         "score": 61,
         "level": "较难",
@@ -677,7 +677,7 @@
       "pdf": "questions/question-68c8b4e26b37/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:32:23+08:00",
+      "published_at": "2026-07-26T03:08:50+08:00",
       "difficulty": {
         "score": 27,
         "level": "较易",
@@ -735,7 +735,7 @@
       "pdf": "questions/question-74ea50e28b41/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:32:18+08:00",
+      "published_at": "2026-07-26T03:08:46+08:00",
       "difficulty": {
         "score": 24,
         "level": "较易",
@@ -793,7 +793,7 @@
       "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
       "simulation": "questions/question-f703825b69fd/simulation.html",
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:32:14+08:00",
+      "published_at": "2026-07-26T03:08:42+08:00",
       "difficulty": {
         "score": 42,
         "level": "中等",
@@ -852,7 +852,7 @@
       "pdf": "questions/question-baa157722303/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:32:09+08:00",
+      "published_at": "2026-07-26T03:08:38+08:00",
       "difficulty": {
         "score": 39,
         "level": "较易",
@@ -911,7 +911,7 @@
       "pdf": "questions/question-4b77c1556367/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:32:04+08:00",
+      "published_at": "2026-07-26T03:08:33+08:00",
       "difficulty": {
         "score": 40,
         "level": "较易",
@@ -970,7 +970,7 @@
       "pdf": "questions/question-af67027e2f4e/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:58+08:00",
+      "published_at": "2026-07-26T03:08:28+08:00",
       "difficulty": {
         "score": 37,
         "level": "较易",
@@ -1029,7 +1029,7 @@
       "pdf": "questions/question-b1625e7b2228/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:52+08:00",
+      "published_at": "2026-07-26T03:08:22+08:00",
       "difficulty": {
         "score": 32,
         "level": "较易",
@@ -1088,7 +1088,7 @@
       "pdf": "questions/question-5a662eb6b6c7/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:48+08:00",
+      "published_at": "2026-07-26T03:08:19+08:00",
       "difficulty": {
         "score": 30,
         "level": "较易",
@@ -1146,7 +1146,7 @@
       "pdf": "questions/question-7c895bdfc8a3/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:45+08:00",
+      "published_at": "2026-07-26T03:08:16+08:00",
       "difficulty": {
         "score": 31,
         "level": "较易",
@@ -1204,7 +1204,7 @@
       "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
       "simulation": "questions/question-1ffa341ff73a/simulation.html",
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:39+08:00",
+      "published_at": "2026-07-26T03:08:10+08:00",
       "difficulty": {
         "score": 52,
         "level": "中等",
@@ -1262,7 +1262,7 @@
       "pdf": "questions/question-cf1c40d5261d/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-19",
-      "published_at": "2026-07-26T02:31:32+08:00",
+      "published_at": "2026-07-26T03:08:04+08:00",
       "difficulty": {
         "score": 35,
         "level": "较易",
@@ -1321,7 +1321,7 @@
       "pdf": "questions/question-212ecbad04d3/带答案错题.pdf",
       "simulation": "questions/question-212ecbad04d3/simulation.html",
       "uploaded_at": "2026-07-17",
-      "published_at": "2026-07-26T02:31:29+08:00",
+      "published_at": "2026-07-26T03:08:01+08:00",
       "difficulty": {
         "score": 62,
         "level": "较难",
