@@ -28,12 +28,56 @@ Use `model_type: piecewise-field-particle-2d` for planar charged-particle proces
 - `simulation.viewport` declares finite `x_min`, `x_max`, `y_min`, and `y_max` bounds.
 - `simulation.particles` declares every particle referenced by a trajectory, including its stable `id`, label, color, and optional charge sign.
 - `regions` may use `rect`, `circle`, `half-plane`, or `polygon` geometry. Electric regions declare a direction vector; magnetic regions declare `direction: in|out`.
-- `trajectory.segments` uses stable IDs and one of `line`, `arc`, or `polyline`. Every segment declares `particle_id`, `start_time`, and `end_time`; optional `case_ids` restrict it to selected cases.
-- Line segments declare `start` and `end`; arc segments declare `center`, positive `radius`, `start_angle_deg`, `end_angle_deg`, and `clockwise`; polylines contain at least two sampled points.
+- `trajectory.segments` uses stable IDs and a trajectory primitive type. Every segment declares `particle_id`, `kinematics.start_time`, `kinematics.end_time`, and optional `case_ids`, `force_direction`, and `label`.
 - `event_model.timeline[*].time` may be a single non-negative number or a map from case ID to time. Each case also declares a positive `duration`; referenced segment and event IDs must exist.
 - A reflection, field switch, collision, board crossing, capture, or final hit must appear as a timeline event rather than being inferred only from the drawing. Cases that pause automatically declare the event IDs explicitly.
 
 The validator checks geometry references, time ordering, per-case event coverage, particle references, viewport bounds, and stopping-event reachability. It does not infer Lorentz-force correctness from a plausible-looking curve, so the specialist must still independently verify direction, radius, speed, and earliest-event claims.
+
+### 2D trajectory types
+
+| type | required geometry fields | sampler formula | use case |
+|------|------------------------|----------------|----------|
+| `line` | `start`, `end` | linear interpolation | uniform motion, straight segment |
+| `arc` | `center`, `radius`, `start_deg`, `end_deg` | $p(a) = c + r(\hat u\cos a + \hat v\sin a)$ where $a\in[\text{start\_deg},\text{end\_deg}]$ in degrees | circular motion in a magnetic field |
+| `polyline` | `points` (array of [x,y]) | pre-sampled points | hand-crafted or numerical trajectory |
+| `parabola` | `start`, `velocity` [vx,vy], `acceleration` [ax,ay], `duration` | $p(t) = p_0 + \vec v\,t + \frac12\vec a\,t^2$, $t\in[0,\text{duration}]$ | uniform acceleration / projectile motion in an electric field |
+
+**Parabola example** (charged particle in a uniform electric field):
+```json
+{
+  "id": "projectile",
+  "type": "parabola",
+  "geometry": {
+    "start": [0, 0],
+    "velocity": [3.14, 0],
+    "acceleration": [0, 8],
+    "duration": 0.5
+  }
+}
+```
+
+The renderer samples 120 points from the analytic formula. Velocity and force arrows are computed from the tangent, so they update smoothly throughout playback.
+
+**Arc direction convention**: start_deg and end_deg are in degrees. The arc sweeps from start to end in the **increasing angle** direction (counter-clockwise in screen coordinates). For clockwise arcs, swap start/end or use start_deg > end_deg (e.g., start_deg=180, end_deg=-60 sweeps 240° clockwise).
+
+### Time-dependent field direction
+
+When a region's field direction changes with time (e.g., square-wave electric field), override `region.field.vector` at the start of each render frame:
+
+```javascript
+// Inside draw(), before drawShape loop:
+const pField = model.regions.find(r => r.id === "plate-field");
+if (pField && time >= 1)
+    pField.field.vector = ((time - 1) % 1) < 0.5 ? [0, 1] : [0, -1];
+```
+
+The pattern is:
+1. Identify the region by stable `id`.
+2. Check that time has entered the relevant window.
+3. Use a periodic condition (`(time - offset) % period < threshold`) to toggle direction.
+4. The `fieldSymbol` function reads `region.field.vector` each frame, so the arrow updates visually.
+5. Timeline events should mark each switch point (e.g., `mid-plate-1` at the first transition).
 
 ## Piecewise 3D field model
 

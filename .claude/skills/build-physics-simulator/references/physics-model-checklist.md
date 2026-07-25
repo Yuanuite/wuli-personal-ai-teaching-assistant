@@ -39,6 +39,32 @@ Check the following separately:
 
 Do not draw a visually convenient short arc if the velocity direction requires the long arc outside the boundary.
 
+## Parabolic trajectory (electric field)
+
+When a charged particle passes through a uniform electric field, use `type: "parabola"`:
+
+```json
+{
+  "id": "plate-pass",
+  "type": "parabola",
+  "geometry": {
+    "start": [0, 0],
+    "velocity": [vx, vy],
+    "acceleration": [0, ay],
+    "duration": 1.0
+  }
+}
+```
+
+Check the following separately:
+
+- $\vec a = q\vec E / m$ — sign and magnitude consistent with field vector and charge;
+- $\vec v_0$ is the velocity at the entrance, not the average;
+- end point $p_0 + \vec v_0 t + \frac12 \vec a t^2$ matches the exit coordinate;
+- tangent is continuous at the entrance and exit (compare with adjacent segment's force direction);
+- when a square-wave field switches mid-trajectory, split into two parabola segments (one per constant acceleration direction), each with own `start`, `velocity`, `acceleration`, and `duration`;
+- the switch point appears as a timeline event so the pause/scrub timeline shows it correctly.
+
 ## Radial electric region
 
 - Draw $\vec E$ in its stated radial direction.

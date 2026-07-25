@@ -57,10 +57,12 @@ class DifficultyAssessmentTest(unittest.TestCase):
 
     def test_calibration_sample_scores_93_with_reviewed_process_evidence(self):
         fixture = json.loads((ROOT / "teacher-console/tests/fixtures/difficulty_calibration.json").read_text(encoding="utf-8"))["cases"][0]
-        entry = ROOT / "student-error-library" / "entries" / fixture["entry_id"]
-        record = json.loads((entry / "record.json").read_text(encoding="utf-8"))
-        model = json.loads((entry / "physics-model.json").read_text(encoding="utf-8"))
-        assessment = difficulty.auto_assess(record, (entry / "problem.md").read_text(encoding="utf-8"), (entry / "student-solution.md").read_text(encoding="utf-8"), model)
+        assessment = difficulty.auto_assess(
+            fixture["record"],
+            fixture["problem"],
+            fixture["student_solution"],
+            fixture["physics_model"],
+        )
         self.assertEqual(assessment["score"], fixture["expected"]["score"])
         self.assertEqual(assessment["level"], fixture["expected"]["level"])
         self.assertEqual([item["score"] for item in assessment["dimensions"]], fixture["expected"]["dimensions"])

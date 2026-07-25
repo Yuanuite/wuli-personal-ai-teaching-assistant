@@ -130,7 +130,7 @@ def output_contract() -> dict[str, Any]:
             "一眼识别最多三条短句，易错点最多三条，30 秒自测只写一个问题；这些辅助区不得"
             "重复详细解答或挤占关键证明。"
             "公式只使用网页可稳定渲染的 LaTeX；不要使用 \\notag、\\tag 或编号控制命令，"
-            "并在提交前检查是否出现 otag、aqquad 等反斜杠丢失残片。"
+            "并在提交前检查是否出现 otag、aqquad、gqquad 等反斜杠丢失残片。"
             "diagram.nodes 用 2–6 个短语概括解题逻辑链，程序会确定性生成 SVG。"
             "复杂电学题的图示先把实际过程抽象为等效电路：用节点短语明确电动势源、"
             "内阻、负载、测量端及其连接关系；例如不同材料圆环分别等效为感应电动势源"
@@ -177,6 +177,15 @@ def _clean_optional_list(value: Any, *, field: str) -> list[str]:
     return cleaned[:8]
 
 
+def _repair_latex_fragments(text: str) -> str:
+    """Repair unambiguous JSON/Markdown escape remnants without changing physics."""
+    # Models occasionally lose the leading backslash and prepend one stray
+    # letter (for example ``aqquad`` or ``gqquad``).  No valid prose token in
+    # these Chinese solutions uses a bare word ending in ``qquad``.
+    text = re.sub(r"(?<!\\)\b[a-z]*qquad\b", r"\\qquad", text)
+    return re.sub(r"(?m)^[ \t]*otag[ \t]*\n?", "", text)
+
+
 def student_method_errors(student: str) -> list[str]:
     """Return deterministic student-layer method and cognitive-load violations."""
     errors: list[str] = []
@@ -192,8 +201,8 @@ def student_method_errors(student: str) -> list[str]:
             errors.append(f"student_solution uses non-high-school method: {label}")
     if re.search(r"(?m)^\s*otag\s*$", student):
         errors.append("student_solution contains broken LaTeX fragment: otag")
-    if "aqquad" in student:
-        errors.append("student_solution contains broken LaTeX fragment: aqquad")
+    if re.search(r"(?<!\\)\b[a-z]*qquad\b", student):
+        errors.append("student_solution contains broken LaTeX fragment: bare qquad")
     return errors
 
 
@@ -248,14 +257,18 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     if status != "completed":
         raise ValueError("status must be completed or unsupported")
 
-    student = _clean_text(payload.get("student_solution"), field="student_solution", minimum=100)
+    student = _repair_latex_fragments(
+        _clean_text(payload.get("student_solution"), field="student_solution", minimum=100)
+    )
     missing = [heading for heading in REQUIRED_STUDENT_HEADINGS if heading not in student]
     if missing:
         raise ValueError("student_solution missing heading: " + ", ".join(missing))
     method_errors = student_method_errors(student)
     if method_errors:
         raise ValueError("; ".join(method_errors))
-    audit = _clean_text(payload.get("teacher_audit"), field="teacher_audit", minimum=30)
+    audit = _repair_latex_fragments(
+        _clean_text(payload.get("teacher_audit"), field="teacher_audit", minimum=30)
+    )
 
     raw_method_check = payload.get("method_check")
     if not isinstance(raw_method_check, dict):

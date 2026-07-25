@@ -73,3 +73,7 @@ python3 teacher-console/scripts/paired_answer_benchmark.py \
 `web.meta.json`、来源为 `teacher-console-browser-click` 且状态为 `completed` 才进入统计；
 从正式条目的历史 `.agent-baseline` 导入不能冒充本轮网页点击。报告的
 `comparison_ready` 还要求直出输入完整且教师标准答案摘要未过期。
+
+首轮分层试验、人工复核结论及检索证据计数记录在
+`student-error-library/evals/answer-paired-v1/result-summary.md`。若网页运行的
+`evidence_reference_count=0`，不得把该轮答案变化归因于 RAG。

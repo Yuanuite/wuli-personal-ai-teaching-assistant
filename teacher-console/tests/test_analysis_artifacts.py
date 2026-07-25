@@ -118,15 +118,19 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertIn("并不对应", instructions)
         self.assertIn("易错点最多三条", instructions)
 
-    def test_rejects_broken_latex_escape_fragments(self):
+    def test_repairs_unambiguous_latex_escape_fragments(self):
         payload = self.payload()
         payload["student_solution"] = payload["student_solution"].replace(
             "建立方程并求解。",
-            "$$\\begin{aligned}v&=v_0\\\\\notag\n&=2v_0\\end{aligned}$$\n\naqquad",
+            "$$\\begin{aligned}v&=v_0\\\\\notag\n&=2v_0\\end{aligned}$$\n\naqquad gqquad",
         )
 
-        with self.assertRaisesRegex(ValueError, "broken LaTeX fragment"):
-            analysis_artifacts.normalize_payload(payload)
+        normalized = analysis_artifacts.normalize_payload(payload)
+
+        self.assertNotIn("otag", normalized["student_solution"])
+        self.assertNotIn("aqquad", normalized["student_solution"])
+        self.assertNotIn("gqquad", normalized["student_solution"])
+        self.assertEqual(normalized["student_solution"].count(r"\qquad"), 2)
 
     def test_rejects_advanced_or_overlong_student_method(self):
         payload = self.payload()

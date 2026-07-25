@@ -62,7 +62,7 @@ The teacher file contains the full student layer, followed by:
 - Make the quick answer, event table, derivation, and simulation agree exactly.
 - State sign conventions such as $U_{ab}=\varphi_a-\varphi_b$ before use.
 - Use `$...$` inline and `$$...$$` for display math; never use `\(...\)`. Do not use `\dfrac` or `\tfrac` inline. Put `\boxed` only in display math.
-- Do not use `\notag`, `\tag`, or equation-number controls in generated Markdown. Before submission, reject broken escape remnants such as a standalone `otag` line or `aqquad`.
+- Do not use `\notag`, `\tag`, or equation-number controls in generated Markdown. Before submission, repair unambiguous escape remnants such as a standalone `otag` line or bare `qquad` variants (`aqquad`, `gqquad`); reject the candidate if a remnant cannot be repaired safely.
 - Show all physically or geometrically distinct cases and explain why no others exist.
 - Keep the student main line to at most 5 numbered steps when possible. Move alternate derivations and exhaustive checks to the teacher layer.
 - Treat five steps as a ceiling, not a target. Merge mechanical substitutions into one relation, and keep only steps that introduce a new physical idea or necessary state transition.
