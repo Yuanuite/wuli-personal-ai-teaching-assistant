@@ -1872,7 +1872,10 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 with visualization_lock(entry.name):
                     result = process_uploads.prepare_visualization(
-                        LIBRARY, entry.name, str(data.get("runtime_check", "auto"))
+                        LIBRARY,
+                        entry.name,
+                        str(data.get("runtime_check", "auto")),
+                        bool(data.get("force", False)),
                     )
         elif action == "approve-visualization":
             current_state = process_uploads.pipeline_state(entry)

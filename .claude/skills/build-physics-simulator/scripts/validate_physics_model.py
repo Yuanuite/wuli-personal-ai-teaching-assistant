@@ -12,23 +12,26 @@ from pathlib import Path
 SCHEMA_PATH = Path(__file__).resolve().parent.parent / "references" / "physics-model.schema.json"
 
 
-def validate_schema(data: dict) -> list[str]:
+def validate_schema(data: dict) -> tuple[list[str], list[str]]:
     try:
         from jsonschema import Draft202012Validator
     except ImportError:
-        return ["jsonschema dependency is unavailable; structural validation was not run"]
+        return [], [
+            "jsonschema dependency is unavailable; JSON Schema validation was skipped, "
+            "but deterministic model-type validation still ran"
+        ]
 
     try:
         schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)
     except Exception as exc:
-        return [f"cannot load physics-model.schema.json: {exc}"]
+        return [f"cannot load physics-model.schema.json: {exc}"], []
 
     errors = []
     for error in sorted(Draft202012Validator(schema).iter_errors(data), key=lambda item: list(item.absolute_path)):
         location = ".".join(str(part) for part in error.absolute_path) or "<root>"
         errors.append(f"schema {location}: {error.message}")
-    return errors
+    return errors, []
 
 
 def near_p(angle: float) -> bool:
@@ -235,6 +238,18 @@ def validate_piecewise_particle_2d(data: dict, errors: list[str]) -> None:
     case_ids = {str(case.get("id")) for case in cases if isinstance(case, dict) and case.get("id")}
     if len(case_ids) != len(cases):
         errors.append("piecewise-field-particle-2d: every case needs a unique id")
+    for case in cases:
+        case_id = str(case.get("id", "<case>"))
+        case_stop_id = case.get("stop_event_id")
+        if not case_stop_id:
+            continue
+        matching_event = next((event for event in timeline if event.get("id") == case_stop_id), None)
+        if matching_event is None:
+            errors.append(f"{case_id}: stop_event_id is not in timeline")
+        elif case_id not in (matching_event.get("case_ids") or case_ids):
+            errors.append(f"{case_id}: stop_event_id must reference an event in the same case")
+        if case_stop_id not in set(data.get("simulation", {}).get("pause_event_ids", [])):
+            errors.append(f"{case_id}: stop_event_id should be a pause event")
 
     region_ids = {str(region.get("id")) for region in data.get("regions", [])}
     supported_shapes = {"rect", "circle", "half-plane", "polygon"}
@@ -511,8 +526,7 @@ def main() -> None:
     parser.add_argument("model", type=Path)
     args = parser.parse_args()
     data = json.loads(args.model.read_text(encoding="utf-8"))
-    errors: list[str] = validate_schema(data)
-    warnings: list[str] = []
+    errors, warnings = validate_schema(data)
 
     event_model = data.get("event_model", {})
     timeline = sorted(event_model.get("timeline", []), key=lambda item: item.get("order", 0))

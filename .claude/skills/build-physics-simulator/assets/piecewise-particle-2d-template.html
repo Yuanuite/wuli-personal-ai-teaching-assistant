@@ -108,9 +108,12 @@
   const colors=()=>{const s=getComputedStyle(root),v=n=>s.getPropertyValue(n).trim();return{bg:v('--background')||'#fff',fg:v('--foreground')||'#222',muted:v('--muted-foreground')||'#667',border:v('--border')||'#bbb',one:v('--viz-series-1')||'#2783c4',two:v('--viz-series-2')||'#c87821',force:v('--viz-series-4')||'#a53b78',particle:v('--destructive')||'#d6531d'}};
   const px=value=>value/(viewScale*zoom);
   const currentCase=()=>cases.find(item=>item.id===caseId)||cases[0];
+  const currentStopId=()=>currentCase()?.stop_event_id||model.event_model.stop_event_id;
   const segments=()=>allSegments.filter(segment=>(segment.case_ids||[]).includes(caseId));
   const events=()=>timeline.filter(event=>!event.case_ids||(event.case_ids||[]).includes(caseId));
-  const totalTime=()=>Math.max(...events().map(event=>Number(event.time)),...segments().map(segment=>Number(segment.kinematics.end_time)));
+  const timeBounds=()=>{const values=[...events().map(event=>Number(event.time)),...segments().flatMap(segment=>[Number(segment.kinematics.start_time),Number(segment.kinematics.end_time)])].filter(Number.isFinite);return{start:Math.min(...values),end:Math.max(...values)}};
+  const totalTime=()=>{const bounds=timeBounds();return Math.max(bounds.end-bounds.start,1e-9)};
+  const currentTime=()=>{const bounds=timeBounds();return bounds.start+progress*(bounds.end-bounds.start)};
 
   function sample(segment,samples=120){
     const g=segment.geometry;
@@ -159,19 +162,19 @@
       const g=segment.geometry;ctx.strokeStyle=particleById.get(segment.particle_id)?.color||c.muted;ctx.lineWidth=px(1);ctx.setLineDash([px(5),px(4)]);ctx.globalAlpha=.45;ctx.beginPath();ctx.arc(g.center[0],g.center[1],g.radius,0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1;ctx.setLineDash([]);ctx.fillStyle=c.muted;ctx.beginPath();ctx.arc(g.center[0],g.center[1],px(3),0,Math.PI*2);ctx.fill();if(g.radius_label)label(g.radius_label,g.center[0],g.center[1]+.18,c.muted)}
   }
   function draw(){
-    const m=metrics(),c=colors(),scale=Math.min((m.w-34)/(viewport.xmax-viewport.xmin),(m.h-34)/(viewport.ymax-viewport.ymin)),cx=(viewport.xmin+viewport.xmax)/2,cy=(viewport.ymin+viewport.ymax)/2,time=progress*totalTime();viewScale=scale;
+    const m=metrics(),c=colors(),scale=Math.min((m.w-34)/(viewport.xmax-viewport.xmin),(m.h-34)/(viewport.ymax-viewport.ymin)),cx=(viewport.xmin+viewport.xmax)/2,cy=(viewport.ymin+viewport.ymax)/2,time=currentTime();viewScale=scale;
     ctx.fillStyle=c.bg;ctx.fillRect(0,0,m.w,m.h);ctx.save();ctx.translate(m.w/2+panX,m.h/2+panY);ctx.scale(scale*zoom,-scale*zoom);ctx.translate(-cx,-cy);
     for(const region of model.regions)drawShape(region,c);
     for(const segment of segments()){const color=particleById.get(segment.particle_id)?.color||c.one;ctx.save();ctx.globalAlpha=.18;stroke(segment.points,color,1.4);ctx.restore();const f=segmentFraction(segment,time);if(f>0)stroke(segment.points,color,3.1,f)}
     if(layer==='geometry')drawGeometry(c);
     for(const particle of particles){const state=particleState(particle.id,time);if(!state)continue;const p=state.point,color=particleById.get(particle.id).color;ctx.fillStyle=color;ctx.beginPath();ctx.arc(p.x,p.y,px(7),0,Math.PI*2);ctx.fill();label(particle.label||particle.id,p.x,p.y+px(16),color);if(layer==='field'){arrow(p,{x:p.x+state.tangent.x*px(34),y:p.y+state.tangent.y*px(34)},color,'v');const force=state.segment.force_direction;if(Array.isArray(force))arrow(p,{x:p.x+force[0]*px(30),y:p.y+force[1]*px(30)},c.force,'F')}}
-    for(const event of events().filter(event=>Array.isArray(event.position))){const hot=event.id===model.event_model.stop_event_id;ctx.fillStyle=hot?c.force:c.muted;ctx.beginPath();ctx.arc(event.position[0],event.position[1],px(hot?5:3),0,Math.PI*2);ctx.fill();if(layer==='geometry'||hot)label(event.short_label||event.label,event.position[0],event.position[1]-.17,hot?c.force:c.muted)}
+    for(const event of events().filter(event=>Array.isArray(event.position))){const hot=event.id===currentStopId();ctx.fillStyle=hot?c.force:c.muted;ctx.beginPath();ctx.arc(event.position[0],event.position[1],px(hot?5:3),0,Math.PI*2);ctx.fill();if(layer==='geometry'||hot)label(event.short_label||event.label,event.position[0],event.position[1]-.17,hot?c.force:c.muted)}
     ctx.restore();
-    const event=[...events()].reverse().find(item=>time+1e-8>=item.time)||events()[0],active=segments().find(item=>time>=item.kinematics.start_time-1e-8&&time<=item.kinematics.end_time+1e-8)||segments().at(-1);
+    const event=[...events()].reverse().find(item=>time+1e-8>=item.time)||events()[0],orderedSegments=[...segments()].sort((a,b)=>Number(a.kinematics.start_time)-Number(b.kinematics.start_time)),active=orderedSegments.find(item=>time<=Number(item.kinematics.end_time)+1e-8)||orderedSegments.at(-1);
     root.querySelector('#phase-piecewise').textContent=active?.label||active?.id||'等待';root.querySelector('#event-piecewise').textContent=event?.label||'';root.querySelector('#result-piecewise').textContent=currentCase().conclusion||'';root.querySelector('#progress-piecewise').value=Math.round(progress*1000);root.querySelector('#progress-label-piecewise').textContent=`${Math.round(progress*100)}%`;root.querySelector('#duration-label-piecewise').textContent=`${root.querySelector('#duration-piecewise').value} 秒`;
   }
   function setPlaying(value){playing=value;lastTime=0;root.querySelector('#play-piecewise').textContent=value?'暂停':'播放'}
-  function stops(){const max=totalTime();return events().filter(event=>pauseIds.has(event.id)).map(event=>event.time/max)}
+  function stops(){const bounds=timeBounds(),duration=totalTime();return events().filter(event=>pauseIds.has(event.id)).map(event=>(event.time-bounds.start)/duration)}
   function jump(direction){const values=stops(),eps=.002,target=direction>0?values.find(x=>x>progress+eps):[...values].reverse().find(x=>x<progress-eps);if(target!==undefined){progress=target;lastPause=values.indexOf(target);setPlaying(false);draw()}}
   function animate(ts){if(playing){if(!lastTime)lastTime=ts;const old=progress;progress+=(ts-lastTime)/(Number(root.querySelector('#duration-piecewise').value)*1000);lastTime=ts;const values=stops();if(root.querySelector('#auto-pause-piecewise').checked){const hit=values.findIndex((x,i)=>i!==lastPause&&x>old+1e-5&&x<=progress);if(hit>=0){progress=values[hit];lastPause=hit;setPlaying(false)}}if(progress>=1){progress=1;setPlaying(false)}draw()}requestAnimationFrame(animate)}
   root.querySelector('#piecewise-title').textContent=model.title;

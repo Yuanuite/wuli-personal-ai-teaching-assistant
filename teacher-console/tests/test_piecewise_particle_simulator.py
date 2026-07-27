@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -169,6 +170,69 @@ class PiecewiseParticleSimulatorTest(unittest.TestCase):
         self.assertTrue(Path(report["artifacts"]["html"]).exists())
         self.assertTrue(Path(report["artifacts"]["zip"]).exists())
         self.assertEqual(report["simulator_validation"]["errors"], [])
+
+    def test_case_specific_stop_event_is_rendered_and_validated(self):
+        fixture = self.fixture()
+        fixture["event_model"]["cases"][0]["stop_event_id"] = "end"
+        self.model.write_text(json.dumps(fixture, ensure_ascii=False), encoding="utf-8")
+
+        validated = subprocess.run(
+            [sys.executable, str(SKILL / "scripts" / "validate_physics_model.py"), str(self.model)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(validated.returncode, 0, validated.stdout + validated.stderr)
+
+        builder = load_builder()
+        report = builder.build(
+            self.model,
+            self.entry,
+            self.root / "simulation-case-stop",
+            "physics-simulator",
+            "二维分段场粒子运动",
+            False,
+            "skip",
+        )
+        html = Path(report["artifacts"]["html"]).read_text(encoding="utf-8")
+        self.assertIn("currentCase()?.stop_event_id||model.event_model.stop_event_id", html)
+        self.assertIn("bounds.start+progress*(bounds.end-bounds.start)", html)
+        self.assertIn(
+            "orderedSegments.find(item=>time<=Number(item.kinematics.end_time)+1e-8)",
+            html,
+        )
+
+    def test_case_specific_stop_event_must_belong_to_same_case(self):
+        fixture = self.fixture()
+        fixture["event_model"]["timeline"][-1]["case_ids"] = ["other"]
+        fixture["event_model"]["cases"][0]["stop_event_id"] = "end"
+        self.model.write_text(json.dumps(fixture, ensure_ascii=False), encoding="utf-8")
+
+        validated = subprocess.run(
+            [sys.executable, str(SKILL / "scripts" / "validate_physics_model.py"), str(self.model)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(validated.returncode, 0)
+        self.assertIn("stop_event_id must reference an event in the same case", validated.stdout)
+
+    def test_validator_degrades_when_jsonschema_is_unavailable(self):
+        blocker = self.root / "without-jsonschema"
+        blocker.mkdir()
+        (blocker / "jsonschema.py").write_text(
+            'raise ImportError("jsonschema intentionally unavailable")\n',
+            encoding="utf-8",
+        )
+        validated = subprocess.run(
+            [sys.executable, str(SKILL / "scripts" / "validate_physics_model.py"), str(self.model)],
+            text=True,
+            capture_output=True,
+            check=False,
+            env={**os.environ, "PYTHONPATH": str(blocker)},
+        )
+        self.assertEqual(validated.returncode, 0, validated.stdout + validated.stderr)
+        self.assertIn("deterministic model-type validation still ran", validated.stdout)
 
 
 if __name__ == "__main__":

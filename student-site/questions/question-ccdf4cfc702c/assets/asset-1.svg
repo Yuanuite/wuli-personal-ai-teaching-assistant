@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="790" viewBox="0 0 960 790" role="img" aria-labelledby="title desc">
   <title id="title">粒子分段运动轨迹与接收器命中示意图</title>
-  <desc id="desc">上图为零时刻释放粒子的三段电场运动和三段半圆磁场运动，下图为二分之一个时间单位释放的粒子在九个二分之一个时间单位命中接收器的轨迹。</desc>
+  <desc id="desc">上图为零时刻释放粒子的分段运动；中图为二分之一个时间单位释放的第一条命中轨迹；下图为十三个三分之一个时间单位释放并在六个时间单位以后命中的第二条轨迹。</desc>
   <defs>
     <marker id="axisArrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
       <path d="M0,0 L8,4 L0,8 Z" fill="#475569"/>
@@ -18,12 +18,13 @@
       .electric{stroke:#f59e0b;stroke-width:5;fill:none;stroke-linecap:round}
       .magnetic{stroke:#2563eb;stroke-width:5;fill:none;stroke-linecap:round}
       .capture{stroke:#dc2626;stroke-width:5;fill:none;stroke-linecap:round}
+      .capture2{stroke:#7c3aed;stroke-width:5;fill:none;stroke-linecap:round}
       .point{fill:#0f172a}.key{fill:#dc2626}
     </style>
   </defs>
-  <rect width="960" height="560" rx="18" fill="#f8fafc"/>
+  <rect width="960" height="790" rx="18" fill="#f8fafc"/>
   <text x="480" y="34" text-anchor="middle" font-size="22" font-weight="700">交替电、磁场中的粒子轨迹（关键坐标用 r 表示）</text>
-  <text x="480" y="57" text-anchor="middle" class="small">橙色：电场阶段　蓝色：磁场半圆　红色：被接收粒子的轨迹</text>
+  <text x="480" y="57" text-anchor="middle" class="small">橙色：电场阶段　蓝色：磁场半圆　红/紫色：两条被接收轨迹</text>
 
   <!-- t=0 particle -->
   <rect class="panel" x="28" y="76" width="904" height="220" rx="14"/>
@@ -82,4 +83,31 @@
   <text x="699" y="425" class="small">τ = πm/(qB₀)</text>
   <text x="699" y="450" class="small">V = πE₀/B₀</text>
   <text x="699" y="475" class="small">r = V/ω = πE₀m/(qB₀²)</text>
+
+  <!-- second captured particle after 6τ -->
+  <rect class="panel" x="28" y="550" width="904" height="214" rx="14"/>
+  <text x="48" y="576" class="label">③ 13τ/3 释放的粒子（继续追踪 6τ 后的场）</text>
+  <line class="axis" x1="70" y1="737" x2="620" y2="737" marker-end="url(#axisArrow)"/>
+  <line class="axis" x1="70" y1="749" x2="70" y2="590" marker-end="url(#axisArrow)"/>
+  <text x="628" y="742" class="small">x</text><text x="61" y="592" class="small">y</text>
+  <!-- origin (100,732), 90 px/r horizontally and 48 px/r vertically -->
+  <path class="capture2" d="M100 732 Q100 682 100 631"/>
+  <path class="capture2" d="M100 631 C100 525 460 525 460 631"/>
+  <path class="capture2" d="M460 631 Q460 653 460 694"/>
+  <circle class="point" cx="100" cy="732" r="4"/>
+  <circle class="point" cx="100" cy="631" r="4"/>
+  <circle class="point" cx="460" cy="631" r="4"/>
+  <circle cx="460" cy="694" r="7" fill="#7c3aed"/>
+  <line class="guide" x1="460" y1="694" x2="460" y2="737"/>
+  <line class="guide" x1="70" y1="694" x2="460" y2="694"/>
+  <text x="86" y="752" class="small">O</text>
+  <text x="74" y="625" class="small">5τ</text>
+  <text x="444" y="622" class="small">6τ</text>
+  <text x="470" y="690" class="label" fill="#7c3aed">M(4r, πr/4)</text>
+  <text x="445" y="754" class="small">4r</text>
+  <text x="75" y="688" class="small">πr/4</text>
+  <text x="560" y="616" class="small">6τ～7τ：4E₀ 电场</text>
+  <text x="560" y="642" class="small">z = 1/2 − √6/12</text>
+  <text x="560" y="670" class="label" fill="#7c3aed">第一次到达即被捕获</text>
+  <text x="560" y="700" class="small">随后 7τ～8τ 才进入 B₀ 段</text>
 </svg>

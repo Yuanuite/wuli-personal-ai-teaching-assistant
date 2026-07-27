@@ -30,9 +30,12 @@ Use `model_type: piecewise-field-particle-2d` for planar charged-particle proces
 - `regions` may use `rect`, `circle`, `half-plane`, or `polygon` geometry. Electric regions declare a direction vector; magnetic regions declare `direction: in|out`.
 - `trajectory.segments` uses stable IDs and a trajectory primitive type. Every segment declares `particle_id`, `kinematics.start_time`, `kinematics.end_time`, and optional `case_ids`, `force_direction`, and `label`.
 - `event_model.timeline[*].time` may be a single non-negative number or a map from case ID to time. Each case also declares a positive `duration`; referenced segment and event IDs must exist.
+- When different cases end at different physical events, set `event_model.cases[*].stop_event_id` to an event belonging to that case and include it in `simulation.pause_event_ids`. The renderer falls back to the top-level `event_model.stop_event_id` for older models.
 - A reflection, field switch, collision, board crossing, capture, or final hit must appear as a timeline event rather than being inferred only from the drawing. Cases that pause automatically declare the event IDs explicitly.
 
 The validator checks geometry references, time ordering, per-case event coverage, particle references, viewport bounds, and stopping-event reachability. It does not infer Lorentz-force correctness from a plausible-looking curve, so the specialist must still independently verify direction, radius, speed, and earliest-event claims.
+
+`jsonschema` strengthens validation when installed. If it is unavailable, the validator reports a warning and continues with deterministic common checks plus the selected model type's structural and physics checks; dependency absence alone must not make a valid local model unbuildable.
 
 ### 2D trajectory types
 

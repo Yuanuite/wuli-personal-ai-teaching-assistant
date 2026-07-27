@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-07-27T18:10:32+08:00",
+  "generated_at": "2026-07-27T23:26:48+08:00",
   "questions": [
     {
       "id": "question-83c1f4acef52",
@@ -17,47 +17,47 @@
       "pdf": "questions/question-83c1f4acef52/带答案错题.pdf",
       "simulation": null,
       "uploaded_at": "2026-07-24",
-      "published_at": "2026-07-26T03:09:41+08:00",
+      "published_at": "2026-07-27T19:47:26+08:00",
       "difficulty": {
-        "score": 56,
-        "level": "中等",
-        "summary": "中等：主要难点在题型距离与建模转换、运算与表达负荷。",
+        "score": 67,
+        "level": "较难",
+        "summary": "较难：主要难点在条件与完备性、知识整合。",
         "dimensions": [
           {
             "id": "knowledge_depth",
             "label": "知识深度",
-            "score": 3.5,
-            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → explain → explain → audit。"
+            "score": 3.3,
+            "core_judgment": "最短高中路径的必要推理深度锚点为 4 层。"
           },
           {
             "id": "knowledge_integration",
             "label": "知识整合",
-            "score": 3.0,
-            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+            "score": 3.8,
+            "core_judgment": "需要联合 4 项高中物理定律或结论。"
           },
           {
-            "id": "type_distance_modelling",
-            "label": "题型距离与建模转换",
-            "score": 4.2,
-            "core_judgment": "距离熟悉高中母题属于“隐蔽桥梁”，按固定锚点计 4.2/5。"
+            "id": "representation_modelling",
+            "label": "建模与表征转换",
+            "score": 2.8,
+            "core_judgment": "需要完成 2 项建模或表征转换。"
           },
           {
             "id": "process_state",
             "label": "过程与状态复杂度",
-            "score": 1.6,
-            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+            "score": 3.5,
+            "core_judgment": "包含 1 个物理阶段及 0 个状态转移。"
           },
           {
             "id": "calculation_expression",
             "label": "运算与表达负荷",
-            "score": 3.6,
-            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+            "score": 2.6,
+            "core_judgment": "决定性关系的局部密度与最长链形成 4 级运算负荷。"
           },
           {
             "id": "condition_completeness",
             "label": "条件与完备性",
-            "score": 0.8,
-            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+            "score": 4.0,
+            "core_judgment": "需要核对 4 项条件或完备性要求。"
           }
         ]
       }
@@ -119,6 +119,66 @@
             "label": "条件与完备性",
             "score": 1.0,
             "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-ccdf4cfc702c",
+      "title": "交替电场与磁场中带电粒子的分段运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强电场中的运动",
+        "带电粒子在匀强磁场中的圆周运动",
+        "半周期磁场运动的位移规律",
+        "静电力做功与动能变化",
+        "分段运动与事件枚举"
+      ],
+      "content": "questions/question-ccdf4cfc702c/content.md",
+      "pdf": "questions/question-ccdf4cfc702c/带答案错题.pdf",
+      "simulation": "questions/question-ccdf4cfc702c/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-27T23:26:48+08:00",
+      "difficulty": {
+        "score": 80,
+        "level": "较难",
+        "summary": "较难：主要难点在条件与完备性、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 identify → apply → apply → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 4.4,
+            "core_judgment": "需要联合 5 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 4.4,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“分支耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 4.2,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 4.4,
+            "core_judgment": "最高条件负担为全局或耦合完备性，教师审计项目数量不参与累计。"
           }
         ]
       }
@@ -420,66 +480,6 @@
             "label": "条件与完备性",
             "score": 2.7,
             "core_judgment": "最高条件负担为临界或极值，教师审计项目数量不参与累计。"
-          }
-        ]
-      }
-    },
-    {
-      "id": "question-ccdf4cfc702c",
-      "title": "交替电场与磁场中带电粒子的分段运动",
-      "subject": "高中物理",
-      "knowledge_points": [
-        "带电粒子在匀强电场中的运动",
-        "带电粒子在匀强磁场中的圆周运动",
-        "半周期磁场运动的位移规律",
-        "静电力做功与动能变化",
-        "分段运动与事件枚举"
-      ],
-      "content": "questions/question-ccdf4cfc702c/content.md",
-      "pdf": "questions/question-ccdf4cfc702c/带答案错题.pdf",
-      "simulation": "questions/question-ccdf4cfc702c/simulation.html",
-      "uploaded_at": "2026-07-22",
-      "published_at": "2026-07-26T03:09:16+08:00",
-      "difficulty": {
-        "score": 79,
-        "level": "较难",
-        "summary": "较难：主要难点在条件与完备性、知识整合。",
-        "dimensions": [
-          {
-            "id": "knowledge_depth",
-            "label": "知识深度",
-            "score": 3.4,
-            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 identify → apply → apply → audit → audit。"
-          },
-          {
-            "id": "knowledge_integration",
-            "label": "知识整合",
-            "score": 4.4,
-            "core_judgment": "需要联合 5 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
-          },
-          {
-            "id": "type_distance_modelling",
-            "label": "题型距离与建模转换",
-            "score": 3.4,
-            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
-          },
-          {
-            "id": "process_state",
-            "label": "过程与状态复杂度",
-            "score": 4.4,
-            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“分支耦合”。"
-          },
-          {
-            "id": "calculation_expression",
-            "label": "运算与表达负荷",
-            "score": 3.7,
-            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
-          },
-          {
-            "id": "condition_completeness",
-            "label": "条件与完备性",
-            "score": 4.4,
-            "core_judgment": "最高条件负担为全局或耦合完备性，教师审计项目数量不参与累计。"
           }
         ]
       }

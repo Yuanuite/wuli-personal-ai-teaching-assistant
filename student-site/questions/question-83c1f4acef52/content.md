@@ -18,10 +18,10 @@ D. $\frac{1}{4}kR^2$
 按题干 $\Delta B/\Delta t=k$ 计算，
 
 $$
-U_{AC} = \frac{\pi}{4}kR^2.
+U_{AC} = -\frac{\pi}{4}kR^2.
 $$
 
-### 没有正确答案，题目错误。
+### 正确答案为A。
 
 ## 一眼识别
 
@@ -51,22 +51,22 @@ $$
 I=I/R_{总}=\frac{\mathcal E}{2r}.
 $$
 
-圆弧 $AMC$ 是整圆周的 $1/4$。由于感生电场沿同心圆切向分布，其感生电动势大小也为整环的 $1/4$：
+圆弧 $CMA$ 是整圆周的 $1/4$。由于感生电场沿同心圆切向分布，其感生电动势大小也为整环的 $1/4$：
 
 $$
-\mathcal E_{AMC}=\frac{\mathcal E}{4}.
+\mathcal E_{CMA}=\frac{\mathcal E}{4}.
 $$
 
 声明电压定义为
 
 $$
-U_{AC}=\varphi_A-\varphi_C.
+U_{CA}=\varphi_C-\varphi_A.
 $$
 
-由图取短弧 $A\to M\to C$ 与逆时针感应电流同向，则沿该段有
+由图取短弧 $C\to M\to A$ 与逆时针感应电流同向，则沿该段有
 
 $$
-U_{AC}=Ir-\mathcal E_{AMC}
+U_{AC}=Ir-\mathcal E_{CMA}
 =\frac{\mathcal E}{2}-\frac{\mathcal E}{4}
 =\frac{\mathcal E}{4}.
 $$
@@ -74,7 +74,7 @@ $$
 若交换 $A、C$ 的标记，$U_{AC}$ 的符号相反，但大小不变。因此
 
 $$
-\boxed{|U_{AC}|=\frac{\pi}{4}kR^2}.
+\boxed{U_{AC}=-\frac{\pi}{4}kR^2}.
 $$
 
 ### 第 2 步解法 2，令A、C为两个节点，根据基尔霍夫第一定律 (流入电流 = 流出电流) 求解：
@@ -83,14 +83,15 @@ $$
 $$
 
 \begin{align*}
-U_{AC} = \phi_A - \phi_C &= Ir - \mathcal E/4 \\
+U_{CA} = \phi_C - \phi_A &= Ir - \mathcal E/4 \\
 &= -Ir + 3\mathcal E/4
 \end{align*}
 $$
 
-得到 $Ir = \mathcal E/2$, $U_{AC} = \mathcal E/4 = \pi R^2k/4$
+得到 $Ir = \mathcal E/2$, $U_{CA} = \mathcal E/4 = \pi R^2k/4\Rightarrow U_{AC}=-\frac{\pi}{4}kR^2$
 
-按当前题干，四个选项中没有这一结果。
+
+按当前题干，应选 **A** .
 
 ## 易错点
 

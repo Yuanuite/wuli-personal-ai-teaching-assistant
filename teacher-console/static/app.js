@@ -2320,6 +2320,7 @@ $("build-visualization").addEventListener("click", async () => {
     withRoutingTier({
       message: isGenerating ? "我想为这道题生成一个可交互的可视化结果。请完整展示关键物理过程，并提供播放、时间轴、关键事件与缩放控件。" : "",
       base_digest: state.current.visualization?.artifact_digest || "",
+      force: !isGenerating,
     }),
     $("build-visualization"),
     isGenerating ? "正在调用 Skill 生成…" : "正在构建…",

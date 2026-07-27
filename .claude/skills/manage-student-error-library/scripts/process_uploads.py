@@ -396,7 +396,12 @@ def _rebase_report_paths(value, old_root: Path, new_root: Path):
     return value
 
 
-def prepare_visualization(root: Path, entry_id: str, runtime_mode: str = "auto") -> dict:
+def prepare_visualization(
+    root: Path,
+    entry_id: str,
+    runtime_mode: str = "auto",
+    force: bool = False,
+) -> dict:
     """Build once for teacher review; the approved bytes are later copied to delivery."""
     entry = root / "entries" / entry_id
     if not entry.exists():
@@ -411,7 +416,7 @@ def prepare_visualization(root: Path, entry_id: str, runtime_mode: str = "auto")
             "state": pipeline_state(entry),
         }
     current = visualization_snapshot(entry)
-    if current["build_current"]:
+    if current["build_current"] and not force:
         return {
             "status": "unchanged",
             "build": current["build"],
@@ -900,6 +905,7 @@ def main() -> int:
     build_visualization_parser = commands.add_parser("prepare-visualization")
     build_visualization_parser.add_argument("entry_id")
     build_visualization_parser.add_argument("--runtime-check", choices=("auto", "required", "skip"), default="auto")
+    build_visualization_parser.add_argument("--force", action="store_true")
     approve_visualization_parser = commands.add_parser("approve-visualization")
     approve_visualization_parser.add_argument("entry_id")
     approve_visualization_parser.add_argument("--reviewer", required=True)
@@ -936,7 +942,7 @@ def main() -> int:
     elif args.command == "request-answer-revision":
         report = request_answer_revision(root, args.entry_id, args.reviewer, args.note)
     elif args.command == "prepare-visualization":
-        report = prepare_visualization(root, args.entry_id, args.runtime_check)
+        report = prepare_visualization(root, args.entry_id, args.runtime_check, args.force)
     elif args.command == "approve-visualization":
         report = approve_visualization(root, args.entry_id, args.reviewer, args.note)
     elif args.command == "evaluate":

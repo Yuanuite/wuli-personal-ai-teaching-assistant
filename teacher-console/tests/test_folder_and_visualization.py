@@ -156,6 +156,19 @@ class FolderAndVisualizationTest(unittest.TestCase):
         self.assertEqual(build.call_count, 1)
         self.assertTrue(unchanged["visualization"]["build_current"])
 
+    def test_forced_visualization_rebuild_refreshes_current_artifact(self):
+        process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
+        with mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build) as build:
+            process_uploads.prepare_visualization(self.library, self.entry.name)
+            refreshed = process_uploads.prepare_visualization(
+                self.library,
+                self.entry.name,
+                force=True,
+            )
+        self.assertEqual(refreshed["status"], "ok")
+        self.assertEqual(build.call_count, 2)
+        self.assertTrue(process_uploads.visualization_snapshot(self.entry)["build_current"])
+
     def test_failed_refresh_attempt_does_not_hide_existing_staged_preview(self):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         with mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build):
