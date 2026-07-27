@@ -146,6 +146,34 @@ class FolderAndVisualizationTest(unittest.TestCase):
         self.assertEqual(delivered["status"], "delivered")
         self.assertEqual((output / "simulation" / "physics-simulator.html").read_bytes(), reviewed_html)
 
+    def test_current_visualization_rebuild_is_idempotent(self):
+        process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
+        with mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build) as build:
+            prepared = process_uploads.prepare_visualization(self.library, self.entry.name)
+            unchanged = process_uploads.prepare_visualization(self.library, self.entry.name)
+        self.assertEqual(prepared["status"], "ok")
+        self.assertEqual(unchanged["status"], "unchanged")
+        self.assertEqual(build.call_count, 1)
+        self.assertTrue(unchanged["visualization"]["build_current"])
+
+    def test_failed_refresh_attempt_does_not_hide_existing_staged_preview(self):
+        process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
+        with mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build):
+            process_uploads.prepare_visualization(self.library, self.entry.name)
+        process_uploads.approve_visualization(self.library, self.entry.name, "teacher", "checked")
+        kb.write_json(
+            self.entry / "visualization-build-attempt.json",
+            {
+                "status": "invalid-model",
+                "model_digest": kb.sha256_file(self.entry / "physics-model.json"),
+                "built_at": "2099-01-01T00:00:00+08:00",
+            },
+        )
+        snapshot = process_uploads.visualization_snapshot(self.entry)
+        self.assertTrue(snapshot["build_current"])
+        self.assertTrue(Path(snapshot["html"]).is_file())
+        self.assertEqual(snapshot["review"]["status"], "passed")
+
     def test_model_change_invalidates_answer_and_visualization_reviews(self):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         with mock.patch.object(process_uploads, "build_simulator", side_effect=self.fake_build):

@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -111,6 +112,8 @@ class RetrievalBenchmarkTest(unittest.TestCase):
     def test_recorded_approved_set_becomes_evolve_observation(self):
         report = benchmark.run_benchmark(self.library, self.cases(count=30), top_k=5)
         self.assertTrue(report["fixed_set_ready"])
+        self.assertFalse(report["holdout_ready"])
+        self.assertFalse(report["policy_gate_ready"])
         event = benchmark.record_report(self.library, report, {"case_count": 30, "top_k": 5})
         self.assertEqual(event["task_type"], "evolve.observation.retrieval")
         self.assertNotIn("per_case", event["result"])
@@ -118,6 +121,99 @@ class RetrievalBenchmarkTest(unittest.TestCase):
         self.assertEqual(rebuilt["evolve_observations"], 1)
         evidence = knowledge_store.query(self.library, "动量守恒", mode="audit", top_k=2)
         self.assertEqual(evidence["evolve_observations"][0]["observation_type"], "evolve.observation.retrieval")
+
+    def test_independent_holdout_is_required_for_policy_gate(self):
+        calibration = self.cases(count=30)
+        holdout = []
+        for index, case in enumerate(self.cases(count=12), 1):
+            holdout.append({
+                **case,
+                "id": f"holdout-{index:03d}",
+                "query": f"第{index}个独立查询 动量守恒 非弹性碰撞",
+                "evaluation_split": "holdout",
+                "batch_id": "2026-07-independent-a",
+            })
+
+        report = benchmark.run_benchmark(
+            self.library,
+            [*calibration, *holdout],
+            top_k=5,
+            evaluation_split="holdout",
+        )
+
+        self.assertTrue(report["calibration_ready"])
+        self.assertTrue(report["holdout_ready"])
+        self.assertTrue(report["evidence_gate_ready"])
+        self.assertTrue(report["policy_gate_ready"])
+        self.assertTrue(report["threshold_evaluable"])
+        self.assertEqual(report["eligible_cases"], 12)
+        self.assertEqual(report["by_split"]["holdout"]["count"], 12)
+        self.assertFalse(report["w2_evidence_set_ready"])
+
+        w2_report = benchmark.run_benchmark(
+            self.library,
+            [*calibration, *holdout],
+            top_k=5,
+            evaluation_split="holdout",
+            evidence_selection_policy="evidence-set-v2",
+        )
+        self.assertTrue(w2_report["w2_evidence_set_ready"])
+        self.assertEqual(
+            w2_report["evidence_selection"]["relevant_preservation_rate"],
+            1.0,
+        )
+        self.assertEqual(
+            w2_report["evidence_selection"]["selected_duplicate_pair_count"],
+            0,
+        )
+        self.assertEqual(
+            w2_report["evidence_selection"]["selected_conflict_pair_count"],
+            0,
+        )
+
+    def test_rejected_relevant_evidence_blocks_policy_gate(self):
+        calibration = self.cases(count=30)
+        holdout = [
+            {
+                **case,
+                "id": f"holdout-{index:03d}",
+                "query": f"第{index}个独立查询 动量守恒 非弹性碰撞",
+                "evaluation_split": "holdout",
+                "batch_id": "holdout-c",
+            }
+            for index, case in enumerate(self.cases(count=12), 1)
+        ]
+        rejected = {
+            "status": "ok",
+            "results": [{
+                "entry_id": self.entry.name,
+                "evidence_audit": {"decision": "rejected-low-precision"},
+            }],
+        }
+
+        with mock.patch.object(benchmark.knowledge_store, "query", return_value=rejected):
+            report = benchmark.run_benchmark(
+                self.library,
+                [*calibration, *holdout],
+                evaluation_split="holdout",
+            )
+
+        self.assertTrue(report["holdout_ready"])
+        self.assertFalse(report["evidence_gate_ready"])
+        self.assertFalse(report["policy_gate_ready"])
+        self.assertEqual(report["evidence_gate"]["relevant_preservation_rate"], 0.0)
+
+    def test_seed_marks_holdout_batch_without_reclassifying_legacy_cases(self):
+        seeded = benchmark.seed_cases(
+            self.library,
+            limit=4,
+            evaluation_split="holdout",
+            batch_id="holdout-b",
+        )
+
+        self.assertTrue(all(case["evaluation_split"] == "holdout" for case in seeded))
+        self.assertTrue(all(case["batch_id"] == "holdout-b" for case in seeded))
+        self.assertTrue(all(case["id"].startswith("holdout-") for case in seeded))
 
 
 if __name__ == "__main__":

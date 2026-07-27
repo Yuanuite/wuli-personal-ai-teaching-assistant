@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -96,6 +97,62 @@ class KnowledgeStoreTest(unittest.TestCase):
 
     def tearDown(self):
         self.temp.cleanup()
+
+    def test_blueprint_evidence_adapts_need_count_and_uses_one_selector(self):
+        blueprint = {
+            "retrieval_needs": [
+                {
+                    "id": f"R{index}",
+                    "query": f"查询 {index}",
+                    "purpose": f"目的 {index}",
+                    "priority": 6 - index,
+                    "target_ids": [f"Q{index}"],
+                    "stage_ids": [],
+                }
+                for index in range(1, 6)
+            ]
+        }
+        target = knowledge_store.db_path(self.library)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"placeholder")
+
+        def fake_query(_root, text, **_kwargs):
+            index = int(text.rsplit(" ", 1)[-1])
+            return {
+                "status": "ok",
+                "freshness": {"status": "current"},
+                "results": [
+                    {
+                        "entry_id": f"other-{index}",
+                        "title": f"参考题 {index}",
+                        "selected_rank": 1,
+                        "knowledge_points": ["磁场"],
+                        "teaching_memory": {"methods": ["事件枚举"], "secondary_conclusions": []},
+                        "matched_documents": [{"kind": "problem", "snippet": text}],
+                        "evidence_coverage": {"covered_slots": ["problem-context"]},
+                        "evidence_audit": {
+                            "decision": "accepted",
+                            "precision_score": 0.8,
+                            "condition_profile": {},
+                            "match_basis": {"route_ids": ["problem"]},
+                        },
+                    }
+                ],
+            }
+
+        with mock.patch.object(knowledge_store, "query", side_effect=fake_query):
+            result = knowledge_store.build_blueprint_evidence(
+                self.library,
+                self.entry.name,
+                blueprint,
+                default_need_limit=3,
+                max_need_limit=5,
+                top_k=4,
+                explicit_db=target,
+            )
+        self.assertEqual(result["retrieval_plan"]["executed_need_count"], 5)
+        self.assertEqual(result["evidence_set"]["selection_policy"], "evidence-set-v2")
+        self.assertLessEqual(len(result["references"]), 4)
 
     def test_rebuild_creates_sqlite_store_with_entry_evidence(self):
         report = knowledge_store.rebuild(self.library)
@@ -338,6 +395,114 @@ class KnowledgeStoreTest(unittest.TestCase):
             {"solution"},
         )
         self.assertTrue(all("route" in document for item in evidence["results"] for document in item["matched_documents"]))
+
+    def test_condition_audit_rejects_cross_domain_false_positive(self):
+        query_plan = {
+            "retrieval_text": "带电粒子在分区磁场中的平均速度",
+            "tokens": ["带电粒子", "分区磁场", "平均速度"],
+        }
+        accepted = knowledge_store._evidence_relevance_audit(
+            query_plan,
+            title="两同向分区磁场中带电粒子的平均速度",
+            knowledge_points=["带电粒子在磁场中的运动"],
+            error_types=[],
+            matched_documents=[{
+                "snippet": "粒子依次经过两个分区磁场，求平均速度。",
+            }],
+            route_matches=[{"route": "problem"}],
+        )
+        rejected = knowledge_store._evidence_relevance_audit(
+            query_plan,
+            title="正方形线框匀速穿越宽磁场",
+            knowledge_points=["电磁感应", "感应电动势"],
+            error_types=[],
+            matched_documents=[{
+                "snippet": "导线框穿越磁场，判断感应电流。",
+            }],
+            route_matches=[{"route": "solution"}],
+        )
+
+        self.assertEqual(accepted["decision"], "accepted")
+        self.assertEqual(rejected["decision"], "rejected-low-precision")
+        self.assertTrue(rejected["conflict_conditions"])
+
+    def test_precision_gated_pack_degrades_to_empty_when_all_candidates_conflict(self):
+        target = knowledge_store.db_path(self.library)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.touch()
+        conflicting = {
+            "entry_id": "induction-entry",
+            "title": "正方形线框匀速穿越宽磁场",
+            "knowledge_points": ["电磁感应"],
+            "error_types": [],
+            "teaching_memory": {},
+            "evaluation": {},
+            "recent_events": [],
+            "matched_documents": [{"kind": "problem", "snippet": "线框切割磁感线"}],
+            "evidence_coverage": {},
+            "evidence_audit": {
+                "decision": "rejected-low-precision",
+                "precision_score": 0.08,
+                "conflict_conditions": ["domain 不相容"],
+            },
+        }
+        fake_query = {
+            "status": "ok",
+            "freshness": {"status": "current"},
+            "results": [conflicting],
+        }
+
+        with mock.patch.object(knowledge_store, "query", return_value=fake_query):
+            evidence = knowledge_store.build_agent_evidence(
+                self.library,
+                self.entry.name,
+                "带电粒子在分区磁场中的平均速度",
+                task_type="analysis.generate",
+                selection_policy="precision-gated-v1",
+            )
+
+        self.assertEqual(evidence["references"], [])
+        self.assertEqual(
+            evidence["evidence_set"]["selection_status"],
+            "degraded-empty-low-precision",
+        )
+        self.assertEqual(evidence["evidence_set"]["rejected_low_precision_count"], 1)
+
+    def test_evidence_set_v2_deduplicates_and_rejects_inter_reference_conflict(self):
+        def result(title, precision, domain, *, rank):
+            return {
+                "title": title,
+                "selected_rank": rank,
+                "knowledge_points": ["磁场"],
+                "error_types": [],
+                "matched_documents": [{"snippet": "带电粒子在分区磁场中的轨迹分析"}],
+                "evidence_coverage": {
+                    "covered_slots": ["problem-context", "solution-method"],
+                },
+                "evidence_audit": {
+                    "decision": "accepted",
+                    "precision_score": precision,
+                    "condition_profile": {"domain": [domain]},
+                    "match_basis": {"route_ids": ["problem", "solution"]},
+                },
+            }
+
+        selection = knowledge_store.select_evidence_results(
+            [
+                result("分区磁场粒子轨迹", 0.9, "charged-particle", rank=1),
+                result("分区磁场粒子轨迹", 0.8, "charged-particle", rank=2),
+                result("线框电磁感应", 0.7, "circuit-induction", rank=3),
+            ],
+            selection_policy="evidence-set-v2",
+            limit=3,
+        )
+
+        self.assertEqual(
+            [item["title"] for item in selection["selected_results"]],
+            ["分区磁场粒子轨迹"],
+        )
+        self.assertEqual(selection["trace"]["rejected_duplicate_count"], 1)
+        self.assertEqual(selection["trace"]["rejected_conflict_count"], 1)
 
 
 if __name__ == "__main__":

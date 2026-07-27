@@ -12,6 +12,8 @@ const entryId = process.env.E2E_ENTRY_ID;
 const artifactDir = process.env.E2E_ARTIFACT_DIR;
 const artifactPrefix = process.env.E2E_ARTIFACT_PREFIX || "web-current";
 const timeoutMs = Number(process.env.E2E_TIMEOUT_MS || 1_800_000);
+const routingTier = process.env.E2E_ROUTING_TIER || "auto";
+const modelId = process.env.E2E_MODEL_ID || "auto";
 for (const [name, value] of Object.entries({ baseUrl, entryId, artifactDir })) {
   if (!value) throw new Error(`missing required environment: ${name}`);
 }
@@ -32,6 +34,24 @@ page.on("console", message => {
 });
 
 try {
+  await page.route(
+    `**/api/entries/${encodeURIComponent(entryId)}/analyze`,
+    async route => {
+      const request = route.request();
+      const body = request.postDataJSON() || {};
+      await route.continue({
+        postData: JSON.stringify({
+          ...body,
+          routing_tier: routingTier,
+          model_id: modelId,
+        }),
+        headers: {
+          ...request.headers(),
+          "content-type": "application/json",
+        },
+      });
+    },
+  );
   await page.goto(baseUrl, { waitUntil: "networkidle", timeout: 60_000 });
   await page.locator(".entry-card").first().waitFor({ timeout: 30_000 });
   await page.locator(".entry-card").first().click();
@@ -65,6 +85,8 @@ try {
       status: "completed",
       entry_id: entryId,
       action: "clicked #run-analysis",
+      routing_tier: routingTier,
+      model_id: modelId,
       job_id: job.id,
       job_kind: job.kind,
       browser_errors: browserErrors,

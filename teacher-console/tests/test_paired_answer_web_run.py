@@ -14,6 +14,82 @@ SPEC.loader.exec_module(web_run)
 
 
 class PairedAnswerWebRunTest(unittest.TestCase):
+    def test_failed_retry_can_restore_last_completed_artifact(self):
+        with tempfile.TemporaryDirectory() as temp_name:
+            artifacts = Path(temp_name)
+            (artifacts / "web-candidate.md").write_text("成功候选", encoding="utf-8")
+            (artifacts / "web-candidate.meta.json").write_text(
+                json.dumps({"status": "completed"}),
+                encoding="utf-8",
+            )
+            (artifacts / "web-candidate.evidence.json").write_text(
+                json.dumps({"status": "ready"}),
+                encoding="utf-8",
+            )
+
+            snapshot = web_run.successful_artifact_snapshot(
+                artifacts,
+                "web-candidate",
+            )
+            (artifacts / "web-candidate.md").write_text("失败尝试", encoding="utf-8")
+            (artifacts / "web-candidate.meta.json").write_text(
+                json.dumps({"status": "failed"}),
+                encoding="utf-8",
+            )
+            web_run.restore_artifact_snapshot(artifacts, snapshot)
+
+            self.assertEqual(
+                (artifacts / "web-candidate.md").read_text(encoding="utf-8"),
+                "成功候选",
+            )
+            self.assertEqual(
+                json.loads(
+                    (artifacts / "web-candidate.meta.json").read_text(encoding="utf-8")
+                )["status"],
+                "completed",
+            )
+
+    def test_cli_accepts_fixed_routing_and_model(self):
+        original = web_run.sys.argv
+        web_run.sys.argv = [
+            "paired_answer_web_run.py",
+            "--experiment",
+            "/tmp/experiment",
+            "--routing-tier",
+            "expert",
+            "--model-id",
+            "fixed-model",
+        ]
+        try:
+            args = web_run.parse_args()
+        finally:
+            web_run.sys.argv = original
+        self.assertEqual(args.routing_tier, "expert")
+        self.assertEqual(args.model_id, "fixed-model")
+
+    def test_candidate_snapshot_uses_precision_gated_selection(self):
+        original = web_run.teacher_server.agent_evidence_payload
+        observed = {}
+
+        def fake(*_args, **kwargs):
+            observed.update(kwargs)
+            return {"status": "ready", "references": []}
+
+        web_run.teacher_server.agent_evidence_payload = fake
+        try:
+            snapshot = web_run.fixed_evidence_snapshot(
+                Path("/tmp/entries/entry-1"),
+                "candidate",
+            )
+        finally:
+            web_run.teacher_server.agent_evidence_payload = original
+
+        self.assertEqual(snapshot["status"], "ready")
+        self.assertEqual(
+            observed["evidence_selection_policy"],
+            "evidence-set-v2",
+        )
+
     def test_disabled_evidence_snapshot_contains_no_historical_reference(self):
         original = web_run.teacher_server.agent_evidence_payload
         web_run.teacher_server.agent_evidence_payload = lambda *_args, **_kwargs: {

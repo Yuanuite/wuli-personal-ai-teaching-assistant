@@ -102,6 +102,22 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
             benchmark.digest_text("教师最终稿"),
         )
 
+    def test_legacy_zero_evidence_web_output_cannot_masquerade_as_current_rag(self):
+        benchmark.seed(self.library, self.experiment, 1)
+        artifact = self.experiment / "artifacts" / "entry-1"
+        artifact.mkdir(parents=True, exist_ok=True)
+        (artifact / "web.md").write_text("旧网页候选", encoding="utf-8")
+        (artifact / "web.meta.json").write_text(json.dumps({
+            "source": "teacher-console-browser-click",
+            "status": "completed",
+            "evidence_context": {"status": "ready", "reference_count": 0},
+        }), encoding="utf-8")
+
+        report = benchmark.evaluate(self.library, self.experiment)
+
+        self.assertFalse(report["readiness"]["cases"][0]["web_current"])
+        self.assertEqual(report["readiness"]["missing_web_current"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -203,6 +203,48 @@ def main() -> int:
                             else ["受力分析", "牛顿第二定律"]
                         ),
                         "discarded_methods": ["舍弃逐时刻坐标展开"],
+                        "physical_stages": (
+                            ["电场加速阶段", "进入磁场后的圆周运动阶段"]
+                            if charged_particle
+                            else ["物体在恒定合力作用下运动"]
+                        ),
+                        "reasoning_steps": [
+                            (
+                                "确定入场速度后用圆周运动与相切条件求解"
+                                if charged_particle
+                                else "受力分析后直接应用牛顿第二定律"
+                            )
+                        ],
+                        "decisive_relations": (
+                            ["电场段运动关系", "洛伦兹力提供向心力", "轨迹与边界相切"]
+                            if charged_particle
+                            else ["合外力等于质量与加速度的乘积"]
+                        ),
+                        "representation_transforms": (
+                            ["题干运动过程转换为分段模型", "磁场轨迹转换为相切圆几何"]
+                            if charged_particle
+                            else ["实际物体转换为受力模型"]
+                        ),
+                        "condition_checks": (
+                            ["核对相切临界条件", "核对洛伦兹力方向"]
+                            if charged_particle
+                            else ["核对合力与加速度方向"]
+                        ),
+                        "type_distance": (
+                            {
+                                "mode": "standard_transfer",
+                                "archetype": "电场加速后进入磁场的有界圆周运动",
+                                "recognition_barrier": "需要把轨迹转换为相切圆几何",
+                                "novel_bridge": "相切条件连接运动与边界",
+                            }
+                            if charged_particle
+                            else {
+                                "mode": "direct_archetype",
+                                "archetype": "受力分析与牛顿第二定律教材母题",
+                                "recognition_barrier": "研究对象明确",
+                                "novel_bridge": "",
+                            }
+                        ),
                         "student_step_count": 1,
                     },
                     "metadata": {

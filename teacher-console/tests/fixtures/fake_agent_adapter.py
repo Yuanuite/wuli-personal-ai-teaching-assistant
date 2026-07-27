@@ -26,8 +26,19 @@ print(
             ),
             "method_check": {
                 "selected_path": "识别对象后直接建立受力关系并检查结论。",
-                "high_school_basis": ["受力分析", "量纲检查"],
+                "high_school_basis": ["受力分析", "牛顿第二定律"],
                 "discarded_methods": ["舍弃逐时刻展开"],
+                "physical_stages": ["物体在合力作用下运动"],
+                "reasoning_steps": ["识别研究对象并建立受力关系"],
+                "decisive_relations": ["合外力等于质量与加速度的乘积"],
+                "representation_transforms": ["实际物体转换为受力模型"],
+                "condition_checks": ["核对方向和题设边界"],
+                "type_distance": {
+                    "mode": "direct_archetype",
+                    "archetype": "受力分析与牛顿第二定律教材母题",
+                    "recognition_barrier": "研究对象明确",
+                    "novel_bridge": "",
+                },
                 "student_step_count": 1,
             },
             "metadata": {

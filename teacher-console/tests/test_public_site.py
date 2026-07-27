@@ -133,6 +133,60 @@ class PublicSiteTest(unittest.TestCase):
             ["question-newer-upload", prepared["public_id"]],
         )
 
+    def test_sync_published_difficulty_changes_metadata_only(self):
+        public_id = public_site.public_id(self.entry)
+        question = self.site / "questions" / public_id
+        question.mkdir(parents=True)
+        (question / "content.md").write_text("公开内容保持不变。\n", encoding="utf-8")
+        write_json(
+            self.entry / public_site.REVIEW_RECORD,
+            {"status": "published-local", "public_id": public_id, "reviewer": "teacher"},
+        )
+        record = json.loads((self.entry / "record.json").read_text(encoding="utf-8"))
+        record["difficulty_assessment"] = {
+            "score": 78,
+            "level": "较难",
+            "summary": "较难：需要多过程建模。",
+            "dimensions": [
+                {
+                    "id": "process_state_complexity",
+                    "label": "过程与状态复杂度",
+                    "score": 4.2,
+                    "core_judgment": "需要组织多个连续状态。",
+                    "private_evidence": "不得公开",
+                }
+            ],
+            "standard_path_digest": "private-digest",
+        }
+        write_json(self.entry / "record.json", record)
+        write_json(
+            self.site / "catalog.json",
+            {
+                "schema_version": 1,
+                "generated_at": "old",
+                "questions": [
+                    {
+                        "id": public_id,
+                        "title": "公开标题",
+                        "content": f"questions/{public_id}/content.md",
+                        "published_at": "2026-07-20T09:00:00+08:00",
+                        "difficulty": {"score": 46, "level": "中等"},
+                    }
+                ],
+            },
+        )
+
+        result = public_site.sync_published_difficulties(self.library, self.site)
+
+        self.assertEqual(result["updated"], 1)
+        catalog = json.loads((self.site / "catalog.json").read_text(encoding="utf-8"))
+        item = catalog["questions"][0]
+        self.assertEqual(item["difficulty"]["score"], 78)
+        self.assertEqual(item["published_at"], "2026-07-20T09:00:00+08:00")
+        self.assertEqual((question / "content.md").read_text(encoding="utf-8"), "公开内容保持不变。\n")
+        self.assertNotIn("private_evidence", json.dumps(item, ensure_ascii=False))
+        self.assertNotIn("private-digest", json.dumps(item, ensure_ascii=False))
+
     @mock.patch.object(public_site, "_generate_pdf", return_value={"status": "skipped", "reason": "test"})
     def test_changed_preview_must_be_prepared_again(self, _pdf):
         self.approve_public_image()

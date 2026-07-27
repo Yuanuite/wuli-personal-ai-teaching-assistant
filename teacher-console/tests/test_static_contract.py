@@ -60,6 +60,7 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn('id="delivery-guide-list"', html)
         self.assertIn('"/api/folders/rename"', script)
         self.assertIn('"build-visualization"', script)
+        self.assertIn('"当前预览没有变化，已保留原版本"', script)
         self.assertIn('"approve-visualization"', script)
         self.assertIn('"visualization-chat"', script)
         self.assertIn('"clear-visualization-chat"', script)
@@ -88,6 +89,14 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("请先在“题干复核”确认题干无误", script)
         self.assertIn("后台还没有完整解析", script)
         self.assertIn("请先在“解析复核”确认答案正确", script)
+        self.assertIn('<details id="w3-review-focus"', html)
+        self.assertIn('id="w3-review-focus-count"', html)
+        self.assertIn("panel.open = false", script)
+        self.assertIn('.w3-review-focus[open] .w3-review-focus-head::after', css)
+        self.assertIn("copyAuditText", script)
+        self.assertIn("useAuditAsRevision", script)
+        self.assertIn("填入修改意见", script)
+        self.assertIn(".w3-audit-block", css)
 
     def test_retrieval_review_uses_visual_selectable_cards(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")
@@ -186,6 +195,16 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn('model_type == "piecewise-field-particle-3d"', validator)
         self.assertIn("piecewise-field-particle-3d", skill)
         self.assertIn('"piecewise-field-particle-3d"', server)
+        piecewise_3d = piecewise_3d_template.read_text(encoding="utf-8")
+        self.assertIn("z=-q[2]", piecewise_3d)
+        self.assertIn("front:[0,180]", piecewise_3d)
+        self.assertNotIn("pitch=clamp(drag.pitch", piecewise_3d)
+        self.assertIn("distance_pair", piecewise_3d)
+        browser_check = (simulator / "scripts" / "browser_check.mjs").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("select:visible:enabled", browser_check)
+        self.assertIn("selectOptions", browser_check)
 
     def test_publication_gate_and_static_student_site_contract(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")

@@ -262,6 +262,13 @@ def browser_web_ready(candidate_path: Path, cohort: str) -> tuple[bool, str]:
     metadata_cohort = metadata.get("cohort")
     if metadata_cohort and metadata_cohort != cohort:
         return False, f"cohort-mismatch:{metadata_cohort}"
+    expected_evidence_mode = {
+        "web-no-rag": "disabled",
+        "web-current": "current",
+        "web-candidate": "candidate",
+    }[cohort]
+    if metadata.get("evidence_mode") != expected_evidence_mode:
+        return False, f"evidence-mode-mismatch:{metadata.get('evidence_mode', 'missing')}"
     return True, "teacher-console-browser-click"
 
 

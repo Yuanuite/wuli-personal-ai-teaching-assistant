@@ -85,6 +85,32 @@ const optionalVisualizationVisible = await page.locator("#tab-visualization").is
 const optionalVisualizationTitle = await page.locator("#visualization-empty strong").textContent();
 const generationButtonText = await page.locator("#build-visualization").textContent();
 
+const w3Entry = page.locator(".entry-card", { hasText: "方波电场与匀强磁场中的带电粒子运动" });
+await w3Entry.click();
+await page.waitForFunction(() => document.querySelector("#entry-title")?.textContent?.includes("方波电场与匀强磁场中的带电粒子运动"));
+await page.locator('[data-tab="answer"]').click();
+const w3ReviewFocusVisible = await page.locator("#w3-review-focus").isVisible();
+const w3ReviewFocusCount = await page.locator(".w3-focus-card").count();
+
+const w3FlaggedEntry = page.locator(".entry-card", { hasText: "三维复合场中电子的类平抛、螺旋运动与共圆心条件" });
+await w3FlaggedEntry.click();
+await page.waitForFunction(() => document.querySelector("#entry-title")?.textContent?.includes("三维复合场中电子的类平抛、螺旋运动与共圆心条件"));
+await page.locator('[data-tab="answer"]').click();
+const w3FlaggedFocusVisible = await page.locator("#w3-review-focus").isVisible();
+const w3FlaggedFocusCount = await page.locator(".w3-focus-card").count();
+const w3FlaggedFocusText = await page.locator("#w3-review-focus").textContent();
+const w3FlaggedFocusCollapsed = !(await page.locator("#w3-review-focus").getAttribute("open"));
+await page.locator("#w3-review-focus summary").click();
+const w3FlaggedFocusExpanded = await page.locator("#w3-review-focus").getAttribute("open") !== null;
+const w3FlaggedVisibleCardCount = await page.locator(".w3-focus-card:visible").count();
+await page.locator(".w3-focus-card summary").first().click();
+const w3AuditBlockCount = await page.locator(".w3-focus-card").first().locator(".w3-audit-block").count();
+const w3AuditCopyCount = await page.locator(".w3-focus-card").first().locator(".w3-audit-copy").count();
+const w3AuditUse = page.locator(".w3-focus-card").first().locator(".w3-audit-use").first();
+const w3AuditUseVisible = await w3AuditUse.isVisible();
+if (w3AuditUseVisible) await w3AuditUse.click();
+const w3RevisionFilled = (await page.locator("#answer-note").inputValue()).includes("请据此核对并修改解析");
+
 const viewport = await page.evaluate(() => ({
   innerHeight: window.innerHeight,
   scrollHeight: document.documentElement.scrollHeight,
@@ -101,7 +127,7 @@ await page.screenshot({ path: screenshot, fullPage: false });
 await browser.close();
 
 const report = {
-  status: errors.length || folders < 2 || entryCards < 2 || !agentHealthDetail?.includes("Agent") || !difficultyPlacement.visible || !difficultyPlacement.besideTeacher || !difficultyPanelVisible || difficultyExpanded !== "true" || difficultyDimensionCount !== 6 || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !deliveryNavigationOk || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
+  status: errors.length || folders < 2 || entryCards < 2 || !agentHealthDetail?.includes("Agent") || !difficultyPlacement.visible || !difficultyPlacement.besideTeacher || !difficultyPanelVisible || difficultyExpanded !== "true" || difficultyDimensionCount !== 6 || sandbox !== "allow-scripts" || simulator.canvas !== 1 || visualizationTabHidden || staticGalleryElements || internalDownloads.length || !deliveryNavigationOk || !shortToastHidden || !optionalVisualizationVisible || !optionalVisualizationTitle?.includes("尚未生成") || !generationButtonText?.includes("调用 Skill") || w3ReviewFocusVisible || w3ReviewFocusCount > 2 || !w3FlaggedFocusVisible || w3FlaggedFocusCount !== 2 || !w3FlaggedFocusCollapsed || !w3FlaggedFocusExpanded || w3FlaggedVisibleCardCount !== 2 || w3AuditBlockCount < 2 || w3AuditCopyCount < 2 || !w3AuditUseVisible || !w3RevisionFilled || /unresolved|solver|verifier|adjudicator/i.test(w3FlaggedFocusText || "") || !scrollLocked || viewport.scrollWidth > viewport.innerWidth + 1 || viewport.shellBottom > viewport.innerHeight + 1 ? "failed" : "passed",
   folders,
   entryCards,
   agentHealthDetail,
@@ -122,6 +148,17 @@ const report = {
   optionalVisualizationVisible,
   optionalVisualizationTitle,
   generationButtonText,
+  w3ReviewFocusVisible,
+  w3ReviewFocusCount,
+  w3FlaggedFocusVisible,
+  w3FlaggedFocusCount,
+  w3FlaggedFocusCollapsed,
+  w3FlaggedFocusExpanded,
+  w3FlaggedVisibleCardCount,
+  w3AuditBlockCount,
+  w3AuditCopyCount,
+  w3AuditUseVisible,
+  w3RevisionFilled,
   downloads,
   internalDownloads,
   viewport,

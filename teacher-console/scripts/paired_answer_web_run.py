@@ -40,7 +40,33 @@ from runtime_environment import resolved_environment  # noqa: E402
 EVIDENCE_COHORTS = {
     "current": "web-current",
     "disabled": "web-no-rag",
+    "candidate": "web-candidate",
 }
+
+
+def successful_artifact_snapshot(artifact_dir: Path, prefix: str) -> dict[str, bytes]:
+    """Keep the last completed pair immutable across a failed retry."""
+    meta_path = artifact_dir / f"{prefix}.meta.json"
+    answer_path = artifact_dir / f"{prefix}.md"
+    if not answer_path.is_file() or load_json(meta_path).get("status") != "completed":
+        return {}
+    snapshot: dict[str, bytes] = {}
+    for name in (
+        f"{prefix}.md",
+        f"{prefix}.meta.json",
+        f"{prefix}.evidence.json",
+        f"{prefix}-browser.json",
+        f"{prefix}-completed.png",
+    ):
+        path = artifact_dir / name
+        if path.is_file():
+            snapshot[name] = path.read_bytes()
+    return snapshot
+
+
+def restore_artifact_snapshot(artifact_dir: Path, snapshot: dict[str, bytes]) -> None:
+    for name, content in snapshot.items():
+        (artifact_dir / name).write_bytes(content)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -141,8 +167,18 @@ def configure_server(library: Path, workspace: Path) -> None:
 
 def fixed_evidence_snapshot(entry: Path, evidence_mode: str) -> dict[str, Any]:
     """Build the exact evidence payload that the isolated web click will receive."""
-    snapshot = teacher_server.agent_evidence_payload(entry, "analysis.generate", "auto")
-    if evidence_mode == "current":
+    selection_policy = (
+        "evidence-set-v2"
+        if evidence_mode == "candidate"
+        else "baseline"
+    )
+    snapshot = teacher_server.agent_evidence_payload(
+        entry,
+        "analysis.generate",
+        "auto",
+        evidence_selection_policy=selection_policy,
+    )
+    if evidence_mode in {"current", "candidate"}:
         return snapshot
     if evidence_mode != "disabled":
         raise ValueError(f"unsupported evidence mode: {evidence_mode}")
@@ -193,20 +229,20 @@ def run_case(
     node: str,
     timeout_seconds: int,
     evidence_mode: str = "current",
+    routing_tier: str = "auto",
+    model_id: str = "auto",
 ) -> dict[str, Any]:
     artifact_prefix = EVIDENCE_COHORTS[evidence_mode]
     artifact_dir = experiment / "artifacts" / entry_id
     artifact_dir.mkdir(parents=True, exist_ok=True)
+    previous_success = successful_artifact_snapshot(artifact_dir, artifact_prefix)
     failed_workspace = artifact_dir / f"{artifact_prefix}-failed-workspace"
-    if failed_workspace.exists():
-        shutil.rmtree(failed_workspace)
     for stale in (
         f"{artifact_prefix}.md",
         f"{artifact_prefix}.meta.json",
         f"{artifact_prefix}.evidence.json",
         f"{artifact_prefix}-browser.json",
         f"{artifact_prefix}-completed.png",
-        f"{artifact_prefix}-failure.png",
     ):
         (artifact_dir / stale).unlink(missing_ok=True)
     driver = PROJECT_ROOT / "teacher-console" / "e2e" / "paired-answer-web.e2e.mjs"
@@ -250,6 +286,8 @@ def run_case(
             "E2E_ARTIFACT_DIR": str(artifact_dir),
             "E2E_ARTIFACT_PREFIX": artifact_prefix,
             "E2E_TIMEOUT_MS": str(timeout_seconds * 1000),
+            "E2E_ROUTING_TIER": routing_tier,
+            "E2E_MODEL_ID": model_id,
         })
         try:
             completed = subprocess.run(
@@ -294,6 +332,7 @@ def run_case(
             "provider": request.get("provider"),
             "routing_tier": request.get("routing_tier"),
             "evidence_context": request.get("evidence_context", {}),
+            "outcome": request.get("outcome", {}),
             "changed_files": request.get("changed_files", []),
             "validation_errors": request.get("validation_errors", []),
             "stdout": completed.stdout[-2000:],
@@ -301,11 +340,25 @@ def run_case(
         }
         if baseline.is_file():
             shutil.copy2(baseline, artifact_dir / f"{artifact_prefix}.md")
-        (artifact_dir / f"{artifact_prefix}.meta.json").write_text(
-            json.dumps(status, ensure_ascii=False, indent=2) + "\n",
-            encoding="utf-8",
-        )
-        if status["status"] != "completed":
+        if status["status"] == "completed":
+            (artifact_dir / f"{artifact_prefix}.meta.json").write_text(
+                json.dumps(status, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        else:
+            (artifact_dir / f"{artifact_prefix}-last-failure.meta.json").write_text(
+                json.dumps(status, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            if previous_success:
+                restore_artifact_snapshot(artifact_dir, previous_success)
+            else:
+                (artifact_dir / f"{artifact_prefix}.meta.json").write_text(
+                    json.dumps(status, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+            if failed_workspace.exists():
+                shutil.rmtree(failed_workspace)
             shutil.copytree(workspace, failed_workspace)
         return status
 
@@ -324,10 +377,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--node", default=os.environ.get("E2E_NODE") or shutil.which("node"))
     parser.add_argument("--timeout-seconds", type=int, default=1800)
     parser.add_argument(
+        "--routing-tier",
+        choices=("auto", "economy", "expert"),
+        default="auto",
+    )
+    parser.add_argument("--model-id", default="auto")
+    parser.add_argument(
         "--evidence-mode",
         choices=tuple(EVIDENCE_COHORTS),
         default="current",
-        help="Use the current RAG snapshot or an otherwise identical empty evidence pack.",
+        help=(
+            "Use baseline current RAG, the experimental precision-gated candidate, "
+            "or an otherwise identical empty evidence pack."
+        ),
     )
     return parser.parse_args()
 
@@ -359,6 +421,8 @@ def main() -> int:
             node=str(args.node),
             timeout_seconds=max(60, args.timeout_seconds),
             evidence_mode=args.evidence_mode,
+            routing_tier=args.routing_tier,
+            model_id=args.model_id,
         )
         results.append(result)
         print(json.dumps(result, ensure_ascii=False), flush=True)

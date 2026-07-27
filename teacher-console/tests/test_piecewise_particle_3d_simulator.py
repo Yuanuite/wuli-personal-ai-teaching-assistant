@@ -154,6 +154,22 @@ class PiecewiseParticle3DSimulatorTest(unittest.TestCase):
         self.assertTrue(Path(report["artifacts"]["zip"]).exists())
         self.assertEqual(report["simulator_validation"]["errors"], [])
 
+    def test_validator_rejects_unknown_distance_pair(self):
+        payload = self.fixture()
+        payload["event_model"]["cases"][0].update({
+            "distance_pair": ["electron", "missing-particle"],
+            "distance_start_time": 1,
+        })
+        self.model.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        validated = subprocess.run(
+            [sys.executable, str(SKILL / "scripts" / "validate_physics_model.py"), str(self.model)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertNotEqual(validated.returncode, 0)
+        self.assertIn("distance_pair must reference two distinct particles", validated.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()
