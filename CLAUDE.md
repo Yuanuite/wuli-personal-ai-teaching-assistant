@@ -60,6 +60,7 @@ OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OC
 - `docs/operator-runbook.md`：手动命令、依赖降级、排障与交付检查。
 - `docs/visual-review-integration.md`：视觉边车协议、环境变量、隐私门禁和接入测试。
 - `docs/high-school-physics-techniques.md`：高中物理解题策略与二级结论速查；自动检索以带条件的 JSON 结论库为准。
+- `docs/objective-difficulty-rubric.md`：客观难度六维量表、标杆配置、证据链、教师校准和修改检查表。
 - `docs/CHANGES.md`：对人类维护者可见的阶段性能力变化。
 - `docs/competition-submission.md`：竞赛申报精简稿；事实与数字必须从代码和状态命令核验。
 - `docs/competition-project-description.md`：竞赛完整说明、价值定位、落地计划与演示脚本。

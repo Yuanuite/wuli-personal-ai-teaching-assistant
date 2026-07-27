@@ -18,6 +18,7 @@
 | [evaluator.md](evaluator.md) | 单题产物质量评价报告：解析、可视化、交付和 AI 审计闭环的第一块轻基建 |
 | [candidate-archive.md](candidate-archive.md) | 候选、教师反馈、Agent 结果和 Evaluator 摘要的追加式事件档案 |
 | [knowledge-store.md](knowledge-store.md) | 本地 SQLite/FTS 派生检索层：把题库、评价和候选历史聚合为 RAG evidence pack |
+| [objective-difficulty-rubric.md](objective-difficulty-rubric.md) | 客观难度六维量表、证据链、配置真源、教师校准、迁移与修改检查表 |
 | [evolve-roadmap.md](evolve-roadmap.md) | RAG 效果观测、检索后端增强和慢循环策略更新的样本门槛与顺序 |
 | [w3-reasoning-pipeline.md](w3-reasoning-pipeline.md) | W3 复杂题拆解、定向召回、求解、验证、仲裁及私有影子报告契约 |
 | [rag-completion-work-tree.md](rag-completion-work-tree.md) | 从当前 W3 影子状态到独立 holdout、生产灰度、默认启用和回滚验收的唯一执行树 |

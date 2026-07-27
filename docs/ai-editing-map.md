@@ -13,6 +13,7 @@
 | 学生端公开站、GitHub 只读展示、公开 PDF | `docs/architecture.md#学生端公开边界`、`docs/operator-runbook.md#发布只读学生端` | `student-site/`、`public_site.py`、公开发布测试 | public site 测试、隐私扫描 |
 | 视觉复核、OCR 后图像语义确认 | `docs/visual-review-integration.md` | 视觉边车 adapter、source-review 流程 | source review 测试，不能让无视觉模型自批 |
 | 高中物理解题策略、二级结论 | `docs/high-school-physics-techniques.md` 和 JSON 条件库 | 技巧库、检索脚本、答案模板 | 技巧适用条件测试 |
+| 客观难度评分、六维权重、标杆、知识模块或全库重算 | `docs/objective-difficulty-rubric.md` | `difficulty_assessment.py`、两个评分 JSON 配置、`score_difficulties.py`、对应 UI/API | 难度评分、公开同步和静态契约测试；迁移前先抽样并保护教师校准 |
 | 架构归位、复杂度删减、影响分析 | `docs/architecture-governance.md`，再用 `graphify query` | 取决于查询结果 | `git diff --check` + 相关模块测试 |
 | 会话收尾、文档同步、规范审计 | `.claude/skills/neat-freak/SKILL.md` | README、docs、CLAUDE/AGENTS、变更日志 | 文档链接/规则/测试状态核验 |
 | OCR 后整理题干、修正标题（source.clean） | `docs/teacher-console-api.md` | `teacher-console/server.py`（`source_clean_task`、`validate_source_clean_candidate`） | Agent Gateway 测试 |

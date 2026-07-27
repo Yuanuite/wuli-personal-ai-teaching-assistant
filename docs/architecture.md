@@ -168,7 +168,8 @@ Playwright UI 操作 → 真实本地 HTTP/API → 生产生命周期与构建�
 
 `finish` 成功后还会生成单题 `evaluation.json`，把解析结构、来源/答案复核、可视化状态、交付完整性和本地路径安全提示整理成可审计评分。Evaluator 只记录确定性事实和启发式提示，不替代教师复核；它是后续 Candidate Archive、题库 RAG 和 AI 审计 RAG 的共同证据入口。细节见 [`evaluator.md`](evaluator.md)。
 
-题目客观难度与解析质量分开建模。`analysis.generate` 会把私有 `method_check`
+题目客观难度与解析质量分开建模，完整量表和修改地图见
+[`objective-difficulty-rubric.md`](objective-difficulty-rubric.md)。`analysis.generate` 会把私有 `method_check`
 规范化为 `record.json.standard_solution_path`；复杂题蓝图也可投影为同一输入契约。
 难度评分只读取已复核题干和这份标准路径，使用固定锚点六维量表：
 知识深度 20%、知识整合 15%、题型距离与建模转换 20%、过程与状态复杂度 20%、
