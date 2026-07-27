@@ -69,6 +69,8 @@ OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OC
 - `docs/evaluator.md`、`docs/candidate-archive.md`、`docs/knowledge-store.md`：评价报告、候选事件档案与本地 RAG evidence pack。
 - `docs/failure-intelligence.md`：Agent 失败排障策略、自动重试边界与一次性纠正机制。
 - `docs/evolve-roadmap.md`：检索评测、RAG 效果观察与慢循环策略更新的分阶段路线和样本门槛。
+- `docs/w3-reasoning-pipeline.md`：W3 复杂题拆解、定向召回、求解、验证、仲裁与影子报告契约。
+- `docs/rag-completion-work-tree.md`：W3 从影子评测到独立 holdout、生产灰度、默认启用和回滚验收的唯一执行树。
 - `docs/architecture-governance.md`：基于 graphify 的项目治理协议；功能归位、复杂度删减、变更影响分析时必须先读。
 
 ## graphify

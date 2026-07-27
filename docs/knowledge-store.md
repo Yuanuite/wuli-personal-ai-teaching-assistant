@@ -57,6 +57,8 @@ Candidate Archive 追加后写入 freshness dirty marker；查询会明确返回
 - `query_plan`：本次查询使用的原始表达、扩展表达、检索 token 和独立路由；
 - `retrieval`：实际生效策略、词法后端、RRF 参数、各路候选数与影子策略前列条目；
 - `results[].route_matches`：条目在标签、题干和解析路由中的名次、原始分和 RRF 贡献；
+- `results[].evidence_audit`：候选的共享词、命中依据、共同适用条件、显式冲突条件、
+  精度分和 `accepted/rejected-low-precision` 影子决策；
 - `evidence_set`、`results[].evidence_coverage`：候选证据集合对标签、题干和方法槽位的覆盖、缺口、重复与来源可回溯计数；
 - `results[].knowledge_points`、`error_types`：Agent 建议且可由教师修改的教学标签；
 - `results[].evaluation`：当前条目的质量评分、失败项和教师复核要求；
@@ -142,6 +144,53 @@ Recall@5 至少达到 `0.85`、MRR 不低于当前基线且分类指标无明显
 `build_agent_evidence()` 的输出现在明确标记为 `candidate-evidence-set`，并记录
 引用集合对 `concepts-and-labels`、`problem-context`、`solution-method` 三个槽位
 的覆盖情况。这是诊断与后续集合选择的地基；当前不会为了填满槽位强行加入低相关证据。
+
+W1 增加 `precision-gated-v1` 候选证据选择。它使用确定性物理条件词表审计领域、
+场序列、边界几何和求解目标：每条引用都说明“为什么命中、哪些条件可迁移、哪些条件
+冲突”。跨领域、显式边界几何或求解目标冲突会被候选策略剔除；若全部候选均不可靠，证据包返回
+`degraded-empty-low-precision`，让模型独立求解，而不是用低精度历史题填满上下文。
+该策略只供 `web-candidate` 离线成对评测，生产 `build_agent_evidence()` 仍默认
+`selection_policy=baseline`。
+
+W2 在精度门禁之后增加 `evidence-set-v2` 主动集合选择。选择器按“单条精度 +
+新增槽位覆盖 + 检索路由多样性”计算确定性效用，逐条选择能共同回答问题的引用；
+标题相同或正文 token Jaccard 至少 `0.88` 的近重复引用会被去除，领域、边界几何
+或求解目标存在硬冲突的引用不会同时进入集合。输出会记录每一步的
+`selected / rejected-near-duplicate / rejected-inter-reference-conflict /
+omitted-context-budget` 决策，区分“策略选中”与“最终受上下文预算物化”，便于审计。
+若精度门禁后无可靠候选，仍安全降级为空证据。
+
+独立 holdout 使用 baseline 排名与 `evidence-set-v2` 选择时，Recall@5 为
+`1.0000`、MRR 为 `0.7639`；教师标注相关证据在精度门禁和最终选择后的保留率均为
+`1.0000`，选中集合的近重复对与硬冲突对均为 `0`，因此
+`w2_evidence_set_ready=true`。该门禁只证明候选集合构建可进入答案影子评测，
+不改变生产 `selection_policy=baseline`。
+
+固定检索集从 W1 起区分 `evaluation_split=calibration|holdout`。旧 30 条记录在缺少
+该字段时按 calibration 兼容读取；它们可用于调规则，但不能再单独授权策略切换。
+独立 holdout 至少需要 12 条教师批准查询、覆盖四类查询，并带非空 `batch_id`。
+holdout 查询不得与 calibration 查询重复。可从尚未参与 calibration 的条目追加草稿：
+
+```bash
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library seed --append --limit 12 \
+  --evaluation-split holdout --batch-id holdout-2026-08-a
+
+python3 teacher-console/scripts/retrieval_benchmark.py \
+  --library student-error-library run --evaluation-split holdout \
+  --ranking-policy intent-augmented --format markdown
+```
+
+只有 `calibration_ready=true`、`holdout_ready=true`、
+`evidence_gate_ready=true` 和 `policy_gate_ready=true` 同时成立，独立批次指标
+才可支持策略变更。`evidence_gate_ready` 要求教师标注的相关条目在条件审计后保留率
+为 100%，防止检索指标正常但精度门禁误删有效证据。
+
+W3 的 `build_blueprint_evidence()` 不再把整道复杂题压成一次查询。它读取拆题蓝图中
+按目标与物理阶段聚类的 `retrieval_needs`，默认执行 3 路；第 4、5 路只有在带来新
+目标覆盖或新候选时继续，连续两路无增益即停止。多路候选最后只调用一次
+`evidence-set-v2`，因此查询数可以自适应增加，但证据字符预算、精度门禁、去重和
+冲突处理不会放宽。该策略目前只用于 W3 影子报告。
 
 ## 和 RAG / Evolve 的关系
 

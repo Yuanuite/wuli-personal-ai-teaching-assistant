@@ -160,6 +160,17 @@ adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr。
     "selected_path": "由守恒关系直接列式",
     "high_school_basis": ["机械能守恒"],
     "discarded_methods": ["舍弃逐时刻积分"],
+    "physical_stages": ["物体在保守力作用下由初态运动到末态"],
+    "reasoning_steps": ["识别守恒条件", "直接列式求解"],
+    "decisive_relations": ["初态机械能等于末态机械能"],
+    "representation_transforms": [],
+    "condition_checks": ["核对机械能守恒适用条件"],
+    "type_distance": {
+      "mode": "direct_archetype",
+      "archetype": "机械能守恒教材母题",
+      "recognition_barrier": "守恒对象和条件明确",
+      "novel_bridge": ""
+    },
     "student_step_count": 2
   },
   "metadata": {

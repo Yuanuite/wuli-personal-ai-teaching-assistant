@@ -69,6 +69,10 @@ python3 teacher-console/scripts/paired_answer_web_run.py \
   --experiment student-error-library/evals/answer-paired-v1 \
   --only-with-direct --evidence-mode current
 
+python3 teacher-console/scripts/paired_answer_web_run.py \
+  --experiment student-error-library/evals/answer-paired-v1 \
+  --only-with-direct --evidence-mode candidate
+
 python3 teacher-console/scripts/paired_answer_benchmark.py \
   --library student-error-library \
   --experiment student-error-library/evals/answer-paired-v1 \
@@ -83,6 +87,19 @@ python3 teacher-console/scripts/paired_answer_benchmark.py \
 `pair_ready` 表示直出与当前 RAG 已齐备；`comparison_ready` 要求直出、无 RAG 和当前
 RAG 三组齐备、直出输入完整且教师标准答案摘要未过期。`web-candidate` 不参与当前
 三组就绪判断，直到候选精排策略真实存在。
+
+W1 起 `web-candidate` 先经过 `precision-gated-v1` 精度门禁；W2 起再由
+`evidence-set-v2` 主动组成证据集合。它不会改变检索 baseline，会剔除低精度引用、
+去除近重复，并阻止领域、显式物理几何或求解目标相互冲突的引用共存；若全部候选
+低精度，则冻结空证据快照并记录降级状态。候选快照还保留逐条选择轨迹和上下文预算
+省略原因。候选组只有在独立 holdout 检索门禁通过、且按难度分层的答案对照不退化后，
+才可讨论替换 `web-current`。
+
+W2 首批真实网页验收覆盖中等、较难、挑战各 1 题。三题的选项或关键数值结论均与
+教师复核稿一致：中等题使用 2 条引用，较难题以 0 条引用安全降级，挑战题使用 2 条
+引用。自动公式召回只作文本差异信号，不能替代上述人工物理核验；较难题候选中的
+“只有磁场力做功”属于措辞瑕疵，正确结论“磁场力不做功、速率不变”未受影响，后续应
+在答案语言自检阶段处理，不归因于证据集选择。
 
 首轮分层试验、人工复核结论及检索证据计数记录在
 `student-error-library/evals/answer-paired-v1/result-summary.md`。若网页运行的

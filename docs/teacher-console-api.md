@@ -94,12 +94,13 @@ POST /api/entries/<entry-id>/<action>
 | `source-clean` | 可选 `routing_tier`、`model_id` | 创建 `source.clean` 后台作业，让 Agent 修正 OCR 草稿并从题干提取内容相关标题；默认走 economy 档 |
 | `approve-source` | `problem`、`reviewer`、`note` | 保存并批准正式题干；仍含待核对内容时由生命周期拒绝 |
 | `analyze` | 可选 `instruction`、`routing_tier` | 创建 `analysis.generate` 后台作业；模型返回结构化解析，程序确定性生成学生版、教师版、兼容版和解释 SVG；不会自动生成交互仿真。若存在与当前输入匹配的生成检查点，优先零 Token 恢复 |
+| `analyze-w3-shadow` | 可选 `routing_tier`、`model_id` | 在一个 `analysis.generate` 作业内运行 W3 拆题、定向召回、目标审计和交叉验证，只写私有 `w3-shadow-report.json` 与输入摘要检查点，不改教师复核答案；当前仅供离线验收 |
 | `save-answer` | `layer`、`markdown`、可选 `base_digest` | 保存学生版或教师版 Markdown，并撤销旧答案批准 |
-| `refresh-difficulty-assessment` | 无 | 依据当前题干、学生版解析和可用物理模型重算六维客观难度量表；各维为 0–5、步长 0.1，附可追溯证据；不改变答案复核状态 |
-| `save-difficulty-assessment` | `assessment` | 教师保存修改后的总分、六维评分、核心判断和难度总结；评分须在 0–5 且步长为 0.1；不新增审批门禁 |
+| `refresh-difficulty-assessment` | 无 | 依据已复核题干和规范化标准解题路径重算六维客观难度量表；W3 路径优先使用 Solver、验证器与仲裁的解后关系做确定性投影，评分字段不进入或阻断解题主链。“题型距离与建模转换”按六级固定母题距离锚点计分，知识深度按不可绕过概念关键路径和 A–O 标杆校准；内部校准上限为 6，正式评分封顶 5，越过 5 必须有经验证的第一性重建链；知识整合按最小充分模块集去重；过程维按单一、串联、时序、同步、分支和嵌套全局六级组合拓扑评分；运算维按正确列式后的必要计算链评分；条件负担从决定性关系和关键审查节点而非审核标签数量推断。旧路径保守回退；没有标准路径时明确返回待评分 |
+| `save-difficulty-assessment` | `assessment` | 教师保存校准后的六维评分、核心判断、难度总结和校准依据；正式评分统一在 0–5 且步长为 0.1，教师结果优先但保留自动基线；不新增审批门禁 |
 | `approve-answer` | `reviewer`、`note` | 批准当前题干、答案、模型和引用图片的联合摘要 |
 | `request-revision` | 修改意见、可选 `routing_tier` 及页面提供的版本摘要 | 创建 `answer.revise` 后台作业，在隔离区返修答案和解释图 |
-| `build-visualization` | 可选 `message`、`runtime_check`、`routing_tier` | 无模型时创建 `visualization.model` 作业；有模型时直接确定性构建预审仿真 |
+| `build-visualization` | 可选 `message`、`runtime_check`、`routing_tier` | 无模型时创建 `visualization.model` 作业；已有与当前模型匹配的可用预览时返回 `unchanged` 并保留原字节与审批，只有模型变化或尚无可用预览时才确定性构建 |
 | `approve-visualization` | `reviewer`、`note` | 批准当前模型、HTML/ZIP 和运行证据摘要 |
 | `visualization-chat` | `message`、可选 `base_digest`、`routing_tier` | 创建后台作业，请求生成或修复当前题目的模型候选 |
 | `clear-visualization-chat` | 无 | 清空当前题目的可视化对话记录 |

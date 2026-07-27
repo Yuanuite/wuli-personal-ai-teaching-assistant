@@ -64,6 +64,11 @@ python3 teacher-console/scripts/rag_effectiveness_report.py \
 
 默认只读。仅在样本有代表性时加 `--record`，将报告保存为全库级 `evolve.observation.rag`。`comparison_ready=false` 表示同一任务类型的检索组和历史无检索组尚未分别达到最小样本量，不能据此调整策略。具体门槛见 [`evolve-roadmap.md`](evolve-roadmap.md)。
 
+恢复 W3 上线验收前，先看
+[`rag-completion-work-tree.md`](rag-completion-work-tree.md)。当前必须等待至少五道
+从未进入旧 W3 manifest 的教师复核题；该文档固定了真值先冻结、同条件 W2/W3、
+生产灰度和回滚验收的不可倒置顺序。旧题 replay 只能诊断，不能打开生产门禁。
+
 建立并运行固定检索评测集：
 
 ```bash
@@ -286,6 +291,14 @@ python3 .claude/skills/manage-student-error-library/scripts/public_site.py prepa
 python3 .claude/skills/manage-student-error-library/scripts/public_site.py publish <entry-id> \
   --reviewer teacher --note "已检查公开内容与隐私"
 ```
+
+若教师已校准客观难度，并且题目此前已经通过隐私复核发布到本地学生端，只同步公开安全的难度摘要：
+
+```bash
+python3 .claude/skills/manage-student-error-library/scripts/public_site.py sync-difficulty
+```
+
+该命令只更新既有 `catalog.json` 条目的难度总分、等级、公开结论与六维摘要；不会重建或复制题目正文、答案、PDF、题图和仿真，也不会改变原发布时间。未发布、发布记录异常或公开内容缺失的条目不会被静默补发。
 
 本地检查可从项目根目录运行 `python3 -m http.server 8000 --directory student-site`，打开 <http://127.0.0.1:8000/>。确认后，把 `student-site/` 单独初始化为公开 GitHub 仓库并在仓库 Settings → Pages 选择从主分支根目录部署。不要把项目根目录、`student-error-library/` 或 `output/` 一起提交。每次新增公开题目后仍需人工执行 Git 提交与推送。
 

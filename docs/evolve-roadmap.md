@@ -2,6 +2,10 @@
 
 目标不是让系统频繁自动改自己，而是建立“证据足够才更新、任何策略都可回滚”的教学慢循环。
 
+从当前 W3 影子状态走到生产完成的状态、顺序和一票否决项统一见
+[`rag-completion-work-tree.md`](rag-completion-work-tree.md)。本文保留检索与慢循环的
+原理和历史指标，不再充当当期执行清单。
+
 ## 当前阶段：观测地基
 
 已具备 Evaluator、Candidate Archive、Knowledge Store、Agent Scheduler/Benchmark、RAG 证据注入和 RAG Effectiveness Report。观察报告按 `retrieved / empty / unavailable / legacy-no-rag` 分组，比较成功率、耗时、Evaluator、返修和批准结果。
@@ -51,7 +55,63 @@
 并由教师显式确认。候选结果同时开始报告标签、题干、方法三个证据
 槽位的覆盖与缺口，下一阶段再验证覆盖约束是否改善最终答案，而不是仅继续调检索分数。
 
+W1 已把这一要求固化为评测契约：原 30 条固定集是 `calibration`；新增
+`holdout` 至少 12 条、覆盖四类查询且具有独立批次标识。缺少 holdout 时
+`policy_gate_ready=false`，即使 calibration 指标达标也不能切换策略。
+Knowledge Store 同时输出物理条件相容性审计，候选 `precision-gated-v1`
+会剔除跨领域、显式几何或求解目标冲突证据，并在没有可靠证据时降级为空证据。该策略仍只进入
+`web-candidate` 离线答案评测，生产 baseline 不变。
+
+首批独立 holdout 经教师批准后，baseline 与 intent-augmented 的 Recall@5/MRR
+均为 `1.0000/0.7639`；条件审计对教师标注相关条目的保留率为 `1.0000`，
+`policy_gate_ready=true`。multi-route Recall@5 为 `0.9167`，漏掉
+`holdout-009`，继续保持实验状态。holdout 通过只允许进入下一阶段评测，
+不自动切换任何生产策略。
+
+W2 已完成主动证据集构建：`evidence-set-v2` 在 W1 精度门禁之后，按新增证据槽位、
+路由多样性和单条精度选择引用，同时去除近重复并阻止领域、几何或求解目标相互冲突
+的引用共存。独立 holdout 上最终相关证据保留率为 `1.0000`，近重复对和冲突对均为
+`0`，`w2_evidence_set_ready=true`。中等、较难、挑战三档真实网页候选的关键结论
+均与教师复核稿一致；其中较难题因无可靠历史证据安全降级为空集合。该结论只验收 W2
+候选能力，生产 baseline 仍不切换。下一阶段应扩大各难度档答案样本，而不是立即引入
+向量数据库或自动上线候选策略。
+
 增强顺序：JSON 标签过滤和字段加权 → FTS 查询扩展与知识点归一化 → 混合排序与去重 → 本地向量检索。Neo4j/图检索只在跨题知识链、错因演化或多跳分析出现明确查询需求后引入。
+
+W3 已完成影子实现：确定性复杂度初筛决定是否生成 `problem.decompose` 双层蓝图，
+蓝图把物理过程和推理过程分开，并生成默认 3 路、最多 5 路定向召回需求；W2
+证据集选择器统一融合后，Solver A 结构化求解，目标级风险审计器按预期收益决定
+是否调用独立验证器，极高风险或冲突再调用盲解 Solver B，并按证据和可复算关系
+仲裁。教师端只显示最多两张核对卡。生产默认仍保持 W2，必须先通过冻结教师真值
+和独立 holdout 的目标准确率不退化门槛。完整契约见
+[`w3-reasoning-pipeline.md`](w3-reasoning-pipeline.md)。
+
+2026-07-26 的冻结验收中，5 道校准题 16/16。首轮文本一致性评分把 5 道 holdout
+记为 15/16；随后教师确认唯一分歧是原参考答案遗漏的整周期同相位合法分支，修订后
+数学正确率为 16/16，并将该目标标为 `valid-supplement`。由于参考答案修订由本轮
+影子输出触发，该 holdout 不再满足独立性：`accuracy_non_regression=true`，但
+`independent_holdout_intact=false`、`fresh_holdout_required=true`，所以
+`production_eligible=false`。下一版本必须建立新的未见真值集，不能用修订后的本轮
+holdout 证明泛化。
+
+W4-1 已把新鲜批次改为“真值先冻结、影子后运行”：所有曾进入旧 W3 manifest 的题
+一律排除；新 manifest 生成后，教师必须先批准至少 5 题、12 个目标的结构化真值，
+再生成不可覆盖的 `truth-lock.json`。答案、目标真值或锁摘要发生变化都会失败关闭。
+当前 14 道教师复核题均已进入旧 manifest，新鲜样本为 0，尚缺 5 道，因此 W3 继续
+保持影子状态。
+
+教师已允许选择旧题作回放控制。首批 5 题、15 个目标的 `replay` 结果为 W3
+`15/15`，平均内部调用 4.4、平均教师核对卡 0.4；旧 W3 报告中的 baseline 是教师
+复核答案，不再冒充 W2 生成成绩。真实 W2/W3 成对候选由 W4-2 单独生成。回放结果
+不计入独立 holdout，生产资格仍为 false。
+
+W4-2 的首个真实网页配对固定为 `expert` 路由、`codex-visualization` 模型和 candidate
+evidence。初次诊断暴露的 compact LaTeX、隐藏控制字符、决定性关系长度上限和失败
+重跑覆盖问题均已修复。全部 5 道 replay、15 个冻结目标完成真实配对后，W2 为
+14/15（93.33%），W3 为 15/15（100%），W2 可交付性通过 3/5。唯一准确率差异是
+三维电磁运动题中曾由旧 W3 推动教师补充的同相位分支，因此不能视作独立泛化增益；
+另一道双区域磁场题虽结论正确，但首次性证明未完整展示两个中间时段的位置式。
+W4-2 已完成回放诊断，下一硬门槛仍是新的未见 holdout。
 
 每次后端替换必须继续通过统一 `build_agent_evidence()` 接口，Agent Gateway 和教师页面不感知具体实现。
 

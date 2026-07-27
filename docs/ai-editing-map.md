@@ -17,6 +17,8 @@
 | 会话收尾、文档同步、规范审计 | `.claude/skills/neat-freak/SKILL.md` | README、docs、CLAUDE/AGENTS、变更日志 | 文档链接/规则/测试状态核验 |
 | OCR 后整理题干、修正标题（source.clean） | `docs/teacher-console-api.md` | `teacher-console/server.py`（`source_clean_task`、`validate_source_clean_candidate`） | Agent Gateway 测试 |
 | 标准解析契约、最短高中解法、首次解析 RAG | `docs/agent-gateway.md`、`docs/high-school-physics-techniques.md`、`docs/knowledge-store.md` | `teacher-console/analysis_artifacts.py`、`teacher-console/server.py`（`analysis_task`）、答案模板、`knowledge_store.py`、单元/E2E fake adapter | 解析候选校验、Knowledge Store/固定检索集、全部单元测试与 3 条 E2E |
+| W3 复杂题拆解、定向召回、交叉验证与仲裁 | `docs/w3-reasoning-pipeline.md`、`docs/knowledge-store.md` | `problem_decomposition.py`、`solution_reasoning.py`、`solution_verification.py`、`w3_pipeline.py`、`server.py`（W3 shadow）、拆题 Skill | W3 契约/编排测试、影子 benchmark、独立 holdout；未过门槛不得替换 W2 |
+| W3 上线进度、五题独立验收、生产灰度与回滚 | `docs/rag-completion-work-tree.md` | W3 评测实验、版本化路由策略及其测试；未到对应节点时不提前修改生产默认 | fresh truth-lock、同条件 paired-score、灰度指标、W2 回退与回滚演练 |
 | 检索评测复核、Knowledge Store 证据注入 | `docs/knowledge-store.md`、`docs/evolve-roadmap.md` | `teacher-console/scripts/retrieval_benchmark.py`、`teacher-console/scripts/evidence_budget_benchmark.py`、`teacher-console/tests/fixtures/evidence-budget-eval.example.jsonl`、`knowledge_store.py` | 检索评测测试、Evidence 预算预检、Knowledge Store 测试 |
 
 ## 默认不要先读的大文件
