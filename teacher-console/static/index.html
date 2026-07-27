@@ -286,9 +286,10 @@
           </div>
           <section id="difficulty-assessment" class="difficulty-assessment" hidden>
             <div class="difficulty-assessment-head"><strong>客观难度量表</strong><small id="difficulty-status">解析生成后自动评估</small></div>
-            <p id="difficulty-summary-hint" class="muted">评分采用 0–5、步长 0.1 的证据化量表；不会影响答案复核流程，可直接修改后保存。</p>
+            <p id="difficulty-summary-hint" class="muted">评分采用 0–5、步长 0.1 的固定标杆量表；内部校准可扩展到 6，但正式计分封顶 5。</p>
             <div id="difficulty-dimensions" class="difficulty-dimensions"></div>
             <label class="difficulty-summary-label">难度总结<textarea id="difficulty-summary" rows="2" maxlength="300"></textarea></label>
+            <label class="difficulty-summary-label">教师校准依据（修改自动分时填写）<textarea id="difficulty-calibration-note" rows="2" maxlength="300" placeholder="例如：标准路径遗漏了必须分类讨论的边界情况"></textarea></label>
             <div class="button-row"><button id="refresh-difficulty-assessment" class="secondary" type="button">按当前题目重算</button><button id="save-difficulty-assessment" class="primary" type="button">保存难度量表</button></div>
           </section>
           <div class="markdown-workbench answer-markdown-workbench">
@@ -301,6 +302,13 @@
               <article id="solution-view" class="markdown-preview"></article>
             </section>
           </div>
+          <details id="w3-review-focus" class="w3-review-focus" hidden>
+            <summary class="w3-review-focus-head">
+              <span><strong>建议重点核对</strong><small id="w3-review-focus-count"></small></span>
+              <small>W3 影子审计 · 按需展开</small>
+            </summary>
+            <div id="w3-review-focus-cards"></div>
+          </details>
           <div class="approval-box">
             <label>复核人<input id="answer-reviewer" value="teacher"></label>
             <label>修改意见（交给本地大模型）<textarea id="answer-note" rows="1" placeholder="批准时可留空；修改时请明确指出公式、步骤或解释图问题"></textarea></label>

@@ -38,8 +38,12 @@ import difficulty_assessment  # noqa: E402
 import evaluator  # noqa: E402
 import kb  # noqa: E402
 import process_uploads  # noqa: E402
+import problem_decomposition  # noqa: E402
 import public_site  # noqa: E402
+import solution_reasoning  # noqa: E402
+import solution_verification  # noqa: E402
 import teacher_feedback  # noqa: E402
+import w3_pipeline  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 from failure_intelligence import run_with_failure_repair  # noqa: E402
@@ -440,7 +444,12 @@ def _evidence_prompt_note(kind: str) -> str:
     return ""
 
 
-def agent_evidence_payload(entry: Path, kind: str, routing_tier: str = "auto") -> dict:
+def agent_evidence_payload(
+    entry: Path,
+    kind: str,
+    routing_tier: str = "auto",
+    evidence_selection_policy: str = "baseline",
+) -> dict:
     """Build a privacy-minimized evidence pack for one Agent task.
 
     Failure to retrieve is non-blocking; returns ``status=unavailable``.
@@ -485,6 +494,7 @@ def agent_evidence_payload(entry: Path, kind: str, routing_tier: str = "auto") -
             task_type=task_type,
             top_k=top_k,
             char_budget=char_budget,
+            selection_policy=evidence_selection_policy,
         )
     except Exception:
         return {
@@ -651,6 +661,50 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
         ".agent-context/secondary-conclusions.json",
         ".agent-context/knowledge-evidence.json",
     ]
+    return task
+
+
+def w3_stage_task(
+    entry: Path,
+    stage: str,
+    prompt: str,
+    output_contract: dict,
+    context_payloads: dict[str, dict],
+    *,
+    routing_tier: str,
+    model_config: dict | None,
+) -> dict:
+    """Build one read-only structured W3 stage inside an analysis job."""
+    has_physics_model = (entry / "physics-model.json").is_file()
+    task = _agent_task(
+        entry,
+        "analysis.generate",
+        prompt,
+        [],
+        input_paths=[
+            "problem.md",
+            *(["physics-model.json"] if has_physics_model else []),
+        ],
+        denied_paths=sorted(source_asset_names(entry)),
+        requires_change=False,
+        routing_tier=routing_tier,
+        model_config=model_config,
+    )
+    task["id"] = f"{task['id']}-{stage}"
+    task["context_files"] = {}
+    if stage == "decompose":
+        task["context_files"][".agent-context/decompose-skill.md"] = str(
+            PROJECT_ROOT / ".claude" / "skills" / "decompose-physics-problem" / "SKILL.md"
+        )
+    task["context_payloads"] = context_payloads
+    task["output_contract"] = output_contract
+    task["structured_context_paths"] = [
+        "problem.md",
+        *(["physics-model.json"] if has_physics_model else []),
+        *sorted(context_payloads),
+        *sorted(task["context_files"]),
+    ]
+    task["w3_stage"] = stage
     return task
 
 
@@ -999,27 +1053,28 @@ def save_answer_entry(library: Path, entry: Path, data: dict) -> dict:
 
 
 def assess_entry_difficulty(entry: Path, *, force: bool = False) -> dict:
-    """Refresh the non-blocking objective-difficulty rubric after answer changes."""
+    """Refresh objective difficulty from the reviewed problem and standard path."""
     record = kb.load_json(entry / "record.json", {})
     problem = (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").is_file() else ""
-    answer_path = entry / "student-solution.md"
-    answer = answer_path.read_text(encoding="utf-8") if answer_path.is_file() else ""
-    model_path = entry / "physics-model.json"
-    model = kb.load_json(model_path, {}) if model_path.is_file() else None
+    standard_path = record.get("standard_solution_path")
     previous = record.get("difficulty_assessment")
-    if not force and difficulty_assessment.current(previous, problem, answer, model):
+    if not force and difficulty_assessment.current(previous, problem, standard_path):
         return previous
     if isinstance(previous, dict) and previous.get("status") == "teacher-edited":
         history = record.setdefault("difficulty_assessment_history", [])
         if isinstance(history, list):
-            history.append({"reason": "题目、解析或模型已变化，保留原教师校准", "assessment": previous})
+            history.append({"reason": "题干或标准解题路径已变化，保留原教师校准", "assessment": previous})
             record["difficulty_assessment_history"] = history[-10:]
-    assessment = difficulty_assessment.auto_assess(record, problem, answer, model)
+    assessment = difficulty_assessment.auto_assess(record, problem, standard_path)
     if isinstance(previous, dict) and previous.get("status") == "teacher-edited":
-        assessment["calibration"] = {"status": "needs-recalibration", "note": "题目、解析或模型已变化；已保留先前教师校准，建议复核此新基线。"}
+        assessment["calibration"] = {
+            "status": "needs-recalibration",
+            "note": "题干或标准解题路径已变化；已保留先前教师校准，新自动基线先默认生效。",
+        }
     record["difficulty_assessment"] = assessment
     # Keep the legacy label coherent for existing stats and retrieval views.
-    record["difficulty"] = assessment["level"]
+    if assessment.get("score") is not None:
+        record["difficulty"] = assessment["level"]
     record["updated_at"] = difficulty_assessment.now_iso()
     kb.write_json(entry / "record.json", record)
     with LIBRARY_INDEX_LOCK:
@@ -1030,11 +1085,15 @@ def assess_entry_difficulty(entry: Path, *, force: bool = False) -> dict:
 def save_difficulty_assessment(entry: Path, data: dict) -> dict:
     record = kb.load_json(entry / "record.json", {})
     problem = (entry / "problem.md").read_text(encoding="utf-8") if (entry / "problem.md").is_file() else ""
-    answer_path = entry / "student-solution.md"
-    answer = answer_path.read_text(encoding="utf-8") if answer_path.is_file() else ""
-    model_path = entry / "physics-model.json"
-    model = kb.load_json(model_path, {}) if model_path.is_file() else None
-    assessment = difficulty_assessment.normalize_teacher_edit(data.get("assessment"), problem, answer, model)
+    standard_path = record.get("standard_solution_path")
+    current = record.get("difficulty_assessment")
+    baseline = current.get("auto_baseline") if isinstance(current, dict) else None
+    assessment = difficulty_assessment.normalize_teacher_edit(
+        data.get("assessment"),
+        problem,
+        standard_path,
+        baseline=baseline,
+    )
     record["difficulty_assessment"] = assessment
     record["difficulty"] = assessment["level"]
     record["updated_at"] = difficulty_assessment.now_iso()
@@ -1386,6 +1445,18 @@ def entry_detail(entry: Path) -> dict:
     publication = public_site.publication_snapshot(entry, PUBLIC_SITE)
     publication_images = public_site.public_image_snapshot(entry)
     latest_job = job_manager().latest_for_entry(entry.name)
+    w3_shadow_raw = read_json(entry / "w3-shadow-report.json", {})
+    w3_report = w3_shadow_raw.get("report", {}) if w3_shadow_raw.get("status") == "completed" else {}
+    w3_shadow = {
+        "status": str(w3_shadow_raw.get("status", "not-run")),
+        "mode": str(w3_report.get("mode", "shadow")) if w3_report else "shadow",
+        "teacher_review_focus": w3_pipeline.teacher_review_snapshot(w3_report),
+        "metrics": {
+            key: w3_report.get("metrics", {}).get(key)
+            for key in ("target_count", "verified_target_count", "solver_b_used")
+            if key in w3_report.get("metrics", {})
+        },
+    }
     for source in publication_images.get("sources", []):
         source["url"] = f"/api/entry-file/{quote(entry.name)}/{quote(source['relative'])}"
     if publication["preview_ready"]:
@@ -1407,6 +1478,7 @@ def entry_detail(entry: Path) -> dict:
         "source_review_record": read_json(entry / "source-review.json", {}),
         "answer_review_record": read_json(entry / "answer-review.json", record.get("answer_review", {})),
         "analysis_request": read_json(entry / "analysis-request.json", {}),
+        "w3_shadow": w3_shadow,
         "answer_digest": process_uploads.answer_digest(entry),
         "images": [
             f"/api/entry-file/{quote(entry.name)}/{quote(relative)}"
@@ -1726,6 +1798,18 @@ class Handler(SimpleHTTPRequestHandler):
             model_config_for_task("analysis.generate", model_id, tier)
             result = queue_agent_job(
                 "analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id
+            )
+        elif action == "analyze-w3-shadow":
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            raw_model_id = data.get("model_id")
+            model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
+            model_config_for_task("analysis.generate", model_id, tier)
+            result = queue_agent_job(
+                "analysis.generate",
+                entry,
+                lambda: self.run_w3_shadow_analysis(entry, data),
+                routing_tier=tier,
+                model_id=model_id,
             )
         elif action == "save-answer":
             if process_uploads.pipeline_state(entry)["state"] == "needs-source-review":
@@ -2052,6 +2136,202 @@ class Handler(SimpleHTTPRequestHandler):
                 "completed" if succeeded else "failed",
                 gateway.get("provider"),
                 resulting_state["state"],
+            )
+            return request
+
+    def run_w3_shadow_analysis(self, entry: Path, data: dict):
+        """Run W3 in a private shadow artifact without changing the reviewed answer."""
+        with TraceContext() as ctx:
+            ctx.info("stage=w3-shadow entry_id=%s status=started", entry.name)
+            state = process_uploads.pipeline_state(entry)
+            if state["state"] == "needs-source-review":
+                return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": state}
+            routing_tier = normalize_routing_tier(data.get("routing_tier"))
+            model_id = resolve_model_id_for_task(
+                "analysis.generate", routing_tier, data.get("model_id")
+            )
+            model_config = model_config_for_task("analysis.generate", model_id, routing_tier)
+            problem = (entry / "problem.md").read_text(encoding="utf-8")
+            stage_telemetry: list[dict] = []
+
+            def run_stage(stage: str, context: dict) -> dict:
+                if stage == "decompose":
+                    contract = problem_decomposition.output_contract()
+                    normalizer = problem_decomposition.normalize_payload
+                    instruction = "只拆解当前题目的物理过程、推理过程、检索需求和校验义务。"
+                elif stage in {"solver-a", "solver-b"}:
+                    contract = solution_reasoning.output_contract(role=stage)
+                    blueprint = context["blueprint"]
+                    normalizer = lambda payload: solution_reasoning.normalize_solution(
+                        payload, blueprint
+                    )
+                    instruction = (
+                        "独立求解指定高风险目标，不得读取另一求解器的输出。"
+                        if stage == "solver-b"
+                        else "根据双层蓝图与证据集形成可复算的结构化结论。"
+                    )
+                elif stage == "verifier":
+                    expected = set(context.get("target_ids", []))
+                    contract = solution_verification.output_contract()
+                    normalizer = lambda payload: solution_verification.normalize_audit(
+                        payload, expected
+                    )
+                    instruction = "仅对指定目标独立复算；不得读取历史答案正文。"
+                    context = {
+                        **context,
+                        "evidence": solution_verification.verification_evidence_view(
+                            context.get("evidence", {})
+                        ),
+                    }
+                elif stage == "adjudicator":
+                    expected = set(context.get("target_ids", []))
+                    contract = solution_reasoning.adjudication_output_contract()
+                    normalizer = lambda payload: solution_reasoning.normalize_adjudication_with_verified_equivalence(
+                        payload,
+                        expected,
+                        solver_a=context.get("solver_a", {}),
+                        verifier=context.get("verifier"),
+                    )
+                    instruction = "依据证据与可复算关系仲裁冲突，不得投票。"
+                else:
+                    raise ValueError(f"unknown W3 stage: {stage}")
+
+                payloads = {
+                    f".agent-context/w3-{name}.json": value
+                    for name, value in context.items()
+                    if name != "problem" and isinstance(value, (dict, list))
+                }
+                task = w3_stage_task(
+                    entry,
+                    stage,
+                    instruction,
+                    contract,
+                    payloads,
+                    routing_tier=routing_tier,
+                    model_config=model_config,
+                )
+                checkpoint_digest = hashlib.sha256(
+                    json.dumps(
+                        {
+                            "stage": stage,
+                            "problem": problem,
+                            "context": context,
+                            "contract": contract.get("name"),
+                            "model_id": model_id,
+                            "routing_tier": routing_tier,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    ).encode("utf-8")
+                ).hexdigest()
+                checkpoint_path = (
+                    entry / ".cache" / "w3-shadow" / f"{stage}-{checkpoint_digest}.json"
+                )
+                checkpoint = kb.load_json(checkpoint_path, {})
+                if checkpoint.get("status") == "completed" and isinstance(
+                    checkpoint.get("payload"), dict
+                ):
+                    normalized = normalizer(checkpoint["payload"])
+                    stage_telemetry.append({
+                        "stage": stage,
+                        "status": "completed",
+                        "provider": "checkpoint",
+                        "model_id": model_id,
+                        "usage": {},
+                        "failure_type": "",
+                        "message": "复用同输入、同契约的 W3 结构化检查点。",
+                    })
+                    return normalized
+
+                def materializer(_staging, payload):
+                    return {"payload": normalizer(payload)}
+
+                gateway = run_agent_gateway(
+                    entry,
+                    task,
+                    None,
+                    materializer=materializer,
+                )
+                telemetry = {
+                    "stage": stage,
+                    "status": gateway.get("status"),
+                    "provider": gateway.get("provider"),
+                    "model_id": gateway.get("model_id", model_id),
+                    "usage": gateway.get("usage", {}),
+                    "failure_type": gateway.get("failure_type", ""),
+                    "message": str(gateway.get("message", ""))[:500],
+                }
+                if gateway.get("status") != "completed":
+                    telemetry["stderr"] = _sanitize_output(gateway.get("stderr", ""))
+                stage_telemetry.append(telemetry)
+                if gateway.get("status") != "completed":
+                    raise RuntimeError(gateway_failure_detail(gateway, f"W3 {stage} 失败"))
+                payload = gateway.get("materialization", {}).get("payload")
+                if not isinstance(payload, dict):
+                    raise RuntimeError(f"W3 {stage} 未返回规范化结构")
+                kb.write_json(
+                    checkpoint_path,
+                    {
+                        "schema_version": 1,
+                        "status": "completed",
+                        "stage": stage,
+                        "contract": contract.get("name"),
+                        "payload": payload,
+                    },
+                )
+                return payload
+
+            def build_evidence(blueprint: dict) -> dict:
+                from knowledge_store import build_blueprint_evidence
+
+                return build_blueprint_evidence(
+                    LIBRARY,
+                    entry.name,
+                    blueprint,
+                    task_type="analysis.generate",
+                    default_need_limit=3,
+                    max_need_limit=5,
+                    top_k=4 if routing_tier != "economy" else 2,
+                    char_budget=9000 if routing_tier == "expert" else 8000,
+                )
+
+            request = {
+                "schema_version": 1,
+                "kind": "w3-shadow-analysis",
+                "entry_id": entry.name,
+                "status": "running",
+                "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                "routing_tier": routing_tier,
+                "model_id": model_id,
+                "baseline": "current-teacher-reviewed-answer",
+                "canonical_answer_changed": False,
+            }
+            try:
+                report = w3_pipeline.run_shadow(
+                    problem,
+                    stage_runner=run_stage,
+                    evidence_builder=build_evidence,
+                    has_physics_model=(entry / "physics-model.json").is_file(),
+                )
+                request.update({
+                    "status": "completed",
+                    "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                    "stages": stage_telemetry,
+                    "report": report,
+                })
+            except Exception as exc:  # noqa: BLE001 - preserve stage diagnostics
+                request.update({
+                    "status": "failed",
+                    "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                    "message": str(exc)[:1000],
+                    "stages": stage_telemetry,
+                })
+            kb.write_json(entry / "w3-shadow-report.json", request)
+            ctx.info(
+                "stage=w3-shadow entry_id=%s status=%s stages=%s",
+                entry.name,
+                request["status"],
+                len(stage_telemetry),
             )
             return request
 

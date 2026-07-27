@@ -334,6 +334,10 @@ function retrievalStatusLabel(status) {
   return { draft: "待复核", approved: "已批准", rejected: "已驳回" }[status] || status;
 }
 
+function retrievalSplitLabel(split) {
+  return { calibration: "校准集", holdout: "独立留出集" }[split || "calibration"] || split;
+}
+
 function setRetrievalDirty(value = true) {
   state.retrievalReview.dirty = value;
   $("retrieval-review-hint").textContent = value
@@ -361,6 +365,17 @@ function renderRetrievalSummary() {
     item.append(strong, document.createTextNode(label));
     summary.append(item);
   }
+  const splitCounts = validation.approved_split_counts || {};
+  for (const [label, value] of [
+    ["校准集批准", splitCounts.calibration || 0],
+    ["留出集批准", splitCounts.holdout || 0],
+  ]) {
+    const item = document.createElement("span");
+    const strong = document.createElement("strong");
+    strong.textContent = String(value);
+    item.append(strong, document.createTextNode(label));
+    summary.append(item);
+  }
 }
 
 function renderRetrievalCaseList() {
@@ -375,7 +390,7 @@ function renderRetrievalCaseList() {
     number.textContent = String(index + 1).padStart(2, "0");
     const copy = document.createElement("span");
     const category = document.createElement("small");
-    category.textContent = `${RETRIEVAL_CATEGORY_LABELS[item.category] || item.category} · ${retrievalStatusLabel(item.review_status)}`;
+    category.textContent = `${retrievalSplitLabel(item.evaluation_split)} · ${RETRIEVAL_CATEGORY_LABELS[item.category] || item.category} · ${retrievalStatusLabel(item.review_status)}`;
     const query = document.createElement("strong");
     query.textContent = item.query;
     copy.append(category, query);
@@ -1399,6 +1414,89 @@ async function selectEntry(id) {
   $("publication-privacy-confirmed").checked = false;
   syncTabAvailability(); enforceActiveTabPrerequisite(); renderProgress(); renderImages(); showSolution(state.solution); renderVisualization(); renderDownloads(); renderPublicationImages(); renderPublication(); renderEntries(); renderActiveJob();
   renderDifficultyAssessment();
+  renderW3ReviewFocus();
+}
+
+function renderW3ReviewFocus() {
+  const panel = $("w3-review-focus");
+  const container = $("w3-review-focus-cards");
+  const focus = state.current?.w3_shadow?.teacher_review_focus || [];
+  container.replaceChildren();
+  panel.hidden = !focus.length;
+  panel.open = false;
+  $("w3-review-focus-count").textContent = focus.length ? `${Math.min(2, focus.length)} 项` : "";
+  for (const item of focus.slice(0, 2)) {
+    const card = document.createElement("details");
+    card.className = `w3-focus-card ${item.priority === "high" ? "high" : ""}`;
+    const summary = document.createElement("summary");
+    const title = document.createElement("strong");
+    title.textContent = item.prompt || "请核对关键结论";
+    const hint = document.createElement("small");
+    hint.textContent = item.audit?.sections?.length ? "查看审计" : "仅提示";
+    summary.append(title, hint);
+    const check = document.createElement("p");
+    check.textContent = item.decisive_check || "请按题干条件独立复算该目标。";
+    const audit = document.createElement("div");
+    audit.className = "w3-audit";
+    for (const section of item.audit?.sections || []) {
+      const block = document.createElement("section");
+      block.className = "w3-audit-block";
+      const head = document.createElement("div");
+      const label = document.createElement("strong");
+      label.textContent = section.label || "审计内容";
+      const actions = document.createElement("span");
+      const copy = document.createElement("button");
+      copy.type = "button";
+      copy.className = "w3-audit-copy";
+      copy.textContent = "复制";
+      copy.addEventListener("click", () => copyAuditText(section.text || ""));
+      actions.append(copy);
+      if (section.actionable) {
+        const use = document.createElement("button");
+        use.type = "button";
+        use.className = "w3-audit-use";
+        use.textContent = "填入修改意见";
+        use.addEventListener("click", () => useAuditAsRevision(item, section));
+        actions.append(use);
+      }
+      head.append(label, actions);
+      const content = document.createElement("pre");
+      content.textContent = section.text || "";
+      block.append(head, content);
+      audit.append(block);
+    }
+    card.append(summary, check, audit);
+    container.append(card);
+  }
+}
+
+async function copyAuditText(text) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      const fallback = document.createElement("textarea");
+      fallback.value = text;
+      fallback.style.position = "fixed";
+      fallback.style.opacity = "0";
+      document.body.append(fallback);
+      fallback.select();
+      document.execCommand("copy");
+      fallback.remove();
+    }
+    toast("审计内容已复制");
+  } catch (_error) {
+    toast("复制失败，请选中文本后复制", true);
+  }
+}
+
+function useAuditAsRevision(item, section) {
+  const target = item.target_id ? `目标 ${item.target_id}` : "该冲突目标";
+  const next = `我认为${target}应采用“${section.label}”：\n${section.text}\n请据此核对并修改解析。`;
+  const note = $("answer-note");
+  note.value = note.value.trim() ? `${note.value.trim()}\n\n${next}` : next;
+  note.focus();
+  toast("已填入修改意见，确认后可交给大模型修改");
 }
 
 function renderDifficultyAssessment() {
@@ -1406,14 +1504,18 @@ function renderDifficultyAssessment() {
   const container = $("difficulty-dimensions");
   container.replaceChildren();
   $("difficulty-summary").value = assessment?.summary || "";
-  $("difficulty-summary-hint").textContent = assessment?.calibration?.note || "评分采用 0–5、步长 0.1 的证据化量表；不会影响答案复核流程，可直接修改后保存。";
-  $("difficulty-status").textContent = assessment
+  $("difficulty-calibration-note").value = assessment?.status === "teacher-edited"
+    ? (assessment?.calibration?.note || "")
+    : "";
+  $("difficulty-summary-hint").textContent = assessment?.calibration?.note || "评分采用 0–5、步长 0.1 的固定标杆量表；内部校准可扩展到 6，但正式计分封顶 5。";
+  const hasScore = Number.isFinite(assessment?.score);
+  $("difficulty-status").textContent = hasScore
     ? `${assessment.score}/100 · ${assessment.level}${assessment.status === "teacher-edited" ? " · 教师已修改" : " · 默认采用"}${assessment.confidence ? ` · 置信度 ${Math.round(assessment.confidence * 100)}%` : ""}`
-    : "解析生成后自动评估";
-  $("difficulty-tab-score").textContent = assessment ? String(assessment.score) : "";
+    : (assessment?.summary || "标准解题路径形成后自动评估");
+  $("difficulty-tab-score").textContent = hasScore ? String(assessment.score) : "";
   $("difficulty-assessment-toggle").setAttribute(
     "aria-label",
-    assessment ? `题目难度，${assessment.score}/100，${assessment.level}` : "题目难度，解析生成后自动评估",
+    hasScore ? `题目难度，${assessment.score}/100，${assessment.level}` : "题目难度，等待标准解题路径",
   );
   if (!assessment?.dimensions?.length) return;
   for (const dimension of assessment.dimensions) {
@@ -1432,6 +1534,8 @@ function difficultyAssessmentPayload() {
   return {
     generated_at: assessment?.generated_at || "",
     summary: $("difficulty-summary").value.trim(),
+    teacher_note: $("difficulty-calibration-note").value.trim(),
+    auto_baseline: assessment?.auto_baseline || null,
     dimensions: [...document.querySelectorAll(".difficulty-dimension")].map(card => ({
       id: card.dataset.dimension,
       score: Number(card.querySelector('input[type="number"]').value),
@@ -2170,10 +2274,10 @@ $("save-answer").addEventListener("click", () => {
   saveCurrentAnswer();
 });
 $("refresh-difficulty-assessment").addEventListener("click", () => {
-  entryAction("refresh-difficulty-assessment", {}, "已按当前题干与解析重算难度量表");
+  entryAction("refresh-difficulty-assessment", {}, "已按当前题干与标准解题路径重算难度量表");
 });
 $("save-difficulty-assessment").addEventListener("click", () => {
-  if (!state.current?.difficulty_assessment) { toast("请先生成解析，系统会自动创建难度量表。", true); return; }
+  if (!state.current?.difficulty_assessment?.dimensions?.length) { toast("标准解题路径尚未形成，暂时不能校准精确分。", true); return; }
   entryAction("save-difficulty-assessment", { assessment: difficultyAssessmentPayload() }, "难度量表已保存");
 });
 $("approve-answer").addEventListener("click", async () => {
@@ -2221,7 +2325,11 @@ $("build-visualization").addEventListener("click", async () => {
     isGenerating ? "正在调用 Skill 生成…" : "正在构建…",
     response => response.status === "awaiting-agent"
       ? "生成请求已记录，等待本地 Agent 调用仿真 Skill"
-      : (response.status === "completed" ? "交互可视化已生成；若统一模型改变，请重新复核答案" : "未形成可用的交互可视化，请查看对话中的原因"),
+      : (response.status === "unchanged"
+          ? "当前预览没有变化，已保留原版本"
+          : (["completed", "ok"].includes(response.status)
+              ? "交互可视化已生成；若统一模型改变，请重新复核答案"
+              : "未形成可用的交互可视化，请查看对话中的原因")),
   );
   if (result && state.current.state === "needs-answer-review") {
     activateTab("answer", { force: true });
