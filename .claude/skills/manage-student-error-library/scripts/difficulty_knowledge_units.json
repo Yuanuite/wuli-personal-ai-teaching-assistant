@@ -1,0 +1,125 @@
+{
+  "registry_version": "physics-knowledge-units.v1",
+  "units": [
+    {
+      "id": "magnetic_circular_motion",
+      "label": "磁场圆周运动核心模型",
+      "aliases": ["回旋半径", "回旋周期", "磁场圆周运动模型", "r=mv/qB", "r=mv/(qB)"]
+    },
+    {
+      "id": "trajectory_angle_time",
+      "label": "非标准转角—时间映射",
+      "aliases": ["转角时间", "圆心角与时间", "t=Δφ/ω", "t=φ/ω", "飞行时间由转角", "非标准圆心角"]
+    },
+    {
+      "id": "external_phase_timing",
+      "label": "外部释放与相位时序",
+      "aliases": ["释放时刻", "释放时间", "相位匹配", "周期切换", "时间窗口", "首次相遇", "模周期"]
+    },
+    {
+      "id": "atomic_nuclear_mass_conversion",
+      "label": "原子质量与核质量换算",
+      "aliases": ["原子质量", "核质量", "质量亏损", "电子质量换算"]
+    },
+    {
+      "id": "relativistic_energy_momentum",
+      "label": "相对论能量—动量关系",
+      "aliases": ["相对论", "质能关系", "静止能", "能量动量关系", "E²"]
+    },
+    {
+      "id": "linear_momentum_conservation",
+      "label": "线动量守恒",
+      "aliases": ["动量守恒", "水平动量", "竖直动量", "总动量"]
+    },
+    {
+      "id": "angular_momentum_spin",
+      "label": "角动量守恒与自旋合成",
+      "aliases": ["角动量", "自旋", "宇称"]
+    },
+    {
+      "id": "charge_conservation",
+      "label": "电荷守恒",
+      "aliases": ["电荷守恒", "电荷数守恒"]
+    },
+    {
+      "id": "experimental_model_inference",
+      "label": "实验连续谱与模型检验",
+      "aliases": ["连续谱", "实验检验", "实验事实", "模型证伪", "实验反推"]
+    },
+    {
+      "id": "kinematics_relations",
+      "label": "运动学关系",
+      "aliases": ["运动学", "位移公式", "速度公式", "加速度定义", "平抛", "斜抛"]
+    },
+    {
+      "id": "newton_second_law",
+      "label": "牛顿第二定律",
+      "aliases": ["牛顿第二定律", "合外力", "F=ma"]
+    },
+    {
+      "id": "work_energy_theorem",
+      "label": "动能定理",
+      "aliases": ["动能定理", "合力做功", "净功"]
+    },
+    {
+      "id": "mechanical_energy_conservation",
+      "label": "机械能守恒",
+      "aliases": ["机械能守恒", "初态机械能", "末态机械能"]
+    },
+    {
+      "id": "electric_field_potential",
+      "label": "电场、电势与电势能关系",
+      "aliases": ["电场强度", "电势差", "电势能", "库仑定律"]
+    },
+    {
+      "id": "circuit_laws",
+      "label": "电路基本规律",
+      "aliases": ["欧姆定律", "闭合电路", "基尔霍夫", "电功率", "电池容量"]
+    },
+    {
+      "id": "lorentz_force",
+      "label": "洛伦兹力",
+      "aliases": ["洛伦兹力", "qvB"]
+    },
+    {
+      "id": "ampere_force",
+      "label": "安培力模型",
+      "aliases": ["安培力", "F安", "BIL"]
+    },
+    {
+      "id": "electromagnetic_induction",
+      "label": "电磁感应规律",
+      "aliases": ["电磁感应", "法拉第", "楞次", "磁通量", "感应电动势"]
+    },
+    {
+      "id": "circular_motion",
+      "label": "圆周运动关系",
+      "aliases": ["圆周运动", "向心力", "向心加速度", "回旋周期", "圆轨道"]
+    },
+    {
+      "id": "oscillation_wave",
+      "label": "振动与波",
+      "aliases": ["简谐运动", "振动", "波长", "波速", "驻波", "多普勒"]
+    },
+    {
+      "id": "optics",
+      "label": "光学规律",
+      "aliases": ["折射定律", "全反射", "干涉", "衍射", "几何光学"]
+    },
+    {
+      "id": "thermodynamics",
+      "label": "热学与热力学规律",
+      "aliases": ["热力学", "理想气体", "内能", "热传递"]
+    },
+    {
+      "id": "geometry_constraint",
+      "label": "几何约束",
+      "aliases": ["几何约束", "相切", "圆心角", "投影关系", "空间几何"]
+    },
+    {
+      "id": "probability_statistics",
+      "label": "概率统计关系",
+      "aliases": ["概率模型", "概率分布", "期望值", "误差传播"]
+    }
+  ]
+}
