@@ -1,0 +1,4 @@
+interface:
+  display_name: "物理题目拆解"
+  short_description: "将复杂高中物理题拆解为双层过程图、检索需求和验证义务"
+  default_prompt: "使用 $decompose-physics-problem 为这道复杂物理题生成结构化双层蓝图。"
