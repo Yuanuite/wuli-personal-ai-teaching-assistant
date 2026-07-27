@@ -321,18 +321,11 @@ def visualization_snapshot(entry: Path) -> dict:
     build = kb.load_json(visual_dir / "simulation-build.json", record.get("visualization_build", {}))
     attempt = kb.load_json(entry / "visualization-build-attempt.json", {})
     current_model_digest = kb.sha256_file(model_path) if model_path.exists() else None
-    failed_current_attempt = bool(
-        attempt
-        and attempt.get("status") != "ok"
-        and attempt.get("model_digest") == current_model_digest
-        and str(attempt.get("built_at", "")) >= str(build.get("built_at", ""))
-    )
     build_current = bool(
         model_path.exists()
         and build.get("status") == "ok"
         and build.get("model_digest") == current_model_digest
         and (visual_dir / "physics-simulator.html").is_file()
-        and not failed_current_attempt
     )
     kind = "simulator" if model_path.exists() else "not-generated"
     digest = visualization_artifact_digest(entry)
@@ -346,7 +339,8 @@ def visualization_snapshot(entry: Path) -> dict:
         "kind": kind,
         "has_model": model_path.exists(),
         "model_digest": current_model_digest,
-        "build": attempt if failed_current_attempt or not build else build,
+        "build": build if build else attempt,
+        "last_attempt": attempt,
         "build_current": build_current,
         "artifact_digest": digest,
         "review": dict(review, status="stale") if review_stale else review,
@@ -414,6 +408,15 @@ def prepare_visualization(root: Path, entry_id: str, runtime_mode: str = "auto")
                 "physics-model.json is missing; explicitly ask an Agent to invoke build-physics-simulator first"
             ],
             "visualization": visualization_snapshot(entry),
+            "state": pipeline_state(entry),
+        }
+    current = visualization_snapshot(entry)
+    if current["build_current"]:
+        return {
+            "status": "unchanged",
+            "build": current["build"],
+            "review": current["review"],
+            "visualization": current,
             "state": pipeline_state(entry),
         }
     with tempfile.TemporaryDirectory(prefix=".visualization-build-", dir=entry) as temp_name:

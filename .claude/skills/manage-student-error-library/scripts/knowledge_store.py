@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import sqlite3
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -76,6 +77,50 @@ RETRIEVAL_ROUTES = (
         "weight": 1.0,
     },
 )
+EVIDENCE_FACETS = {
+    "domain": (
+        ("charged-particle", ("带电粒子", "粒子", "洛伦兹力", "回旋", "磁偏转")),
+        ("circuit-induction", ("线框", "导线框", "电路", "电动势", "端电压", "电磁感应")),
+        ("conductor-force", ("安培力", "导体棒", "导体轨道")),
+        ("mechanics", ("碰撞", "动量", "机械能", "斜面", "抛体")),
+    ),
+    "field-sequence": (
+        (
+            "alternating-electric-magnetic",
+            ("交替电场", "交变电场", "电场与磁场交替", "周期电场", "方波电场"),
+        ),
+        (
+            "magnetic-only",
+            ("只有磁场", "匀强磁场", "磁场中运动", "分区磁场", "内外反向", "同向分区"),
+        ),
+        ("electric-only", ("只有电场", "匀强电场", "电场中运动")),
+    ),
+    "geometry": (
+        ("multi-region", ("多区域", "三区域", "分区磁场", "复合场", "两磁场的边界")),
+        ("circular-boundary", ("圆形磁场", "圆形有界磁场", "圆形边界", "圆形区域")),
+        ("linear-boundary", ("直线边界", "半平面", "宽磁场", "两磁场的边界")),
+    ),
+    "target": (
+        ("average-velocity", ("平均速度",)),
+        ("encounter-time", ("相遇", "首次相遇")),
+        ("trajectory", ("轨迹", "运动范围", "偏转")),
+        ("work-energy", ("做功", "动能", "能量")),
+        ("voltage-emf", ("端电压", "感应电动势")),
+    ),
+}
+HARD_CONFLICT_FACETS = {"domain", "geometry", "target"}
+EVIDENCE_AUDIT_STOP_TOKENS = {
+    "assets",
+    "asset",
+    "svg",
+    "png",
+    "jpg",
+    "jpeg",
+    "解析",
+    "学生版",
+    "详细解答",
+    "答案速览",
+}
 
 
 def _json(value: Any) -> str:
@@ -663,6 +708,19 @@ def _evidence_set_diagnostics(results: list[dict[str, Any]]) -> dict[str, Any]:
         "traceable_document_count": sum(
             1 for document in documents if document.get("path") and document.get("kind")
         ),
+        "precision_audit": {
+            "policy": "deterministic-condition-audit-v1",
+            "accepted_count": sum(
+                1
+                for result in results
+                if result.get("evidence_audit", {}).get("decision") == "accepted"
+            ),
+            "rejected_count": sum(
+                1
+                for result in results
+                if result.get("evidence_audit", {}).get("decision") != "accepted"
+            ),
+        },
     }
 
 
@@ -680,6 +738,310 @@ def _reference_set_diagnostics(references: list[dict[str, Any]]) -> dict[str, An
         "covered_slots": [slot for slot in required if slot in covered],
         "missing_slots": [slot for slot in required if slot not in covered],
         "coverage_ratio": round(len(covered) / len(required), 4),
+    }
+
+
+def _condition_profile(text: str) -> dict[str, list[str]]:
+    compact = " ".join(str(text).split())
+    return {
+        facet: [
+            label
+            for label, phrases in options
+            if any(phrase in compact for phrase in phrases)
+        ]
+        for facet, options in EVIDENCE_FACETS.items()
+    }
+
+
+def _evidence_relevance_audit(
+    query_plan: dict[str, Any],
+    *,
+    title: str,
+    knowledge_points: list[str],
+    error_types: list[str],
+    matched_documents: list[dict[str, Any]],
+    route_matches: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Explain why one result matches and conservatively flag incompatible evidence."""
+    query_text = str(query_plan.get("retrieval_text", ""))
+    candidate_text = " ".join([
+        title,
+        *knowledge_points,
+        *error_types,
+        *(str(document.get("snippet", "")) for document in matched_documents),
+    ])
+    query_tokens = list(dict.fromkeys(
+        str(item).strip()
+        for item in query_plan.get("tokens", [])
+        if len(str(item).strip()) >= 2
+        and str(item).strip().lower() not in EVIDENCE_AUDIT_STOP_TOKENS
+    ))
+    candidate_tokens = set(kb.tokenize(candidate_text))
+    shared_terms = [token for token in query_tokens if token in candidate_tokens]
+    token_coverage = len(shared_terms) / len(query_tokens) if query_tokens else 0.0
+    title_tokens = set(kb.tokenize(title))
+    title_coverage = (
+        len(set(query_tokens) & title_tokens) / len(query_tokens)
+        if query_tokens
+        else 0.0
+    )
+    query_profile = _condition_profile(query_text)
+    candidate_profile = _condition_profile(candidate_text)
+    shared_conditions: list[str] = []
+    applicability_conditions: list[str] = []
+    conflict_conditions: list[str] = []
+    hard_conflict = False
+    query_condition_count = 0
+    for facet in EVIDENCE_FACETS:
+        expected = set(query_profile.get(facet, []))
+        observed = set(candidate_profile.get(facet, []))
+        query_condition_count += len(expected)
+        shared = sorted(expected & observed)
+        shared_conditions.extend(f"{facet}:{label}" for label in shared)
+        applicability_conditions.extend(
+            f"{facet} 同为 {label}" for label in shared
+        )
+        if expected and observed and not shared:
+            conflict_conditions.append(
+                f"{facet} 不相容：目标题={','.join(sorted(expected))}；"
+                f"历史证据={','.join(sorted(observed))}"
+            )
+            if facet in HARD_CONFLICT_FACETS:
+                hard_conflict = True
+    condition_coverage = (
+        len(shared_conditions) / query_condition_count
+        if query_condition_count
+        else 0.0
+    )
+    route_diversity = len({
+        str(item.get("route", ""))
+        for item in route_matches
+        if str(item.get("route", ""))
+    })
+    precision_score = round(
+        min(
+            1.0,
+            0.55 * token_coverage
+            + 0.25 * condition_coverage
+            + 0.10 * min(route_diversity / 3.0, 1.0)
+            + 0.10 * title_coverage,
+        ),
+        4,
+    )
+    accepted = not hard_conflict and (
+        precision_score >= 0.30
+        or (bool(shared_conditions) and token_coverage >= 0.12)
+        or (len(shared_conditions) >= 2 and condition_coverage >= 0.50)
+        or (route_diversity >= 3 and token_coverage >= 0.20)
+    )
+    if not applicability_conditions:
+        applicability_conditions.append("未识别出可审计的共同物理条件")
+    return {
+        "policy": "deterministic-condition-audit-v1",
+        "match_basis": {
+            "shared_terms": shared_terms[:12],
+            "shared_conditions": shared_conditions,
+            "route_ids": sorted({
+                str(item.get("route", ""))
+                for item in route_matches
+                if str(item.get("route", ""))
+            }),
+            "token_coverage": round(token_coverage, 4),
+            "condition_coverage": round(condition_coverage, 4),
+        },
+        "applicability_conditions": applicability_conditions,
+        "conflict_conditions": conflict_conditions,
+        "condition_profile": candidate_profile,
+        "precision_score": precision_score,
+        "decision": "accepted" if accepted else "rejected-low-precision",
+    }
+
+
+def _evidence_result_tokens(result: dict[str, Any]) -> set[str]:
+    text = " ".join([
+        str(result.get("title", "")),
+        *(str(item) for item in result.get("knowledge_points", [])),
+        *(str(item) for item in result.get("error_types", [])),
+        *(
+            str(document.get("snippet", ""))
+            for document in result.get("matched_documents", [])
+        ),
+    ])
+    return {
+        token
+        for token in kb.tokenize(text)
+        if len(token.strip()) >= 2
+        and token.strip().lower() not in EVIDENCE_AUDIT_STOP_TOKENS
+    }
+
+
+def _evidence_results_duplicate(left: dict[str, Any], right: dict[str, Any]) -> bool:
+    left_title = "".join(str(left.get("title", "")).lower().split())
+    right_title = "".join(str(right.get("title", "")).lower().split())
+    if left_title and left_title == right_title:
+        return True
+    left_tokens = _evidence_result_tokens(left)
+    right_tokens = _evidence_result_tokens(right)
+    union = left_tokens | right_tokens
+    if len(union) < 8:
+        return False
+    return len(left_tokens & right_tokens) / len(union) >= 0.88
+
+
+def _evidence_results_conflict(left: dict[str, Any], right: dict[str, Any]) -> list[str]:
+    left_profile = left.get("evidence_audit", {}).get("condition_profile", {})
+    right_profile = right.get("evidence_audit", {}).get("condition_profile", {})
+    conflicts: list[str] = []
+    for facet in HARD_CONFLICT_FACETS:
+        left_values = set(left_profile.get(facet, []))
+        right_values = set(right_profile.get(facet, []))
+        if left_values and right_values and not left_values & right_values:
+            conflicts.append(
+                f"{facet}: {','.join(sorted(left_values))} <> "
+                f"{','.join(sorted(right_values))}"
+            )
+    return conflicts
+
+
+def select_evidence_results(
+    results: list[dict[str, Any]],
+    *,
+    selection_policy: str,
+    limit: int,
+) -> dict[str, Any]:
+    """Select an auditable, non-contradictory evidence set from retrieved results."""
+    if selection_policy not in {"baseline", "precision-gated-v1", "evidence-set-v2"}:
+        raise ValueError(f"unsupported evidence selection policy: {selection_policy}")
+    limit = max(1, int(limit))
+    if selection_policy == "baseline":
+        selected = [dict(result) for result in results[:limit]]
+        return {
+            "selected_results": selected,
+            "trace": {
+                "policy": selection_policy,
+                "candidate_count": len(results),
+                "selected_count": len(selected),
+                "rejected_low_precision_count": 0,
+                "rejected_duplicate_count": 0,
+                "rejected_conflict_count": 0,
+                "selection_steps": [],
+            },
+        }
+
+    accepted = [
+        result
+        for result in results
+        if result.get("evidence_audit", {}).get("decision") == "accepted"
+    ]
+    rejected_low_precision = len(results) - len(accepted)
+    if selection_policy == "precision-gated-v1":
+        selected = [dict(result) for result in accepted[:limit]]
+        return {
+            "selected_results": selected,
+            "trace": {
+                "policy": selection_policy,
+                "candidate_count": len(results),
+                "selected_count": len(selected),
+                "rejected_low_precision_count": rejected_low_precision,
+                "rejected_duplicate_count": 0,
+                "rejected_conflict_count": 0,
+                "selection_steps": [],
+            },
+        }
+
+    remaining = list(accepted)
+    selected: list[dict[str, Any]] = []
+    selection_steps: list[dict[str, Any]] = []
+    rejected_duplicate_count = 0
+    rejected_conflict_count = 0
+    covered_slots: set[str] = set()
+    while remaining and len(selected) < limit:
+        ranked: list[tuple[float, int, dict[str, Any], list[str]]] = []
+        for result in remaining:
+            conflicts = [
+                conflict
+                for chosen in selected
+                for conflict in _evidence_results_conflict(chosen, result)
+            ]
+            new_slots = set(
+                result.get("evidence_coverage", {}).get("covered_slots", [])
+            ) - covered_slots
+            precision = float(
+                result.get("evidence_audit", {}).get("precision_score", 0.0)
+            )
+            route_diversity = len(
+                result.get("evidence_audit", {})
+                .get("match_basis", {})
+                .get("route_ids", [])
+            )
+            utility = precision + 0.08 * len(new_slots) + 0.02 * min(route_diversity, 3)
+            ranked.append((
+                utility,
+                -int(result.get("selected_rank", 9999)),
+                result,
+                conflicts,
+            ))
+        ranked.sort(key=lambda item: (-item[0], -item[1], str(item[2].get("title", ""))))
+        _, _, candidate, conflicts = ranked[0]
+        remaining.remove(candidate)
+        duplicate = next(
+            (
+                chosen
+                for chosen in selected
+                if _evidence_results_duplicate(chosen, candidate)
+            ),
+            None,
+        )
+        if duplicate is not None:
+            rejected_duplicate_count += 1
+            selection_steps.append({
+                "title": str(candidate.get("title", ""))[:120],
+                "decision": "rejected-duplicate",
+                "reason": f"near-duplicate-of:{str(duplicate.get('title', ''))[:120]}",
+            })
+            continue
+        if conflicts:
+            rejected_conflict_count += 1
+            selection_steps.append({
+                "title": str(candidate.get("title", ""))[:120],
+                "decision": "rejected-inter-reference-conflict",
+                "reason": "; ".join(conflicts)[:300],
+            })
+            continue
+        chosen = dict(candidate)
+        new_slots = sorted(
+            set(chosen.get("evidence_coverage", {}).get("covered_slots", []))
+            - covered_slots
+        )
+        chosen["evidence_selection"] = {
+            "policy": selection_policy,
+            "precision_score": float(
+                chosen.get("evidence_audit", {}).get("precision_score", 0.0)
+            ),
+            "new_slots": new_slots,
+            "reason": "accepted-highest-utility-compatible",
+        }
+        selected.append(chosen)
+        covered_slots.update(
+            chosen.get("evidence_coverage", {}).get("covered_slots", [])
+        )
+        selection_steps.append({
+            "title": str(chosen.get("title", ""))[:120],
+            "decision": "selected",
+            "new_slots": new_slots,
+        })
+    return {
+        "selected_results": selected,
+        "trace": {
+            "policy": selection_policy,
+            "candidate_count": len(results),
+            "selected_count": len(selected),
+            "rejected_low_precision_count": rejected_low_precision,
+            "rejected_duplicate_count": rejected_duplicate_count,
+            "rejected_conflict_count": rejected_conflict_count,
+            "covered_slots": sorted(covered_slots),
+            "selection_steps": selection_steps,
+        },
     }
 
 
@@ -1191,6 +1553,16 @@ def query(
                 match["matched_documents"],
                 key=lambda item: (-float(item["raw_score"]), item["route"], item["kind"]),
             )[:3]
+            knowledge_points = _loads(entry_row["knowledge_points_json"], [])
+            error_types = _loads(entry_row["error_types_json"], [])
+            evidence_audit = _evidence_relevance_audit(
+                query_plan,
+                title=str(entry_row["title"]),
+                knowledge_points=knowledge_points,
+                error_types=error_types,
+                matched_documents=matched_documents,
+                route_matches=route_matches,
+            )
             results.append({
                 "entry_id": entry_id,
                 "title": entry_row["title"],
@@ -1203,8 +1575,8 @@ def query(
                 "selected_rank": selected_rank,
                 "selection_origin": str(match.get("selection_origin", ranking_policy)),
                 "path": f"entries/{entry_id}",
-                "knowledge_points": _loads(entry_row["knowledge_points_json"], []),
-                "error_types": _loads(entry_row["error_types_json"], []),
+                "knowledge_points": knowledge_points,
+                "error_types": error_types,
                 "teaching_memory": {
                     "difficulty": teaching_row["difficulty"] if teaching_row else "",
                     "methods": _loads(teaching_row["methods_json"], []) if teaching_row else [],
@@ -1218,6 +1590,7 @@ def query(
                 "route_matches": route_matches,
                 "matched_documents": matched_documents,
                 "evidence_coverage": _evidence_coverage(route_matches, matched_documents),
+                "evidence_audit": evidence_audit,
             })
         scheduler_benchmarks = _recent_scheduler_benchmarks(connection)
         evolve_observations = _recent_evolve_observations(connection)
@@ -1282,6 +1655,7 @@ def build_agent_evidence(
     top_k: int = 3,
     char_budget: int = 8000,
     explicit_db: Path | None = None,
+    selection_policy: str = "baseline",
 ) -> dict[str, Any]:
     """Build a privacy-minimized, read-only evidence pack for one Agent task.
 
@@ -1289,6 +1663,8 @@ def build_agent_evidence(
     turn into a whole-library write or block because retrieval is unavailable.
     """
     root = root.expanduser().resolve()
+    if selection_policy not in {"baseline", "precision-gated-v1", "evidence-set-v2"}:
+        raise ValueError(f"unsupported evidence selection policy: {selection_policy}")
     target = db_path(root, explicit_db)
     base = {
         "schema_version": 1,
@@ -1320,7 +1696,17 @@ def build_agent_evidence(
 
     references: list[dict[str, Any]] = []
     budget = max(1000, min(int(char_budget), 20000))
-    eligible_results = [result for result in retrieved.get("results", []) if result.get("entry_id") != entry_id]
+    candidate_results = [
+        result for result in retrieved.get("results", [])
+        if result.get("entry_id") != entry_id
+    ]
+    selection = select_evidence_results(
+        candidate_results,
+        selection_policy=selection_policy,
+        limit=max(1, int(top_k)),
+    )
+    selection_trace = selection["trace"]
+    eligible_results = selection["selected_results"]
     for result in eligible_results:
         if result.get("entry_id") == entry_id:
             continue
@@ -1356,6 +1742,8 @@ def build_agent_evidence(
                 for doc in result.get("matched_documents", [])[:3]
             ],
             "coverage": result.get("evidence_coverage", {}),
+            "evidence_audit": result.get("evidence_audit", {}),
+            "evidence_selection": result.get("evidence_selection", {}),
             "recent_lessons": recent_lessons,
         }
         reference_bytes = json.dumps(reference, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -1367,10 +1755,42 @@ def build_agent_evidence(
         references.append(reference)
         if len(references) >= top_k:
             break
+    def materialized_selection_steps() -> list[dict[str, Any]]:
+        materialized_titles = Counter(
+            str(reference.get("title", "")) for reference in references
+        )
+        steps: list[dict[str, Any]] = []
+        for step in selection_trace["selection_steps"]:
+            normalized_step = dict(step)
+            title = str(step.get("title", ""))
+            if step.get("decision") == "selected":
+                if materialized_titles[title] > 0:
+                    materialized_titles[title] -= 1
+                else:
+                    normalized_step["decision"] = "omitted-context-budget"
+                    normalized_step["reason"] = (
+                        "selected by policy but omitted during serialization budgeting"
+                    )
+            steps.append(normalized_step)
+        return steps
     payload = {
         **base,
         "references": references,
-        "evidence_set": _reference_set_diagnostics(references),
+        "evidence_set": {
+            **_reference_set_diagnostics(references),
+            "selection_policy": selection_policy,
+            "selection_status": (
+                "degraded-empty-low-precision"
+                if selection_policy in {"precision-gated-v1", "evidence-set-v2"}
+                and candidate_results
+                and not references
+                else "selected"
+            ),
+            "rejected_low_precision_count": selection_trace["rejected_low_precision_count"],
+            "rejected_duplicate_count": selection_trace["rejected_duplicate_count"],
+            "rejected_conflict_count": selection_trace["rejected_conflict_count"],
+            "selection_steps": materialized_selection_steps(),
+        },
         "context_budget": {
             "policy": "deterministic-evidence-v1",
             "measurement": "serialized-json-characters",
@@ -1385,10 +1805,11 @@ def build_agent_evidence(
                 "recent-lessons",
             ],
             "protected_scope": "current canonical problem, answer, and teacher instruction are outside this pack",
-            "candidate_reference_count": len(eligible_results),
+            "candidate_reference_count": len(candidate_results),
+            "eligible_reference_count": len(eligible_results),
             "included_reference_count": len(references),
-            "omitted_reference_count": max(0, len(eligible_results) - len(references)),
-            "truncated": len(references) < len(eligible_results),
+            "omitted_reference_count": max(0, len(candidate_results) - len(references)),
+            "truncated": len(references) < len(candidate_results),
             "serialized_chars": 0,
         },
     }
@@ -1396,11 +1817,214 @@ def build_agent_evidence(
         payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
     while payload["context_budget"]["serialized_chars"] > budget and payload["references"]:
         payload["references"].pop()
-        payload["evidence_set"] = _reference_set_diagnostics(payload["references"])
+        payload["evidence_set"] = {
+            **_reference_set_diagnostics(payload["references"]),
+            "selection_policy": selection_policy,
+            "selection_status": (
+                "degraded-empty-low-precision"
+                if selection_policy in {"precision-gated-v1", "evidence-set-v2"}
+                and candidate_results
+                and not payload["references"]
+                else "selected"
+            ),
+            "rejected_low_precision_count": selection_trace["rejected_low_precision_count"],
+            "rejected_duplicate_count": selection_trace["rejected_duplicate_count"],
+            "rejected_conflict_count": selection_trace["rejected_conflict_count"],
+            "selection_steps": materialized_selection_steps(),
+        }
         payload["context_budget"]["included_reference_count"] = len(payload["references"])
         payload["context_budget"]["omitted_reference_count"] = max(
-            0, len(eligible_results) - len(payload["references"])
+            0, len(candidate_results) - len(payload["references"])
         )
+        payload["context_budget"]["truncated"] = True
+        payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
+    return payload
+
+
+def build_blueprint_evidence(
+    root: Path,
+    entry_id: str,
+    blueprint: dict[str, Any],
+    *,
+    task_type: str = "analysis.generate",
+    default_need_limit: int = 3,
+    max_need_limit: int = 5,
+    top_k: int = 4,
+    char_budget: int = 8000,
+    explicit_db: Path | None = None,
+) -> dict[str, Any]:
+    """Retrieve by blueprint need clusters, then run one W2 evidence-set selection.
+
+    The first three highest-priority clusters are the default budget. Clusters four
+    and five run only while they add a previously uncovered target or a new
+    candidate entry. Model context remains bounded independently of query count.
+    """
+    root = root.expanduser().resolve()
+    base = {
+        "schema_version": 1,
+        "kind": "agent-evidence",
+        "task_type": task_type,
+        "status": "ready",
+        "references": [],
+        "instructions": [
+            "当前题干和双层蓝图优先于历史证据。",
+            "历史片段只能提供可迁移方法、适用条件和风险提示。",
+            "不得复制历史答案或暴露内部条目、数据库和本地路径。",
+        ],
+    }
+    target = db_path(root, explicit_db)
+    if not target.is_file():
+        return {**base, "status": "unavailable", "reason": "knowledge-store-missing"}
+    raw_needs = blueprint.get("retrieval_needs")
+    if not isinstance(raw_needs, list) or not raw_needs:
+        return {**base, "status": "unavailable", "reason": "blueprint-has-no-retrieval-needs"}
+    needs = sorted(
+        [item for item in raw_needs if isinstance(item, dict) and str(item.get("query", "")).strip()],
+        key=lambda item: (-int(item.get("priority", 1)), str(item.get("id", ""))),
+    )[:max(1, min(int(max_need_limit), 5))]
+    default_limit = max(1, min(int(default_need_limit), len(needs), 3))
+    pooled: dict[str, dict[str, Any]] = {}
+    executed: list[dict[str, Any]] = []
+    covered_targets: set[str] = set()
+    no_gain_streak = 0
+    stop_reason = "need-limit-reached"
+    for index, need in enumerate(needs):
+        if index >= default_limit and no_gain_streak >= 2:
+            stop_reason = "two-consecutive-needs-without-positive-marginal-gain"
+            break
+        need_id = str(need.get("id", f"need-{index + 1}"))
+        query_text = str(need.get("query", "")).strip()
+        target_ids = {str(item) for item in need.get("target_ids", []) if str(item)}
+        try:
+            retrieved = query(
+                root,
+                query_text,
+                mode="teaching",
+                top_k=max(3, int(top_k) + 2),
+                explicit_db=target,
+                ranking_policy="baseline",
+            )
+        except (OSError, sqlite3.Error, ValueError):
+            retrieved = {"status": "unavailable", "results": []}
+        before_entries = set(pooled)
+        for result in retrieved.get("results", []) if retrieved.get("status") == "ok" else []:
+            result_id = str(result.get("entry_id", ""))
+            if not result_id or result_id == entry_id:
+                continue
+            existing = pooled.get(result_id)
+            if existing is None:
+                existing = dict(result)
+                existing["retrieval_need_ids"] = []
+                existing["retrieval_target_ids"] = []
+                pooled[result_id] = existing
+            if need_id not in existing["retrieval_need_ids"]:
+                existing["retrieval_need_ids"].append(need_id)
+            existing["retrieval_target_ids"] = sorted(
+                set(existing["retrieval_target_ids"]) | target_ids
+            )
+        new_entries = len(set(pooled) - before_entries)
+        new_targets = target_ids - covered_targets
+        positive_gain = bool(new_entries or new_targets)
+        no_gain_streak = 0 if positive_gain else no_gain_streak + 1
+        covered_targets.update(target_ids)
+        executed.append({
+            "need_id": need_id,
+            "query": query_text[:300],
+            "priority": int(need.get("priority", 1)),
+            "candidate_count": len(retrieved.get("results", [])),
+            "new_candidate_count": new_entries,
+            "new_target_ids": sorted(new_targets),
+            "marginal_gain_positive": positive_gain,
+        })
+        if index + 1 >= len(needs):
+            stop_reason = "all-blueprint-needs-executed"
+
+    candidate_results = list(pooled.values())
+    candidate_results.sort(
+        key=lambda item: (
+            -len(item.get("retrieval_need_ids", [])),
+            int(item.get("selected_rank", 9999)),
+            str(item.get("title", "")),
+        )
+    )
+    selection = select_evidence_results(
+        candidate_results,
+        selection_policy="evidence-set-v2",
+        limit=max(1, int(top_k)),
+    )
+    selected = selection["selected_results"]
+    references: list[dict[str, Any]] = []
+    budget = max(1000, min(int(char_budget), 20000))
+    for result in selected:
+        reference = {
+            "reference": f"similar-{len(references) + 1}",
+            "title": str(result.get("title", "相似题"))[:120],
+            "knowledge_points": [str(item)[:80] for item in result.get("knowledge_points", [])[:8]],
+            "methods": [str(item)[:160] for item in result.get("teaching_memory", {}).get("methods", [])[:6]],
+            "secondary_conclusions": [
+                str(item)[:200] for item in result.get("teaching_memory", {}).get("secondary_conclusions", [])[:5]
+            ],
+            "matched_evidence": [
+                {"kind": str(doc.get("kind", "")), "snippet": str(doc.get("snippet", ""))[:240]}
+                for doc in result.get("matched_documents", [])[:3]
+            ],
+            "coverage": result.get("evidence_coverage", {}),
+            "evidence_audit": result.get("evidence_audit", {}),
+            "retrieval_need_ids": result.get("retrieval_need_ids", []),
+            "retrieval_target_ids": result.get("retrieval_target_ids", []),
+        }
+        reference_bytes = json.dumps(reference, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        reference["content_hash"] = f"sha256:{hashlib.sha256(reference_bytes).hexdigest()}"
+        candidate = {**base, "references": [*references, reference]}
+        if len(json.dumps(candidate, ensure_ascii=False)) > max(400, budget - 1000):
+            break
+        references.append(reference)
+    payload = {
+        **base,
+        "references": references,
+        "retrieval_plan": {
+            "policy": "blueprint-needs-adaptive-v1",
+            "default_need_limit": default_limit,
+            "max_need_limit": min(max(1, int(max_need_limit)), 5),
+            "available_need_count": len(needs),
+            "executed_need_count": len(executed),
+            "executed_needs": executed,
+            "covered_target_ids": sorted(covered_targets),
+            "stop_reason": stop_reason,
+        },
+        "evidence_set": {
+            **_reference_set_diagnostics(references),
+            "selection_policy": "evidence-set-v2",
+            "selection_status": (
+                "degraded-empty-low-precision"
+                if candidate_results and not references
+                else "selected"
+            ),
+            **{
+                key: selection["trace"][key]
+                for key in (
+                    "rejected_low_precision_count",
+                    "rejected_duplicate_count",
+                    "rejected_conflict_count",
+                    "selection_steps",
+                )
+            },
+        },
+        "context_budget": {
+            "policy": "deterministic-evidence-v1",
+            "measurement": "serialized-json-characters",
+            "requested_chars": budget,
+            "included_reference_count": len(references),
+            "candidate_reference_count": len(candidate_results),
+            "truncated": len(references) < len(candidate_results),
+            "serialized_chars": 0,
+        },
+    }
+    for _ in range(3):
+        payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
+    while payload["context_budget"]["serialized_chars"] > budget and payload["references"]:
+        payload["references"].pop()
+        payload["context_budget"]["included_reference_count"] = len(payload["references"])
         payload["context_budget"]["truncated"] = True
         payload["context_budget"]["serialized_chars"] = len(json.dumps(payload, ensure_ascii=False))
     return payload

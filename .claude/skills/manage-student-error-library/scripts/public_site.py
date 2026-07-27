@@ -369,6 +369,32 @@ def _copy_common_site(target: Path) -> None:
     shutil.copytree(TEACHER_VENDOR, target / "vendor", dirs_exist_ok=True)
 
 
+def _public_difficulty(record: dict[str, Any]) -> dict[str, Any] | None:
+    """Project the reviewed difficulty into the deliberately narrow public shape."""
+    assessment = record.get("difficulty_assessment", {})
+    if not isinstance(assessment, dict):
+        return None
+    public_dimensions = []
+    for dimension in assessment.get("dimensions", []) if isinstance(assessment.get("dimensions"), list) else []:
+        if not isinstance(dimension, dict):
+            continue
+        public_dimensions.append({
+            "id": str(dimension.get("id", ""))[:64],
+            "label": str(dimension.get("label", ""))[:40],
+            "score": max(0, min(5, float(dimension.get("score", 0)))),
+            "core_judgment": str(dimension.get("core_judgment", ""))[:180],
+        })
+    score = assessment.get("score")
+    if not public_dimensions or not isinstance(score, (int, float)):
+        return None
+    return {
+        "score": int(score),
+        "level": str(assessment.get("level", ""))[:20],
+        "summary": str(assessment.get("summary", ""))[:300],
+        "dimensions": public_dimensions,
+    }
+
+
 def initialize_site(site: Path = DEFAULT_SITE) -> dict[str, Any]:
     _copy_common_site(site)
     catalog = site / "catalog.json"
@@ -570,17 +596,6 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
     if simulator:
         _copy_public_simulator(simulator, question_dir / "simulation.html", identifier)
     record = kb.load_json(entry / "record.json", {})
-    assessment = record.get("difficulty_assessment", {}) if isinstance(record.get("difficulty_assessment"), dict) else {}
-    public_dimensions = []
-    for dimension in assessment.get("dimensions", []) if isinstance(assessment.get("dimensions"), list) else []:
-        if not isinstance(dimension, dict):
-            continue
-        public_dimensions.append({
-            "id": str(dimension.get("id", ""))[:64],
-            "label": str(dimension.get("label", ""))[:40],
-            "score": max(0, min(5, float(dimension.get("score", 0)))),
-            "core_judgment": str(dimension.get("core_judgment", ""))[:180],
-        })
     item = {
         "id": identifier,
         "title": str(record.get("title") or "物理错题"),
@@ -591,12 +606,7 @@ def _write_question(entry: Path, root: Path) -> dict[str, Any]:
         "simulation": f"questions/{identifier}/simulation.html" if simulator else None,
         "uploaded_at": _public_date(record.get("created_at") or record.get("updated_at")),
         "published_at": now_iso(),
-        "difficulty": {
-            "score": int(assessment.get("score", 0)),
-            "level": str(assessment.get("level", ""))[:20],
-            "summary": str(assessment.get("summary", ""))[:300],
-            "dimensions": public_dimensions,
-        } if public_dimensions else None,
+        "difficulty": _public_difficulty(record),
     }
     return {"item": item, "pdf": pdf, "assets": [name for _, name in assets]}
 
@@ -713,6 +723,51 @@ def publish_prepared(
     return review
 
 
+def sync_published_difficulties(library: Path, site: Path = DEFAULT_SITE) -> dict[str, Any]:
+    """Refresh only difficulty metadata for entries already approved and published locally."""
+    catalog_path = site / "catalog.json"
+    catalog = kb.load_json(catalog_path, {})
+    questions = catalog.get("questions")
+    if not isinstance(questions, list):
+        raise ValueError("学生端题库清单格式错误")
+
+    approved_entries: dict[str, Path] = {}
+    entries_root = library / "entries"
+    for entry in sorted(path for path in entries_root.iterdir() if path.is_dir()):
+        review = kb.load_json(entry / REVIEW_RECORD, {})
+        if review.get("status") != "published-local":
+            continue
+        identifier = str(review.get("public_id") or "")
+        if not identifier or identifier != public_id(entry):
+            raise ValueError(f"公开发布记录与条目映射不一致: {entry.name}")
+        if not (site / "questions" / identifier / "content.md").is_file():
+            raise ValueError(f"已批准条目缺少公开内容: {identifier}")
+        approved_entries[identifier] = entry
+
+    updated_ids: list[str] = []
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        identifier = str(item.get("id") or "")
+        entry = approved_entries.get(identifier)
+        if entry is None:
+            continue
+        difficulty = _public_difficulty(kb.load_json(entry / "record.json", {}))
+        if item.get("difficulty") != difficulty:
+            item["difficulty"] = difficulty
+            updated_ids.append(identifier)
+
+    if updated_ids:
+        catalog["generated_at"] = now_iso()
+        write_json(catalog_path, catalog)
+    return {
+        "status": "synced",
+        "published_entries": len(approved_entries),
+        "updated": len(updated_ids),
+        "updated_public_ids": updated_ids,
+    }
+
+
 def publication_snapshot(entry: Path, site: Path = DEFAULT_SITE) -> dict[str, Any]:
     prepared = kb.load_json(entry / DRAFT_RECORD, {})
     review = kb.load_json(entry / REVIEW_RECORD, {})
@@ -754,6 +809,7 @@ def main() -> int:
     publish.add_argument("entry_id")
     publish.add_argument("--reviewer", required=True)
     publish.add_argument("--note", default="")
+    commands.add_parser("sync-difficulty")
     status = commands.add_parser("status")
     status.add_argument("entry_id")
     args = parser.parse_args()
@@ -765,6 +821,8 @@ def main() -> int:
         result = prepare_publication(library, args.entry_id, site)
     elif args.command == "publish":
         result = publish_prepared(library, args.entry_id, args.reviewer, args.note, site)
+    elif args.command == "sync-difficulty":
+        result = sync_published_difficulties(library, site)
     else:
         result = publication_snapshot(library / "entries" / args.entry_id, site)
     print(json.dumps(result, ensure_ascii=False, indent=2))
