@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 340" role="img" aria-labelledby="title desc">
+  <title id="title">甲乙粒子在两分区磁场中的轨迹与首次相遇</title>
+  <desc id="desc">上半平面磁场为B，下半平面磁场为2B。甲粒子轨迹用蓝色表示，乙粒子轨迹用橙色表示。系统枚举两粒子x轴落点序列和半平面内部圆弧，得出最近公共点为P(2R,0)；再逐一计算到达时刻，首次相遇在t=3τ。</desc>
+  <rect width="500" height="340" fill="#f8fafc"/>
+  <rect x="45" y="34" width="420" height="146" rx="8" fill="#eff6ff"/>
+  <rect x="45" y="180" width="420" height="126" rx="8" fill="#fff7ed"/>
+  <path d="M45 180H465" stroke="#334155" stroke-width="2"/>
+  <path d="M70 315V45" stroke="#334155" stroke-width="2"/>
+  <path d="M465 180l-10-5v10zM70 45l-5 10h10z" fill="#334155"/>
+  <text x="450" y="171" font-size="15" fill="#334155">x</text>
+  <text x="80" y="56" font-size="15" fill="#334155">y</text>
+  <text x="50" y="202" font-size="14" fill="#334155">O</text>
+  <text x="400" y="62" font-size="16" fill="#1e3a8a">B（向外）</text>
+  <text x="388" y="290" font-size="16" fill="#9a3412">2B（向外）</text>
+  <g fill="#64748b" opacity=".7">
+    <circle cx="110" cy="75" r="2"/><circle cx="160" cy="75" r="2"/><circle cx="210" cy="75" r="2"/><circle cx="260" cy="75" r="2"/><circle cx="310" cy="75" r="2"/><circle cx="360" cy="75" r="2"/>
+    <circle cx="110" cy="120" r="2"/><circle cx="160" cy="120" r="2"/><circle cx="210" cy="120" r="2"/><circle cx="260" cy="120" r="2"/><circle cx="310" cy="120" r="2"/><circle cx="360" cy="120" r="2"/>
+    <circle cx="110" cy="225" r="2"/><circle cx="160" cy="225" r="2"/><circle cx="210" cy="225" r="2"/><circle cx="260" cy="225" r="2"/><circle cx="310" cy="225" r="2"/><circle cx="360" cy="225" r="2"/>
+    <circle cx="110" cy="270" r="2"/><circle cx="160" cy="270" r="2"/><circle cx="210" cy="270" r="2"/><circle cx="260" cy="270" r="2"/><circle cx="310" cy="270" r="2"/><circle cx="360" cy="270" r="2"/>
+  </g>
+  <path d="M70 180A80 80 0 0 1 230 180A40 40 0 0 1 150 180A80 80 0 0 1 310 180A40 40 0 0 1 230 180" fill="none" stroke="#2563eb" stroke-width="5" stroke-linecap="round"/>
+  <path d="M70 180A160 160 0 0 1 390 180A80 80 0 0 1 230 180" fill="none" stroke="#f97316" stroke-width="4" stroke-linecap="round" stroke-dasharray="10 7"/>
+  <path d="M70 167V115" stroke="#0f172a" stroke-width="2" marker-end="url(#arrow)"/>
+  <defs><marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#0f172a"/></marker></defs>
+  <circle cx="230" cy="180" r="7" fill="#dc2626"/>
+  <text x="239" y="173" font-size="14" fill="#991b1b">公共点P：x=2R，t=3τ</text>
+  <g font-size="14" font-family="sans-serif">
+    <line x1="90" y1="322" x2="125" y2="322" stroke="#2563eb" stroke-width="5"/><text x="132" y="327" fill="#1e3a8a">甲</text>
+    <line x1="185" y1="322" x2="220" y2="322" stroke="#f97316" stroke-width="4" stroke-dasharray="9 6"/><text x="227" y="327" fill="#9a3412">乙</text>
+    <text x="290" y="327" fill="#334155">R=mv₀/(qB)，τ=πm/(qB)</text>
+  </g>
+</svg>

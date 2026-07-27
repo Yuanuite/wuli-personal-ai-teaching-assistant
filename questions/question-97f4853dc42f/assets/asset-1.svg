@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420" role="img" aria-labelledby="title desc">
+  <title id="title">导体棒在对称轨道上运动及解题关键关系</title>
+  <desc id="desc">左图标出上下轨道、导体棒长度、速度、安培力及垂直纸面向里的磁场；右图给出由运动学、热功率到轨道方程、安培力和外力功的关系。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/>
+    </marker>
+    <style>
+      .t { font-family: "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #0f172a; }
+      .small { font-size: 16px; }
+      .formula { font-family: "Times New Roman", serif; font-size: 18px; fill: #0f172a; }
+    </style>
+  </defs>
+
+  <rect width="1000" height="420" rx="20" fill="#f8fafc"/>
+  <text class="t" x="500" y="36" text-anchor="middle" font-size="23" font-weight="700">先看棒长，再用能量关系</text>
+
+  <!-- 左：物理图景 -->
+  <rect x="24" y="58" width="442" height="334" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text class="t" x="245" y="87" text-anchor="middle" font-size="18" font-weight="700">俯视图：棒的有效长度为 2f(x)</text>
+
+  <!-- 磁场叉号 -->
+  <g stroke="#94a3b8" stroke-width="1.8">
+    <path d="M58 117l10 10m0-10l-10 10M105 117l10 10m0-10l-10 10M152 117l10 10m0-10l-10 10"/>
+    <path d="M58 165l10 10m0-10l-10 10M105 165l10 10m0-10l-10 10M152 165l10 10m0-10l-10 10"/>
+    <path d="M58 315l10 10m0-10l-10 10M105 315l10 10m0-10l-10 10M152 315l10 10m0-10l-10 10"/>
+  </g>
+  <text class="t small" x="64" y="353">B 垂直纸面向里</text>
+
+  <!-- 坐标轴 -->
+  <line x1="77" y1="238" x2="429" y2="238" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow-gray)"/>
+  <line x1="92" y1="350" x2="92" y2="102" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow-gray)"/>
+  <text class="formula" x="434" y="244">x</text>
+  <text class="formula" x="84" y="105">y</text>
+  <text class="formula" x="76" y="257">O</text>
+
+  <!-- 上下对称轨道 -->
+  <path d="M92 238 C135 206, 190 174, 252 151 C310 130, 368 117, 424 108" fill="none" stroke="#0284c7" stroke-width="5"/>
+  <path d="M92 238 C135 270, 190 302, 252 325 C310 346, 368 359, 424 368" fill="none" stroke="#0284c7" stroke-width="5"/>
+  <text class="formula" x="276" y="127">y = f(x)</text>
+  <text class="formula" x="276" y="377">y = −f(x)</text>
+
+  <!-- 棒 -->
+  <line x1="292" y1="137" x2="292" y2="339" stroke="#f59e0b" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="292" cy="137" r="5" fill="#0f172a"/>
+  <circle cx="292" cy="339" r="5" fill="#0f172a"/>
+  <text class="t small" x="303" y="231" fill="#92400e">导体棒</text>
+  <line x1="272" y1="143" x2="272" y2="333" stroke="#7c3aed" stroke-width="2"/>
+  <path d="M266 143h12M266 333h12" stroke="#7c3aed" stroke-width="2"/>
+  <text class="formula" x="213" y="244" fill="#6d28d9">L = 2f(x)</text>
+
+  <!-- 速度与安培力 -->
+  <line x1="300" y1="188" x2="388" y2="188" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text class="formula" x="340" y="177" fill="#2563eb">v</text>
+  <line x1="284" y1="286" x2="205" y2="286" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow-red)"/>
+  <text class="t small" x="205" y="277" fill="#dc2626">安培力</text>
+
+  <!-- 右：关系链 -->
+  <rect x="490" y="58" width="486" height="334" rx="16" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+
+  <rect x="520" y="83" width="426" height="72" rx="12" fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>
+  <text class="t" x="733" y="108" text-anchor="middle" font-size="17" font-weight="700">① 运动学 + 电路</text>
+  <text class="formula" x="733" y="138" text-anchor="middle">v² = 2ax，R = ρL，I = BLv/R = Bv/ρ</text>
+
+  <line x1="733" y1="157" x2="733" y2="177" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gray)"/>
+
+  <rect x="520" y="181" width="426" height="82" rx="12" fill="#ecfdf5" stroke="#059669" stroke-width="2"/>
+  <text class="t" x="733" y="207" text-anchor="middle" font-size="17" font-weight="700">② 热功率反推棒长</text>
+  <text class="formula" x="733" y="234" text-anchor="middle">P = I²R = 4aB²xf(x)/ρ = kx³ᐟ²</text>
+  <text class="formula" x="733" y="255" text-anchor="middle">⇒ f(x) = [kρ/(4aB²)]√x</text>
+
+  <line x1="733" y1="265" x2="733" y2="285" stroke="#64748b" stroke-width="2" marker-end="url(#arrow-gray)"/>
+
+  <rect x="520" y="289" width="426" height="76" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text class="t" x="733" y="316" text-anchor="middle" font-size="17" font-weight="700">③ 功率与功</text>
+  <text class="formula" x="733" y="343" text-anchor="middle">F安 = P/v；W外 = ΔE<tspan font-size="13" baseline-shift="sub">k</tspan><tspan baseline-shift="baseline"> + ∫ F安 dx</tspan></text>
+
+  <text class="t" x="733" y="384" text-anchor="middle" font-size="15" fill="#475569">安培力阻碍棒向右运动，方向沿 −x</text>
+</svg>

@@ -1,0 +1,1370 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-27T23:26:48+08:00",
+  "questions": [
+    {
+      "id": "question-83c1f4acef52",
+      "title": "两种材料圆环的感应电动势与端电压",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "法拉第电磁感应定律",
+        "感生电场的环流",
+        "感生电动势按圆心角分配",
+        "全电路欧姆定律",
+        "非静电场中的端电压"
+      ],
+      "content": "questions/question-83c1f4acef52/content.md",
+      "pdf": "questions/question-83c1f4acef52/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-24",
+      "published_at": "2026-07-27T19:47:26+08:00",
+      "difficulty": {
+        "score": 67,
+        "level": "较难",
+        "summary": "较难：主要难点在条件与完备性、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "最短高中路径的必要推理深度锚点为 4 层。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 项高中物理定律或结论。"
+          },
+          {
+            "id": "representation_modelling",
+            "label": "建模与表征转换",
+            "score": 2.8,
+            "core_judgment": "需要完成 2 项建模或表征转换。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 3.5,
+            "core_judgment": "包含 1 个物理阶段及 0 个状态转移。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "决定性关系的局部密度与最长链形成 4 级运算负荷。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 4.0,
+            "core_judgment": "需要核对 4 项条件或完备性要求。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-97f4853dc42f",
+      "title": "导体轨道方程与安培力做功",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "电磁感应中的力学问题",
+        "安培力",
+        "导体棒切割磁感线",
+        "热功率与功能关系",
+        "几何建模与轨道方程",
+        "匀加速直线运动"
+      ],
+      "content": "questions/question-97f4853dc42f/content.md",
+      "pdf": "questions/question-97f4853dc42f/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-24",
+      "published_at": "2026-07-26T03:09:37+08:00",
+      "difficulty": {
+        "score": 38,
+        "level": "较易",
+        "summary": "较易：主要难点在运算与表达负荷、题型距离与建模转换。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 2.2,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 apply → apply → explain → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 2.0,
+            "core_judgment": "需要联合 2 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 0.8,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“单一状态”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.7,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 1.0,
+            "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-ccdf4cfc702c",
+      "title": "交替电场与磁场中带电粒子的分段运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强电场中的运动",
+        "带电粒子在匀强磁场中的圆周运动",
+        "半周期磁场运动的位移规律",
+        "静电力做功与动能变化",
+        "分段运动与事件枚举"
+      ],
+      "content": "questions/question-ccdf4cfc702c/content.md",
+      "pdf": "questions/question-ccdf4cfc702c/带答案错题.pdf",
+      "simulation": "questions/question-ccdf4cfc702c/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-27T23:26:48+08:00",
+      "difficulty": {
+        "score": 80,
+        "level": "较难",
+        "summary": "较难：主要难点在条件与完备性、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 identify → apply → apply → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 4.4,
+            "core_judgment": "需要联合 5 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 4.4,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“分支耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 4.2,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 4.4,
+            "core_judgment": "最高条件负担为全局或耦合完备性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-4a1ddcd4877a",
+      "title": "三维复合场中电子的类平抛、螺旋运动与共圆心条件",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强电场中的类平抛运动",
+        "带电粒子在匀强磁场中的螺旋运动",
+        "洛伦兹力方向与回旋半径",
+        "相对运动中距离不变的几何条件",
+        "分段匀变速运动"
+      ],
+      "content": "questions/question-4a1ddcd4877a/content.md",
+      "pdf": "questions/question-4a1ddcd4877a/带答案错题.pdf",
+      "simulation": "questions/question-4a1ddcd4877a/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T21:43:21+08:00",
+      "difficulty": {
+        "score": 82,
+        "level": "挑战",
+        "summary": "挑战：主要难点在过程与状态复杂度、运算与表达负荷。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 audit → apply → audit → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 4.2,
+            "core_judgment": "距离熟悉高中母题属于“隐蔽桥梁”，按固定锚点计 4.2/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“嵌套全局组合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 4.5,
+            "core_judgment": "正确建模后，最短标准路径形成“很大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.7,
+            "core_judgment": "最高条件负担为枚举完备性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-1edcc8241bf2",
+      "title": "方波电场与匀强磁场中的带电粒子运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动",
+        "周期性方波电场中的分段匀变速运动",
+        "动能定理",
+        "洛伦兹力方向",
+        "多场区域运动"
+      ],
+      "content": "questions/question-1edcc8241bf2/content.md",
+      "pdf": "questions/question-1edcc8241bf2/带答案错题.pdf",
+      "simulation": "questions/question-1edcc8241bf2/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:09:34+08:00",
+      "difficulty": {
+        "score": 66,
+        "level": "较难",
+        "summary": "较难：主要难点在运算与表达负荷、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "知识深度取目标 QT5 的最长不可绕过概念链，认知操作为 apply → audit → apply → audit → audit → audit → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 2.5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“时序组合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 4.5,
+            "core_judgment": "正确建模后，最短标准路径形成“很大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 2.8,
+            "core_judgment": "最高条件负担为首次或唯一性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-ad7a812f59c4",
+      "title": "磁聚焦与磁扩束——圆形区域聚焦和最小磁场面积",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动（洛伦兹力提供向心力）",
+        "磁聚焦与磁扩束的可逆几何关系",
+        "左手定则判断洛伦兹力与偏转方向",
+        "轨迹包络与最小磁场面积计算",
+        "圆弓形面积计算"
+      ],
+      "content": "questions/question-ad7a812f59c4/content.md",
+      "pdf": "questions/question-ad7a812f59c4/带答案错题.pdf",
+      "simulation": "questions/question-ad7a812f59c4/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:09:27+08:00",
+      "difficulty": {
+        "score": 57,
+        "level": "中等",
+        "summary": "中等：主要难点在条件与完备性、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 explain → explain → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 2.0,
+            "core_judgment": "需要联合 2 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.7,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.7,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.7,
+            "core_judgment": "最高条件负担为枚举完备性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-705469ef2f1a",
+      "title": "轴向磁场中电子的螺旋运动与圆柱壁约束临界模型",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "洛伦兹力与匀强磁场中带电粒子的匀速圆周运动",
+        "回旋半径公式与比荷的关系",
+        "三维空间速度分解与螺旋运动",
+        "磁约束临界条件建模",
+        "圆柱面落点区域面积计算"
+      ],
+      "content": "questions/question-705469ef2f1a/content.md",
+      "pdf": "questions/question-705469ef2f1a/带答案错题.pdf",
+      "simulation": "questions/question-705469ef2f1a/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:09:23+08:00",
+      "difficulty": {
+        "score": 66,
+        "level": "较难",
+        "summary": "较难：主要难点在运算与表达负荷、过程与状态复杂度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "知识深度取目标 T2 的最长不可绕过概念链，认知操作为 audit → audit → audit → audit → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 3.5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“同步耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.7,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 2.8,
+            "core_judgment": "最高条件负担为首次或唯一性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-e56b48a68a30",
+      "title": "三区域复合场中带电粒子的运动控制",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "辐向电场中的圆周运动（向心力由电场力提供）",
+        "匀强电场中的类平抛运动",
+        "洛伦兹力与匀强磁场中的圆周运动",
+        "复合场多区域粒子轨迹分析",
+        "速度的矢量分解与 v×B 运算法则",
+        "不等式约束的物理建模与求解"
+      ],
+      "content": "questions/question-e56b48a68a30/content.md",
+      "pdf": "questions/question-e56b48a68a30/带答案错题.pdf",
+      "simulation": "questions/question-e56b48a68a30/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:09:20+08:00",
+      "difficulty": {
+        "score": 55,
+        "level": "中等",
+        "summary": "中等：主要难点在运算与表达负荷、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 apply → explain → explain → apply → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.7,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 2.7,
+            "core_judgment": "最高条件负担为临界或极值，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-ee6ad43d9d37",
+      "title": "带电粒子在交替周期电场/磁场中的运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的匀速圆周运动（洛伦兹力提供向心力）",
+        "回旋半径 r=mv/(qB) 与周期 T=2πm/(qB)",
+        "磁场中转过 φ 弧度的时间 t=φm/(|q|B)",
+        "带电粒子在匀强电场中的匀变速直线运动",
+        "周期性电磁场中多阶段运动的衔接与时间节点选择",
+        "速度方向约束（垂直打板）与位置条件的几何分析"
+      ],
+      "content": "questions/question-ee6ad43d9d37/content.md",
+      "pdf": "questions/question-ee6ad43d9d37/带答案错题.pdf",
+      "simulation": "questions/question-ee6ad43d9d37/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:09:02+08:00",
+      "difficulty": {
+        "score": 63,
+        "level": "较难",
+        "summary": "较难：主要难点在运算与表达负荷、过程与状态复杂度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "知识深度取目标 T3 的最长不可绕过概念链，认知操作为 apply → apply → audit → apply → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 3.5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“同步耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 4.3,
+            "core_judgment": "正确建模后，最短标准路径形成“很大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 2.7,
+            "core_judgment": "最高条件负担为首次或唯一性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-5ae5a537378a",
+      "title": "磁场偏转与电容器的电荷累积",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "洛伦兹力与匀强磁场中的圆周运动",
+        "平行板间匀强电场",
+        "动能定理",
+        "圆的弦长与几何极值",
+        "匀强电场中的分运动"
+      ],
+      "content": "questions/question-5ae5a537378a/content.md",
+      "pdf": "questions/question-5ae5a537378a/带答案错题.pdf",
+      "simulation": "questions/question-5ae5a537378a/simulation.html",
+      "uploaded_at": "2026-07-22",
+      "published_at": "2026-07-26T03:08:59+08:00",
+      "difficulty": {
+        "score": 62,
+        "level": "较难",
+        "summary": "较难：主要难点在知识整合、运算与表达负荷。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T_D 的最长不可绕过概念链，认知操作为 audit → audit → audit → apply → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.7,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.6,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.2,
+            "core_judgment": "最高条件负担为分类讨论，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-fc379ca42475",
+      "title": "两同向分区磁场中带电粒子的运动与相遇",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动",
+        "分区域磁场轨迹",
+        "多粒子相遇",
+        "平均速度"
+      ],
+      "content": "questions/question-fc379ca42475/content.md",
+      "pdf": "questions/question-fc379ca42475/带答案错题.pdf",
+      "simulation": "questions/question-fc379ca42475/simulation.html",
+      "uploaded_at": "2026-07-20",
+      "published_at": "2026-07-26T03:08:55+08:00",
+      "difficulty": {
+        "score": 70,
+        "level": "较难",
+        "summary": "较难：主要难点在题型距离与建模转换、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.3,
+            "core_judgment": "知识深度取目标 qt2 的最长不可绕过概念链，认知操作为 apply → apply → audit → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 4.2,
+            "core_judgment": "距离熟悉高中母题属于“隐蔽桥梁”，按固定锚点计 4.2/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 3.5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“同步耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.2,
+            "core_judgment": "最高条件负担为分类讨论，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-68c8b4e26b37",
+      "title": "航拍直升机电池容量与能量转化",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "电池容量",
+        "非纯电阻电路",
+        "能量转化"
+      ],
+      "content": "questions/question-68c8b4e26b37/content.md",
+      "pdf": "questions/question-68c8b4e26b37/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:50+08:00",
+      "difficulty": {
+        "score": 30,
+        "level": "较易",
+        "summary": "较易：主要难点在运算与表达负荷、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 2.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 identify → apply → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 1.0,
+            "core_judgment": "需要联合 1 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 0.8,
+            "core_judgment": "距离熟悉高中母题属于“教材母题”，按固定锚点计 0.8/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.5,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 0.8,
+            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-74ea50e28b41",
+      "title": "正方体上下表面两通电导体棒的作用",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "通电直导线的磁场",
+        "安培力",
+        "力矩方向"
+      ],
+      "content": "questions/question-74ea50e28b41/content.md",
+      "pdf": "questions/question-74ea50e28b41/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:46+08:00",
+      "difficulty": {
+        "score": 54,
+        "level": "中等",
+        "summary": "中等：主要难点在知识深度、过程与状态复杂度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 explain → audit → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 3.4,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“同步耦合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 1.0,
+            "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-f703825b69fd",
+      "title": "带电粒子先过电场再进入有界磁场",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强电场中的类平抛",
+        "带电粒子在匀强磁场中的圆周运动",
+        "有界磁场相切条件"
+      ],
+      "content": "questions/question-f703825b69fd/content.md",
+      "pdf": "questions/question-f703825b69fd/带答案错题.pdf",
+      "simulation": "questions/question-f703825b69fd/simulation.html",
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:42+08:00",
+      "difficulty": {
+        "score": 57,
+        "level": "中等",
+        "summary": "中等：主要难点在知识整合、运算与表达负荷。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.5,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → explain → apply → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.6,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 2.8,
+            "core_judgment": "最高条件负担为首次或唯一性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-baa157722303",
+      "title": "交流发电机连接理想变压器",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "正弦式交变电流",
+        "交流发电机",
+        "理想变压器",
+        "含内阻电源"
+      ],
+      "content": "questions/question-baa157722303/content.md",
+      "pdf": "questions/question-baa157722303/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:38+08:00",
+      "difficulty": {
+        "score": 38,
+        "level": "较易",
+        "summary": "较易：主要难点在运算与表达负荷、过程与状态复杂度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 2.1,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → apply → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 2.0,
+            "core_judgment": "需要联合 2 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 1.6,
+            "core_judgment": "距离熟悉高中母题属于“常规变式”，按固定锚点计 1.6/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 2.5,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“时序组合”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 0.8,
+            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-4b77c1556367",
+      "title": "可变磁场驱动的电磁天平",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "法拉第电磁感应定律",
+        "楞次定律",
+        "安培力",
+        "电磁天平"
+      ],
+      "content": "questions/question-4b77c1556367/content.md",
+      "pdf": "questions/question-4b77c1556367/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:33+08:00",
+      "difficulty": {
+        "score": 49,
+        "level": "中等",
+        "summary": "中等：主要难点在知识整合、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 audit → apply → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.5,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 1.0,
+            "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-af67027e2f4e",
+      "title": "导体棒依次穿过两个磁场的速度图像",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "电磁感应中的导体棒",
+        "安培力与终端速度",
+        "速度—时间图像",
+        "感应电荷量"
+      ],
+      "content": "questions/question-af67027e2f4e/content.md",
+      "pdf": "questions/question-af67027e2f4e/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:28+08:00",
+      "difficulty": {
+        "score": 53,
+        "level": "中等",
+        "summary": "中等：主要难点在知识整合、运算与表达负荷。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.5,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 explain → explain → audit → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 4.4,
+            "core_judgment": "需要联合 5 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.5,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 0.8,
+            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-b1625e7b2228",
+      "title": "正方形线框匀速穿越宽磁场",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "线框穿越有界磁场",
+        "动生电动势",
+        "安培力",
+        "焦耳热"
+      ],
+      "content": "questions/question-b1625e7b2228/content.md",
+      "pdf": "questions/question-b1625e7b2228/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:22+08:00",
+      "difficulty": {
+        "score": 43,
+        "level": "中等",
+        "summary": "中等：主要难点在知识深度、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → audit → apply。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 1.6,
+            "core_judgment": "距离熟悉高中母题属于“常规变式”，按固定锚点计 1.6/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.7,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 0.8,
+            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-5a662eb6b6c7",
+      "title": "变化磁场中悬挂线框的电流与拉力",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "楞次定律",
+        "法拉第电磁感应定律",
+        "安培力",
+        "感应电荷量"
+      ],
+      "content": "questions/question-5a662eb6b6c7/content.md",
+      "pdf": "questions/question-5a662eb6b6c7/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:19+08:00",
+      "difficulty": {
+        "score": 49,
+        "level": "中等",
+        "summary": "中等：主要难点在知识整合、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → audit → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 0.8,
+            "core_judgment": "最高条件负担为显式常规条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-7c895bdfc8a3",
+      "title": "测电源电动势内阻与输出功率图像",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "测量电源电动势和内阻",
+        "U-I图像",
+        "电源输出功率"
+      ],
+      "content": "questions/question-7c895bdfc8a3/content.md",
+      "pdf": "questions/question-7c895bdfc8a3/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:16+08:00",
+      "difficulty": {
+        "score": 40,
+        "level": "较易",
+        "summary": "较易：主要难点在运算与表达负荷、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 audit → apply → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 1.0,
+            "core_judgment": "需要联合 1 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 2.5,
+            "core_judgment": "距离熟悉高中母题属于“标准迁移”，按固定锚点计 2.5/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 0.8,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“单一状态”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.6,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 1.0,
+            "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-1ffa341ff73a",
+      "title": "内外反向圆形磁场中的周期轨迹",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "带电粒子在匀强磁场中的圆周运动",
+        "圆形有界磁场",
+        "交替磁场轨迹几何"
+      ],
+      "content": "questions/question-1ffa341ff73a/content.md",
+      "pdf": "questions/question-1ffa341ff73a/带答案错题.pdf",
+      "simulation": "questions/question-1ffa341ff73a/simulation.html",
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:10+08:00",
+      "difficulty": {
+        "score": 59,
+        "level": "中等",
+        "summary": "中等：主要难点在运算与表达负荷、知识深度。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T_D 的最长不可绕过概念链，认知操作为 apply → audit → audit → apply → apply → explain。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 3.4,
+            "core_judgment": "距离熟悉高中母题属于“模型重构”，按固定锚点计 3.4/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.6,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.2,
+            "core_judgment": "最高条件负担为分类讨论，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-cf1c40d5261d",
+      "title": "带电微粒在正交复合场中沿直线运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "复合场中的受力平衡",
+        "洛伦兹力方向",
+        "带电粒子直线运动"
+      ],
+      "content": "questions/question-cf1c40d5261d/content.md",
+      "pdf": "questions/question-cf1c40d5261d/带答案错题.pdf",
+      "simulation": null,
+      "uploaded_at": "2026-07-19",
+      "published_at": "2026-07-26T03:08:04+08:00",
+      "difficulty": {
+        "score": 40,
+        "level": "较易",
+        "summary": "较易：主要难点在知识深度、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.4,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 identify → apply → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.0,
+            "core_judgment": "需要联合 3 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 1.6,
+            "core_judgment": "距离熟悉高中母题属于“常规变式”，按固定锚点计 1.6/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 0.8,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“单一状态”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 2.6,
+            "core_judgment": "正确建模后，最短标准路径形成“中等计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 1.0,
+            "core_judgment": "最高条件负担为方向、符号或适用条件，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "question-212ecbad04d3",
+      "title": "带电粒子在同心圆复合场中的运动",
+      "subject": "高中物理",
+      "knowledge_points": [
+        "洛伦兹力方向",
+        "带电粒子在匀强磁场中的圆周运动",
+        "电场力做功与动能定理",
+        "圆周运动几何关系"
+      ],
+      "content": "questions/question-212ecbad04d3/content.md",
+      "pdf": "questions/question-212ecbad04d3/带答案错题.pdf",
+      "simulation": "questions/question-212ecbad04d3/simulation.html",
+      "uploaded_at": "2026-07-17",
+      "published_at": "2026-07-26T03:08:01+08:00",
+      "difficulty": {
+        "score": 67,
+        "level": "较难",
+        "summary": "较难：主要难点在题型距离与建模转换、知识整合。",
+        "dimensions": [
+          {
+            "id": "knowledge_depth",
+            "label": "知识深度",
+            "score": 3.5,
+            "core_judgment": "知识深度取目标 T1 的最长不可绕过概念链，认知操作为 apply → explain → explain → audit。"
+          },
+          {
+            "id": "knowledge_integration",
+            "label": "知识整合",
+            "score": 3.8,
+            "core_judgment": "需要联合 4 个绑定决定性关系的独立规律/概念单元；并行必要分支均计入，同一定律重复使用只计一次。"
+          },
+          {
+            "id": "type_distance_modelling",
+            "label": "题型距离与建模转换",
+            "score": 4.2,
+            "core_judgment": "距离熟悉高中母题属于“隐蔽桥梁”，按固定锚点计 4.2/5。"
+          },
+          {
+            "id": "process_state",
+            "label": "过程与状态复杂度",
+            "score": 1.6,
+            "core_judgment": "已知正确知识点后，状态与过程的最低组合层级为“标准串联”。"
+          },
+          {
+            "id": "calculation_expression",
+            "label": "运算与表达负荷",
+            "score": 3.5,
+            "core_judgment": "正确建模后，最短标准路径形成“较大计算量”。"
+          },
+          {
+            "id": "condition_completeness",
+            "label": "条件与完备性",
+            "score": 3.7,
+            "core_judgment": "最高条件负担为枚举完备性，教师审计项目数量不参与累计。"
+          }
+        ]
+      }
+    }
+  ]
+}

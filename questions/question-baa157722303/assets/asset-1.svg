@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300">
+  <rect width="760" height="300" fill="#fbfcff"/>
+  <rect x="35" y="85" width="150" height="90" rx="14" fill="#eaf2ff" stroke="#1677ff" stroke-width="3"/>
+  <text x="55" y="120" font-size="20">发电机</text><text x="52" y="150" font-size="19">E=110 V, r=10Ω</text>
+  <line x1="185" y1="130" x2="300" y2="130" stroke="#234" stroke-width="4"/>
+  <text x="205" y="112" font-size="19">I₁=5 A</text>
+  <rect x="300" y="65" width="170" height="130" rx="14" fill="#fff7e6" stroke="#d88a00" stroke-width="3"/>
+  <text x="325" y="112" font-size="20">理想变压器</text><text x="345" y="150" font-size="20">2 : 1</text>
+  <line x1="470" y1="130" x2="565" y2="130" stroke="#234" stroke-width="4"/>
+  <rect x="565" y="85" width="150" height="90" rx="14" fill="#ecfff2" stroke="#35a45b" stroke-width="3"/>
+  <text x="610" y="122" font-size="21">R=3Ω</text><text x="600" y="150" font-size="19">P=300 W</text>
+  <text x="250" y="250" font-size="22">110 V → 60 V → 30 V</text>
+</svg>

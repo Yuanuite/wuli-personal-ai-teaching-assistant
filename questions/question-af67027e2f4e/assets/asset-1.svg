@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360">
+  <rect width="720" height="360" fill="#fbfcff"/>
+  <line x1="70" y1="300" x2="670" y2="300" stroke="#222" stroke-width="3"/>
+  <line x1="70" y1="300" x2="70" y2="40" stroke="#222" stroke-width="3"/>
+  <polyline points="70,300 225,185 430,185 610,65" fill="none" stroke="#1677ff" stroke-width="5"/>
+  <line x1="225" y1="300" x2="225" y2="185" stroke="#888" stroke-dasharray="7 6"/>
+  <line x1="430" y1="300" x2="430" y2="185" stroke="#888" stroke-dasharray="7 6"/>
+  <text x="190" y="330" font-size="20">t₁</text><text x="400" y="330" font-size="20">t₂</text><text x="590" y="330" font-size="20">t₃</text>
+  <text x="110" y="270" font-size="18">自由落体</text><text x="280" y="170" font-size="18">磁场Ⅰ：v₁</text><text x="480" y="140" font-size="18">再加速</text>
+  <text x="20" y="50" font-size="20">v</text><text x="675" y="325" font-size="20">t</text>
+</svg>

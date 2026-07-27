@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="440" viewBox="0 0 760 440" role="img" aria-label="Educational diagram">
+  <title>Educational diagram</title>
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb" stroke="none"/>
+    </marker>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff" stroke="none"/>
+  <circle cx="250.0" cy="220.0" r="90.0" fill="none" stroke="#2563eb" stroke-width="2.0"/>
+  <circle cx="250.0" cy="220.0" r="180.0" fill="none" stroke="#64748b" stroke-width="2.0"/>
+  <text x="250.0" y="225.0" text-anchor="middle" font-size="18.0" font-weight="400" fill="#172033" stroke="none">O</text>
+  <text x="250.0" y="120.0" text-anchor="middle" font-size="18.0" font-weight="400" fill="#172033" stroke="none">I 区</text>
+  <text x="250.0" y="70.0" text-anchor="middle" font-size="18.0" font-weight="400" fill="#172033" stroke="none">II 区</text>
+  <text x="470.0" y="80.0" text-anchor="middle" font-size="18.0" font-weight="400" fill="#172033" stroke="none">III 区</text>
+  <line x1="340.0" y1="220.0" x2="270.0" y2="245.0" fill="none" stroke="#ea580c" stroke-width="3.0" marker-end="url(#arrowhead)"/>
+  <line x1="270.0" y1="245.0" x2="295.0" y2="300.0" fill="none" stroke="#ea580c" stroke-width="3.0" marker-end="url(#arrowhead)"/>
+  <line x1="250.0" y1="220.0" x2="340.0" y2="220.0" fill="none" stroke="#172033" stroke-width="2.0"/>
+  <line x1="250.0" y1="220.0" x2="295.0" y2="298.0" fill="none" stroke="#172033" stroke-width="2.0"/>
+  <text x="350.0" y="215.0" text-anchor="start" font-size="18.0" font-weight="400" fill="#172033" stroke="none">P</text>
+  <text x="303.0" y="310.0" text-anchor="start" font-size="18.0" font-weight="400" fill="#172033" stroke="none">K</text>
+  <text x="390.0" y="260.0" text-anchor="start" font-size="18.0" font-weight="400" fill="#172033" stroke="none">I 区：每次转 -60°</text>
+  <text x="390.0" y="295.0" text-anchor="start" font-size="18.0" font-weight="400" fill="#172033" stroke="none">III 区：每次转 +δ</text>
+</svg>
