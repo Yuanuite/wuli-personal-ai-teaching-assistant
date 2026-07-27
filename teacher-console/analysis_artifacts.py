@@ -49,12 +49,66 @@ ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
                     "items": {"type": "string"},
                     "maxItems": 8,
                 },
+                "physical_stages": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 12,
+                },
+                "reasoning_steps": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 5,
+                },
+                "decisive_relations": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "maxItems": 12,
+                },
+                "representation_transforms": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 8,
+                },
+                "condition_checks": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "maxItems": 12,
+                },
+                "type_distance": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "mode": {
+                            "enum": [
+                                "direct_archetype",
+                                "routine_variant",
+                                "standard_transfer",
+                                "model_reconstruction",
+                                "non_obvious_bridge",
+                                "novel_construction",
+                            ]
+                        },
+                        "archetype": {"type": "string"},
+                        "recognition_barrier": {"type": "string"},
+                        "novel_bridge": {"type": "string"},
+                    },
+                    "required": ["mode", "archetype", "recognition_barrier", "novel_bridge"],
+                },
                 "student_step_count": {"type": "integer", "minimum": 1, "maximum": 5},
             },
             "required": [
                 "selected_path",
                 "high_school_basis",
                 "discarded_methods",
+                "physical_stages",
+                "reasoning_steps",
+                "decisive_relations",
+                "representation_transforms",
+                "condition_checks",
+                "type_distance",
                 "student_step_count",
             ],
         },
@@ -121,7 +175,16 @@ def output_contract() -> dict[str, Any]:
             "teacher_audit 只写教师复核内容，不要复制学生版。"
             "先比较可行路径并填写 method_check：selected_path 写最终最短主线，"
             "high_school_basis 列出所用高中结论，discarded_methods 记录已舍弃的冗长或超纲方法，"
-            "student_step_count 必须与学生版“第 N 步”标题数一致且不超过 5。"
+            "physical_stages 列出题目客观存在的物理阶段，reasoning_steps 列出最短高中主线的"
+            "必要推理步骤，decisive_relations 列出可复算的决定性关系，"
+            "representation_transforms 列出题干到图像、几何、等效模型等必要表征转换，"
+            "condition_checks 列出分类、临界、首次、唯一、边界或完备性检查。"
+            "type_distance 评估学生在未见答案时识别最短高中母题的距离：direct_archetype 为教材母题，"
+            "routine_variant 为常规变式，standard_transfer 为标准迁移，model_reconstruction 为模型重构，"
+            "non_obvious_bridge 为存在隐蔽桥梁，novel_construction 为需要非常规构造；只选枚举，不填写分数，"
+            "并用 archetype、recognition_barrier、novel_bridge 给出简短可复核依据。"
+            "reasoning_steps 数量、student_step_count 与学生版“第 N 步”标题数必须一致且不超过 5；"
+            "high_school_basis 只列物理定律或高中结论，不混入量纲检查等校验操作。"
             "学生版优先几何、守恒、图像面积、平均值和标准二级结论；禁止使用积分、导数、"
             "微分方程、矩阵、复数法或大学力学方法。能一式完成的关系不要拆成多步代数。"
             "证据优先于层级模板：详细解答必须占主体篇幅；每个小问和每个选项判断至少保留"
@@ -130,7 +193,7 @@ def output_contract() -> dict[str, Any]:
             "一眼识别最多三条短句，易错点最多三条，30 秒自测只写一个问题；这些辅助区不得"
             "重复详细解答或挤占关键证明。"
             "公式只使用网页可稳定渲染的 LaTeX；不要使用 \\notag、\\tag 或编号控制命令，"
-            "并在提交前检查是否出现 otag、aqquad、gqquad 等反斜杠丢失残片。"
+            "并在提交前检查是否出现 otag、aqquad、gqquad、rac{…}、rac34 等反斜杠丢失残片。"
             "diagram.nodes 用 2–6 个短语概括解题逻辑链，程序会确定性生成 SVG。"
             "复杂电学题的图示先把实际过程抽象为等效电路：用节点短语明确电动势源、"
             "内阻、负载、测量端及其连接关系；例如不同材料圆环分别等效为感应电动势源"
@@ -153,12 +216,12 @@ def _clean_text(value: Any, *, field: str, minimum: int = 1, maximum: int = 80_0
     return text
 
 
-def _clean_list(value: Any, *, field: str) -> list[str]:
+def _clean_list(value: Any, *, field: str, maximum: int = 120) -> list[str]:
     if not isinstance(value, list):
         raise ValueError(f"{field} must be a list")
     cleaned: list[str] = []
     for item in value:
-        text = _clean_text(item, field=field, maximum=120)
+        text = _clean_text(item, field=field, maximum=maximum)
         if text not in cleaned:
             cleaned.append(text)
     if not cleaned:
@@ -179,10 +242,24 @@ def _clean_optional_list(value: Any, *, field: str) -> list[str]:
 
 def _repair_latex_fragments(text: str) -> str:
     """Repair unambiguous JSON/Markdown escape remnants without changing physics."""
+    # CLI providers may emit terminal colour resets inside an otherwise valid
+    # JSON string. They are never meaningful teaching content.
+    text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", text)
+    text = re.sub(r"\\(?:dfrac|tfrac)(?![A-Za-z])", r"\\frac", text)
+    # A single JSON backslash turns ``\frac`` into form-feed + ``rac`` and
+    # ``\tfrac`` into tab + ``frac``. Replace the complete damaged token so no
+    # hidden control character survives the visible LaTeX repair.
+    text = re.sub(r"\x0crac(?=[{\d])", r"\\frac", text)
+    text = re.sub(r"\tfrac(?=[{\d])", r"\\frac", text)
     # Models occasionally lose the leading backslash and prepend one stray
     # letter (for example ``aqquad`` or ``gqquad``).  No valid prose token in
     # these Chinese solutions uses a bare word ending in ``qquad``.
     text = re.sub(r"(?<!\\)\b[a-z]*qquad\b", r"\\qquad", text)
+    # A provider that emits ``\frac`` with only one JSON escape can have ``\f``
+    # decoded as a form-feed and later stripped, leaving the unmistakable
+    # fragments such as ``rac{...}`` or the valid compact-LaTeX form's damaged
+    # counterpart ``rac34`` (originally ``\frac34``).
+    text = re.sub(r"(?<![\\A-Za-z])rac(?=[{\d])", r"\\frac", text)
     return re.sub(r"(?m)^[ \t]*otag[ \t]*\n?", "", text)
 
 
@@ -203,6 +280,10 @@ def student_method_errors(student: str) -> list[str]:
         errors.append("student_solution contains broken LaTeX fragment: otag")
     if re.search(r"(?<!\\)\b[a-z]*qquad\b", student):
         errors.append("student_solution contains broken LaTeX fragment: bare qquad")
+    if re.search(r"(?<![\\A-Za-z])rac(?=[{\d])", student):
+        errors.append("student_solution contains broken LaTeX fragment: bare frac")
+    if re.search(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", student):
+        errors.append("student_solution contains unsupported control characters")
     return errors
 
 
@@ -286,6 +367,57 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
         raw_method_check.get("discarded_methods"),
         field="method_check.discarded_methods",
     )
+    physical_stages = _clean_list(
+        raw_method_check.get("physical_stages"),
+        field="method_check.physical_stages",
+        maximum=240,
+    )[:12]
+    reasoning_steps = _clean_list(
+        raw_method_check.get("reasoning_steps"),
+        field="method_check.reasoning_steps",
+        maximum=240,
+    )[:5]
+    decisive_relations = _clean_list(
+        raw_method_check.get("decisive_relations"),
+        field="method_check.decisive_relations",
+        maximum=360,
+    )[:12]
+    representation_transforms = _clean_optional_list(
+        raw_method_check.get("representation_transforms"),
+        field="method_check.representation_transforms",
+    )
+    condition_checks = _clean_optional_list(
+        raw_method_check.get("condition_checks"),
+        field="method_check.condition_checks",
+    )[:12]
+    raw_type_distance = raw_method_check.get("type_distance")
+    if not isinstance(raw_type_distance, dict):
+        raise ValueError("method_check.type_distance must be an object")
+    type_distance_mode = str(raw_type_distance.get("mode", "")).strip()
+    allowed_type_distance_modes = {
+        "direct_archetype",
+        "routine_variant",
+        "standard_transfer",
+        "model_reconstruction",
+        "non_obvious_bridge",
+        "novel_construction",
+    }
+    if type_distance_mode not in allowed_type_distance_modes:
+        raise ValueError("method_check.type_distance.mode is invalid")
+    type_distance = {
+        "mode": type_distance_mode,
+        "archetype": _clean_text(
+            raw_type_distance.get("archetype"),
+            field="method_check.type_distance.archetype",
+            maximum=160,
+        ),
+        "recognition_barrier": _clean_text(
+            raw_type_distance.get("recognition_barrier"),
+            field="method_check.type_distance.recognition_barrier",
+            maximum=240,
+        ),
+        "novel_bridge": str(raw_type_distance.get("novel_bridge", "")).strip()[:240],
+    }
     reported_step_count = raw_method_check.get("student_step_count")
     actual_step_count = len(STUDENT_STEP_PATTERN.findall(student))
     if isinstance(reported_step_count, bool) or not isinstance(reported_step_count, int):
@@ -294,6 +426,11 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             "method_check.student_step_count does not match student_solution: "
             f"{reported_step_count} != {actual_step_count}"
+        )
+    if len(reasoning_steps) != reported_step_count:
+        raise ValueError(
+            "method_check.reasoning_steps does not match student_step_count: "
+            f"{len(reasoning_steps)} != {reported_step_count}"
         )
 
     raw_metadata = payload.get("metadata")
@@ -330,6 +467,12 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "selected_path": selected_path,
             "high_school_basis": high_school_basis,
             "discarded_methods": discarded_methods,
+            "physical_stages": physical_stages,
+            "reasoning_steps": reasoning_steps,
+            "decisive_relations": decisive_relations,
+            "representation_transforms": representation_transforms,
+            "condition_checks": condition_checks,
+            "type_distance": type_distance,
             "student_step_count": reported_step_count,
         },
         "metadata": metadata,
@@ -411,6 +554,11 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("record.json must be an object")
     for field, value in normalized["metadata"].items():
         record[field] = value
+    record["standard_solution_path"] = {
+        "schema_version": 1,
+        "source": ANALYSIS_CONTRACT,
+        **normalized["method_check"],
+    }
 
     student = _insert_explanation_reference(
         _ensure_heading(normalized["student_solution"], "# 解析（学生版）")

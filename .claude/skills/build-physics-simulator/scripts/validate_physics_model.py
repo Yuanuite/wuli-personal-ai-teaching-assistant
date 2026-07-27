@@ -346,10 +346,33 @@ def validate_piecewise_particle_3d(data: dict, errors: list[str]) -> None:
         errors.append("piecewise-field-particle-3d: every case needs a unique id")
     for case in cases:
         try:
-            if float(case["duration"]) <= 0:
+            duration = float(case["duration"])
+            if duration <= 0:
                 errors.append(f"{case.get('id', '<case>')}: duration must be positive")
         except (KeyError, TypeError, ValueError):
             errors.append(f"{case.get('id', '<case>')}: duration must be numeric")
+            duration = 0
+        distance_pair = case.get("distance_pair")
+        if distance_pair is not None and (
+            not isinstance(distance_pair, list)
+            or len(distance_pair) != 2
+            or distance_pair[0] == distance_pair[1]
+            or any(str(item) not in particle_ids for item in distance_pair)
+        ):
+            errors.append(
+                f"{case.get('id', '<case>')}: distance_pair must reference two distinct particles"
+            )
+        if distance_pair is not None:
+            try:
+                distance_start = float(case["distance_start_time"])
+                if distance_start < 0 or distance_start > duration:
+                    errors.append(
+                        f"{case.get('id', '<case>')}: distance_start_time must be within case duration"
+                    )
+            except (KeyError, TypeError, ValueError):
+                errors.append(
+                    f"{case.get('id', '<case>')}: distance_pair requires numeric distance_start_time"
+                )
 
     times_by_case: dict[str, list[float]] = {case_id: [] for case_id in case_ids}
     for event in timeline:

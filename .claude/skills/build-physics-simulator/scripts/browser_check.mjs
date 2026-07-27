@@ -37,7 +37,7 @@ page.on('console', message => {
 await page.goto(pathToFileURL(htmlPath).href);
 await page.waitForTimeout(500);
 
-const exercised = { buttons: 0, ranges: 0 };
+const exercised = { buttons: 0, ranges: 0, selects: 0, selectOptions: 0 };
 for (const button of await page.locator('button:visible:enabled').all()) {
   try {
     await button.click({ timeout: 1000 });
@@ -62,6 +62,34 @@ for (const range of await page.locator('input[type="range"]:visible:enabled').al
     errors.push(`range interaction failed: ${error.message}`);
   }
 }
+for (const select of await page.locator('select:visible:enabled').all()) {
+  try {
+    const values = await select.locator('option').evaluateAll(options =>
+      options.map(option => option.value).filter(Boolean)
+    );
+    for (const value of values) {
+      await select.selectOption(value);
+      await page.waitForTimeout(30);
+      exercised.selectOptions += 1;
+    }
+    exercised.selects += 1;
+  } catch (error) {
+    errors.push(`select interaction failed: ${error.message}`);
+  }
+}
+for (const range of await page.locator('input[type="range"]:visible:enabled').all()) {
+  try {
+    await range.evaluate(element => {
+      if (!String(element.id).includes('progress')) return;
+      element.value = String(Number(element.max || 100) * 0.72);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(30);
+  } catch (error) {
+    errors.push(`final range interaction failed: ${error.message}`);
+  }
+}
 if (screenshot) await page.screenshot({ path: screenshot, fullPage: true });
 const report = {
   status: errors.length ? 'failed' : 'passed',
@@ -70,6 +98,7 @@ const report = {
   svg: await page.locator('svg').count(),
   buttons: await page.locator('button').count(),
   ranges: await page.locator('input[type="range"]').count(),
+  selects: await page.locator('select').count(),
   errors,
   exercised,
   screenshot,

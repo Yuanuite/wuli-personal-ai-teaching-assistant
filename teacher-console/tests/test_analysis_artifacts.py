@@ -60,8 +60,19 @@ class AnalysisArtifactsTest(unittest.TestCase):
             "teacher_audit": "- 量纲检查：各物理量单位一致。\n- 边界情况：极限条件下结论仍然成立。",
             "method_check": {
                 "selected_path": "确定研究对象后直接应用机械能守恒。",
-                "high_school_basis": ["机械能守恒", "量纲检查"],
+                "high_school_basis": ["机械能守恒"],
                 "discarded_methods": ["舍弃逐时刻动力学展开"],
+                "physical_stages": ["物体在保守力作用下由初态运动到末态"],
+                "reasoning_steps": ["确定研究对象并应用机械能守恒"],
+                "decisive_relations": ["初态机械能等于末态机械能"],
+                "representation_transforms": [],
+                "condition_checks": ["核对机械能守恒的适用条件"],
+                "type_distance": {
+                    "mode": "direct_archetype",
+                    "archetype": "机械能守恒基础题",
+                    "recognition_barrier": "直接识别研究对象与守恒条件",
+                    "novel_bridge": "",
+                },
                 "student_step_count": 1,
             },
             "metadata": {
@@ -84,6 +95,9 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertEqual(record["protected"], "keep")
         self.assertEqual(record["updated_at"], "2026-01-01T00:00:00+08:00")
         self.assertEqual(record["knowledge_points"], ["机械能守恒"])
+        self.assertEqual(record["standard_solution_path"]["source"], "wuli.analysis.v2")
+        self.assertEqual(record["standard_solution_path"]["reasoning_steps"], ["确定研究对象并应用机械能守恒"])
+        self.assertEqual(record["standard_solution_path"]["type_distance"]["mode"], "direct_archetype")
         student = (self.entry / "student-solution.md").read_text(encoding="utf-8")
         teacher = (self.entry / "teacher-solution.md").read_text(encoding="utf-8")
         self.assertTrue(student.startswith("# 解析（学生版）"))
@@ -110,6 +124,8 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertIn("内阻", instructions)
         self.assertIn("\\notag", instructions)
         self.assertIn("aqquad", instructions)
+        self.assertIn("rac{", instructions)
+        self.assertIn("rac34", instructions)
         self.assertIn("端电压", instructions)
         self.assertIn("method_check", instructions)
         self.assertIn("禁止使用积分", instructions)
@@ -122,7 +138,9 @@ class AnalysisArtifactsTest(unittest.TestCase):
         payload = self.payload()
         payload["student_solution"] = payload["student_solution"].replace(
             "建立方程并求解。",
-            "$$\\begin{aligned}v&=v_0\\\\\notag\n&=2v_0\\end{aligned}$$\n\naqquad gqquad",
+            "$$\\begin{aligned}v&=v_0\\\\\notag\n&=2v_0\\end{aligned}$$\n\n"
+            "aqquad gqquad\n\n$$rac{mv^2}{2}=rac{q^2}{r}+rac34"
+            "+\x1b[0m\\dfrac12+\\tfrac34+\x0crac12+\tfrac34$$",
         )
 
         normalized = analysis_artifacts.normalize_payload(payload)
@@ -131,6 +149,30 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertNotIn("aqquad", normalized["student_solution"])
         self.assertNotIn("gqquad", normalized["student_solution"])
         self.assertEqual(normalized["student_solution"].count(r"\qquad"), 2)
+        self.assertNotIn("rac{", normalized["student_solution"].replace(r"\frac{", ""))
+        self.assertNotRegex(normalized["student_solution"], r"(?<![\\A-Za-z])rac(?=[{\d])")
+        self.assertIn(r"\frac34", normalized["student_solution"])
+        self.assertNotIn("\x1b", normalized["student_solution"])
+        self.assertNotIn(r"\dfrac", normalized["student_solution"])
+        self.assertNotIn(r"\tfrac", normalized["student_solution"])
+        self.assertEqual(normalized["student_solution"].count(r"\frac"), 7)
+
+    def test_decisive_relation_allows_a_reproducible_compound_equation(self):
+        payload = self.payload()
+        relation = "；".join(["分段状态递推并核对边界条件"] * 10)
+        self.assertGreater(len(relation), 120)
+        payload["method_check"]["decisive_relations"] = [relation]
+
+        normalized = analysis_artifacts.normalize_payload(payload)
+
+        self.assertEqual(normalized["method_check"]["decisive_relations"], [relation])
+
+    def test_rejects_non_ansi_control_characters(self):
+        payload = self.payload()
+        payload["student_solution"] += "\n\n异常控制符：\x01"
+
+        with self.assertRaisesRegex(ValueError, "unsupported control characters"):
+            analysis_artifacts.normalize_payload(payload)
 
     def test_rejects_advanced_or_overlong_student_method(self):
         payload = self.payload()
@@ -155,6 +197,12 @@ class AnalysisArtifactsTest(unittest.TestCase):
         payload = self.payload()
         payload["method_check"]["student_step_count"] = 2
         with self.assertRaisesRegex(ValueError, "does not match"):
+            analysis_artifacts.normalize_payload(payload)
+
+    def test_rejects_reasoning_step_count_mismatch(self):
+        payload = self.payload()
+        payload["method_check"]["reasoning_steps"].append("多余步骤")
+        with self.assertRaisesRegex(ValueError, "reasoning_steps does not match"):
             analysis_artifacts.normalize_payload(payload)
 
     def test_existing_physics_model_blocks_wrong_options_and_preserves_physical_svg(self):
