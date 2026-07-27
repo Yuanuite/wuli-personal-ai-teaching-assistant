@@ -129,7 +129,7 @@
   function sample(g,n=64){return Array.from({length:n+1},(_,i)=>pathPoint(g,i/n))}
   function project(p,w,h){
     const q=sub(p,center),cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
-    const x=cy*q[0]-sy*q[1],y=sy*q[0]+cy*q[1],z=q[2],yy=cp*y-sp*z,zz=sp*y+cp*z;
+    const x=cy*q[0]-sy*q[1],y=sy*q[0]+cy*q[1],z=-q[2],yy=cp*y-sp*z,zz=sp*y+cp*z;
     const scale=Math.min(w,h)*.16*zoom/(camera.scale||1);
     return{x:w/2+x*scale,y:h/2-zz*scale,depth:yy};
   }
@@ -164,13 +164,24 @@
   function draw(){
     const {w,h}=metrics();ctx.clearRect(0,0,w,h);ctx.fillStyle='#f8fbff';ctx.fillRect(0,0,w,h);
     drawAxes();for(const region of model.regions||[])drawRegion(region);
-    const now=progress*caseDuration(),visible=[];
+    const now=progress*caseDuration(),visibleByParticle=new Map();
     for(const s of segments()){
       const t0=Number(s.kinematics.start_time),t1=Number(s.kinematics.end_time);if(now<t0)continue;
       const f=clamp((now-t0)/(t1-t0),0,1),pts=sample(s.geometry,64),cut=Math.max(1,Math.floor(f*64));
       line3(pts.slice(0,cut+1),s.color||particles.find(p=>p.id===s.particle_id)?.color||'#e33b34',3);
-      visible.push({s,p:pathPoint(s.geometry,f),done:f>=1});
+      visibleByParticle.set(s.particle_id,{s,p:pathPoint(s.geometry,f),done:f>=1});
       if(layer==='geometry'&&s.geometry.center)line3([s.geometry.center,pathPoint(s.geometry,f)],'#8d99a6',1,[4,4]);
+    }
+    const visible=[...visibleByParticle.values()];
+    const distancePair=currentCase().distance_pair,distanceStart=Number(currentCase().distance_start_time??Infinity);
+    if(Array.isArray(distancePair)&&distancePair.length===2&&now>=distanceStart){
+      const first=visibleByParticle.get(distancePair[0]),second=visibleByParticle.get(distancePair[1]);
+      if(first&&second){
+        line3([first.p,second.p],'#7357b7',2,[6,4]);
+        const midpoint=lerp(first.p,second.p,.5),screen=project(midpoint,w,h),distance=norm(sub(first.p,second.p));
+        ctx.save();ctx.fillStyle='#5c3fa3';ctx.font='700 12px system-ui';ctx.textAlign='center';
+        ctx.fillText(`${currentCase().distance_label||'AB'} = ${distance.toFixed(3)}（恒定）`,screen.x,screen.y-8);ctx.restore();
+      }
     }
     for(const item of visible){
       const p=project(item.p,w,h),particle=particles.find(x=>x.id===item.s.particle_id)||{};
@@ -193,13 +204,13 @@
   byId('#piecewise-3d-progress').oninput=e=>{progress=Number(e.target.value)/1000;setPlaying(false);draw()};
   const durationInput=byId('#piecewise-3d-duration');durationInput.value=duration;byId('#piecewise-3d-duration-label').textContent=duration+' 秒';durationInput.oninput=e=>{duration=Number(e.target.value);byId('#piecewise-3d-duration-label').textContent=duration+' 秒'};
   root.querySelectorAll('[data-layer]').forEach(b=>b.onclick=()=>{layer=b.dataset.layer;root.querySelectorAll('[data-layer]').forEach(x=>x.classList.toggle('active',x===b));draw()});
-  const views={iso:[-38,28],front:[0,0],top:[0,88]};root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{[yaw,pitch]=views[b.dataset.view].map(rad);draw()});
+  const views={iso:[-38,28],front:[0,180],top:[0,88]};root.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{[yaw,pitch]=views[b.dataset.view].map(rad);draw()});
   byId('#piecewise-3d-previous').onclick=()=>{const now=progress*caseDuration(),list=events().map(eventTime).filter(t=>t<now-1e-7);progress=(list.at(-1)||0)/caseDuration();setPlaying(false);draw()};
   byId('#piecewise-3d-next').onclick=()=>{const now=progress*caseDuration(),t=events().map(eventTime).find(x=>x>now+1e-7)??caseDuration();progress=t/caseDuration();setPlaying(false);draw()};
   byId('#piecewise-3d-zoom-out').onclick=()=>{zoom=clamp(zoom*.85,.45,4);draw()};byId('#piecewise-3d-zoom-in').onclick=()=>{zoom=clamp(zoom*1.18,.45,4);draw()};byId('#piecewise-3d-fit').onclick=()=>{zoom=1;yaw=rad(camera.yaw_deg??-38);pitch=rad(camera.pitch_deg??28);draw()};
   canvas.onwheel=e=>{e.preventDefault();zoom=clamp(zoom*(e.deltaY<0?1.12:.89),.45,4);draw()};
   canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1)drag={x:e.clientX,y:e.clientY,yaw,pitch}};
-  canvas.onpointermove=e=>{if(!pointers.has(e.pointerId)||!drag)return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1){yaw=drag.yaw+(e.clientX-drag.x)*.008;pitch=clamp(drag.pitch-(e.clientY-drag.y)*.008,rad(-89),rad(89));draw()}};
+  canvas.onpointermove=e=>{if(!pointers.has(e.pointerId)||!drag)return;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});if(pointers.size===1){yaw=drag.yaw+(e.clientX-drag.x)*.008;pitch=drag.pitch-(e.clientY-drag.y)*.008;draw()}};
   const end=e=>{pointers.delete(e.pointerId);drag=null};canvas.onpointerup=end;canvas.onpointercancel=end;
   const more=root.querySelector('.more-controls');if(window.matchMedia('(min-width:761px)').matches)more.open=true;
   new ResizeObserver(draw).observe(canvas);draw();
