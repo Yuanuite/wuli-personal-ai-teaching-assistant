@@ -62,6 +62,25 @@ provider 在没有产生候选修改前快速失败时，Gateway 才会尝试下
 
 Benchmark 对旧作业仍保留文本推断兼容；新作业优先使用 Gateway/调度器在失败发生时写入的结构化分类。`failure_type` 只描述失败阶段；是否执行一次性纠正由 `failure_intelligence.py` 的固定策略决定，结果写入 `failure_repair`。完整边界见 [`failure-intelligence.md`](failure-intelligence.md)。
 
+截断分类（`output_truncated`）同时接受文本与结构化两类信号：provider stderr 含
+`reached max_tokens` / `finish_reason` / `content_chars` / `reasoning_chars` /
+`output token limit` 等标记，或 attempt 携带
+`finish_reason=length` / `content_chars=0 且 reasoning_chars>0`（reasoning-only）。
+reasoning-only 截断不再误报为 `candidate_no_change`；`candidate_no_change` 只保留给
+真正零修改的成功响应。历史失败作业的报告同时保留
+`recorded_failure_type`（原分类）与 `diagnosed_failure_type`（截断诊断），不改写原作业。
+
+JSON adapter 失败时会向 stderr 输出脱敏的结构化 envelope
+（`WULI_AGENT_FAILURE_ENVELOPE:`），含 `finish_reason`、`usage`、
+`content_chars`、`reasoning_chars`、`request_count`，绝不包含 reasoning 正文、
+密钥或 prompt；Gateway 把它并入 attempt 并聚合 `usage`，失败作业不再显示
+`usage.measurement=unavailable`。
+
+复杂题（目标数 ≥5、evidence 被裁剪或契约超 4KB）使用放宽的完成预算
+`max_tokens=30000` 并强制 `thinking=disabled`，避免推理耗尽输出预算导致 JSON
+正文为空；决策写入请求的 `request_preflight`。预算保护仍生效：已实质消耗或超过
+30 秒的失败不自动完整重跑。
+
 每个终态作业还写入统一的 `outcome`。该结构由 `teacher-console/agent_outcome.py` 单点生成，只记录 provider、模型、结构化失败、provider 报告的 Token、尝试次数、阶段耗时、预算保护、检查点恢复和 evidence 预算，不保存 prompt、stdout、stderr 或学生正文。`usage.measurement` 明确区分 `provider-reported` 与 `unavailable`；系统不会把字符估算伪装成 provider 实测 Token。批量基准优先读取 `outcome`，旧作业继续兼容原有字段。
 
 同一个知识库只允许一个教师工作台服务持有 OS 文件锁；同题事务锁覆盖同步页面写入、canonical 摘要复查、候选提升和生命周期后处理。服务停止时会等待已经运行的 Agent 作业安全结束后再释放实例锁，不让旧 worker 与新服务同时提升。

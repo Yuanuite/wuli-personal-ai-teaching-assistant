@@ -17,6 +17,11 @@ from urllib.parse import urlparse
 
 MAX_CONTEXT_CHARS = 300_000
 DEFAULT_MAX_OUTPUT_TOKENS = 6_000
+# Complex problems (many targets, truncated evidence, or large contracts) may
+# need a wider completion budget; the work-tree authorizes up to 30_000 and
+# forces thinking off so reasoning cannot starve the JSON body.
+MAX_OUTPUT_TOKENS_COMPLEX = 30_000
+COMPLEX_TARGET_THRESHOLD = 5
 COMPACT_SOLUTION_PREFIX = "wuli.solution-reasoning.v2.1.solver-"
 SUBSCRIPT_TRANSLATION = str.maketrans("₀₁₂₃₄₅₆₇₈₉", "0123456789")
 SOLUTION_CORE_FIELDS = (
@@ -47,6 +52,56 @@ ROUTING_TIERS = {"auto", "economy", "expert"}
 
 def is_loopback(raw: str) -> bool:
     return (urlparse(raw).hostname or "").lower() in {"127.0.0.1", "localhost", "::1"}
+
+
+# Marker line the Gateway parses from stderr to attach structured failure
+# telemetry to the attempt without ever including the reasoning body.
+FAILURE_ENVELOPE_MARKER = "WULI_AGENT_FAILURE_ENVELOPE:"
+
+
+class _AdapterFailure(Exception):
+    """Structured adapter failure carrying redacted telemetry."""
+
+    def __init__(
+        self,
+        failure_type: str,
+        *,
+        message: str,
+        usage: dict | None = None,
+        finish_reason: str = "",
+        content_chars: int | None = None,
+        reasoning_chars: int | None = None,
+        request_count: int = 1,
+    ):
+        super().__init__(message)
+        self.failure_type = failure_type
+        self.message = message
+        self.usage = {k: v for k, v in (usage or {}).items() if isinstance(v, int) and v >= 0}
+        self.finish_reason = finish_reason
+        self.content_chars = content_chars
+        self.reasoning_chars = reasoning_chars
+        self.request_count = request_count
+
+
+def _emit_failure_envelope(exc: _AdapterFailure) -> None:
+    """Write the structured, redacted failure envelope to stderr.
+
+    Contains finish_reason, usage, char counts and request count only — never
+    the reasoning body, prompt, keys, or entry content.
+    """
+    envelope = {
+        "failure_type": exc.failure_type,
+        "finish_reason": exc.finish_reason,
+        "usage": exc.usage,
+        "content_chars": exc.content_chars,
+        "reasoning_chars": exc.reasoning_chars,
+        "request_count": exc.request_count,
+        "message": str(exc.message)[:500],
+    }
+    print(
+        f"{FAILURE_ENVELOPE_MARKER}{json.dumps(envelope, ensure_ascii=False)}",
+        file=sys.stderr,
+    )
 
 
 def endpoint(base: str) -> str:
@@ -439,7 +494,34 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
     return result
 
 
-def request_options(base: str, model: str, environ: dict[str, str] | None = None) -> dict:
+def task_is_complex(task: dict) -> bool:
+    """Complex problems need a wider completion budget and thinking off.
+
+    Signals: a large number of targets, truncated knowledge evidence, or an
+    oversized output contract. The decision is written into the run report so
+    it cannot silently raise cost ceilings.
+    """
+    contract = task.get("output_contract")
+    if isinstance(contract, dict):
+        schema = contract.get("schema")
+        if isinstance(schema, dict):
+            schema_size = len(json.dumps(schema, ensure_ascii=False))
+            if schema_size > 4_000:
+                return True
+    target_brief = task.get("context_payloads", {}).get(".agent-context/target-brief.json", {})
+    if isinstance(target_brief, dict):
+        targets = target_brief.get("targets") or target_brief.get("target_count")
+        if isinstance(targets, int) and targets >= COMPLEX_TARGET_THRESHOLD:
+            return True
+        if isinstance(targets, list) and len(targets) >= COMPLEX_TARGET_THRESHOLD:
+            return True
+    evidence = task.get("context_payloads", {}).get(".agent-context/knowledge-evidence.json", {})
+    if isinstance(evidence, dict) and evidence.get("truncated") is True:
+        return True
+    return False
+
+
+def request_options(base: str, model: str, environ: dict[str, str] | None = None, *, complex_task: bool = False) -> dict:
     env = os.environ if environ is None else environ
     try:
         max_tokens = int(
@@ -450,13 +532,19 @@ def request_options(base: str, model: str, environ: dict[str, str] | None = None
         )
     except ValueError:
         max_tokens = DEFAULT_MAX_OUTPUT_TOKENS
+    cap = MAX_OUTPUT_TOKENS_COMPLEX if complex_task else 16_384
+    if complex_task and max_tokens < MAX_OUTPUT_TOKENS_COMPLEX:
+        max_tokens = MAX_OUTPUT_TOKENS_COMPLEX
     options: dict = {
         "temperature": 0.1,
-        "max_tokens": max(256, min(max_tokens, 16_384)),
+        "max_tokens": max(256, min(max_tokens, cap)),
         "response_format": {"type": "json_object"},
     }
     thinking = env.get("TEACHER_CONSOLE_AGENT_API_THINKING", "").strip().lower()
-    if thinking in {"enabled", "disabled"}:
+    if complex_task:
+        # Reasoning must not starve the JSON body of a complex problem.
+        options["thinking"] = {"type": "disabled"}
+    elif thinking in {"enabled", "disabled"}:
         options["thinking"] = {"type": thinking}
     return options
 
@@ -517,11 +605,18 @@ def call_chat_completion(
             else ""
         )
         usage = normalized_usage(payload)
-        raise ValueError(
-            "model response reached max_tokens before JSON completed; "
-            f"content_chars={len(content) if isinstance(content, str) else 0}; "
-            f"reasoning_chars={len(reasoning) if isinstance(reasoning, str) else 0}; "
-            f"completion_tokens={usage.get('completion_tokens', usage.get('output_tokens', 0))}"
+        raise _AdapterFailure(
+            "output_truncated",
+            message=(
+                "model response reached max_tokens before JSON completed; "
+                f"content_chars={len(content) if isinstance(content, str) else 0}; "
+                f"reasoning_chars={len(reasoning) if isinstance(reasoning, str) else 0}; "
+                f"completion_tokens={usage.get('completion_tokens', usage.get('output_tokens', 0))}"
+            ),
+            usage=usage,
+            finish_reason="length",
+            content_chars=len(content) if isinstance(content, str) else 0,
+            reasoning_chars=len(reasoning) if isinstance(reasoning, str) else 0,
         )
     content = choice["message"].get("content")
     if not isinstance(content, str) or not content.strip():
@@ -568,7 +663,18 @@ def main() -> int:
         )
     api_key = os.environ.get("TEACHER_CONSOLE_AGENT_API_KEY", "").strip()
     timeout = int(os.environ.get("TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS", "300"))
-    options = request_options(base, model)
+    options = request_options(base, model, complex_task=task_is_complex(task))
+    if task_is_complex(task):
+        result_preflight = {
+            "request_preflight": {
+                "mode": "complex-budget",
+                "max_output_tokens": options.get("max_tokens"),
+                "thinking": options.get("thinking", {}).get("type", "upstream-default"),
+                "reason": "complex problem: wide budget + thinking off to protect the JSON body",
+            }
+        }
+    else:
+        result_preflight = {}
     try:
         parts = compact_solution_contracts(contract) if isinstance(contract, dict) else None
         usage: dict = {}
@@ -634,12 +740,24 @@ def main() -> int:
         result["model_tier"] = model_tier
         result["requested_tier"] = requested_tier
         result["usage"] = usage
+        result.update(result_preflight)
         if routing_notice:
             result["routing_notice"] = routing_notice
         print(json.dumps(result, ensure_ascii=False))
         return 0
+    except _AdapterFailure as exc:
+        _emit_failure_envelope(exc)
+        print(f"OpenAI-compatible Agent adapter failed: {exc}", file=sys.stderr)
+        return 1
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:1000]
+        _emit_failure_envelope(
+            _AdapterFailure(
+                "provider_execution_failed",
+                message=f"HTTP {exc.code}",
+                usage=usage if "usage" in dir() else {},
+            )
+        )
         print(
             f"OpenAI-compatible Agent adapter failed: HTTP {exc.code}: {detail}",
             file=sys.stderr,

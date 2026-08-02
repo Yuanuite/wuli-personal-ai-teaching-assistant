@@ -113,7 +113,28 @@ def classify_agent_failure(result: dict) -> str:
     }
     if any(marker in text for marker in budget_markers):
         return "provider_budget_exceeded"
-    if "truncated" in text or "截断" in text:
+    # Truncation: the provider finished before JSON completed. Detection is
+    # both textual (finish_reason=length / reached max_tokens / reasoning-only
+    # completion) and structured (the adapter failure envelope).
+    for attempt in attempts:
+        if isinstance(attempt, dict):
+            if str(attempt.get("finish_reason", "")).lower() == "length":
+                return "output_truncated"
+            content_chars = attempt.get("content_chars")
+            reasoning_chars = attempt.get("reasoning_chars")
+            if isinstance(content_chars, int) and content_chars == 0 and isinstance(reasoning_chars, int) and reasoning_chars > 0:
+                return "output_truncated"
+    truncation_markers = {
+        "truncated",
+        "截断",
+        "reached max_tokens",
+        "max_tokens",
+        "finish_reason",
+        "content_chars",
+        "reasoning_chars",
+        "output token limit",
+    }
+    if any(marker in text for marker in truncation_markers):
         return "output_truncated"
     if validation:
         return "candidate_validation_failed"
@@ -127,6 +148,53 @@ def classify_agent_failure(result: dict) -> str:
     if isinstance(returncode, int) and returncode != 0:
         return "provider_execution_failed"
     return "provider_failed"
+
+
+_FAILURE_ENVELOPE_MARKER = "WULI_AGENT_FAILURE_ENVELOPE:"
+
+
+def _parse_failure_envelope(stderr: str) -> dict | None:
+    """Parse the adapter's structured, redacted failure envelope from stderr.
+
+    Returns only whitelisted telemetry (finish_reason, usage, char counts,
+    request count, failure_type) — never the reasoning body or keys.
+    """
+    if not stderr:
+        return None
+    for line in str(stderr).splitlines():
+        index = line.find(_FAILURE_ENVELOPE_MARKER)
+        if index < 0:
+            continue
+        raw = line[index + len(_FAILURE_ENVELOPE_MARKER):].strip()
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return None
+        if not isinstance(parsed, dict):
+            return None
+        return {
+            key: parsed.get(key)
+            for key in ("failure_type", "finish_reason", "usage", "content_chars", "reasoning_chars", "request_count")
+        }
+    return None
+
+
+def _aggregate_usage(attempts: list) -> dict:
+    """Sum token usage across attempts so a failed job never reports unavailable."""
+    total: dict = {}
+    for attempt in attempts:
+        usage = attempt.get("token_usage") if isinstance(attempt, dict) else None
+        if not isinstance(usage, dict):
+            continue
+        for key, value in usage.items():
+            if isinstance(value, int) and value >= 0:
+                total[key] = total.get(key, 0) + value
+    if "total_tokens" not in total:
+        prompt = total.get("prompt_tokens", total.get("input_tokens"))
+        completion = total.get("completion_tokens", total.get("output_tokens"))
+        if isinstance(prompt, int) and isinstance(completion, int):
+            total["total_tokens"] = prompt + completion
+    return total
 
 
 @dataclass(frozen=True)
@@ -1374,6 +1442,20 @@ class AgentGateway:
                     attempt["materialization"] = materialization
                 if deleted:
                     attempt["error"] = "Agent 不得删除文件：" + ", ".join(deleted)
+                # Structured failure envelope from JSON adapters (B2): attach
+                # redacted telemetry so truncation is classified and usage is
+                # never "unavailable" on a failed provider run.
+                envelope = _parse_failure_envelope(completed.stderr)
+                if envelope:
+                    for key in ("finish_reason", "content_chars", "reasoning_chars", "request_count"):
+                        if envelope.get(key) is not None:
+                            attempt[key] = envelope[key]
+                    raw_usage = envelope.get("usage")
+                    if isinstance(raw_usage, dict) and raw_usage:
+                        attempt["token_usage"] = {
+                            k: v for k, v in raw_usage.items() if isinstance(v, int) and v >= 0
+                        }
+                    attempt["adapter_failure_type"] = envelope.get("failure_type", "")
                 # Structured telemetry from JSON adapter payload
                 if payload and isinstance(payload, dict):
                     raw_usage = payload.get("usage")
@@ -1483,9 +1565,14 @@ class AgentGateway:
             "attempts": attempts,
             **model_metadata,
         }
+        aggregated_usage = _aggregate_usage(attempts)
+        if aggregated_usage:
+            result["usage"] = aggregated_usage
         if budget_guard:
             result["budget_guard"] = budget_guard
         result["failure_type"] = str(last.get("failure_type") or classify_agent_failure(result))
+        if last.get("finish_reason") == "length" or last.get("content_chars") == 0 and last.get("reasoning_chars", 0) > 0:
+            result["diagnosed_failure_type"] = "output_truncated"
         logger.info("gateway task=%s status=failed reason=exhausted attempts=%d", route_id, len(attempts))
         return result
 

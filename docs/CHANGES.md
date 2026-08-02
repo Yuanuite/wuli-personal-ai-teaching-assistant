@@ -1,5 +1,27 @@
 # 变更记录
 
+## 2026-08-02：解析失败修复与运行可观测（wuli-analysis-run-observability-v1）
+
+- 截断分类修复（T1/B1）：`output_truncated` 现在同时接受文本标记（`reached
+  max_tokens`/`finish_reason`/`content_chars`/`reasoning_chars`/`output token
+  limit`）与结构化信号（attempt 的 `finish_reason=length` 或
+  `content_chars=0 且 reasoning_chars>0`）；reasoning-only 截断不再误报
+  `candidate_no_change`，历史失败作业保留 `recorded_failure_type` 与
+  `diagnosed_failure_type` 双分类。
+- 结构化失败 envelope（T1/B2）：JSON adapter 失败向 stderr 输出脱敏的
+  `WULI_AGENT_FAILURE_ENVELOPE:`（finish_reason/usage/content_chars/
+  reasoning_chars/request_count，无 reasoning 正文/密钥），Gateway 并入 attempt
+  并聚合 usage，失败作业不再 `usage=unavailable`。
+- 复杂题预算（B3/B4）：目标数 ≥5、evidence 裁剪或契约 >4KB 的复杂题使用
+  `max_tokens=30000` 并强制 `thinking=disabled`，决策写入 `request_preflight`；
+  预算保护不变（实质消耗或 >30s 不自动完整重跑）。
+- 分析运行报告（A3/D）：新增 `wuli.analysis-run-report.v1` schema 与只读脚本
+  `teacher-console/scripts/analysis_run_report.py`（--job-id/--entry-id/--latest/
+  --format markdown|json/--verify；退出码 0/2/3/4；计数语义区分 logical stage /
+  provider attempt / upstream request / rollback / supplemental）。
+- 脱敏夹具（A1）：`tests/fixtures/analysis-run/reasoning-only-length.json` 固化
+  本次失败事实（finish_reason=length、content_chars=0、reasoning_chars=18547）。
+
 ## 2026-08-02：收口提交自包含 + 视觉服务去重 + 路由快照 + 静态图显式入口（wuli-mimo-deepseek-consistency-closure-v1）
 
 - 提交自包含闭包（C0/C1）：基线报告 `docs/reports/mimo-deepseek-closure-dependency-baseline-v1.json`

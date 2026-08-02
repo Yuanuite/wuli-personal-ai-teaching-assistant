@@ -175,7 +175,7 @@ Claim Evidence 启用时，`model_id=auto` 分别从 `analysis.generate` 和 `cl
 }
 ```
 
-轮询结果状态为 `queued`、`running`、`completed` 或 `failed`。只有 `completed` 且 `result.status=completed` 才表示候选已通过 Gateway 并提升；之后仍必须按题目状态重新进行教师复核。失败结果可带稳定的 `failure_type`，同时保留 `message`、`validation_errors` 和 `unauthorized_changes` 供教师排障。同一题存在运行中作业时，其他写操作返回 `409`。服务重启会把旧 `queued/running` 作业标记为 `failed`、`failure_type=worker_interrupted`，不会自动重放。
+轮询结果状态为 `queued`、`running`、`completed` 或 `failed`。只有 `completed` 且 `result.status=completed` 才表示候选已通过 Gateway 并提升；之后仍必须按题目状态重新进行教师复核。失败结果可带稳定的 `failure_type`，同时保留 `message`、`validation_errors` 和 `unauthorized_changes` 供教师排障。reasoning-only 截断（`finish_reason=length` 且 `content_chars=0`）会同时给出 `diagnosed_failure_type=output_truncated` 与原始 `recorded_failure_type`（如 `candidate_no_change`），便于审计追溯；失败作业的 `usage` 来自 provider 脱敏 envelope，不再恒为 `unavailable`。同一题存在运行中作业时，其他写操作返回 `409`。服务重启会把旧 `queued/running` 作业标记为 `failed`、`failure_type=worker_interrupted`，不会自动重放。
 
 Agent 作业结果还包含顶层 `outcome`。它统一提供 `status`、`stage`、`provider`、`attempt_count`、`fallback_used`、`error_category`、隐私裁剪后的 `error_summary`，以及可用的 token/时延指标。该对象用于前端排障、候选档案和离线 benchmark 对齐，不包含完整 prompt、证据正文、密钥、环境变量或系统临时候选路径。
 

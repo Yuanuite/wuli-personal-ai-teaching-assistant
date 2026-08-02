@@ -201,6 +201,11 @@ python3 teacher-console/scripts/slow_loop_report.py \
 
 每个 OpenAI-compatible API 或 Claude Code Agent 模型都可填写 API 地址、真实模型名和 API Key；Key 只保存到已被 `.gitignore` 排除的 `student-error-library/config/model-registry.json`，再次打开页面只显示“已保存/已配置”，不回显明文。选择 Claude Code Agent 时，本条目的地址与 Key 会在任务子进程中覆盖本机全局 Claude 配置；文件任务可使用受限 Skill/文件工具，`analysis.generate` 则刻意关闭工具并走结构化输出。选择 OpenAI-compatible API 时始终走结构化请求。每个可选模型必须点击该行“测试”并通过不含学生数据的连通探测后，才会被自动/默认路由调用；修改地址、模型名或 Key 后旧测试自动失效。提交 GitHub 前不要使用 `git add -f student-error-library/config/model-registry.json` 或 `agent-runtime.json`。
 
+> 安全提醒（2026-08-02 审计）：本地 model registry 的历史条目可能含内联 `api_key`
+> 字段。运行报告脚本、Agent job 与 Candidate Archive 永不读取/输出这些值；作为预防，
+> 维护者应轮换历史密钥，并把新凭据仅保留在环境变量 allowlist
+> （`MIMO_API_KEY` / `DEEPSEEK_API_KEY` / `TEACHER_CONSOLE_AGENT_API_KEY` 等）中。
+
 provider 配置、JSON 契约、隔离候选和远程隐私门禁见 [`agent-gateway.md`](agent-gateway.md)。快速检查：
 
 ```bash

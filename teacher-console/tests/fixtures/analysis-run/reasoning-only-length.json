@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "name": "reasoning-only-length",
+  "description": "Redacted fixture of the failing analysis job 9cf0a400e43d4222964dc48ccc5bb607 (2026-08-02): DeepSeek Flash consumed the whole completion budget on reasoning, produced zero JSON content, and was misclassified as candidate_no_change. No entry content, prompts, keys, or reasoning bodies.",
+  "job": {
+    "kind": "analysis.generate",
+    "route": "core-first",
+    "model_id": "deepseek-v4-flash-api",
+    "provider": "openai-compatible",
+    "duration_seconds": 60.969,
+    "target_count": 6,
+    "evidence_context": {
+      "reference_count": 3,
+      "serialized_chars": 7586,
+      "truncated": true
+    },
+    "changed_files": []
+  },
+  "adapter_stderr": "OpenAI-compatible Agent adapter failed: model response reached max_tokens before JSON completed; content_chars=0; reasoning_chars=18547; completion_tokens=6000",
+  "provider_telemetry": {
+    "finish_reason": "length",
+    "content_chars": 0,
+    "reasoning_chars": 18547,
+    "completion_tokens": 6000
+  },
+  "expected_diagnosis": "output_truncated",
+  "expected_legacy_classification": "candidate_no_change"
+}
