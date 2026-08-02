@@ -44,6 +44,12 @@
     </div>
   </header>
 
+  <div id="runtime-stale-banner" class="runtime-stale-banner hidden" role="status" aria-live="polite">
+    <strong>服务需重启</strong>
+    <span id="runtime-stale-detail">本地代码、生产解析路由或模型注册表已在服务启动后发生变化，当前页面的 Agent 任务可能仍在使用旧配置。</span>
+    <small id="runtime-identity-info"></small>
+  </div>
+
   <div id="agent-settings-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="agent-settings-title">
     <section class="settings-modal">
       <header class="settings-head">
@@ -308,6 +314,33 @@
               <small>W3 影子审计 · 按需展开</small>
             </summary>
             <div id="w3-review-focus-cards"></div>
+          </details>
+          <details id="claim-evidence-ledger" class="claim-evidence-ledger" hidden>
+            <summary class="claim-evidence-head">
+              <span>
+                <strong>完整正确性证据账本</strong>
+                <small id="claim-evidence-status"></small>
+              </span>
+              <small id="claim-evidence-counts">等待影子验证</small>
+            </summary>
+            <div class="claim-evidence-body">
+              <section aria-labelledby="claim-final-answers-title">
+                <h4 id="claim-final-answers-title">完整暂定答案</h4>
+                <div id="claim-final-answers"></div>
+              </section>
+              <section class="claim-unresolved-section" aria-labelledby="claim-unresolved-title">
+                <h4 id="claim-unresolved-title">全部未决义务</h4>
+                <div id="claim-unresolved-obligations"></div>
+              </section>
+              <section aria-labelledby="claim-ledger-title">
+                <h4 id="claim-ledger-title">原子断言 DAG</h4>
+                <div id="claim-ledger-items"></div>
+              </section>
+              <section aria-labelledby="claim-certificates-title">
+                <h4 id="claim-certificates-title">验证证书</h4>
+                <div id="claim-certificate-items"></div>
+              </section>
+            </div>
           </details>
           <div class="approval-box">
             <label>复核人<input id="answer-reviewer" value="teacher"></label>

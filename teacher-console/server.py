@@ -14,6 +14,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import uuid
 from datetime import datetime
 from http import HTTPStatus
@@ -29,20 +30,31 @@ UPLOADS = PROJECT_ROOT / "error-collection"
 PUBLIC_SITE = PROJECT_ROOT / "student-site"
 SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 MODEL_REGISTRY_PATH = LIBRARY / "config" / "model-registry.json"
+W3_ROUTING_CONFIG_PATH = LIBRARY / "config" / "w3-production-routing.json"
+W3R_ROUTING_CONFIG_NAME = "w3r-production-routing.json"
+CORE_ROUTING_CONFIG_NAME = "analysis-production-routing.json"
 sys.path.insert(0, str(SKILL_SCRIPTS))
 sys.path.insert(0, str(CONSOLE_DIR))
 
 import analysis_artifacts  # noqa: E402
+import analysis_routing  # noqa: E402
 import candidate_archive  # noqa: E402
+import core_analysis  # noqa: E402
+import correctness_policy  # noqa: E402
 import difficulty_assessment  # noqa: E402
 import evaluator  # noqa: E402
 import kb  # noqa: E402
-import process_uploads  # noqa: E402
+import physics_diagram  # noqa: E402
 import problem_decomposition  # noqa: E402
+import process_uploads  # noqa: E402
 import public_site  # noqa: E402
 import solution_reasoning  # noqa: E402
 import solution_verification  # noqa: E402
+import source_review  # noqa: E402
+import svg_collaboration  # noqa: E402
 import teacher_feedback  # noqa: E402
+import teaching_method_policy  # noqa: E402
+import visual_source_review  # noqa: E402
 import w3_pipeline  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
@@ -61,6 +73,8 @@ from model_registry import (  # noqa: E402
 from runtime_environment import (  # noqa: E402
     classify_runtime_probe,
     resolved_environment,
+    runtime_identity,
+    runtime_identity_is_stale,
     runtime_settings_public,
     save_runtime_settings,
     update_runtime_probe_result,
@@ -74,6 +88,12 @@ MAX_UPLOAD = 30 * 1024 * 1024
 MAX_JSON = 2 * 1024 * 1024
 ALLOWED_UPLOADS = kb.SUPPORTED_EXTENSIONS
 FOLDER_LOCK = threading.RLock()
+# Start-time identity snapshot: /api/health compares it against the live
+# identity so the UI can warn that the server must be restarted after disk
+# changes without auto-restarting or blocking anything.
+SERVER_RUNTIME_IDENTITY_SNAPSHOT = runtime_identity(
+    project_root=PROJECT_ROOT, library=LIBRARY
+)
 LIBRARY_INDEX_LOCK = threading.RLock()
 VISUALIZATION_LOCKS: dict[str, threading.RLock] = {}
 VISUALIZATION_LOCKS_GUARD = threading.Lock()
@@ -263,7 +283,51 @@ def gateway_routing_fields(gateway: dict) -> dict:
     return {key: gateway[key] for key in keys if key in gateway}
 
 
-def run_agent_gateway(entry: Path, task: dict, validator, *, materializer=None) -> dict:
+def _sha256_fingerprint(value: object) -> str:
+    if isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value):
+        return f"sha256:{value}"
+    if isinstance(value, str) and re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+        return value
+    serialized = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return "sha256:" + hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+
+
+def _stage_svg_provenance(
+    staging: Path,
+    *,
+    model_config: dict | None,
+    generation_fingerprint: str,
+) -> dict | None:
+    """Bind deterministic SVG to reviewed MiMo facts and the configured solver route."""
+    facts_path = staging / "visual-facts.json"
+    svg_path = staging / analysis_artifacts.EXPLANATION_PATH
+    if not facts_path.is_file() or not svg_path.is_file():
+        return None
+    if not isinstance(model_config, dict):
+        raise ValueError("SVG provenance requires a resolved generation model")
+    identity = {
+        "model_id": str(model_config.get("id", "")).strip(),
+        "provider": str(model_config.get("provider", "")).strip(),
+    }
+    trace = {**identity, "generation_fingerprint": _sha256_fingerprint(generation_fingerprint)}
+    provenance = svg_collaboration.validate_and_bind_svg(
+        svg_path.read_text(encoding="utf-8"),
+        kb.load_json(facts_path, {}),
+        trace,
+        identity,
+    )
+    kb.write_json(staging / "svg-provenance.json", provenance)
+    return provenance
+
+
+def run_agent_gateway(
+    entry: Path,
+    task: dict,
+    validator,
+    *,
+    materializer=None,
+    bounded_failure_repair: bool = True,
+) -> dict:
     """Run one scoped task through the Gateway and the bounded repair policy."""
     if materializer is None:
         run_once = AGENT_GATEWAY.run
@@ -274,11 +338,15 @@ def run_agent_gateway(entry: Path, task: dict, validator, *, materializer=None) 
                 current_validator,
                 materializer=materializer,
             )
-    result = run_with_failure_repair(
-        task,
-        validator,
-        library=entry.parent.parent,
-        run_once=run_once,
+    result = (
+        run_with_failure_repair(
+            task,
+            validator,
+            library=entry.parent.parent,
+            run_once=run_once,
+        )
+        if bounded_failure_repair
+        else run_once(task, validator)
     )
     from agent_outcome import build_agent_request_outcome
 
@@ -375,6 +443,63 @@ def archive_agent_result(
     except Exception as exc:  # noqa: BLE001 - archive is observability, not a lifecycle gate
         logger.warning("agent archive append failed entry=%s error=%s", entry.name, exc)
         return {"status": "archive-error", "error": str(exc)}
+
+
+def archive_claim_evidence_shadow(entry: Path, request: dict) -> dict:
+    """Archive only compact correctness telemetry, never Claim prose or paths."""
+    report = request.get("report", {}) if isinstance(request.get("report"), dict) else {}
+    evidence = (
+        report.get("claim_evidence_shadow", {})
+        if isinstance(report.get("claim_evidence_shadow"), dict)
+        else {}
+    )
+    metrics = evidence.get("metrics", {}) if isinstance(evidence.get("metrics"), dict) else {}
+    aggregation = (
+        evidence.get("aggregation", {})
+        if isinstance(evidence.get("aggregation"), dict)
+        else {}
+    )
+    status = str(evidence.get("status", "failed"))
+    compact_metrics = {
+        key: metrics[key]
+        for key in (
+            "claim_count",
+            "certificate_count",
+            "verified_claim_count",
+            "critical_certificate_coverage",
+            "unresolved_claim_count",
+            "challenge_count",
+            "loop_transition_count",
+            "repeated_task_count",
+            "fuse_triggered",
+        )
+        if key in metrics and isinstance(metrics[key], (int, float, bool))
+    }
+    failure_reasons = (
+        ["claim-evidence-shadow-failed"] if status != "completed" else []
+    )
+    return candidate_archive.append_event(
+        entry.parent.parent,
+        entry,
+        task_type="claim-evidence.shadow",
+        actor="agent",
+        event_type="evidence-shadow",
+        status=status,
+        summary="断言级正确性证据影子运行",
+        request={
+            "routing_tier": request.get("routing_tier"),
+            "model_id": request.get("model_id"),
+            "policy": correctness_policy.CORRECTNESS_POLICY_VERSION,
+        },
+        result={
+            "status": status,
+            "aggregation_status": str(aggregation.get("status", "not-available")),
+            "metrics": compact_metrics,
+            "canonical_answer_changed": False,
+        },
+        changed_files=["w3-shadow-report.json"],
+        failure_reasons=failure_reasons,
+    )
 
 
 def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto", model_id: str = "auto") -> dict:
@@ -519,6 +644,8 @@ def _agent_task(
     routing_tier: str = "auto",
     model_config: dict | None = None,
     evidence: dict | None = None,
+    requires_vision: bool = False,
+    vision_images: list[str] | None = None,
 ) -> dict:
     routing_tier = normalize_routing_tier(routing_tier)
     context_files: dict[str, str] = {}
@@ -575,6 +702,8 @@ def _agent_task(
         "allow_remote": _remote_agent_allowed(entry),
         "routing_tier": routing_tier,
         "model_config": model_config or {},
+        "requires_vision": requires_vision,
+        "vision_images": vision_images or [],
         "workspace_root": str(Path(tempfile.gettempdir()) / "wuli-agent-workspaces"),
         "context_files": context_files,
     }
@@ -614,8 +743,9 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
     prompt = (
         f"处理错题知识库条目。{instruction}\n"
         "已复核题干见 problem.md。检索已有方法，独立解题。\n"
-        "返回一份结构化解析：完整学生版、仅教师增补的审计内容、教学元数据和解题逻辑节点。"
-        "不要直接编辑文件，不要重复输出教师版或兼容版；程序会确定性生成这些产物与解释图。\n"
+        "返回一份结构化解析：完整学生版、仅教师增补的审计内容和教学元数据。"
+        "不要直接编辑文件，不要重复输出教师版或兼容版，也不要设计图片；物理示意图由后续独立原子任务生成。\n"
+        "若提供 visual-facts.json，它是 MiMo 从原题图提取并经来源复核的证据；解题必须使用且不得改写或抵触这些事实。\n"
         "生成前必须做方法自检：比较至少两条可行路径，选高中课程范围内认知负担最低、推导最短的一条；"
         "积分、导数等高阶方法即使可行也必须舍弃，改用图像面积、平均值、守恒或标准高中结论。\n"
         + (
@@ -636,7 +766,6 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
             "student-solution.md",
             "teacher-solution.md",
             "solution.md",
-            analysis_artifacts.EXPLANATION_PATH,
         ],
         input_paths=[
             "problem.md",
@@ -644,6 +773,7 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
             "student-solution.md",
             "teacher-solution.md",
             "solution.md",
+            *(["visual-facts.json"] if (entry / "visual-facts.json").is_file() else []),
             *(["physics-model.json"] if has_physics_model else []),
             *sorted(answer_asset_names(entry)),
         ],
@@ -656,12 +786,275 @@ def analysis_task(entry: Path, instruction: str, routing_tier: str = "auto", mod
     task["structured_context_paths"] = [
         "problem.md",
         "record.json",
+        *(["visual-facts.json"] if (entry / "visual-facts.json").is_file() else []),
         *(["physics-model.json"] if has_physics_model else []),
         ".agent-context/answer-template.md",
         ".agent-context/secondary-conclusions.json",
         ".agent-context/knowledge-evidence.json",
     ]
     return task
+
+
+def core_analysis_task(
+    entry: Path,
+    instruction: str,
+    target_brief: dict,
+    routing_tier: str = "auto",
+    model_config: dict | None = None,
+) -> dict:
+    """Build the one-call core solver task; rendering remains deterministic."""
+    has_visual_facts = (entry / "visual-facts.json").is_file()
+    has_physics_model = (entry / "physics-model.json").is_file()
+    evidence = (
+        agent_evidence_payload(entry, "analysis.generate", routing_tier)
+        if target_brief.get("enhancements", {}).get("targeted_retrieval")
+        else None
+    )
+    prompt = (
+        f"处理已复核的物理题。{instruction}\n"
+        "只完成一次核心求解：覆盖 Target Brief 中的每个目标，写最终结论、决定性推导、"
+        "适用条件和复算检查。不要生成学生版/教师版 Markdown，不要分解成阶段接口，不要"
+        "模拟第二求解器或仲裁器。visual-facts.json 与 physics-model.json 如存在均为已复核约束。"
+    )
+    task = _agent_task(
+        entry,
+        "analysis.generate",
+        prompt,
+        [
+            "record.json",
+            "core-solution.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+        ],
+        input_paths=[
+            "problem.md",
+            "record.json",
+            *( ["visual-facts.json"] if has_visual_facts else []),
+            *( ["physics-model.json"] if has_physics_model else []),
+        ],
+        denied_paths=sorted(source_asset_names(entry)),
+        routing_tier=routing_tier,
+        model_config=model_config,
+        evidence=evidence,
+    )
+    # The core solver does not need the teaching template or simulator conclusion
+    # catalogue; removing them keeps the single request compact and focused.
+    task["context_files"] = {}
+    task.setdefault("context_payloads", {})[
+        ".agent-context/target-brief.json"
+    ] = target_brief
+    task["output_contract"] = core_analysis.output_contract(target_brief)
+    task["structured_context_paths"] = [
+        "problem.md",
+        "record.json",
+        *( ["visual-facts.json"] if has_visual_facts else []),
+        *( ["physics-model.json"] if has_physics_model else []),
+        ".agent-context/target-brief.json",
+        *( [".agent-context/knowledge-evidence.json"] if evidence else []),
+    ]
+    return task
+
+
+def physics_diagram_task(
+    entry: Path,
+    *,
+    routing_tier: str = "auto",
+    model_config: dict | None = None,
+) -> dict:
+    """Build the independent DeepSeek scene task after answer generation."""
+    if not (entry / "visual-facts.json").is_file():
+        raise ValueError("物理示意图需要先完成 MiMo visual-facts.json 来源复核")
+    has_physics_model = (entry / "physics-model.json").is_file()
+    visual_facts = kb.load_json(entry / "visual-facts.json", {})
+    obligations = physics_diagram.build_obligations(
+        visual_facts,
+        (entry / "problem.md").read_text(encoding="utf-8"),
+    )
+    required_fact_lines = [
+        f"- {item.get('id')}: {item.get('statement')}"
+        for item in visual_facts.get("diagram_facts", [])
+        if isinstance(item, dict)
+        and item.get("kind") != "label"
+        and float(item.get("confidence", 0) or 0) >= 0.75
+    ]
+    required_fact_note = (
+        "以下高置信物理事实必须实际绑定到某个图元，不得放入 omissions：\n"
+        + "\n".join(required_fact_lines)
+        if required_fact_lines
+        else "本题没有必须绑定的高置信非标签事实。高置信标签仍须绑定或在 omissions 说明。"
+    )
+    task = _agent_task(
+        entry,
+        "diagram.scene",
+        (
+            "根据已复核题干、MiMo 视觉事实和刚生成的答案，规划一张忠实的高中物理示意图。"
+            "只返回强类型场景配方；从 component_catalog 选择并组合语义组件，不要输出 SVG，不要输出流程图，不要修改答案。"
+            "必须逐项满足 diagram-obligations.json，并严格使用其中给定的视图槽位；"
+            "空间投影必须合并到 motion，禁止自行增加第四面板。"
+            + ("physics-model.json 是事件与轨迹真源；其轨迹、事件、边界顺序和坐标由编译器接管。" if has_physics_model else "")
+            + "\n" + required_fact_note
+        ),
+        [
+            physics_diagram.SCENE_PATH,
+            physics_diagram.GATE_PATH,
+            physics_diagram.SVG_PATH,
+            physics_diagram.PROVENANCE_PATH,
+            physics_diagram.REJECTED_SCENE_PATH,
+            physics_diagram.DIAGNOSTICS_PATH,
+        ],
+        input_paths=[
+            "problem.md",
+            "visual-facts.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+            "record.json",
+            *( ["physics-model.json"] if has_physics_model else []),
+        ],
+        denied_paths=sorted(source_asset_names(entry)),
+        requires_change=True,
+        routing_tier=routing_tier,
+        model_config=model_config,
+    )
+    task["output_contract"] = physics_diagram.output_contract()
+    task["context_payloads"] = {physics_diagram.OBLIGATIONS_PATH: obligations}
+    task["structured_context_paths"] = [
+        "problem.md",
+        "visual-facts.json",
+        "student-solution.md",
+        physics_diagram.OBLIGATIONS_PATH,
+        *( ["physics-model.json"] if has_physics_model else []),
+    ]
+    return task
+
+
+def physics_diagram_patch_task(
+    entry: Path,
+    candidate: dict,
+    diagnostics: dict,
+    *,
+    routing_tier: str = "auto",
+    model_config: dict | None = None,
+) -> dict:
+    """Build one bounded repair task over a rejected scene candidate."""
+    task = _agent_task(
+        entry,
+        "diagram.scene",
+        (
+            "上轮物理图候选未通过预检。读取 rejected-physics-diagram-scene.json 和 "
+            "physics-diagram-diagnostics.json，只修复诊断指出的最小依赖锥。"
+            "返回 JSON Patch，不得重新生成整张场景，不得改变未被诊断影响的物理事实绑定。"
+        ),
+        [
+            physics_diagram.SCENE_PATH,
+            physics_diagram.GATE_PATH,
+            physics_diagram.SVG_PATH,
+            physics_diagram.PROVENANCE_PATH,
+            physics_diagram.REJECTED_SCENE_PATH,
+            physics_diagram.DIAGNOSTICS_PATH,
+        ],
+        input_paths=[
+            "problem.md",
+            "visual-facts.json",
+            "student-solution.md",
+            "teacher-solution.md",
+            "solution.md",
+            "record.json",
+            *( ["physics-model.json"] if (entry / "physics-model.json").is_file() else []),
+        ],
+        denied_paths=sorted(source_asset_names(entry)),
+        requires_change=True,
+        routing_tier=routing_tier,
+        model_config=model_config,
+    )
+    task["output_contract"] = physics_diagram.patch_output_contract()
+    task["context_payloads"] = {
+        physics_diagram.REJECTED_SCENE_PATH: candidate,
+        physics_diagram.DIAGNOSTICS_PATH: diagnostics,
+        physics_diagram.OBLIGATIONS_PATH: physics_diagram.build_obligations(
+            kb.load_json(entry / "visual-facts.json", {}),
+            (entry / "problem.md").read_text(encoding="utf-8"),
+        ),
+    }
+    task["structured_context_paths"] = [
+        physics_diagram.REJECTED_SCENE_PATH,
+        physics_diagram.DIAGNOSTICS_PATH,
+        physics_diagram.OBLIGATIONS_PATH,
+    ]
+    return task
+
+
+def run_physics_diagram_gateway(
+    entry: Path,
+    *,
+    routing_tier: str,
+    model_config: dict | None,
+    canonical_entry: Path | None = None,
+) -> dict:
+    """Run one scene generation and at most one minimal JSON-Patch repair."""
+    task = physics_diagram_task(
+        entry,
+        routing_tier=routing_tier,
+        model_config=model_config,
+    )
+
+    def validator(staging, changed):
+        return validate_physics_diagram_candidate(staging, changed, canonical_entry or entry)
+
+    initial = run_agent_gateway(
+        entry,
+        task,
+        validator,
+        materializer=lambda staging, payload: physics_diagram.materialize(
+            staging, payload, model_config=model_config or {}
+        ),
+        bounded_failure_repair=False,
+    )
+    if initial.get("status") == "completed":
+        initial["diagram_repair"] = {"status": "not-needed", "retry_count": 0}
+        return initial
+    context = physics_diagram.repair_context(initial)
+    if context is None:
+        initial["diagram_repair"] = {
+            "status": "not-repairable",
+            "retry_count": 0,
+            "policy": "hard-gate-or-protocol-stop",
+        }
+        return initial
+    candidate, diagnostics = context
+    repair_task = physics_diagram_patch_task(
+        entry,
+        candidate,
+        diagnostics,
+        routing_tier=routing_tier,
+        model_config=model_config,
+    )
+    repaired = run_agent_gateway(
+        entry,
+        repair_task,
+        validator,
+        materializer=lambda staging, payload: physics_diagram.materialize_patch(
+            staging,
+            payload,
+            base_payload=candidate,
+            model_config=model_config or {},
+        ),
+        bounded_failure_repair=False,
+    )
+    repaired["attempts"] = [
+        *(initial.get("attempts") if isinstance(initial.get("attempts"), list) else []),
+        *(repaired.get("attempts") if isinstance(repaired.get("attempts"), list) else []),
+    ]
+    repaired["diagram_repair"] = {
+        "status": "recovered" if repaired.get("status") == "completed" else "exhausted",
+        "retry_count": 1,
+        "policy": "single-bounded-json-patch",
+        "diagnostic_codes": [
+            item.get("code") for item in diagnostics.get("diagnostics", []) if isinstance(item, dict)
+        ],
+    }
+    return repaired
 
 
 def w3_stage_task(
@@ -676,6 +1069,11 @@ def w3_stage_task(
 ) -> dict:
     """Build one read-only structured W3 stage inside an analysis job."""
     has_physics_model = (entry / "physics-model.json").is_file()
+    if (entry / "visual-facts.json").is_file():
+        prompt += (
+            "\nvisual-facts.json 是 MiMo 从原题图提取并经来源复核的证据。"
+            "本阶段必须使用且不得改写、忽略或抵触其中事实与不确定性。"
+        )
     task = _agent_task(
         entry,
         "analysis.generate",
@@ -683,6 +1081,7 @@ def w3_stage_task(
         [],
         input_paths=[
             "problem.md",
+            *(["visual-facts.json"] if (entry / "visual-facts.json").is_file() else []),
             *(["physics-model.json"] if has_physics_model else []),
         ],
         denied_paths=sorted(source_asset_names(entry)),
@@ -700,12 +1099,92 @@ def w3_stage_task(
     task["output_contract"] = output_contract
     task["structured_context_paths"] = [
         "problem.md",
+        *(["visual-facts.json"] if (entry / "visual-facts.json").is_file() else []),
         *(["physics-model.json"] if has_physics_model else []),
         *sorted(context_payloads),
         *sorted(task["context_files"]),
     ]
     task["w3_stage"] = stage
     return task
+
+
+def w3_stage_checkpoint_digest(
+    *,
+    stage: str,
+    problem: str,
+    context: dict,
+    contract_name: str,
+    model_id: str,
+    routing_tier: str,
+) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            {
+                "stage": stage,
+                "problem": problem,
+                "context": context,
+                "contract": contract_name,
+                "model_id": model_id,
+                "routing_tier": routing_tier,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def replay_w3_stage_checkpoint(
+    checkpoint_path: Path,
+    normalizer,
+    *,
+    include_runtime_identity: bool,
+) -> dict | None:
+    """Return a trusted normalized replay before any Gateway/provider call."""
+    checkpoint = kb.load_json(checkpoint_path, {})
+    if checkpoint.get("status") != "completed" or not isinstance(
+        checkpoint.get("payload"), dict
+    ):
+        return None
+    normalized = normalizer(checkpoint["payload"])
+    if include_runtime_identity:
+        normalized = {
+            **normalized,
+            "_runtime_identity": checkpoint.get("runtime_identity", {}),
+        }
+    return normalized
+
+
+def summarize_w3_stage_timing(
+    gateway: dict,
+    *,
+    elapsed_seconds: float,
+) -> dict:
+    provider_seconds = 0.0
+    attempt_count = 0
+    attempts = gateway.get("attempts", [])
+    if isinstance(attempts, list):
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            attempt_count += 1
+            try:
+                provider_seconds += max(
+                    float(attempt.get("duration_seconds", 0.0)),
+                    0.0,
+                )
+            except (TypeError, ValueError):
+                continue
+    duration_seconds = round(max(float(elapsed_seconds), 0.0), 4)
+    provider_seconds = round(provider_seconds, 4)
+    return {
+        "duration_seconds": duration_seconds,
+        "provider_seconds": provider_seconds,
+        "overhead_seconds": round(
+            max(duration_seconds - provider_seconds, 0.0),
+            4,
+        ),
+        "attempt_count": attempt_count,
+    }
 
 
 def visualization_task(
@@ -847,6 +1326,16 @@ def validate_source_clean_candidate(
 def source_clean_task(entry: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
     """Construct an Agent task that cleans OCR text and sets a content-based title."""
     routing_tier = source_clean_routing_tier(routing_tier)
+    # Detect original images for vision preprocessing
+    vision_images: list[str] = []
+    assets_dir = entry / "assets"
+    if assets_dir.is_dir():
+        for ext in ("png", "jpg", "jpeg", "webp"):
+            for img in assets_dir.glob(f"*.{ext}"):
+                if img.is_file() and not img.is_symlink():
+                    vision_images.append(str(img.resolve()))
+            if vision_images:
+                break
     prompt = (
         "整理错题条目的 OCR 题干草稿。\n"
         "1. 读取 problem.md，修正 OCR 识别错误（公式、符号、下标、换行），保留原题完整信息。\n"
@@ -865,6 +1354,8 @@ def source_clean_task(entry: Path, routing_tier: str = "auto", model_config: dic
         requires_change=True,
         routing_tier=routing_tier,
         model_config=model_config,
+        requires_vision=bool(vision_images),
+        vision_images=vision_images,
     )
 
 
@@ -879,7 +1370,15 @@ def _safe_validation_copy(canonical_entry: Path, staging: Path, relative: str) -
         shutil.copy2(source, target)
 
 
-def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entry: Path | None = None) -> list[str]:
+def validate_answer_candidate(
+    staging: Path,
+    _changed: list[str],
+    canonical_entry: Path | None = None,
+    *,
+    allow_pending_diagram: bool = False,
+    method_profile: str = "high_school_standard",
+    allow_missing_explanatory_image: bool = False,
+) -> list[str]:
     errors: list[str] = []
     student = staging / "student-solution.md"
     teacher = staging / "teacher-solution.md"
@@ -893,7 +1392,45 @@ def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entr
     if teacher.is_file() and solution.is_file() and teacher.read_bytes() != solution.read_bytes():
         errors.append("solution.md must be identical to teacher-solution.md")
     if student.is_file() and "student-solution.md" in _changed:
-        errors.extend(analysis_artifacts.student_method_errors(student.read_text(encoding="utf-8")))
+        errors.extend(
+            analysis_artifacts.student_method_errors(
+                student.read_text(encoding="utf-8"), method_profile
+            )
+        )
+    svg_path = staging / analysis_artifacts.EXPLANATION_PATH
+    svg_changed = analysis_artifacts.EXPLANATION_PATH in _changed
+    provenance_changed = "svg-provenance.json" in _changed
+    if svg_path.is_file() and svg_changed:
+        try:
+            svg_collaboration.validate_svg_safety(svg_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            errors.append(f"unsafe explanatory SVG: {exc}")
+    provenance_path = staging / "svg-provenance.json"
+    facts_path = staging / "visual-facts.json"
+    if (
+        provenance_path.is_file()
+        and facts_path.is_file()
+        and svg_path.is_file()
+        and (svg_changed or provenance_changed)
+    ):
+        provenance = kb.load_json(provenance_path, {})
+        identity = provenance.get("model_identity", {}) if isinstance(provenance, dict) else {}
+        trace = {
+            **identity,
+            "generation_fingerprint": provenance.get("generation_fingerprint", "")
+            if isinstance(provenance, dict) else "",
+        }
+        try:
+            expected = svg_collaboration.validate_and_bind_svg(
+                svg_path.read_text(encoding="utf-8"),
+                kb.load_json(facts_path, {}),
+                trace,
+                identity,
+            )
+            if expected != provenance:
+                errors.append("svg-provenance.json does not match current facts, route, or SVG")
+        except (OSError, TypeError, ValueError) as exc:
+            errors.append(f"invalid SVG provenance: {exc}")
     if canonical_entry is not None:
         baseline = kb.load_json(canonical_entry / "record.json", {})
         if "record.json" in _changed:
@@ -905,7 +1442,81 @@ def validate_answer_candidate(staging: Path, _changed: list[str], canonical_entr
             _safe_validation_copy(canonical_entry, staging, "record.json")
         for relative in baseline.get("source", {}).get("stored_files", []):
             _safe_validation_copy(canonical_entry, staging, str(relative))
-    errors.extend(kb.validate_entry(LIBRARY, staging, ready_rules=True, require_answer_review=False))
+    kb_errors = kb.validate_entry(LIBRARY, staging, ready_rules=True, require_answer_review=False)
+    if allow_pending_diagram:
+        kb_errors = [
+            error for error in kb_errors
+            if error != f"solution.md: missing image {analysis_artifacts.EXPLANATION_PATH}"
+        ]
+    if allow_missing_explanatory_image:
+        kb_errors = [
+            error
+            for error in kb_errors
+            if error != "solution.md: at least one explanatory/source image is required"
+            and not error.startswith("solution.md: missing image ")
+        ]
+    errors.extend(kb_errors)
+    return sorted(set(errors))
+
+
+def validate_physics_diagram_candidate(
+    staging: Path,
+    changed: list[str],
+    canonical_entry: Path | None = None,
+) -> list[str]:
+    errors: list[str] = []
+    diagnostic_path = staging / physics_diagram.DIAGNOSTICS_PATH
+    rejected_path = staging / physics_diagram.REJECTED_SCENE_PATH
+    accepted_paths = (
+        physics_diagram.SCENE_PATH,
+        physics_diagram.GATE_PATH,
+        physics_diagram.SVG_PATH,
+        physics_diagram.PROVENANCE_PATH,
+    )
+    if (diagnostic_path.is_file() or rejected_path.is_file()) and not all(
+        (staging / relative).is_file() for relative in accepted_paths
+    ):
+        report = kb.load_json(diagnostic_path, {})
+        diagnostics = report.get("diagnostics", []) if isinstance(report, dict) else []
+        for item in diagnostics if isinstance(diagnostics, list) else []:
+            if not isinstance(item, dict):
+                continue
+            code = str(item.get("code", "scene.invalid"))
+            path = str(item.get("path", ""))
+            message = str(item.get("message", "physics diagram preflight failed"))
+            errors.append(f"{code}{' at ' + path if path else ''}: {message}")
+        if not errors:
+            errors.append("physics diagram preflight failed without diagnostics")
+        return sorted(set(errors))
+    for relative in accepted_paths:
+        if not (staging / relative).is_file():
+            errors.append(f"{relative} is missing")
+    if not errors:
+        try:
+            scene = kb.load_json(staging / physics_diagram.SCENE_PATH, {})
+            scene = physics_diagram.validate_canonical_scene(scene)
+            gate = kb.load_json(staging / physics_diagram.GATE_PATH, {})
+            facts = kb.load_json(staging / "visual-facts.json", {})
+            physics_model = (
+                kb.load_json(staging / "physics-model.json", {})
+                if (staging / "physics-model.json").is_file()
+                else None
+            )
+            expected = physics_diagram.semantic_gate(
+                scene,
+                facts,
+                (staging / "problem.md").read_text(encoding="utf-8"),
+                physics_model,
+                compilation=gate.get("compilation"),
+            )
+            if gate != expected or gate.get("status") != "passed":
+                errors.append("physics-diagram-gate.json does not match the current scene and facts")
+            expected_svg = physics_diagram.render_svg(scene)
+            if (staging / physics_diagram.SVG_PATH).read_text(encoding="utf-8") != expected_svg:
+                errors.append("explanatory SVG is not the deterministic rendering of the typed scene")
+        except (OSError, TypeError, ValueError) as exc:
+            errors.append(f"invalid physics diagram candidate: {exc}")
+    errors.extend(validate_answer_candidate(staging, changed, canonical_entry))
     return sorted(set(errors))
 
 
@@ -1451,6 +2062,7 @@ def entry_detail(entry: Path) -> dict:
         "status": str(w3_shadow_raw.get("status", "not-run")),
         "mode": str(w3_report.get("mode", "shadow")) if w3_report else "shadow",
         "teacher_review_focus": w3_pipeline.teacher_review_snapshot(w3_report),
+        "claim_evidence": w3_pipeline.claim_evidence_teacher_snapshot(w3_report),
         "metrics": {
             key: w3_report.get("metrics", {}).get(key)
             for key in ("target_count", "verified_target_count", "solver_b_used")
@@ -1548,11 +2160,19 @@ class Handler(SimpleHTTPRequestHandler):
         try:
             if path == "/api/health":
                 agent = agent_health()
+                live_identity = runtime_identity(
+                    project_root=PROJECT_ROOT, library=LIBRARY
+                )
                 return self.json_response({
                     "status": "ok",
                     "project": str(PROJECT_ROOT),
                     "agent_configured": agent["available"],
                     "agent": agent,
+                    "runtime_identity": live_identity,
+                    "runtime_identity_snapshot": SERVER_RUNTIME_IDENTITY_SNAPSHOT,
+                    "runtime_stale": runtime_identity_is_stale(
+                        live_identity, SERVER_RUNTIME_IDENTITY_SNAPSHOT
+                    ),
                 })
             if path == "/api/agent/providers":
                 return self.json_response(agent_health())
@@ -1742,11 +2362,73 @@ class Handler(SimpleHTTPRequestHandler):
                 str(data.get("ocr", "auto")),
                 None,
                 str(data.get("subject", "高中物理")),
-                "auto",
-                str(data.get("vision_capability", "unavailable")),
+                "human",
+                "unavailable",
                 None,
                 None,
             )
+            privacy = kb.load_json(LIBRARY / "config.json", {}).get("privacy", {})
+            for item in report.get("results", []):
+                entry_id = str(item.get("entry_id", "")).strip()
+                if item.get("status") != "ingested" or not entry_id:
+                    continue
+                try:
+                    entry = Path(str(item.get("entry", ""))).resolve()
+                    entry.relative_to((LIBRARY / "entries").resolve())
+                    if not entry.is_dir() or entry.name != entry_id:
+                        raise FileNotFoundError(entry_id)
+                    payload = source_review.review_payload(entry)
+                    record = kb.load_json(entry / "record.json", {})
+                    ocr = kb.load_json(entry / "ocr.json", {})
+                    source_fingerprint = (
+                        "sha256:" + source_review.input_digest(entry, record, ocr)
+                    )
+                    extraction = AGENT_GATEWAY.extract_visual_facts(
+                        payload,
+                        source_fingerprint,
+                        allow_remote=bool(
+                            privacy.get("allow_remote_visual_review", False)
+                        ),
+                    )
+                    item["source_review"] = (
+                        visual_source_review.stage_visual_extraction(
+                            entry, extraction
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001 - preserve human gate
+                    item["visual_extract_error"] = str(exc)[:500]
+            kb.rebuild_index(LIBRARY)
+        # Queue OCR cleanup only after the upload transaction releases the
+        # library/folder locks. A source.clean worker may promote entry files
+        # immediately, so starting it inside the locked section risks coupling
+        # Agent latency and index writes to the synchronous upload request.
+        for item in report.get("results", []):
+            entry_id = str(item.get("entry_id", "")).strip()
+            if item.get("status") != "ingested" or not entry_id:
+                continue
+            clean_data = {"routing_tier": "economy"}
+            try:
+                # The ingest report is the source of truth for entries created
+                # by this request. Validate its internal path instead of doing
+                # a second catalog lookup that can race folder/index refreshes.
+                entry = Path(str(item.get("entry", ""))).resolve()
+                entry.relative_to((LIBRARY / "entries").resolve())
+                if not entry.is_dir() or entry.name != entry_id:
+                    raise FileNotFoundError(entry_id)
+                model_id = resolve_model_id_for_task("source.clean", "economy", None)
+                model_config_for_task("source.clean", model_id, "economy")
+                item["source_clean"] = queue_agent_job(
+                    "source.clean",
+                    entry,
+                    lambda entry=entry, clean_data=clean_data: self.run_source_clean(entry, clean_data),
+                    routing_tier="economy",
+                    model_id=model_id,
+                )
+            except Exception as exc:  # noqa: BLE001 - upload must degrade to human review
+                item["source_clean"] = {
+                    "status": "not-started",
+                    "errors": [f"自动整理题干未启动：{str(exc)[:500]}"],
+                }
         self.json_response(report)
 
     def handle_entry_action(self, entry: Path, action: str, data: dict):
@@ -1786,8 +2468,7 @@ class Handler(SimpleHTTPRequestHandler):
             tier = source_clean_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("source.clean", tier, raw_model_id)
-            if raw_model_id is not None:
-                model_config_for_task("source.clean", model_id, tier)
+            model_config = model_config_for_task("source.clean", model_id, tier)
             result = queue_agent_job(
                 "source.clean", entry, lambda: self.run_source_clean(entry, data), routing_tier=tier, model_id=model_id
             )
@@ -1797,7 +2478,11 @@ class Handler(SimpleHTTPRequestHandler):
             model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
             model_config_for_task("analysis.generate", model_id, tier)
             result = queue_agent_job(
-                "analysis.generate", entry, lambda: self.run_analysis(entry, data), routing_tier=tier, model_id=model_id
+                "analysis.generate",
+                entry,
+                lambda: self.run_adaptive_analysis(entry, data),
+                routing_tier=tier,
+                model_id=model_id,
             )
         elif action == "analyze-w3-shadow":
             tier = normalize_routing_tier(data.get("routing_tier"))
@@ -1934,9 +2619,7 @@ class Handler(SimpleHTTPRequestHandler):
             routing_tier = source_clean_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("source.clean", routing_tier, raw_model_id)
-            model_config = (
-                model_config_for_task("source.clean", model_id, routing_tier) if raw_model_id is not None else None
-            )
+            model_config = model_config_for_task("source.clean", model_id, routing_tier)
             request = {
                 "schema_version": 1,
                 "entry_id": entry.name,
@@ -2002,6 +2685,514 @@ class Handler(SimpleHTTPRequestHandler):
             )
             return request
 
+    def _persist_adaptive_routing(
+        self,
+        entry: Path,
+        result: dict,
+        decision: dict,
+        *,
+        fallback: dict | None = None,
+    ) -> dict:
+        if not isinstance(result, dict):
+            return result
+        fallback_target = (
+            str(fallback.get("to", "")).strip()
+            if isinstance(fallback, dict)
+            else ""
+        )
+        result["adaptive_routing"] = {
+            **decision,
+            "selected_route": (
+                fallback_target
+                if fallback_target in {"w2", "w3", "core", "legacy-adaptive"}
+                else decision.get("route", "legacy-adaptive")
+            ),
+            "fallback": fallback,
+        }
+        kb.write_json(entry / "analysis-request.json", result)
+        pipeline = kb.load_json(
+            entry / "pipeline.json",
+            {"schema_version": 1, "entry_id": entry.name},
+        )
+        pipeline["analysis_request"] = result
+        kb.write_json(entry / "pipeline.json", pipeline)
+        return result
+
+    def _promote_w3_candidate(
+        self,
+        entry: Path,
+        data: dict,
+        decision: dict,
+        w3_request: dict,
+    ) -> tuple[dict | None, list[str]]:
+        report = w3_request.get("report", {})
+        w3r_config = kb.load_json(
+            LIBRARY / "config" / W3R_ROUTING_CONFIG_NAME,
+            {},
+        )
+        renderer_selection = analysis_routing.select_renderer(
+            report,
+            entry_id=entry.name,
+            config=w3r_config,
+        )
+        renderer_review = analysis_routing.w3r_teacher_review_summary(
+            report, renderer_selection
+        )
+        files = analysis_routing.candidate_files(
+            report,
+            entry_id=entry.name,
+            w3r_config=w3r_config,
+            selection=renderer_selection,
+            diagram_plugin_id=str(data.get("diagram_plugin_id", "")).strip(),
+        )
+        record = kb.load_json(entry / "record.json", {})
+        if not record.get("knowledge_points"):
+            blueprint = (
+                report.get("blueprint", {})
+                if isinstance(report.get("blueprint"), dict)
+                else {}
+            )
+            labels = [
+                str(item.get("label", "")).strip()
+                for item in blueprint.get("physical_stages", [])
+                if isinstance(item, dict) and str(item.get("label", "")).strip()
+            ]
+            if not labels:
+                labels = [
+                    str(item.get("statement", "")).strip()
+                    for item in blueprint.get("targets", [])
+                    if isinstance(item, dict)
+                    and str(item.get("statement", "")).strip()
+                ]
+            record["knowledge_points"] = list(dict.fromkeys(labels))[:8] or [
+                "竞赛物理综合建模"
+            ]
+            if not record.get("error_types"):
+                record["error_types"] = ["竞赛综合题"]
+            files["record.json"] = (
+                json.dumps(record, ensure_ascii=False, indent=2) + "\n"
+            )
+        routing_tier = normalize_routing_tier(data.get("routing_tier"))
+        model_id = resolve_model_id_for_task(
+            "analysis.generate", routing_tier, data.get("model_id")
+        )
+        model_config = None
+        changed_files = sorted(files)
+        with tempfile.TemporaryDirectory(
+            prefix=".w3-production-candidate-",
+            dir=entry.parent,
+        ) as temporary:
+            staging = Path(temporary) / entry.name
+            shutil.copytree(entry, staging)
+            for relative, content in files.items():
+                kb.write_text(staging / relative, content)
+            if (
+                (staging / "visual-facts.json").is_file()
+                and not str(data.get("diagram_plugin_id", "")).strip()
+            ):
+                model_config = model_config_for_task(
+                    "analysis.generate",
+                    model_id,
+                    routing_tier,
+                )
+                diagram_gateway = run_physics_diagram_gateway(
+                    staging,
+                    routing_tier=routing_tier,
+                    model_config=model_config,
+                    canonical_entry=staging,
+                )
+                if diagram_gateway.get("status") != "completed":
+                    return None, [
+                        *diagram_gateway.get("validation_errors", []),
+                        gateway_failure_detail(
+                            diagram_gateway,
+                            "W3 物理图原子任务未形成可信候选",
+                        ),
+                    ]
+                for relative in (
+                    physics_diagram.SCENE_PATH,
+                    physics_diagram.GATE_PATH,
+                    physics_diagram.SVG_PATH,
+                    physics_diagram.PROVENANCE_PATH,
+                ):
+                    files[relative] = (staging / relative).read_text(encoding="utf-8")
+                changed_files = sorted(files)
+            validation_errors = validate_answer_candidate(
+                staging, changed_files, entry
+            )
+        if validation_errors:
+            return None, validation_errors
+
+        originals = {
+            relative: (entry / relative).read_bytes()
+            if (entry / relative).is_file()
+            else None
+            for relative in changed_files
+        }
+        try:
+            for relative, content in files.items():
+                kb.write_text(entry / relative, content)
+        except Exception:
+            for relative, content in originals.items():
+                target = entry / relative
+                if content is None:
+                    if target.exists():
+                        target.unlink()
+                else:
+                    target.write_bytes(content)
+            raise
+
+        marked = mark_answer_needs_review(
+            LIBRARY,
+            entry,
+            "W3 自适应路由已生成结构化解析，等待教师复核",
+        )
+        _save_agent_baseline(
+            entry, changed_files, task_type="analysis.generate.w3-adaptive"
+        )
+        now = datetime.now().astimezone().isoformat(timespec="seconds")
+        request = {
+            "schema_version": 1,
+            "entry_id": entry.name,
+            "status": "completed",
+            "requested_at": w3_request.get("requested_at", now),
+            "completed_at": now,
+            "instruction": str(
+                data.get(
+                    "instruction",
+                    "生成分层解析和解释图；本阶段不生成交互仿真",
+                )
+            ),
+            "routing_tier": routing_tier,
+            "model_id": model_id,
+            "provider": "w3-adaptive-orchestrator",
+            "changed_files": changed_files,
+            "validation_errors": [],
+            "stages": [
+                *w3_request.get("stages", []),
+                {"name": "candidate-validation", "status": "completed"},
+                {"name": "canonical-promotion", "status": "completed"},
+            ],
+            "resulting_state": marked["state"]["state"],
+            "difficulty_assessment": assess_entry_difficulty(entry),
+            "adaptive_routing": {
+                **decision,
+                "selected_route": "w3",
+                "fallback": None,
+                "renderer": renderer_selection,
+            },
+            "w3_report_file": "w3-shadow-report.json",
+            "w3r_review": renderer_review,
+        }
+        gateway = {
+            "status": "completed",
+            "provider": "w3-adaptive-orchestrator",
+            "model_id": model_id,
+            "changed_files": changed_files,
+            "validation_errors": [],
+            "attempts": w3_request.get("stages", []),
+        }
+        archive = archive_agent_result(
+            entry,
+            "analysis.generate",
+            request,
+            gateway,
+            summary="W3 自适应路由生成分层解析候选",
+        )
+        request["archive_event_id"] = archive.get("event_id")
+        kb.write_json(entry / "analysis-request.json", request)
+        pipeline = kb.load_json(
+            entry / "pipeline.json",
+            {"schema_version": 1, "entry_id": entry.name},
+        )
+        pipeline.update(
+            {"state": marked["state"]["state"], "analysis_request": request}
+        )
+        kb.write_json(entry / "pipeline.json", pipeline)
+        return request, []
+
+    def run_adaptive_analysis(self, entry: Path, data: dict):
+        started = time.monotonic()
+        core_config, core_config_errors = core_analysis.normalize_routing_config(
+            kb.load_json(
+                LIBRARY / "config" / CORE_ROUTING_CONFIG_NAME,
+                {},
+            )
+        )
+        if core_config["mode"] == "core-first":
+            result = self.run_core_analysis(entry, data, core_config=core_config)
+            elapsed = round(time.monotonic() - started, 4)
+            return self._persist_adaptive_routing(
+                entry,
+                result,
+                {
+                    "schema_version": 1,
+                    "policy_version": core_analysis.ROUTING_POLICY,
+                    "mode": "core-first",
+                    "route": "core",
+                    "reason": "unified-core-first-default",
+                    "config_errors": core_config_errors,
+                    "legacy_rollback": "legacy-adaptive",
+                    "limits": {
+                        "max_latency_seconds": core_config["max_latency_seconds"],
+                        "max_agent_calls": 1,
+                    },
+                    "observed_metrics": {
+                        "selected_route": "core",
+                        "latency_seconds": elapsed,
+                        "agent_call_count": 1,
+                        "fallback_used": False,
+                    },
+                },
+            )
+        problem = (
+            (entry / "problem.md").read_text(encoding="utf-8")
+            if (entry / "problem.md").is_file()
+            else ""
+        )
+        decision = analysis_routing.decide(
+            problem,
+            entry_id=entry.name,
+            config=kb.load_json(W3_ROUTING_CONFIG_PATH, {}),
+            has_physics_model=(entry / "physics-model.json").is_file(),
+        )
+        if decision["route"] != "w3":
+            decision["observed_metrics"] = {
+                "selected_route": "w2",
+                "latency_seconds": 0.0,
+                "agent_call_count": 1,
+                "teacher_focus_count": 0,
+                "fallback_used": False,
+            }
+            result = self.run_analysis(entry, data)
+            decision["observed_metrics"]["latency_seconds"] = round(
+                time.monotonic() - started, 4
+            )
+            return self._persist_adaptive_routing(
+                entry, result, decision
+            )
+
+        w3_request = self.run_w3_shadow_analysis(entry, data)
+        w3_elapsed = round(time.monotonic() - started, 4)
+        w3_request["production_elapsed_seconds"] = w3_elapsed
+        ready, readiness_errors = analysis_routing.production_readiness(
+            w3_request, decision
+        )
+        report = (
+            w3_request.get("report", {})
+            if isinstance(w3_request.get("report"), dict)
+            else {}
+        )
+        metrics = (
+            report.get("metrics", {})
+            if isinstance(report.get("metrics"), dict)
+            else {}
+        )
+        decision["observed_metrics"] = {
+            "selected_route": "w3",
+            "latency_seconds": w3_elapsed,
+            "agent_call_count": len(w3_request.get("stages", [])),
+            "teacher_focus_count": int(metrics.get("teacher_focus_count", 0)),
+            "fallback_used": not ready,
+        }
+        if ready:
+            promoted, validation_errors = self._promote_w3_candidate(
+                entry, data, decision, w3_request
+            )
+            if promoted is not None:
+                return promoted
+            readiness_errors.extend(
+                f"candidate-validation: {item}" for item in validation_errors
+            )
+        if decision.get("w3_failure_policy") == "stop":
+            decision["observed_metrics"]["fallback_used"] = False
+            return self._persist_adaptive_routing(
+                entry,
+                w3_request,
+                decision,
+                fallback={
+                    "from": "w3",
+                    "to": "none",
+                    "reason_codes": sorted(set(readiness_errors)),
+                    "w3_status": str(w3_request.get("status", "failed")),
+                    "policy": "stop-after-w3-failure",
+                },
+            )
+        fallback = {
+            "from": "w3",
+            "to": "w2",
+            "reason_codes": sorted(set(readiness_errors)),
+            "w3_status": str(w3_request.get("status", "failed")),
+        }
+        decision["observed_metrics"]["fallback_used"] = True
+        fallback_started = time.monotonic()
+        result = self.run_analysis(entry, data)
+        fallback["w2_latency_seconds"] = round(
+            time.monotonic() - fallback_started, 4
+        )
+        fallback["w2_status"] = str(result.get("status", "failed"))
+        decision["observed_metrics"]["latency_seconds"] = round(
+            time.monotonic() - started, 4
+        )
+        decision["observed_metrics"]["selected_route"] = "w2"
+        return self._persist_adaptive_routing(
+            entry,
+            result,
+            decision,
+            fallback=fallback,
+        )
+
+    def run_core_analysis(
+        self,
+        entry: Path,
+        data: dict,
+        *,
+        core_config: dict | None = None,
+    ):
+        """Run one compact solve, one deterministic gate, and one pure renderer."""
+        with TraceContext() as ctx:
+            ctx.info("stage=core-analysis entry_id=%s status=started", entry.name)
+            state = process_uploads.pipeline_state(entry)
+            if state["state"] == "needs-source-review":
+                return {
+                    "status": "blocked",
+                    "errors": ["请先对照原图批准正式题干"],
+                    "state": state,
+                }
+            routing_tier = normalize_routing_tier(data.get("routing_tier"))
+            model_id = resolve_model_id_for_task(
+                "analysis.generate", routing_tier, data.get("model_id")
+            )
+            model_config = model_config_for_task(
+                "analysis.generate", model_id, routing_tier
+            )
+            method_profile = teaching_method_policy.normalize_profile(
+                data.get("method_profile", "high_school_standard")
+            )
+            problem = (entry / "problem.md").read_text(encoding="utf-8")
+            brief = core_analysis.build_target_brief(
+                problem,
+                method_profile=method_profile,
+                has_visual_facts=(entry / "visual-facts.json").is_file(),
+                has_physics_model=(entry / "physics-model.json").is_file(),
+            )
+            instruction = str(
+                data.get("instruction", "生成可判分、可复算的核心解答")
+            )
+            task = core_analysis_task(
+                entry,
+                instruction,
+                brief,
+                routing_tier,
+                model_config,
+            )
+            config = core_config or core_analysis.DEFAULT_ROUTING
+            task["timeout_seconds"] = int(config.get("max_latency_seconds", 90))
+            request = {
+                "schema_version": 1,
+                "entry_id": entry.name,
+                "status": "requested",
+                "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                "instruction": instruction,
+                "routing_tier": routing_tier,
+                "method_profile": method_profile,
+                "model_id": model_id,
+                "model_display_name": model_config.get("display_name") if model_config else "",
+                "target_brief": brief,
+            }
+            kb.write_json(entry / "analysis-request.json", request)
+
+            def validator(staging, changed):
+                return validate_answer_candidate(
+                    staging,
+                    changed,
+                    entry,
+                    method_profile=method_profile,
+                    allow_missing_explanatory_image=True,
+                )
+
+            gateway = run_agent_gateway(
+                entry,
+                task,
+                validator,
+                materializer=lambda staging, payload: core_analysis.materialize(
+                    staging, payload, brief
+                ),
+                # A failed solve is not repeated under a different W2/W3 prompt.
+                bounded_failure_repair=False,
+            )
+            completed = gateway.get("status") == "completed"
+            if completed:
+                marked = mark_answer_needs_review(
+                    LIBRARY,
+                    entry,
+                    "核心求解已通过确定性门禁，等待教师/标准答案复核",
+                )
+                resulting_state = marked["state"]
+                _save_agent_baseline(
+                    entry,
+                    gateway.get("changed_files", []),
+                    task_type="analysis.generate",
+                )
+            else:
+                resulting_state = process_uploads.pipeline_state(entry)
+            request.update(
+                {
+                    "status": "completed" if completed else gateway.get("status", "failed"),
+                    "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+                    "provider": gateway.get("provider"),
+                    "returncode": gateway.get("returncode"),
+                    "stdout": _sanitize_output(gateway.get("stdout", "")),
+                    "stderr": _sanitize_output(gateway.get("stderr", "")),
+                    "changed_files": gateway.get("changed_files", []),
+                    "unauthorized_changes": gateway.get("unauthorized_changes", []),
+                    "validation_errors": gateway.get("validation_errors", []),
+                    "attempts": gateway.get("attempts", []),
+                    "stages": [
+                        *analysis_artifacts.stage_records(gateway),
+                        {
+                            "name": "authoritative-review",
+                            "status": "pending" if completed else "not-run",
+                            "authority": "teacher-or-standard-answer",
+                        },
+                    ],
+                    "resulting_state": resulting_state["state"],
+                    "diagram_task": {
+                        "status": "not-run",
+                        "reason": "optional-post-answer-enhancement",
+                    },
+                    **gateway_routing_fields(gateway),
+                }
+            )
+            if not completed:
+                request["message"] = gateway_failure_detail(
+                    gateway, "核心求解未通过；未触发旧 W2/W3 重复求解"
+                )
+            archive = archive_agent_result(
+                entry,
+                "analysis.generate",
+                request,
+                gateway,
+                summary="统一核心求解候选",
+            )
+            request["archive_event_id"] = archive.get("event_id")
+            kb.write_json(entry / "analysis-request.json", request)
+            pipeline = kb.load_json(
+                entry / "pipeline.json",
+                {"schema_version": 1, "entry_id": entry.name},
+            )
+            pipeline.update(
+                {"state": resulting_state["state"], "analysis_request": request}
+            )
+            kb.write_json(entry / "pipeline.json", pipeline)
+            ctx.info(
+                "stage=core-analysis entry_id=%s status=%s resulting_state=%s",
+                entry.name,
+                request["status"],
+                resulting_state["state"],
+            )
+            return request
+
     def run_analysis(self, entry: Path, data: dict):
         with TraceContext() as ctx:
             ctx.info("stage=analysis entry_id=%s status=started", entry.name)
@@ -2030,7 +3221,14 @@ class Handler(SimpleHTTPRequestHandler):
                 {},
             )
             evidence_digest = hashlib.sha256(
-                json.dumps(evidence_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+                json.dumps(
+                    {
+                        "knowledge_evidence": evidence_payload,
+                        "visual_facts": kb.load_json(entry / "visual-facts.json", {}),
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ).encode("utf-8")
             ).hexdigest()
             fingerprint = analysis_artifacts.input_fingerprint(
                 entry,
@@ -2044,8 +3242,38 @@ class Handler(SimpleHTTPRequestHandler):
                 fingerprint=fingerprint,
             )
 
+            transactional_paths = {
+                "record.json",
+                "student-solution.md",
+                "teacher-solution.md",
+                "solution.md",
+                physics_diagram.SCENE_PATH,
+                physics_diagram.GATE_PATH,
+                physics_diagram.SVG_PATH,
+                physics_diagram.PROVENANCE_PATH,
+            }
+            originals = {
+                relative: (entry / relative).read_bytes() if (entry / relative).is_file() else None
+                for relative in transactional_paths
+            }
+
+            def rollback_composite_candidate():
+                for relative, content in originals.items():
+                    target = entry / relative
+                    if content is None:
+                        if target.exists():
+                            target.unlink()
+                    else:
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(content)
+
             def validator(staging, changed):
-                return validate_answer_candidate(staging, changed, entry)
+                return validate_answer_candidate(
+                    staging,
+                    changed,
+                    entry,
+                    allow_pending_diagram=True,
+                )
 
             if checkpoint is not None:
                 gateway = AGENT_GATEWAY.replay_structured(
@@ -2084,13 +3312,43 @@ class Handler(SimpleHTTPRequestHandler):
                 kb.write_json(entry / "analysis-request.json", request)
                 ctx.info("stage=analysis entry_id=%s status=awaiting-agent", entry.name)
                 return request
-            succeeded = gateway["status"] == "completed"
+
+            diagram_gateway: dict = {"status": "not-run", "changed_files": []}
+            if gateway["status"] == "completed":
+                if (entry / "visual-facts.json").is_file():
+                    diagram_gateway = run_physics_diagram_gateway(
+                        entry,
+                        routing_tier=routing_tier,
+                        model_config=model_config,
+                        canonical_entry=entry,
+                    )
+                elif originals[physics_diagram.SVG_PATH] is not None:
+                    diagram_gateway = {
+                        "status": "completed",
+                        "changed_files": [],
+                        "materialization": {
+                            "stages": [{"name": "legacy-physics-diagram", "status": "preserved"}],
+                        },
+                    }
+                else:
+                    diagram_gateway = {
+                        "status": "failed",
+                        "changed_files": [],
+                        "validation_errors": [
+                            "缺少经来源复核的 visual-facts.json；物理图任务未运行，且不会回退成流程图"
+                        ],
+                    }
+
+            succeeded = gateway["status"] == "completed" and diagram_gateway["status"] == "completed"
+            if gateway["status"] == "completed" and not succeeded:
+                rollback_composite_candidate()
+            combined_changed = sorted(set(gateway.get("changed_files", [])) | set(diagram_gateway.get("changed_files", [])))
             if succeeded:
                 analysis_artifacts.clear_generation_checkpoint(entry)
                 request["difficulty_assessment"] = assess_entry_difficulty(entry)
                 marked = mark_answer_needs_review(LIBRARY, entry, "Agent 已生成分层解析，等待教师复核")
                 resulting_state = marked["state"]
-                _save_agent_baseline(entry, gateway.get("changed_files", []), task_type="analysis.generate")
+                _save_agent_baseline(entry, combined_changed, task_type="analysis.generate")
             else:
                 resulting_state = process_uploads.pipeline_state(entry)
             request.update({
@@ -2100,12 +3358,19 @@ class Handler(SimpleHTTPRequestHandler):
                 "returncode": gateway.get("returncode"),
                 "stdout": _sanitize_output(gateway.get("stdout", "")),
                 "stderr": _sanitize_output(gateway.get("stderr", "")),
-                "changed_files": gateway.get("changed_files", []),
+                "changed_files": combined_changed,
                 "unauthorized_changes": gateway.get("unauthorized_changes", []),
-                "validation_errors": gateway.get("validation_errors", []),
+                "validation_errors": sorted(set(
+                    gateway.get("validation_errors", []) + diagram_gateway.get("validation_errors", [])
+                )),
                 "attempts": gateway.get("attempts", []),
                 "stages": [
                     *analysis_artifacts.stage_records(gateway),
+                    *(
+                        analysis_artifacts.stage_records(diagram_gateway)
+                        if diagram_gateway.get("status") not in {"not-run"}
+                        else []
+                    ),
                     {
                         "name": "candidate-validation",
                         "status": "completed" if succeeded else "failed",
@@ -2118,8 +3383,20 @@ class Handler(SimpleHTTPRequestHandler):
                 "resulting_state": resulting_state["state"],
                 **gateway_routing_fields(gateway),
             })
+            request["diagram_task"] = {
+                "kind": "diagram.scene",
+                "status": diagram_gateway.get("status"),
+                "changed_files": diagram_gateway.get("changed_files", []),
+                "validation_errors": diagram_gateway.get("validation_errors", []),
+                "repair": diagram_gateway.get("diagram_repair", {}),
+                **gateway_routing_fields(diagram_gateway),
+            }
             if not succeeded:
-                request["message"] = gateway_failure_detail(gateway, "Agent 未形成可复核答案")
+                failed_gateway = diagram_gateway if gateway.get("status") == "completed" else gateway
+                request["message"] = gateway_failure_detail(
+                    failed_gateway,
+                    "Agent 未形成可复核的物理图与答案组合",
+                )
             archive = archive_agent_result(
                 entry,
                 "analysis.generate",
@@ -2150,14 +3427,66 @@ class Handler(SimpleHTTPRequestHandler):
             if state["state"] == "needs-source-review":
                 return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": state}
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
-            model_id = resolve_model_id_for_task(
-                "analysis.generate", routing_tier, data.get("model_id")
+            requested_model_id = data.get("model_id")
+            claim_evidence_enabled = (
+                correctness_policy.claim_evidence_shadow_enabled()
             )
+            if claim_evidence_enabled and str(
+                requested_model_id or "auto"
+            ).strip() == "auto":
+                model_id = resolve_model_id_for_task(
+                    "analysis.generate", "expert", "auto"
+                )
+            else:
+                model_id = resolve_model_id_for_task(
+                    "analysis.generate", routing_tier, requested_model_id
+                )
             model_config = model_config_for_task("analysis.generate", model_id, routing_tier)
+            claim_verifier_model_id = ""
+            claim_verifier_model_config = None
+            if claim_evidence_enabled:
+                claim_verifier_model_id = resolve_model_id_for_task(
+                    "claim.verify", "auto", "auto"
+                )
+                claim_verifier_model_config = model_config_for_task(
+                    "claim.verify", claim_verifier_model_id, "auto"
+                )
+                solver_provider = str(
+                    (model_config or {}).get("provider", "")
+                ).strip()
+                verifier_provider = str(
+                    (claim_verifier_model_config or {}).get("provider", "")
+                ).strip()
+                if solver_provider not in {"claude", "openai-compatible"} or verifier_provider not in {"claude", "openai-compatible"}:
+                    raise ValueError(
+                        "W3 Claim Evidence 需要 claude 或 openai-compatible provider；"
+                        f"当前 solver={solver_provider} verifier={verifier_provider}"
+                    )
+                solver_model = str((model_config or {}).get("model") or model_id)
+                verifier_model = str((claim_verifier_model_config or {}).get("model") or claim_verifier_model_id)
+                if solver_model == verifier_model:
+                    raise ValueError(
+                        "W3 求解器与 claim verifier 必须使用不同模型身份。"
+                        f"当前均为 {solver_model}"
+                    )
             problem = (entry / "problem.md").read_text(encoding="utf-8")
+            method_profile = str(
+                data.get("method_profile", "high_school_standard")
+            ).strip()
             stage_telemetry: list[dict] = []
+            pending_claim_checkpoints: list[tuple[Path, dict]] = []
+            pending_claim_checkpoint_lock = threading.Lock()
+
+            def flush_pending_claim_checkpoints() -> None:
+                with pending_claim_checkpoint_lock:
+                    pending = list(pending_claim_checkpoints)
+                    pending_claim_checkpoints.clear()
+                for checkpoint_path, checkpoint_payload in pending:
+                    kb.write_json(checkpoint_path, checkpoint_payload)
 
             def run_stage(stage: str, context: dict) -> dict:
+                stage_started = time.monotonic()
+                batch_index = context.get("batch_index")
                 if stage == "decompose":
                     contract = problem_decomposition.output_contract()
                     normalizer = problem_decomposition.normalize_payload
@@ -2166,7 +3495,9 @@ class Handler(SimpleHTTPRequestHandler):
                     contract = solution_reasoning.output_contract(role=stage)
                     blueprint = context["blueprint"]
                     normalizer = lambda payload: solution_reasoning.normalize_solution(
-                        payload, blueprint
+                        payload,
+                        blueprint,
+                        require_stage_interfaces=(stage == "solver-a"),
                     )
                     instruction = (
                         "独立求解指定高风险目标，不得读取另一求解器的输出。"
@@ -2196,9 +3527,43 @@ class Handler(SimpleHTTPRequestHandler):
                         verifier=context.get("verifier"),
                     )
                     instruction = "依据证据与可复算关系仲裁冲突，不得投票。"
+                elif stage == "claim-verifier":
+                    expected = {
+                        str(key): int(value)
+                        for key, value in context.get(
+                            "expected_claim_versions", {}
+                        ).items()
+                    }
+                    contract = solution_verification.claim_output_contract()
+                    normalizer = (
+                        lambda payload: solution_verification.normalize_claim_audit(
+                            payload, expected
+                        )
+                    )
+                    instruction = (
+                        "仅审计最小 Claim 快照；不得读取 Solver 身份、完整答案或历史答案。"
+                    )
+                    context = {
+                        "verification_view": context.get(
+                            "verification_view", {}
+                        )
+                    }
                 else:
                     raise ValueError(f"unknown W3 stage: {stage}")
 
+                stage_model_id = (
+                    claim_verifier_model_id
+                    if stage == "claim-verifier"
+                    else model_id
+                )
+                stage_model_config = (
+                    claim_verifier_model_config
+                    if stage == "claim-verifier"
+                    else model_config
+                )
+                stage_routing_tier = (
+                    "auto" if stage == "claim-verifier" else routing_tier
+                )
                 payloads = {
                     f".agent-context/w3-{name}.json": value
                     for name, value in context.items()
@@ -2210,44 +3575,60 @@ class Handler(SimpleHTTPRequestHandler):
                     instruction,
                     contract,
                     payloads,
-                    routing_tier=routing_tier,
-                    model_config=model_config,
+                    routing_tier=stage_routing_tier,
+                    model_config=stage_model_config,
                 )
-                checkpoint_digest = hashlib.sha256(
-                    json.dumps(
-                        {
-                            "stage": stage,
-                            "problem": problem,
-                            "context": context,
-                            "contract": contract.get("name"),
-                            "model_id": model_id,
-                            "routing_tier": routing_tier,
-                        },
-                        ensure_ascii=False,
-                        sort_keys=True,
-                    ).encode("utf-8")
-                ).hexdigest()
+                checkpoint_digest = w3_stage_checkpoint_digest(
+                    stage=stage,
+                    problem=problem,
+                    context=context,
+                    contract_name=str(contract.get("name", "")),
+                    model_id=stage_model_id,
+                    routing_tier=stage_routing_tier,
+                )
                 checkpoint_path = (
                     entry / ".cache" / "w3-shadow" / f"{stage}-{checkpoint_digest}.json"
                 )
-                checkpoint = kb.load_json(checkpoint_path, {})
-                if checkpoint.get("status") == "completed" and isinstance(
-                    checkpoint.get("payload"), dict
-                ):
-                    normalized = normalizer(checkpoint["payload"])
+                replayed = replay_w3_stage_checkpoint(
+                    checkpoint_path,
+                    normalizer,
+                    include_runtime_identity=claim_evidence_enabled,
+                )
+                if replayed is not None:
                     stage_telemetry.append({
                         "stage": stage,
                         "status": "completed",
                         "provider": "checkpoint",
-                        "model_id": model_id,
+                        "model_id": stage_model_id,
                         "usage": {},
                         "failure_type": "",
                         "message": "复用同输入、同契约的 W3 结构化检查点。",
+                        **summarize_w3_stage_timing(
+                            {"attempts": []},
+                            elapsed_seconds=time.monotonic() - stage_started,
+                        ),
+                        **(
+                            {"batch_index": batch_index}
+                            if stage == "claim-verifier"
+                            and isinstance(batch_index, int)
+                            else {}
+                        ),
                     })
-                    return normalized
-
+                    return replayed
                 def materializer(_staging, payload):
-                    return {"payload": normalizer(payload)}
+                    domain_payload = {
+                        key: value
+                        for key, value in payload.items()
+                        if key
+                        not in {
+                            "model",
+                            "model_tier",
+                            "requested_tier",
+                            "routing_notice",
+                            "usage",
+                        }
+                    }
+                    return {"payload": normalizer(domain_payload)}
 
                 gateway = run_agent_gateway(
                     entry,
@@ -2259,29 +3640,74 @@ class Handler(SimpleHTTPRequestHandler):
                     "stage": stage,
                     "status": gateway.get("status"),
                     "provider": gateway.get("provider"),
-                    "model_id": gateway.get("model_id", model_id),
+                    "model_id": gateway.get("model_id", stage_model_id),
                     "usage": gateway.get("usage", {}),
                     "failure_type": gateway.get("failure_type", ""),
                     "message": str(gateway.get("message", ""))[:500],
+                    **summarize_w3_stage_timing(
+                        gateway,
+                        elapsed_seconds=time.monotonic() - stage_started,
+                    ),
+                    **(
+                        {"batch_index": batch_index}
+                        if stage == "claim-verifier"
+                        and isinstance(batch_index, int)
+                        else {}
+                    ),
                 }
                 if gateway.get("status") != "completed":
                     telemetry["stderr"] = _sanitize_output(gateway.get("stderr", ""))
+                    attempts = gateway.get("attempts", [])
+                    last_attempt = (
+                        attempts[-1]
+                        if isinstance(attempts, list)
+                        and attempts
+                        and isinstance(attempts[-1], dict)
+                        else {}
+                    )
+                    telemetry["adapter_error"] = _sanitize_output(
+                        str(last_attempt.get("error", ""))
+                    )[:1000]
+                    telemetry["adapter_output"] = _sanitize_output(
+                        str(last_attempt.get("stdout", ""))
+                    )[-4000:]
                 stage_telemetry.append(telemetry)
                 if gateway.get("status") != "completed":
                     raise RuntimeError(gateway_failure_detail(gateway, f"W3 {stage} 失败"))
                 payload = gateway.get("materialization", {}).get("payload")
                 if not isinstance(payload, dict):
                     raise RuntimeError(f"W3 {stage} 未返回规范化结构")
-                kb.write_json(
-                    checkpoint_path,
-                    {
-                        "schema_version": 1,
-                        "status": "completed",
-                        "stage": stage,
-                        "contract": contract.get("name"),
-                        "payload": payload,
-                    },
-                )
+                runtime_identity = {
+                    "model_id": (
+                        gateway.get("model")
+                        or gateway.get("model_id")
+                        or stage_model_id
+                    ),
+                    "provider": gateway.get("provider", ""),
+                    "context_isolated": stage == "claim-verifier",
+                }
+                checkpoint_payload = {
+                    "schema_version": 1,
+                    "status": "completed",
+                    "stage": stage,
+                    "contract": contract.get("name"),
+                    "payload": payload,
+                    "runtime_identity": runtime_identity,
+                }
+                if stage == "claim-verifier":
+                    # Claim batches may run concurrently. Writing one validated
+                    # checkpoint while a sibling Gateway transaction is still
+                    # comparing its canonical baseline creates a false
+                    # canonical_changed conflict. Persist them as one
+                    # post-batch commit without weakening that guard.
+                    with pending_claim_checkpoint_lock:
+                        pending_claim_checkpoints.append(
+                            (checkpoint_path, checkpoint_payload)
+                        )
+                else:
+                    kb.write_json(checkpoint_path, checkpoint_payload)
+                if claim_evidence_enabled:
+                    return {**payload, "_runtime_identity": runtime_identity}
                 return payload
 
             def build_evidence(blueprint: dict) -> dict:
@@ -2306,6 +3732,8 @@ class Handler(SimpleHTTPRequestHandler):
                 "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "routing_tier": routing_tier,
                 "model_id": model_id,
+                "claim_verifier_model_id": claim_verifier_model_id,
+                "method_profile": method_profile,
                 "baseline": "current-teacher-reviewed-answer",
                 "canonical_answer_changed": False,
             }
@@ -2315,7 +3743,24 @@ class Handler(SimpleHTTPRequestHandler):
                     stage_runner=run_stage,
                     evidence_builder=build_evidence,
                     has_physics_model=(entry / "physics-model.json").is_file(),
+                    claim_evidence_shadow_enabled=claim_evidence_enabled,
+                    method_profile=method_profile,
                 )
+                flush_pending_claim_checkpoints()
+                claim_stages = sorted(
+                    (
+                        item
+                        for item in stage_telemetry
+                        if item.get("stage") == "claim-verifier"
+                    ),
+                    key=lambda item: int(item.get("batch_index", 0)),
+                )
+                if claim_stages:
+                    stage_telemetry[:] = [
+                        item
+                        for item in stage_telemetry
+                        if item.get("stage") != "claim-verifier"
+                    ] + claim_stages
                 request.update({
                     "status": "completed",
                     "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -2323,12 +3768,16 @@ class Handler(SimpleHTTPRequestHandler):
                     "report": report,
                 })
             except Exception as exc:  # noqa: BLE001 - preserve stage diagnostics
+                flush_pending_claim_checkpoints()
                 request.update({
                     "status": "failed",
                     "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                     "message": str(exc)[:1000],
                     "stages": stage_telemetry,
                 })
+            if claim_evidence_enabled:
+                archive = archive_claim_evidence_shadow(entry, request)
+                request["claim_evidence_archive_event_id"] = archive.get("event_id")
             kb.write_json(entry / "w3-shadow-report.json", request)
             ctx.info(
                 "stage=w3-shadow entry_id=%s status=%s stages=%s",

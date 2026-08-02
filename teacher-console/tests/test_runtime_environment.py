@@ -1,3 +1,4 @@
+import json
 import os
 import subprocess
 import sys
@@ -135,6 +136,75 @@ class RuntimeEnvironmentTest(unittest.TestCase):
         changed = runtime_environment.runtime_settings_public(self.library)
         self.assertFalse(changed["probe_passed"])
         self.assertEqual(changed["probe_status"], "untested")
+
+    def _write_route_config(self, mode: str = "core-first") -> None:
+        route_dir = self.library / "config"
+        route_dir.mkdir(parents=True, exist_ok=True)
+        (route_dir / "analysis-production-routing.json").write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "policy_version": f"wuli-{mode}-routing-v1",
+                    "mode": mode,
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        (route_dir / "model-registry.json").write_text(
+            json.dumps({"schema_version": 1, "defaults": {}, "models": []}),
+            encoding="utf-8",
+        )
+
+    def test_runtime_identity_contains_route_and_digests_without_secrets(self):
+        self._write_route_config()
+        identity = runtime_environment.runtime_identity(
+            project_root=ROOT,
+            library=self.library,
+            started_at="2026-08-02T00:00:00+08:00",
+        )
+        self.assertEqual(identity["schema_version"], 1)
+        self.assertEqual(identity["server_started_at"], "2026-08-02T00:00:00+08:00")
+        self.assertEqual(identity["analysis_route"]["mode"], "core-first")
+        self.assertEqual(identity["analysis_route"]["policy_version"], "wuli-core-first-routing-v1")
+        self.assertEqual(len(identity["route_config_digest"]), 64)
+        self.assertEqual(len(identity["model_registry_digest"]), 64)
+        self.assertEqual(len(identity["code_digest"]), 64)
+        blob = json.dumps(identity, ensure_ascii=False)
+        for secret_word in ("api_key", "sk-", "Bearer", "DEEPSEEK", "MIMO"):
+            self.assertNotIn(secret_word.lower(), blob.lower())
+
+    def test_runtime_identity_changes_when_route_config_changes(self):
+        self._write_route_config("core-first")
+        before = runtime_environment.runtime_identity(
+            project_root=ROOT,
+            library=self.library,
+            started_at="2026-08-02T00:00:00+08:00",
+        )
+        self._write_route_config("w3-gated")
+        after = runtime_environment.runtime_identity(
+            project_root=ROOT,
+            library=self.library,
+            started_at="2026-08-02T00:00:00+08:00",
+        )
+        self.assertNotEqual(before["route_config_digest"], after["route_config_digest"])
+        self.assertNotEqual(before["analysis_route"], after["analysis_route"])
+        self.assertTrue(
+            runtime_environment.runtime_identity_is_stale(after, before)
+        )
+
+    def test_runtime_identity_is_stale_ignores_started_at_only(self):
+        current = {
+            "code_digest": "a" * 64,
+            "route_config_digest": "b" * 64,
+            "model_registry_digest": "c" * 64,
+        }
+        snapshot = dict(current)
+        self.assertFalse(runtime_environment.runtime_identity_is_stale(current, snapshot))
+        snapshot["server_started_at"] = "different"
+        self.assertFalse(runtime_environment.runtime_identity_is_stale(current, snapshot))
+        snapshot["code_digest"] = "d" * 64
+        self.assertTrue(runtime_environment.runtime_identity_is_stale(current, snapshot))
 
 
 if __name__ == "__main__":

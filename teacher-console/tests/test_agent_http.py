@@ -1,6 +1,8 @@
+import base64
 import hashlib
 import importlib.util
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -10,6 +12,7 @@ import urllib.error
 import urllib.request
 from http.server import ThreadingHTTPServer
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -17,6 +20,7 @@ sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import kb  # noqa: E402
+import model_registry  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 
@@ -36,7 +40,11 @@ class AgentHttpTest(unittest.TestCase):
         assets = self.entry / "assets"
         assets.mkdir(parents=True)
         source = assets / "original.png"
-        source.write_bytes(b"source")
+        source_bytes = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
+            "AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        source.write_bytes(source_bytes)
         kb.write_text(
             self.entry / "problem.md",
             "# 测试题\n\n这是一道长度足够的测试题干，用来验证后台 Agent HTTP 作业会立即返回并支持轮询。",
@@ -54,7 +62,7 @@ class AgentHttpTest(unittest.TestCase):
                 "knowledge_points": ["测试"],
                 "error_types": ["待确认"],
                 "source": {
-                    "sha256": hashlib.sha256(b"source").hexdigest(),
+                    "sha256": hashlib.sha256(source_bytes).hexdigest(),
                     "source_type": "png",
                     "stored_files": ["assets/original.png"],
                 },
@@ -67,8 +75,13 @@ class AgentHttpTest(unittest.TestCase):
             "LIBRARY": teacher_console_server.LIBRARY,
             "AGENT_GATEWAY": teacher_console_server.AGENT_GATEWAY,
             "_JOB_MANAGER": teacher_console_server._JOB_MANAGER,
+            "UPLOADS": teacher_console_server.UPLOADS,
+            "MODEL_REGISTRY_LIBRARY": model_registry.LIBRARY,
         }
         teacher_console_server.LIBRARY = self.library
+        teacher_console_server.UPLOADS = Path(self.temp.name) / "uploads"
+        teacher_console_server.UPLOADS.mkdir()
+        model_registry.LIBRARY = self.library
         adapter = ROOT / "teacher-console" / "tests" / "fixtures" / "fake_agent_adapter.py"
         teacher_console_server.AGENT_GATEWAY = AgentGateway(
             environ={
@@ -81,6 +94,7 @@ class AgentHttpTest(unittest.TestCase):
             self.server = ThreadingHTTPServer(("127.0.0.1", 0), teacher_console_server.Handler)
         except PermissionError:
             teacher_console_server._JOB_MANAGER.shutdown(wait=True)
+            model_registry.LIBRARY = self.originals.pop("MODEL_REGISTRY_LIBRARY")
             for name, value in self.originals.items():
                 setattr(teacher_console_server, name, value)
             self.temp.cleanup()
@@ -94,6 +108,7 @@ class AgentHttpTest(unittest.TestCase):
         self.server.server_close()
         self.thread.join(timeout=2)
         teacher_console_server._JOB_MANAGER.shutdown(wait=True)
+        model_registry.LIBRARY = self.originals.pop("MODEL_REGISTRY_LIBRARY")
         for name, value in self.originals.items():
             setattr(teacher_console_server, name, value)
         self.temp.cleanup()
@@ -104,13 +119,36 @@ class AgentHttpTest(unittest.TestCase):
         if method == "POST":
             headers["X-Teacher-Console"] = "1"
         request = urllib.request.Request(self.base + path, data=data, headers=headers, method=method)
-        with urllib.request.urlopen(request, timeout=3) as response:
-            return response.status, json.loads(response.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(request, timeout=3) as response:
+                return response.status, json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise AssertionError(
+                f"{method} {path} returned HTTP {exc.code}: {detail}"
+            ) from exc
 
     def test_health_and_async_analysis_job(self):
         status, health = self.request_json("/api/health")
         self.assertEqual(status, 200)
         self.assertEqual(health["agent"]["selected"], "adapter")
+        identity = health["runtime_identity"]
+        snapshot = health["runtime_identity_snapshot"]
+        for key in (
+            "server_started_at",
+            "code_digest",
+            "route_config_digest",
+            "model_registry_digest",
+        ):
+            self.assertIn(key, identity)
+            self.assertIn(key, snapshot)
+        self.assertEqual(identity["schema_version"], 1)
+        self.assertIsInstance(identity["analysis_route"], dict)
+        self.assertIn("mode", identity["analysis_route"])
+        self.assertIn("runtime_stale", health)
+        blob = json.dumps(identity, ensure_ascii=False)
+        for secret_word in ("api_key", "sk-", "DEEPSEEK", "MIMO", "Bearer"):
+            self.assertNotIn(secret_word.lower(), blob.lower())
 
         status, probed = self.request_json(
             "/api/agent/providers/probe",
@@ -140,8 +178,17 @@ class AgentHttpTest(unittest.TestCase):
         self.assertEqual(job["status"], "completed")
         self.assertEqual(job["result"]["provider"], "adapter")
         self.assertEqual(job["result"]["requested_tier"], "economy")
-        self.assertEqual(job["result"]["model"], "fake-economy")
-        self.assertEqual(job["result"]["usage"]["total_tokens"], 150)
+        self.assertEqual(job["result"]["model"], "fake-core-solver")
+        self.assertEqual(job["result"]["usage"]["total_tokens"], 120)
+        analysis_request = kb.load_json(self.entry / "analysis-request.json", {})
+        self.assertEqual(analysis_request["adaptive_routing"]["selected_route"], "core")
+        self.assertEqual(len(analysis_request["attempts"]), 1)
+        self.assertEqual(analysis_request["diagram_task"]["status"], "not-run")
+        self.assertIn(
+            "deterministic-teaching-render",
+            {stage["name"] for stage in analysis_request["stages"]},
+        )
+        self.assertTrue((self.entry / "core-solution.json").is_file())
         self.assertEqual(kb.load_json(self.entry / "answer-review.json", {})["status"], "needs-review")
         self.assertEqual(
             teacher_console_server.process_uploads.pipeline_state(self.entry)["state"], "needs-answer-review"
@@ -165,6 +212,226 @@ class AgentHttpTest(unittest.TestCase):
         with self.assertRaises(urllib.error.HTTPError) as blocked:
             urllib.request.urlopen(f"{self.base}/api/download/{self.entry.name}/private.json", timeout=3)
         self.assertEqual(blocked.exception.code, 404)
+
+    def test_run_upload_automatically_queues_source_clean(self):
+        source = teacher_console_server.UPLOADS / "auto-clean.png"
+        source.write_bytes((self.entry / "assets" / "original.png").read_bytes() + b"auto-clean")
+
+        with mock.patch.object(
+            teacher_console_server.Handler,
+            "run_source_clean",
+            return_value={"status": "completed", "changed_files": ["problem.md", "record.json"]},
+        ):
+            status, report = self.request_json(
+                "/api/run-upload",
+                method="POST",
+                body={"filename": source.name, "ocr": "none"},
+            )
+            self.assertEqual(status, 200)
+            ingested = next(item for item in report["results"] if item["status"] == "ingested")
+            self.assertEqual(ingested["source_clean"]["status"], "queued")
+            self.assertEqual(ingested["source_clean"]["job"]["kind"], "source.clean")
+            job = ingested["source_clean"]["job"]
+            for _attempt in range(100):
+                _status, job = self.request_json(job["url"])
+                if job["status"] in {"completed", "failed"}:
+                    break
+                time.sleep(0.01)
+            self.assertEqual(job["status"], "completed")
+
+    def test_run_upload_survives_source_clean_queue_failure(self):
+        source = teacher_console_server.UPLOADS / "manual-review-fallback.png"
+        source.write_bytes((self.entry / "assets" / "original.png").read_bytes() + b"manual-fallback")
+
+        with mock.patch.object(
+            teacher_console_server,
+            "queue_agent_job",
+            side_effect=ValueError("测试模型不可用"),
+        ):
+            status, report = self.request_json(
+                "/api/run-upload",
+                method="POST",
+                body={"filename": source.name, "ocr": "none"},
+            )
+        self.assertEqual(status, 200)
+        ingested = next(item for item in report["results"] if item["status"] == "ingested")
+        self.assertEqual(ingested["source_clean"]["status"], "not-started")
+        self.assertIn("测试模型不可用", ingested["source_clean"]["errors"][0])
+
+    def test_entry_api_exposes_complete_review_safe_claim_evidence(self):
+        kb.write_json(
+            self.entry / "w3-shadow-report.json",
+            {
+                "status": "completed",
+                "report": {
+                    "mode": "shadow",
+                    "claim_evidence_shadow": {
+                        "status": "completed",
+                        "certificates": [{
+                            "claim_id": "C1",
+                            "claim_version": 1,
+                            "verifier_kind": "independent-agent",
+                            "check_type": "semantic",
+                            "verdict": "insufficient",
+                            "normalized_result": "尚缺边界复算",
+                            "decisive_checks": ["已核对主方程"],
+                            "input_fingerprint": "a" * 64,
+                            "verifier_identity": {
+                                "model_id": "private-model",
+                                "provider": "private-provider",
+                                "context_isolated": True,
+                            },
+                        }],
+                        "aggregation": {
+                            "status": "PROVISIONAL",
+                            "final_claims": [{
+                                "claim_id": "C1",
+                                "claim_version": 1,
+                                "target_ids": ["Q1"],
+                                "statement": "完整暂定答案",
+                                "conditions": ["允许越过边界后返回"],
+                                "status": "candidate",
+                                "obligation_ids": ["V1"],
+                            }],
+                            "claim_evidence": {
+                                "claims": [{
+                                    "id": "C1",
+                                    "version": 1,
+                                    "kind": "final",
+                                    "statement": "完整暂定答案",
+                                    "target_ids": ["Q1"],
+                                    "stage_ids": ["P1"],
+                                    "depends_on": [],
+                                    "conditions": ["允许越过边界后返回"],
+                                    "obligation_ids": ["V1"],
+                                    "status": "candidate",
+                                    "source": {
+                                        "input_fingerprint": "secret",
+                                        "task_id": "secret-task",
+                                    },
+                                }],
+                                "assessments": [{
+                                    "claim_id": "C1",
+                                    "issues": ["required certificate groups are incomplete"],
+                                }],
+                            },
+                            "interface_status": "provisional",
+                            "interface_issues": [{
+                                "code": "boundary-state",
+                                "message": "需核对返回边界时的状态",
+                            }],
+                            "open_challenge_ids": [],
+                            "active_hypothesis_ids": [],
+                            "root_path_issues": [],
+                        },
+                        "metrics": {
+                            "claim_count": 1,
+                            "certificate_count": 1,
+                            "verified_claim_count": 0,
+                            "unresolved_claim_count": 1,
+                        },
+                        "semantic_audit": {
+                            "raw_reasoning": "must stay private"
+                        },
+                    },
+                },
+            },
+        )
+        status, detail = self.request_json(f"/api/entries/{self.entry.name}")
+        self.assertEqual(status, 200)
+        snapshot = detail["w3_shadow"]["claim_evidence"]
+        self.assertEqual(snapshot["aggregation_status"], "PROVISIONAL")
+        self.assertEqual(
+            snapshot["final_answers"][0]["statement"], "完整暂定答案"
+        )
+        self.assertEqual(len(snapshot["claims"]), 1)
+        self.assertEqual(len(snapshot["certificates"]), 1)
+        self.assertEqual(len(snapshot["unresolved_obligations"]), 2)
+        encoded = json.dumps(snapshot, ensure_ascii=False)
+        self.assertNotIn("must stay private", encoded)
+        self.assertNotIn("private-model", encoded)
+        self.assertNotIn("input_fingerprint", encoded)
+        self.assertNotIn("secret-task", encoded)
+
+    def test_w3_shadow_fake_adapter_covers_claim_outcomes_without_canonical_write(self):
+        canonical = "# 已批准解析\n\n此内容不得被影子链路修改。\n"
+        kb.write_text(self.entry / "student-solution.md", canonical)
+        previous_flag = os.environ.get("TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW")
+        os.environ["TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW"] = "1"
+        try:
+            expectations = {
+                "normal": ("[claim-normal]", "VERIFIED", 0, False),
+                "conflict": ("[claim-conflict]", "UNRESOLVED", 1, True),
+                "insufficient": ("[claim-insufficient]", "PROVISIONAL", 1, True),
+                "fuse": ("[claim-fuse]", "PROVISIONAL", 1, True),
+            }
+            for name, (
+                marker,
+                expected_status,
+                minimum_challenges,
+                expected_fuse,
+            ) in expectations.items():
+                with self.subTest(name=name):
+                    kb.write_text(
+                        self.entry / "problem.md",
+                        (
+                            "# 复杂过程测试\n\n"
+                            "粒子先经过边界，再返回区域，并要求求出全部可能结果与首次事件。"
+                            f" {marker}"
+                        ),
+                    )
+                    _status, queued = self.request_json(
+                        f"/api/entries/{self.entry.name}/analyze-w3-shadow",
+                        method="POST",
+                        body={"routing_tier": "economy"},
+                    )
+                    job = queued["job"]
+                    for _attempt in range(200):
+                        _status, job = self.request_json(job["url"])
+                        if job["status"] in {"completed", "failed"}:
+                            break
+                        time.sleep(0.01)
+                    self.assertEqual(job["status"], "completed")
+                    self.assertEqual(job["result"]["status"], "completed")
+                    raw_report = kb.load_json(
+                        self.entry / "w3-shadow-report.json", {}
+                    )
+                    self.assertEqual(raw_report["status"], "completed")
+                    report = raw_report["report"]["claim_evidence_shadow"]
+                    self.assertEqual(report["status"], "completed", raw_report)
+                    self.assertEqual(
+                        report["aggregation"]["status"], expected_status
+                    )
+                    self.assertGreaterEqual(
+                        report["metrics"]["challenge_count"],
+                        minimum_challenges,
+                    )
+                    self.assertEqual(
+                        report["metrics"]["fuse_triggered"], expected_fuse
+                    )
+                    if expected_fuse:
+                        self.assertIn(
+                            report["loop"]["transition"]["action"],
+                            {"strategy-fuse", "hard-fuse"},
+                        )
+                        self.assertNotEqual(
+                            report["loop"]["transition"]["control"][
+                                "terminal_status"
+                            ],
+                            "VERIFIED",
+                        )
+                    self.assertEqual(report["metrics"]["repeated_task_count"], 0)
+                    self.assertEqual(
+                        (self.entry / "student-solution.md").read_text(
+                            encoding="utf-8"
+                        ),
+                        canonical,
+                    )
+        finally:
+            if previous_flag is None:
+                os.environ.pop("TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW", None)
+            else:
+                os.environ["TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW"] = previous_flag
 
     def test_runtime_settings_and_diagnosis_stay_local(self):
         class RuntimeGateway:

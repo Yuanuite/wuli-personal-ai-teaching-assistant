@@ -1,5 +1,200 @@
 # 变更记录
 
+## 2026-08-02：MiMo–DeepSeek 网页/CLI 视觉协作一致性（wuli-mimo-deepseek-consistency-v1）
+
+- 模型注册表 trait 路由 fail-closed：`resolve_model_id_for_trait` /
+  `model_config_for_trait` 要求候选声明目标 trait；cost tier 覆盖不再把
+  `vision + economy` 解析到纯文本模型（回退 `defaults.vision`），显式指定
+  缺 trait 模型返回稳定错误。
+- 新增视觉探针 `wuli.vision-probe.v1`：与生产提取同一 endpoint/图片/JSON 契约，
+  使用 `teacher-console/tests/fixtures/visual-routing/` 合成图；结果持久化为
+  `probe.vision`，`vision_probe=failed` 的模型被排除出视觉路由，公开状态如实
+  报告（不显示为“视觉测试通过”）。
+- CLI 默认视觉路由改为模型注册表 `defaults.vision`：`process_uploads.py start`
+  `--source-review-mode registry` 只调用确定性薄 CLI
+  `teacher-console/scripts/entry_visual_extract.py`，与网页上传共用
+  `extract_visual_facts → stage_visual_extraction`，产出同形工件；旧
+  `VISUAL_REVIEW_*` 边车保留为显式兼容 override（`legacy-adapter`）。
+- `/api/health` 新增运行身份：`runtime_identity` / `runtime_identity_snapshot` /
+  `runtime_stale`（`server_started_at`、`code_digest`、`analysis_route`、
+  `route_config_digest`、`model_registry_digest`）；页面顶部显示只读“服务需重启”
+  横幅，不自动重启、不阻断编辑。
+- 新增固定测试运行时 `teacher-console/scripts/run_tests.py`：从项目根任意目录
+  可复现运行验收单测，不再依赖偶然的工作目录（Pillow 缺失会快速报告）。
+
+## 2026-08-02：生产解析收敛为统一核心求解
+
+- 新增 `wuli.core-solve.v1` 与轻量 Target Brief：一次 Flash 调用只返回所有小问的最终
+  结论、决定性推导、条件和复算检查，不再默认生成阶段接口、Solver B、仲裁、Claim
+  Ledger/证书链或教学 Markdown。
+- Core Gate 绑定题干目标摘要、拒绝漏目标和待定答案，并按
+  `high_school_standard` / `olympiad_official` 检查方法范围；教学 Markdown 改由
+  确定性 renderer 生成，最终答案逐字来自核心产物。
+- `analysis-production-routing.json` 默认 `core-first`，旧 W2/W3 自适应链保留为
+  `legacy-adaptive` 显式回滚；核心失败后不重复 W2 求解。
+- 静态物理图从首次答案组合事务中移出，成为答案后的可选增强；无图不再阻塞答案审核
+  或交付，但所有实际引用的图片仍执行路径与存在性校验。
+- DeepSeek 直接 API 不再隐式写入 `thinking=disabled`；只有显式环境设置才覆盖服务端
+  默认，避免新版 Flash 被旧适配器参数降级。
+
+## 2026-08-02：新版 Flash 全年最小门禁复测
+
+- 新增 `flash_competition_direct_eval.py` 隔离盲测入口：直接调用
+  `deepseek-v4-flash` API，不使用 W3 拆解、RAG、风险 verifier、Solver B、仲裁、
+  阶段接口或首次教学渲染；核心契约只保留全部小问、最终答案和每问至多四条关键关系。
+- CPhO 2021 全年 8 题在候选冻结后由官方标准答案代替教师审核。6K 核心契约首轮
+  结构成功 7/8，成功题耗时 4.6–11.2 秒；第 7 题首轮输出截断，10K 预算重试后
+  7.2 秒恢复，因此首轮 90 秒端到端通过仍只计 7/8。
+- 严格整题正确率和教学批准率均为 0/8。最小契约证明复杂首次渲染门禁可以后移，
+  但新版 Flash 仍不能替代标准答案/隐藏真值正确性门禁，也不能切为无人值守生产默认。
+- 评测包仅保存冻结摘要、哈希、耗时和错误原因码，不打包题目、候选、标准答案、
+  API key 或私有模型注册表；失败遥测新增实际调用耗时，避免截断样本丢失 SLA 证据。
+
+## 2026-08-01：静态解释图改为独立强类型物理场景任务
+
+- `analysis.generate` 不再要求 2–6 个逻辑节点，也不再默认生成流程图；兼容字段 `diagram` 固定为 `null`。
+- 新增 `diagram.scene` / `wuli.physics-diagram-scene.v1`：MiMo 提供经复核视觉事实，DeepSeek 只规划场区、对象、轨迹和标注，本地确定性渲染 SVG。
+- 新增物理语义门控与覆盖账本：高置信非标签物理事实必须实际绑定图元，高置信标签必须绘制或显式说明省略；带电粒子题强制具有场区、轨迹与粒子/关键点。
+- 答案与物理图按组合事务处理；图生成、语义门控或安全校验失败时恢复原候选，禁止流程图 fallback。
+- 原流程图渲染器移入显式 `logic-flowchart` 可选插件，默认链和 W3 候选均不自动选择它。
+- 物理路径新增独立 `geometry` 合同与真实三点圆弧 SVG，标签采用确定性近似避碰，场纹理和箭头降低视觉权重；两个 fake adapter 已同步新合同。
+- 周期 B/E 时间图和空间投影进入生成提示与语义门控；全量 588 项测试通过、4 项跳过。
+- 两道真实题的两轮隔离回放仍未通过：圆弧三点近共线、周期/空间内容被模型拆成超过合同上限的 4 个面板。因此本批候选尚未完成生产验收，不记录为图像质量提升完成。
+- 将图形门控从“整图驳回重生”改为“裁决＋最小修订”：失败候选只保留在 Gateway 隔离区，输出带稳定错误码和 JSON Pointer 的诊断；可修订错误最多触发一次 `wuli.physics-diagram-scene-patch.v1`，Flash 只能提交受限 JSON Patch。越界、无进展、再次失败及来源/安全硬门均立即停止，正式条目仍只接收完整通过门控并确定性渲染的 SVG。
+- 新增 `wuli.diagram-obligations.v1` 前置义务编译：周期电磁场固定为 `motion + b-time + e-time` 三槽位，空间投影合并到 motion，避免 Flash 在门控后才发现漏图或扩成第四面板。预检不再遇到首个圆弧即停止，而是一次汇总全部路径几何、面板和可判定语义错误；Patch 轮只注入候选、诊断和义务清单。
+- 两道冻结真题的真实 DeepSeek V4 Flash API 回放：磁场偏转题首轮同时发现两个退化圆弧，一次 151-output-token Patch 后完整通过；交替周期场题在义务前移后首轮直接生成三面板并通过语义门、安全渲染和 provenance。该结果验证结构收敛，不代表视觉美观已批准；周期场运动面板仍可见轨迹/文字重叠，需后续 MiMo 软视觉诊断或教师复核。
+- 图像生成进一步改为语义素材编译：新增版本化组件目录，素材保存“平行板、粒子发射、场区、事件轨迹段、方波、坐标系”的物理含义与组合责任，不保存固定 SVG 碎片。DeepSeek 负责教学配方；存在 `physics-model.json` 时本地编译器从事件段确定性投影轨迹并纠正 P/Q 边界顺序。门控缩减为来源、拓扑、模型和安全/provenance 四类硬门；周期图标注、空间投影说明和美观排版降为软提示。新增回归覆盖“事实同时绑定和省略”、上下板反置以及自由轨迹被模型轨迹替换。
+- 修复磁场轨迹“点对了、形状却不明显”的表达缺陷：三面板布局给运动面板双倍宽度，x-y 投影采用等比例缩放；解析圆弧直接输出真实圆弧，离散模型点通过确定性共圆检验后才能提升为圆弧。不同问次使用红/紫轨迹与同色方向箭头，并从模型补充换向点、圆心和半径构造线；z 方向只保留“位移另计”的投影说明，避免伪透视扭曲圆周几何。
+
+## 2026-07-31：W3 Flash 紧凑契约、直接 API 与失败即停
+
+- OpenAI-compatible adapter 将 Flash 的大型 `wuli.solution-reasoning.v2.1.solver-*`
+  调用拆成核心结论与阶段接口两段紧凑契约；两段合并后仍按原始完整 schema 校验，
+  并对方向、状态键和相邻阶段转换做确定性规范化。
+- DeepSeek 兼容端点可直接执行 W3，不经过 Claude Code；关闭不受支持的 thinking，
+  使用 JSON object 响应并累计两段 token 遥测。最小 JSON 修复只处理可唯一定位的
+  字符串内部未转义引号，不吞掉缺逗号等一般结构错误。
+- 自适应路由新增 `w3_failure_policy`。当前生产配置为 `stop`，W3 失败后记录
+  `W3 → none` 并停止，不再重复求解 W2；`fallback-w2` 仅保留为显式回滚项。
+- CPhO 2021 全年 8 题隔离网页盲测在候选冻结后才读取标准答案，并由标准答案代替
+  教师审核：结构成功 8/8，冷启动等价均不超过 90 秒（中位 55.0 秒、最慢 88.0 秒），
+  但严格整题正确仅 1/8、教学批准 0/8。直接 API 已消除结构瓶颈，但 Flash 内容质量
+  与 verifier 的共同错误尚未达到生产切换标准，因此不修改正式模型注册表默认路由。
+
+## 2026-07-30：W3 Claude-only 独立验证与竞赛方法分层
+
+- Claim verifier 仍按每批最多 8 条运行，但多批次默认以最大并发 2 调用；设置
+  `TEACHER_CONSOLE_W3_CLAIM_VERIFY_CONCURRENCY=1` 可立即回滚串行。并发批次的
+  检查点统一延迟到全部批次结束后写入，避免合法缓存写入触发兄弟 Gateway 事务的
+  `canonical_changed`，canonical 门禁本身没有放宽。
+- W3 阶段遥测新增总耗时、provider 耗时、框架开销、尝试次数和 Claim 批次编号。
+  同一弹簧题复用相同分解/Solver 检查点的真实 Claude A/B 从 190.26 秒降至
+  67.81 秒（-64.36%），19 个 Claim、22 份证书及 W3R 六项门禁保持全通过。
+- 新增语义审计最小化评估。当前兼容投影的自由文本中间关系没有可执行确定性
+  `check_spec`，因此弹簧题 18 个语义请求的安全可删数为 0；系统不会以删证书换速度，
+  后续必须先扩展 Solver 的机器可检查 Claim 契约。
+- 新增独立于分解模型的源题领域硬义务：显式“首次/最早”“所有/全部”、定义域/边界、
+  参考系，以及既有多流体完整润湿区间，都在 Solver 前补入缺失验证义务，降低错误
+  Blueprint 同时污染 Solver 和 verifier 的风险。
+- Claim Evidence 启用时，W3 Solver 与 claim verifier 只允许使用 `claude` provider，
+  默认绑定 `Deepseek-v4-pro` / `Deepseek-v4-flash` 两个不同模型身份；同模型自证和
+  非 Claude provider 在运行前失败关闭。
+- `wuli.solution-reasoning.v2.1` 新增逐阶段接口、相邻阶段状态转换和事件引入状态；
+  `wuli.claim-verify.v2` 同时审核 Claim 与语义接口，单批最多 8 条；聚合器改为消费真实
+  确定性接口检查，不再对所有实时题目硬编码 `legacy-stage-interface-unavailable`。
+- Claim Evidence 启用时取消重复的旧目标 verifier、Solver B 与仲裁调用；中间 Claim
+  使用单一独立语义证书，关键最终 Claim 仍要求本地聚合证书与独立 verifier 双路径。
+- 新增 `high_school_standard` 与 `olympiad_official` 方法 profile。竞赛 profile
+  允许官方竞赛常见的微积分工具，但仍禁止未经来源授权的大学分析力学形式。
+- W3 报告和 29 日隔离评测分别记录求解执行、Proof 忠实性、方法合规和教学渲染，
+  避免把“答案正确但方法不符合当前教学口径”统计成求解错误。
+- IPhO 多流体静力复测暴露 Solver 与 Flash 共享错误拆解、共同漏掉轻流体高出外侧
+  液面的板段。新增来源触发的自由液面/完整润湿区间/密度比硬义务后，简单密度差式
+  会被拒绝，正确式 `wg h²ρ₀(ρ₀-ρ_oil)/(2ρ_oil)` 通过。弹簧题与该题的 Proof、
+  接口、方法及 W3R 门禁均通过；复杂 IPhO Pro 调用仅在临时 1.00 美元上限下完成，
+  正式默认 0.50 美元不变且超限失败关闭。
+- 详见 [`reports/w3-claim-concurrency-20260730.md`](reports/w3-claim-concurrency-20260730.md)。
+
+## 2026-07-29：W3R 非求解教学渲染与忠实性门禁
+
+- 新增版本化 `wuli.w3r-brief.v1` 与 `wuli.w3r-render-result.v1`：只有整体验证为
+  `VERIFIED` 的 Proof Package 才能投影，Proof Skeleton 只保留最终 Claim 及其已验证
+  祖先；缺少目标、证书、条件、依赖或已闭合义务时返回 `needs_render_material`。
+- 新增独立确定性学生版/教师版 renderer 和 Render Gate，检查最终答案、Claim span、
+  条件、目标、LaTeX、公式来源与高中方法；纯表达失败最多对同一 Brief 重试一次，
+  Claim 漂移、条件遗漏或无来源公式立即拒绝，禁止回退 Solver。
+- W3 只新增 shadow 字段，不改当前 `recommended_student_solution`、生产候选路由、
+  教师批准或公开发布。现有 legacy stage-interface 仍为 `PROVISIONAL`，因此实时
+  W3R 会失败关闭而不是越权渲染。
+- 冻结 5 个基线来源和 2 个结构化 Brief 条件矩阵；同 Brief 配对评测的 Final Answer、
+  Claim Support、Condition、Target、LaTeX 均为 100%，Unsupported Claim Rate 为 0，
+  但生产默认资格明确保持 false。
+
+## 2026-07-29：默认物理义务 shadow 试验暂缓
+
+- 新增默认义务 shadow 统计脚本和报告，回放旧 W3 blueprint 中“题干未限定唯一/首次时，
+  是否应枚举全部物理解支”的建议触发情况；脚本只读，不重新调用 Solver，不改
+  `verification_obligations`，不影响 `VERIFIED`、评分或交付。
+- 首轮 23 个 W3 报告中 7 题触发、共 10 条建议，说明规则有诊断价值；但“最高点时刻”
+  “初速度竖直分量”等疑似过宽命中表明当前不具备升级硬门禁条件。
+- 已将后续方向沉淀为 `docs/github-issues.md` 的 Issue 15：先人工标注
+  `useful / false-positive / already-covered`，再收窄规则并评估是否进入教师软提示。
+
+## 2026-07-29：解题 loop 架构沉淀与 Gateway 契约自检
+
+- 新增 `docs/解题loop.md`，把复杂物理题中的发散、假设提出、检验、否定和重构整理为
+  有限 Agent 状态机：原子任务、冻结输入、Challenge 回跳、影响锥、Hypothesis Pool、
+  证书汇总和硬熔断各有边界。
+- 明确“最终证明图是 DAG，搜索过程可以有环”：随机联想只选择可证伪搜索算子，不能直接
+  改写证明 DAG 或晋升真值；停滞、缺证或预算耗尽只能输出 `PROVISIONAL/UNRESOLVED`。
+- Agent Gateway 新增任务路径契约自检：允许输出若被 denied pattern 覆盖，启动前返回
+  `task_contract_invalid`，不调用 provider。IPhO 首轮 `candidate-answer.json` 范围冲突被
+  沉淀为“验证器也必须先验证自身契约”的工程红线。
+
+## 2026-07-29：2021 IPhO 理论卷隔离整卷测试
+
+- 新增可重放的 IPhO 闭卷评测脚本：官方英文题面与解答分区存放，三道候选全部冻结后才
+  允许解锁官方解答；实验题按范围排除。
+- 2021 IPhO T1–T3 共 36 个小问完成完整作答和独立逐小问阅卷，得到 30/30 分、
+  36/36 `full-credit`，无教师待裁决项。
+- 每题分别记录有效作答时间、脚手架失败消耗、独立阅卷时间和 provider 用量；求解 provider
+  未返回 token 时明确标记不可得，不以字符数估算。首轮脚手架范围冲突造成的三次失败记录
+  和 281.260 秒消耗被保留。
+
+## 2026-07-29：W3 自适应复杂题路由默认启用
+
+- `wuli-analysis-adaptive-v1` 从限量灰度切换为 `mode=default`：确定性初筛命中的
+  复杂题进入 W3，低结构风险题继续使用 W2；调用、延迟、教师核对卡、阶段完整性、
+  候选校验或高中方法门禁失败时自动由 W2 接管。
+- 新鲜 holdout 5 题/15 目标中 W2 与 W3 均为 100%，独立性完整；首批生产灰度
+  Q13/Q14/Q25 共 9 个目标正确，补充 IPhO、APhO、全国赛三题共 8 个原子目标正确。
+- 实际完成 `default → off → default` 回滚演练：同一复杂题探针依次路由
+  `W3 → W2 → W3`，最终配置恢复 `default`；provider、候选隔离和教师审批边界未变。
+- APhO Q3-A8 与全国赛首版摘录暴露 `source-adaptation-incomplete`：官方 PDF
+  可信不代表人工原子摘录必然条件闭合，后续评测须独立核对原题—摘录条件保真。
+- 全量 385 项单元测试通过、4 项因沙箱 loopback 限制跳过；lifecycle、
+  visualization、publication、claim-evidence 四个隔离 E2E 场景全部通过。
+
+## 2026-07-29：断言级正确性证据链与受控认知环
+
+- W3 新增默认关闭的 `claim_evidence_shadow_v1`：把 Solver 关系投影为版本化 Claim
+  DAG，显式绑定条件、依赖、题目目标和验证义务；Agent 只能提交候选，晋升状态由
+  确定性编排器根据当前版本证书重算。
+- 新增受限算术、量纲、区间、边界与事件顺序检查器，以及上下文隔离的
+  `wuli.claim-verify.v1` 语义复算；缺证、旧证、自验、冲突和 `insufficient` 均失败
+  关闭，不能靠多 Agent 投票决定物理真值。
+- 新增跨阶段接口检查、Challenge、最小冲突定位、依赖定向回跳、任务指纹去重和硬
+  熔断。随机联想只选择下一种有限证伪算子，Hypothesis Pool 不进入证明 DAG；
+  停滞或预算耗尽只输出 `PROVISIONAL/UNRESOLVED`。
+- 教师端 W3 私有快照和折叠式证据账本可显示完整暂定答案、全部 Claim、证书与未决
+  义务；运行时身份、内部指纹和原始语义审计被裁剪。影子运行不改 canonical 答案、
+  审批、交付或学生站。
+- 固定 14 类故障注入全部检出且错误晋升为 0；完成认知环 off/on 同条件消融和 5 道
+  旧题只读投影诊断。旧题诊断发现 1 题当前答案摘要与旧 manifest 不一致，因此历史
+  分数不能直接复用。
+- 当时生产默认仍为 W2，WAIT-5 新鲜可用题为 0/5；该历史阻塞已在同日后续 W4
+  新鲜 holdout、生产灰度和默认启用中解除。
+
 ## 2026-07-27：分段场释放时刻补全与逐案例停止事件
 
 - 修正“交替电场与磁场中带电粒子的分段运动”第三问：完整枚举 $0\sim6\tau$
@@ -99,7 +294,7 @@
   `rac12`、tab + `frac34` 会恢复为合法 `\frac`，ANSI 序列被清除，其他控制字符
   失败关闭；`\dfrac/\tfrac` 同步规范化。
 - `method_check.decisive_relations` 单项上限从 120 放宽至 360 字，允许保留完整可复算
-  关系；成对网页重跑会保留最近成功候选，失败尝试单独记录，不再破坏评测基线。
+  关系；成对网页重跑会保留上一轮成功候选，失败尝试单独记录，不再破坏评测基线。
 - W4-2 已扩展至全部 5 道 replay、15 个目标：W2 为 14/15，W3 为 15/15，W2
   可交付性通过 3/5。W2 在三维电磁题漏掉 `z0=l、任意 x0` 同相位分支，并在双区域
   磁场题留下首次性证明缺口；其余三题准确率与交付质量均通过。

@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-import os
 import hashlib
 import json
+import os
 import shutil
 import socket
 import subprocess
@@ -28,6 +28,9 @@ PROXY_ENV_KEYS = {
     "https_proxy",
     "all_proxy",
 }
+# Import time is the closest cheap proxy for process start; the server imports
+# this module during startup before serving any request.
+SERVER_STARTED_AT = datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def runtime_settings_path(library: Path) -> Path:
@@ -290,3 +293,84 @@ def update_runtime_probe_result(library: Path, diagnosis: dict) -> dict:
     path.parent.mkdir(parents=True, exist_ok=True)
     kb.write_json(path, raw)
     return runtime_settings_public(library)
+
+
+def _file_digest(path: Path) -> str:
+    if not path.is_file():
+        return ""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _git_code_digest(
+    project_root: Path,
+    run: Callable = subprocess.run,
+) -> str:
+    """Digest of the running code: revision plus working-tree delta.
+
+    Any tracked/untracked source change alters the digest, so the UI can warn
+    about a stale server without reading file contents. Returns "" when the
+    repository cannot be inspected.
+    """
+    try:
+        revision = run(
+            ["git", "-C", str(project_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+        status = run(
+            ["git", "-C", str(project_root), "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+    if not revision:
+        return ""
+    digest = hashlib.sha256()
+    digest.update(revision.encode("utf-8"))
+    digest.update(b"\0")
+    digest.update(status.encode("utf-8"))
+    digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def runtime_identity(
+    *,
+    project_root: Path | None = None,
+    library: Path | None = None,
+    started_at: str | None = None,
+    run: Callable = subprocess.run,
+) -> dict:
+    """Privacy-safe identity of the running code and routing configuration.
+
+    Contains only digests and route summaries — never API keys, environment
+    variables, student paths, or model credentials. Used by ``/api/health``
+    and the teacher UI to detect a stale server after disk changes.
+    """
+    root = project_root or Path(__file__).resolve().parents[1]
+    lib = library or (root / "student-error-library")
+    route_path = lib / "config" / "analysis-production-routing.json"
+    route_raw = kb.load_json(route_path, {})
+    return {
+        "schema_version": 1,
+        "server_started_at": started_at or SERVER_STARTED_AT,
+        "code_digest": _git_code_digest(root, run=run),
+        "analysis_route": {
+            "mode": str(route_raw.get("mode", "")).strip(),
+            "policy_version": str(route_raw.get("policy_version", "")).strip(),
+        },
+        "route_config_digest": _file_digest(route_path),
+        "model_registry_digest": _file_digest(lib / "config" / "model-registry.json"),
+    }
+
+
+def runtime_identity_is_stale(current: dict, snapshot: dict) -> bool:
+    """True when the disk state moved away from the start-time snapshot."""
+    if not isinstance(current, dict) or not isinstance(snapshot, dict):
+        return True
+    for key in ("code_digest", "route_config_digest", "model_registry_digest"):
+        if current.get(key) != snapshot.get(key):
+            return True
+    return False

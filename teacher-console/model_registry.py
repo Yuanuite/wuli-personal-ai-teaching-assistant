@@ -23,6 +23,7 @@ sys.path.insert(0, str(_SKILL_SCRIPTS))
 import kb  # noqa: E402
 
 MODEL_ID_MAX = 80
+TRAIT_KEYS = {"vision", "agent"}
 LIBRARY: Path = _PROJECT_ROOT / "student-error-library"
 
 
@@ -122,6 +123,12 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
         errors.append("missing API key")
     if kind != "gateway.probe" and raw.get("enabled") is not False and not probe["passed"]:
         errors.append("model has not passed connection test")
+    traits_raw = raw.get("traits") if isinstance(raw.get("traits"), dict) else {}
+    traits = {
+        key: bool(traits_raw.get(key)) for key in TRAIT_KEYS
+    }
+    raw_probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
+    vision_probe = raw_probe.get("vision") if isinstance(raw_probe.get("vision"), dict) else {}
     return {
         "id": model_id,
         "display_name": str(raw.get("display_name") or raw.get("name") or raw.get("model") or model_id),
@@ -145,6 +152,13 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
         "enabled": raw.get("enabled") is not False,
         "available": raw.get("enabled") is not False and not errors,
         "reason": "；".join(errors),
+        "traits": traits,
+        "vision_probe": {
+            "status": str(vision_probe.get("status", "untested")).strip() or "untested",
+            "schema": str(vision_probe.get("schema", "")).strip(),
+            "message": str(vision_probe.get("message", "")).strip(),
+            "checked_at": str(vision_probe.get("checked_at", "")).strip(),
+        },
     }
 
 
@@ -220,7 +234,18 @@ def save_model_registry_settings(data: dict) -> dict:
         "defaults": {
             str(key).strip(): normalize_model_id(value)
             for key, value in defaults.items()
-            if str(key).strip() in {"economy", "expert", "analysis.generate", "answer.revise", "visualization.model"}
+            if str(key).strip() in {
+                "economy",
+                "expert",
+                "vision",
+                "agent",
+                "source.clean",
+                "analysis.generate",
+                "diagram.scene",
+                "answer.revise",
+                "claim.verify",
+                "visualization.model",
+            }
         },
         "models": [],
     }
@@ -243,6 +268,7 @@ def save_model_registry_settings(data: dict) -> dict:
             "model_tier": str(raw.get("model_tier", raw.get("tier", "selected"))).strip() or "selected",
             "tags": _clean_string_list(raw.get("tags", [])),
             "capabilities": _clean_string_list(raw.get("capabilities", [])),
+            "traits": raw.get("traits") if isinstance(raw.get("traits"), dict) else {},
             "recommended_for": _clean_string_list(raw.get("recommended_for", [])),
             "description": str(raw.get("description", "")).strip(),
         }
@@ -300,6 +326,7 @@ def _model_to_config(raw: dict, public: dict) -> dict:
         "model_tier": public["model_tier"],
         "remote": public["remote"],
         "data_locality": public["data_locality"],
+        "traits": public.get("traits", {}),
     }
     if public["provider"] in {"openai-compatible", "claude"}:
         if public["provider"] == "openai-compatible":
@@ -376,3 +403,126 @@ def update_model_probe_result(model_id: str, result: dict) -> dict:
         raise ValueError(f"未找到模型配置：{model_id}")
     kb.write_json(_registry_path(), registry)
     return model_registry_settings()
+
+
+def record_vision_probe(model_id: str, result: dict) -> dict:
+    """Persist a vision probe result (``wuli.vision-probe.v1``) per model.
+
+    The vision probe uses the same endpoint and image message format as
+    production extraction; a failed probe marks the model unavailable for
+    ``vision`` routing regardless of its text connection probe.
+    """
+    model_id = normalize_model_id(model_id)
+    if model_id == "auto":
+        raise ValueError("model_id is required")
+    registry = kb.load_json(_registry_path(), {"schema_version": 1, "defaults": {}, "models": []})
+    found = False
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict) or normalize_model_id(raw.get("id")) != model_id:
+            continue
+        found = True
+        probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
+        probe["vision"] = {
+            "status": "passed" if result.get("status") == "passed" else "failed",
+            "schema": str(result.get("schema", "")).strip(),
+            "message": str(result.get("reason", "")).strip(),
+            "checked_at": datetime.now().isoformat(timespec="seconds"),
+            "config_digest": _model_probe_digest(raw),
+        }
+        raw["probe"] = probe
+        break
+    if not found:
+        raise ValueError(f"未找到模型配置：{model_id}")
+    kb.write_json(_registry_path(), registry)
+    return model_registry_settings()
+
+
+def _declared_traits(registry: dict, model_id: str) -> dict:
+    """Return the declared trait map for a model id (empty when unknown)."""
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict):
+            continue
+        if str(raw.get("id", "")).strip() != model_id:
+            continue
+        traits_raw = raw.get("traits") if isinstance(raw.get("traits"), dict) else {}
+        return {key: bool(traits_raw.get(key)) for key in TRAIT_KEYS}
+    return {}
+
+
+def resolve_model_id_for_trait(trait: str, routing_tier: str = "auto", model_id: str | None = None) -> str:
+    """Resolve model ID for a given capability trait (vision / agent).
+
+    Fail-closed trait policy: the resolved model must declare
+    ``traits.<trait>=true``. A cost-tier override (economy/expert) never
+    substitutes a text-only model for a visual task — it falls back to the
+    trait-specific default — and an explicit model that lacks the trait fails
+    with a stable error instead of degrading silently.
+    """
+    if trait not in TRAIT_KEYS:
+        raise ValueError(f"unsupported trait: {trait}")
+    registry = kb.load_json(_registry_path(), {"models": [], "defaults": {}})
+    if model_id is not None:
+        resolved = normalize_model_id(model_id)
+        if resolved != "auto":
+            if not _declared_traits(registry, resolved).get(trait):
+                raise ValueError(f"模型 {resolved} 不具备 {trait} 能力（traits.{trait}=false）")
+            return resolved
+    defaults = registry.get("defaults", {})
+    if not isinstance(defaults, dict):
+        return "auto"
+    tier = _normalize_routing_tier(routing_tier)
+    if tier in {"economy", "expert"}:
+        tier_model = normalize_model_id(defaults.get(tier))
+        if _declared_traits(registry, tier_model).get(trait):
+            return tier_model
+        return normalize_model_id(defaults.get(trait))
+    return normalize_model_id(defaults.get(trait))
+
+
+def _vision_probe_allowed(public: dict) -> bool:
+    status = str(public.get("vision_probe", {}).get("status", "untested"))
+    return status != "failed"
+
+
+def model_config_for_trait(trait: str, model_id: str | None = None, routing_tier: str = "auto") -> dict | None:
+    """Get full model config for a given capability trait."""
+    model_id = resolve_model_id_for_trait(trait, routing_tier, model_id)
+    if model_id == "auto":
+        registry = kb.load_json(_registry_path(), {"models": []})
+        for raw in registry.get("models", []):
+            if not isinstance(raw, dict):
+                continue
+            try:
+                public = _public_model_entry(raw)
+            except ValueError:
+                continue
+            traits = public.get("traits", {})
+            if (
+                public["enabled"]
+                and public["available"]
+                and traits.get(trait)
+                and (trait != "vision" or _vision_probe_allowed(public))
+            ):
+                return _model_to_config(raw, public)
+        return None
+    registry = kb.load_json(_registry_path(), {"models": []})
+    for raw in registry.get("models", []):
+        if not isinstance(raw, dict):
+            continue
+        try:
+            public = _public_model_entry(raw)
+        except ValueError:
+            continue
+        if public["id"] != model_id:
+            continue
+        if not public["enabled"]:
+            raise ValueError(f"模型 {public['display_name']} 已禁用")
+        if not public["available"]:
+            raise ValueError(f"模型 {public['display_name']} 暂不可用：{public['reason']}")
+        if trait == "vision" and not _vision_probe_allowed(public):
+            raise ValueError(
+                f"模型 {public['display_name']} 视觉探针未通过"
+                f"（vision_probe={public.get('vision_probe', {}).get('status')}），不能用于视觉任务"
+            )
+        return _model_to_config(raw, public)
+    raise ValueError(f"未找到模型配置：{model_id}")

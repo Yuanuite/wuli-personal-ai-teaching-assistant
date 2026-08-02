@@ -28,8 +28,11 @@ class ModelRegistryTest(unittest.TestCase):
                 "defaults": {
                     "economy": "cheap",
                     "expert": "deep",
+                    "vision": "vision-model",
+                    "agent": "agent-model",
                     "analysis.generate": "analysis-model",
                     "answer.revise": "revision-model",
+                    "claim.verify": "claim-model",
                     "visualization.model": "visual-model",
                 },
                 "models": [
@@ -47,6 +50,7 @@ class ModelRegistryTest(unittest.TestCase):
                         "provider": "openai-compatible",
                         "base_url": "http://127.0.0.1:8000/v1",
                         "model": "deep-model",
+                        "traits": {"vision": True},
                         "capabilities": ["analysis.generate", "answer.revise", "visualization.model"],
                     },
                     {
@@ -57,8 +61,30 @@ class ModelRegistryTest(unittest.TestCase):
                         "model": "analysis-model",
                         "capabilities": ["analysis.generate"],
                     },
+                    {
+                        "id": "vision-model",
+                        "display_name": "Vision",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "vision-model",
+                        "traits": {"vision": True, "agent": True},
+                        "capabilities": ["analysis.generate", "answer.revise"],
+                    },
+                    {
+                        "id": "agent-model",
+                        "display_name": "Agent",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "agent-model",
+                        "traits": {"agent": True},
+                        "capabilities": ["answer.revise"],
+                    },
                 ],
             },
+        )
+        model_registry.update_model_probe_result(
+            "vision-model",
+            {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
         )
 
     def tearDown(self):
@@ -72,6 +98,12 @@ class ModelRegistryTest(unittest.TestCase):
             model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto"), "analysis-model"
         )
         self.assertEqual(model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep")
+        self.assertEqual(
+            model_registry.resolve_model_id_for_task(
+                "claim.verify", "auto", "auto"
+            ),
+            "claim-model",
+        )
 
     def test_capability_mismatch_fails_before_agent_run(self):
         with self.assertRaisesRegex(ValueError, "暂不可用"):
@@ -227,6 +259,67 @@ class ModelRegistryTest(unittest.TestCase):
         self.assertIn("codex-visualization", ids)
         self.assertEqual(example["defaults"]["economy"], "wuli-economy")
         self.assertEqual(example["defaults"]["visualization.model"], "codex-visualization")
+
+    def test_trait_default_resolves_to_declared_trait_model(self):
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "auto"), "vision-model")
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "auto", "auto"), "vision-model")
+        self.assertEqual(model_registry.resolve_model_id_for_trait("agent", "auto"), "agent-model")
+
+    def test_economy_tier_never_overrides_vision_with_text_model(self):
+        # economy default "cheap" declares no vision trait -> fall back to defaults.vision
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "economy"), "vision-model")
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "economy", "auto"), "vision-model")
+
+    def test_expert_tier_override_only_when_trait_declared(self):
+        # "deep" declares traits.vision=true, so the expert override holds.
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "expert"), "deep")
+
+    def test_explicit_text_model_for_vision_fails_stably(self):
+        with self.assertRaisesRegex(ValueError, "不具备 vision 能力"):
+            model_registry.resolve_model_id_for_trait("vision", "auto", "cheap")
+        with self.assertRaisesRegex(ValueError, "不具备 vision 能力"):
+            model_registry.model_config_for_trait("vision", model_id="analysis-model")
+
+    def test_explicit_vision_model_is_accepted_with_trait_config(self):
+        self.assertEqual(
+            model_registry.resolve_model_id_for_trait("vision", "auto", "vision-model"), "vision-model"
+        )
+        config = model_registry.model_config_for_trait("vision", model_id="vision-model")
+        self.assertEqual(config["model"], "vision-model")
+        self.assertTrue(config["traits"]["vision"])
+
+    def test_vision_probe_failed_blocks_vision_routing(self):
+        model_registry.record_vision_probe(
+            "vision-model",
+            {"schema": "wuli.vision-probe.v1", "status": "failed", "reason": "endpoint returned HTTP 404"},
+        )
+        public = model_registry.model_registry_public()["models"]
+        entry = next(item for item in public if item["id"] == "vision-model")
+        self.assertEqual(entry["vision_probe"]["status"], "failed")
+        self.assertIn("404", entry["vision_probe"]["message"])
+        with self.assertRaisesRegex(ValueError, "视觉探针未通过"):
+            model_registry.model_config_for_trait("vision", model_id="vision-model")
+        with self.assertRaisesRegex(ValueError, "视觉探针未通过"):
+            model_registry.model_config_for_trait("vision", routing_tier="auto")
+
+    def test_vision_probe_passed_allows_vision_routing(self):
+        model_registry.record_vision_probe(
+            "vision-model",
+            {"schema": "wuli.vision-probe.v1", "status": "passed", "reason": "synthetic image probe passed"},
+        )
+        public = model_registry.model_registry_public()["models"]
+        entry = next(item for item in public if item["id"] == "vision-model")
+        self.assertEqual(entry["vision_probe"]["status"], "passed")
+        config = model_registry.model_config_for_trait("vision", model_id="vision-model")
+        self.assertEqual(config["model"], "vision-model")
+        self.assertEqual(
+            model_registry.model_config_for_trait("vision", routing_tier="auto")["model"], "vision-model"
+        )
+
+    def test_vision_probe_untested_does_not_block_but_reports_honestly(self):
+        public = model_registry.model_registry_public()["models"]
+        entry = next(item for item in public if item["id"] == "vision-model")
+        self.assertEqual(entry["vision_probe"]["status"], "untested")
 
 
 if __name__ == "__main__":

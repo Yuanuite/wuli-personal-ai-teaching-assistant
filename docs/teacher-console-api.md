@@ -22,7 +22,7 @@ X-Teacher-Console: 1
 
 | 方法与路径 | 作用 |
 |---|---|
-| `GET /api/health` | 服务状态、项目位置、选中 provider、版本、能力、数据位置和本地模型注册表 |
+| `GET /api/health` | 服务状态、项目位置、选中 provider、版本、能力、数据位置、本地模型注册表，以及 `runtime_identity` / `runtime_identity_snapshot` / `runtime_stale`（运行身份，见下） |
 | `GET /api/agent/providers` | 当前 Gateway provider 探测快照 |
 | `GET /api/agent/model-registry` | 读取本地模型注册表设置（不回显 API Key 明文） |
 | `GET /api/agent/runtime` | 读取本机 Codex/代理设置、可执行文件候选和本地代理探测结果 |
@@ -30,7 +30,7 @@ X-Teacher-Console: 1
 | `GET /api/jobs/<job-id>` | 轮询后台 Agent 作业 |
 | `GET /api/jobs?entry_id=<entry-id>` | 找回某题最新后台作业 |
 | `GET /api/entries` | 条目摘要及本地文件夹分组 |
-| `GET /api/entries/<entry-id>` | 单题题干、分层答案、复核状态、仿真、发布和下载信息 |
+| `GET /api/entries/<entry-id>` | 单题题干、分层答案、复核状态、仿真、发布、下载信息，以及可用时的私有 W3 教师审核快照 |
 | `GET /api/retrieval-review` | 读取本地固定检索集、复核统计和可勾选题目卡片；只含题干摘要与题图，不含教师解析 |
 | `GET /api/entry-file/<entry-id>/<relative>` | 查看条目内经过路径约束的文件 |
 | `GET /api/visualization/<entry-id>/physics-simulator.html` | 查看预审交互仿真 |
@@ -50,6 +50,21 @@ POST /api/agent/providers/probe
 ```
 
 该写操作同样要求 `X-Teacher-Console: 1`。请求体可含 `provider`、`timeout_seconds`（10–120 秒）和 `require_file_tools`。默认探测使用空临时目录与固定提示，不发送学生材料，也不允许读写文件；`require_file_tools=true` 时只允许在一次性目录写入固定的 `gateway-probe.txt`，并拒绝额外文件变化。返回值包含 `live_probe.status`、provider、原因、`capability` 和 `student_data_sent=false`。它比只检查版本/help 更能发现认证、模型版本、网络或 CLI 工具能力问题。
+
+### 运行身份与重启提示
+
+`GET /api/health` 额外返回：
+
+- `runtime_identity`：当前磁盘状态下的运行身份，含 `server_started_at`、
+  `code_digest`（Git revision + 工作树摘要）、`analysis_route`（mode 与
+  policy_version）、`route_config_digest`、`model_registry_digest`；
+- `runtime_identity_snapshot`：服务启动时捕获的同一结构；
+- `runtime_stale`：当前身份与启动快照在代码或任一配置摘要上不一致时为 `true`。
+
+运行身份只含摘要与路由摘要，不含 API Key、环境变量、学生路径或模型凭据。
+页面顶部据此显示只读“服务需重启”横幅，不自动重启、不阻断未保存编辑。视觉
+模型探针结果通过模型注册表公开接口暴露（`vision_probe.status`，取值
+`passed / failed / untested`）；`failed` 的模型不能被视觉路由选中。
 
 网页运行环境接口：
 
@@ -75,7 +90,7 @@ curl -fsS -H 'X-Teacher-Console: 1' -H 'Content-Type: application/json' \
 | 方法与路径 | 请求内容 | 作用 |
 |---|---|---|
 | `POST /api/upload?filename=<name>` | 原始文件字节 | 上传 JPG、PNG、WebP、HEIC、TIFF、BMP 或 PDF |
-| `POST /api/run-upload` | `filename`、可选 `ocr`、`subject`、`vision_capability` | 将已经上传的文件创建为知识库条目 |
+| `POST /api/run-upload` | `filename`、可选 `ocr`、`subject`、`vision_capability` | 将已经上传的文件创建为知识库条目；每个新条目随后自动排队 economy 档 `source.clean`，排队失败时保留 OCR 草稿并降级到人工题干复核 |
 | `POST /api/folders/rename` | `old_name`、`new_name` | 重命名本地同步视图中的文件夹 |
 
 文件夹重命名不会移动 `entries/<entry-id>/` 真源。
@@ -93,8 +108,8 @@ POST /api/entries/<entry-id>/<action>
 | `rename-entry` | `title` | 修改当前条目标题，直接更新 `record.json` 并刷新索引；最长 120 字符 |
 | `source-clean` | 可选 `routing_tier`、`model_id` | 创建 `source.clean` 后台作业，让 Agent 修正 OCR 草稿并从题干提取内容相关标题；默认走 economy 档 |
 | `approve-source` | `problem`、`reviewer`、`note` | 保存并批准正式题干；仍含待核对内容时由生命周期拒绝 |
-| `analyze` | 可选 `instruction`、`routing_tier` | 创建 `analysis.generate` 后台作业；模型返回结构化解析，程序确定性生成学生版、教师版、兼容版和解释 SVG；不会自动生成交互仿真。若存在与当前输入匹配的生成检查点，优先零 Token 恢复 |
-| `analyze-w3-shadow` | 可选 `routing_tier`、`model_id` | 在一个 `analysis.generate` 作业内运行 W3 拆题、定向召回、目标审计和交叉验证，只写私有 `w3-shadow-report.json` 与输入摘要检查点，不改教师复核答案；当前仅供离线验收 |
+| `analyze` | 可选 `instruction`、`routing_tier` | 创建 `analysis.generate` 后台作业；W3 生产候选成功时再按独立 W3R 配置选择渲染器，只有 VERIFIED Proof、评测证据与逐题 Gate 全过才可采用 W3R，否则沿用当前确定性 renderer。两者都生成学生版、教师版、兼容版和解释 SVG，并强制回到答案复核；不会自动生成交互仿真。若存在与当前输入匹配的生成检查点，优先零 Token 恢复 |
+| `analyze-w3-shadow` | 可选 `routing_tier`、`model_id`、`method_profile` | 在一个 `analysis.generate` 作业内运行 W3 拆题、定向召回、目标审计和交叉验证；`method_profile` 为 `high_school_standard`（默认）或 `olympiad_official`。Claim Evidence 开关启用时还运行断言 DAG、证书、真实阶段接口组合和有界认知环；Solver 与 claim verifier 必须都走 `claude` provider 且使用不同模型身份。只写私有 `w3-shadow-report.json`、紧凑 Candidate Archive 事件与输入摘要检查点，不改教师复核答案；当前仅供离线验收 |
 | `save-answer` | `layer`、`markdown`、可选 `base_digest` | 保存学生版或教师版 Markdown，并撤销旧答案批准 |
 | `refresh-difficulty-assessment` | 无 | 依据已复核题干和规范化标准解题路径重算六维客观难度量表；W3 路径优先使用 Solver、验证器与仲裁的解后关系做确定性投影，评分字段不进入或阻断解题主链。“题型距离与建模转换”按六级固定母题距离锚点计分，知识深度按不可绕过概念关键路径和 A–O 标杆校准；内部校准上限为 6，正式评分封顶 5，越过 5 必须有经验证的第一性重建链；知识整合按最小充分模块集去重；过程维按单一、串联、时序、同步、分支和嵌套全局六级组合拓扑评分；运算维按正确列式后的必要计算链评分；条件负担从决定性关系和关键审查节点而非审核标签数量推断。旧路径保守回退；没有标准路径时明确返回待评分 |
 | `save-difficulty-assessment` | `assessment` | 教师保存校准后的六维评分、核心判断、难度总结和校准依据；正式评分统一在 0–5 且步长为 0.1，教师结果优先但保留自动基线；不新增审批门禁 |
@@ -111,7 +126,18 @@ POST /api/entries/<entry-id>/<action>
 
 教师批准与隐私确认必须来自实际页面使用者或明确的人工操作。Agent 可以生成和返修，但不得代填批准或绕过 `409 blocked`。
 
+`GET /api/entries/<entry-id>` 的 `w3_shadow.claim_evidence` 是教师安全视图：包含完整暂定
+答案、全部 Claim、证书、未决义务、Challenge 和循环状态，供页面展开核对；运行时
+身份、内部指纹和原始语义审计不会返回。没有启用影子开关或旧报告不含证据账本时，
+该字段明确表示不可用，不从旧目标级 `pass` 推断为已证明。
+
 `routing_tier` 可取 `auto`、`economy`、`expert`，省略时为 `auto`；页面里的“自定义”会转换为 `routing_tier=auto` 并携带具体 `model_id`。请求也可携带 `model_id`：`auto` 表示沿用 Gateway 自动 provider/档位路由，或按注册表默认模式解析；其他值必须存在于 `student-error-library/config/model-registry.json`，且能力声明支持当前任务。后台作业公开结果可包含 `requested_tier`、`model_tier`、`model_id`、`model_display_name`、`model`、`usage` 与诚实降级说明 `routing_notice`；这些是成本审计信息，不代表内容已获批准。
+
+Claim Evidence 启用时，`model_id=auto` 分别从 `analysis.generate` 和 `claim.verify`
+解析 Solver 与 verifier；两者必须都是 `provider=claude` 且上游模型身份不同。当前
+默认映射为 `Deepseek-v4-pro` / `Deepseek-v4-flash`。Claim 每批最多 8 条；接口硬冲突
+由本地门禁直接拒绝，语义 verifier 不能覆盖。复杂竞赛题可能触发 Claude 默认单次
+0.50 美元上限，此时作业失败关闭，不自动提高预算。
 
 模型注册表是本地私有配置。`POST /api/agent/model-registry` 可以为 OpenAI-compatible API 或 Claude Code Agent 模型提交 `base_url`、`model` 与 `api_key`，后端会写入已忽略的 `student-error-library/config/model-registry.json`；再次读取时只返回 `api_key_saved` 和 `api_key_configured`，不会返回明文。Claude Code Agent 的地址与认证只注入该次子进程，不改写 `~/.claude/settings.json`。提交空 `api_key` 会保留旧 key，提交 `clear_api_key=true` 才会清除旧 key。
 

@@ -1,0 +1,11 @@
+{
+  "schema": "wuli.visual-facts.v1.fixture",
+  "reviewed_text": "",
+  "printed_facts": [],
+  "diagram_facts": [],
+  "handwriting": [],
+  "uncertainties": [
+    "image is too blurred to read the printed text",
+    "the body/arrow geometry is not reliably identifiable"
+  ]
+}

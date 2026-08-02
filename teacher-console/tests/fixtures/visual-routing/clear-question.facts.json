@@ -1,0 +1,33 @@
+{
+  "schema": "wuli.visual-facts.v1.fixture",
+  "reviewed_text": "A body of mass m slides on a frictionless plane under a constant horizontal force F. At t=0 the speed is v0=2 m/s. Find the speed at t=3 s.",
+  "printed_facts": [
+    "mass is m",
+    "plane is frictionless",
+    "force F is constant and horizontal",
+    "initial speed v0=2 m/s at t=0",
+    "the question asks for the speed at t=3 s"
+  ],
+  "diagram_facts": [
+    {
+      "id": "body",
+      "kind": "object",
+      "statement": "a rectangle labelled m on a horizontal line",
+      "confidence": 0.99
+    },
+    {
+      "id": "force",
+      "kind": "arrow",
+      "statement": "a horizontal arrow labelled F pointing right from the body",
+      "confidence": 0.99
+    },
+    {
+      "id": "surface",
+      "kind": "boundary",
+      "statement": "a horizontal line under the body",
+      "confidence": 0.99
+    }
+  ],
+  "handwriting": [],
+  "uncertainties": []
+}

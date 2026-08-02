@@ -757,6 +757,7 @@ async function health() {
       : `Agent 不可用：${unavailableAgentReason()}`;
     $("agent-health-detail").textContent = detail;
     $("agent-health-detail").title = detail;
+    renderRuntimeIdentity(data);
     renderAgentMessage();
   } catch {
     state.agent = null;
@@ -765,7 +766,29 @@ async function health() {
     element.classList.remove("online", "agent-unavailable");
     $("health-text").textContent = "本地服务未连接";
     $("agent-health-detail").textContent = "请确认教师工作台服务正在运行";
+    hideRuntimeIdentityBanner();
   }
+}
+
+function renderRuntimeIdentity(data) {
+  const identity = data?.runtime_identity;
+  const stale = data?.runtime_stale === true;
+  const banner = $("runtime-stale-banner");
+  if (!banner || !identity) {
+    hideRuntimeIdentityBanner();
+    return;
+  }
+  banner.classList.toggle("hidden", !stale);
+  const route = identity.analysis_route && identity.analysis_route.mode
+    ? `解析路由：${identity.analysis_route.mode}${identity.analysis_route.policy_version ? `（${identity.analysis_route.policy_version}）` : ""}`
+    : "解析路由：未知";
+  const info = `服务启动：${identity.server_started_at || "未知"}；${route}；代码摘要 ${String(identity.code_digest || "").slice(0, 8)}`;
+  $("runtime-identity-info").textContent = info;
+}
+
+function hideRuntimeIdentityBanner() {
+  const banner = $("runtime-stale-banner");
+  if (banner) banner.classList.add("hidden");
 }
 
 async function probeAgent() {
@@ -1415,6 +1438,7 @@ async function selectEntry(id) {
   syncTabAvailability(); enforceActiveTabPrerequisite(); renderProgress(); renderImages(); showSolution(state.solution); renderVisualization(); renderDownloads(); renderPublicationImages(); renderPublication(); renderEntries(); renderActiveJob();
   renderDifficultyAssessment();
   renderW3ReviewFocus();
+  renderClaimEvidenceLedger();
 }
 
 function renderW3ReviewFocus() {
@@ -1467,6 +1491,156 @@ function renderW3ReviewFocus() {
     }
     card.append(summary, check, audit);
     container.append(card);
+  }
+}
+
+function renderClaimEvidenceLedger() {
+  const panel = $("claim-evidence-ledger");
+  const evidence = state.current?.w3_shadow?.claim_evidence || {};
+  const available = evidence.status && evidence.status !== "not-run";
+  panel.hidden = !available;
+  panel.open = false;
+  $("claim-evidence-status").textContent = {
+    VERIFIED: "已验证",
+    PROVISIONAL: "暂定",
+    UNRESOLVED: "有冲突",
+    "not-available": "不可用",
+  }[evidence.aggregation_status] || (evidence.status === "failed" ? "验证失败" : "待验证");
+  const claims = Array.isArray(evidence.claims) ? evidence.claims : [];
+  const certificates = Array.isArray(evidence.certificates) ? evidence.certificates : [];
+  const unresolved = Array.isArray(evidence.unresolved_obligations) ? evidence.unresolved_obligations : [];
+  $("claim-evidence-counts").textContent = `${claims.length} 个断言 · ${certificates.length} 张证书 · ${unresolved.length} 项未决`;
+
+  const finalAnswers = $("claim-final-answers");
+  const unresolvedList = $("claim-unresolved-obligations");
+  const claimList = $("claim-ledger-items");
+  const certificateList = $("claim-certificate-items");
+  for (const container of [finalAnswers, unresolvedList, claimList, certificateList]) {
+    container.replaceChildren();
+  }
+
+  const empty = text => {
+    const value = document.createElement("p");
+    value.className = "muted claim-evidence-empty";
+    value.textContent = text;
+    return value;
+  };
+  const badge = (text, className = "") => {
+    const value = document.createElement("small");
+    value.className = `claim-evidence-badge ${className}`.trim();
+    value.textContent = text;
+    return value;
+  };
+  const addTextList = (parent, values) => {
+    const list = document.createElement("ul");
+    for (const value of values || []) {
+      const item = document.createElement("li");
+      item.textContent = value;
+      list.append(item);
+    }
+    if (list.children.length) parent.append(list);
+  };
+
+  for (const answer of evidence.final_answers || []) {
+    const card = document.createElement("article");
+    card.className = "claim-final-answer";
+    const head = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = (answer.target_ids || []).length
+      ? `目标 ${(answer.target_ids || []).join("、")}`
+      : answer.claim_id || "最终结论";
+    head.append(title, badge(answer.status || "candidate", answer.status || ""));
+    const statement = document.createElement("pre");
+    statement.textContent = answer.statement || "";
+    card.append(head, statement);
+    if ((answer.conditions || []).length) {
+      const conditionTitle = document.createElement("small");
+      conditionTitle.textContent = "成立条件";
+      card.append(conditionTitle);
+      addTextList(card, answer.conditions);
+    }
+    finalAnswers.append(card);
+  }
+  if (!finalAnswers.children.length) {
+    finalAnswers.append(empty("没有形成可审核的最终断言。"));
+  }
+
+  for (const obligation of unresolved) {
+    const item = document.createElement("article");
+    item.className = "claim-unresolved-item";
+    const head = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = obligation.claim_id
+      ? `断言 ${obligation.claim_id} · v${obligation.claim_version || 1}`
+      : obligation.id || "未决义务";
+    head.append(title, badge(obligation.type || "review", "unresolved"));
+    item.append(head);
+    if (obligation.message) {
+      const message = document.createElement("p");
+      message.textContent = obligation.message;
+      item.append(message);
+    }
+    if (obligation.falsification_test) {
+      const test = document.createElement("p");
+      test.textContent = `证伪检查：${obligation.falsification_test}`;
+      item.append(test);
+    }
+    addTextList(item, obligation.issues || []);
+    const obligationIds = obligation.obligation_ids || [];
+    if (obligationIds.length) {
+      const ids = document.createElement("small");
+      ids.textContent = `关联校验义务：${obligationIds.join("、")}`;
+      item.append(ids);
+    }
+    unresolvedList.append(item);
+  }
+  if (!unresolvedList.children.length) {
+    unresolvedList.append(empty(
+      evidence.aggregation_status === "VERIFIED"
+        ? "没有未决义务；仍需教师批准整题答案。"
+        : "当前报告没有结构化未决项，请按暂定状态人工复核。"
+    ));
+  }
+
+  for (const claim of claims) {
+    const item = document.createElement("details");
+    item.className = "claim-ledger-item";
+    const summary = document.createElement("summary");
+    const title = document.createElement("strong");
+    title.textContent = `${claim.id} · v${claim.version} · ${claim.kind}`;
+    summary.append(title, badge(claim.status || "candidate", claim.status || ""));
+    const statement = document.createElement("pre");
+    statement.textContent = claim.statement || "";
+    item.append(summary, statement);
+    const meta = document.createElement("p");
+    const dependencies = (claim.depends_on || []).join("、") || "无";
+    const targets = (claim.target_ids || []).join("、") || "未绑定";
+    meta.textContent = `目标：${targets}；依赖：${dependencies}`;
+    item.append(meta);
+    if ((claim.conditions || []).length) {
+      addTextList(item, claim.conditions);
+    }
+    claimList.append(item);
+  }
+  if (!claimList.children.length) {
+    claimList.append(empty("没有可显示的断言。"));
+  }
+
+  for (const certificate of certificates) {
+    const item = document.createElement("details");
+    item.className = "claim-certificate-item";
+    const summary = document.createElement("summary");
+    const title = document.createElement("strong");
+    title.textContent = `${certificate.claim_id} · ${certificate.check_type}`;
+    summary.append(title, badge(certificate.verdict || "unknown", certificate.verdict || ""));
+    const result = document.createElement("pre");
+    result.textContent = certificate.normalized_result || "";
+    item.append(summary, result);
+    addTextList(item, certificate.decisive_checks || []);
+    certificateList.append(item);
+  }
+  if (!certificateList.children.length) {
+    certificateList.append(empty("没有可显示的验证证书。"));
   }
 }
 
@@ -1901,6 +2075,8 @@ function isQueuedJobResponse(result) {
 
 function jobActionLabel(action) {
   return {
+    "source-clean": "自动整理 OCR 题干",
+    "source.clean": "自动整理 OCR 题干",
     analyze: "生成学生版与教师版解析",
     "analysis.generate": "生成学生版与教师版解析",
     "request-revision": "按教师意见修改解析",
@@ -1933,7 +2109,7 @@ function jobApiUrl(job) {
 
 function agentActionButtons() {
   return [
-    "run-analysis", "save-answer", "request-revision", "approve-answer",
+    "approve-source", "run-analysis", "save-answer", "request-revision", "approve-answer",
     "build-visualization", "send-visualization-message", "approve-visualization", "finish-entry",
   ].map($).filter(Boolean);
 }
@@ -2147,9 +2323,22 @@ function setupUpload() {
     try {
       const upload = await api(`/api/upload?filename=${encodeURIComponent(state.file.name)}`, { method: "POST", body: state.file, headers: { "Content-Type": state.file.type || "application/octet-stream" } });
       const report = await api("/api/run-upload", { method: "POST", body: { filename: upload.filename, vision_capability: "unavailable" } });
-      const id = report.work_orders?.[0]?.entry_id; toast("题目已上传，等待题干复核"); state.file = null;
+      const id = report.work_orders?.[0]?.entry_id;
+      const uploaded = report.results?.find(item => item.entry_id === id);
+      const sourceClean = uploaded?.source_clean;
+      toast(sourceClean?.status === "queued" ? "OCR 已完成，正在自动整理题干" : "题目已上传，等待题干复核");
+      state.file = null;
       $("upload-file").classList.add("hidden"); input.value = ""; document.querySelector(".upload-card").open = false;
       await loadEntries(id);
+      if (isQueuedJobResponse(sourceClean)) {
+        beginQueuedJob(sourceClean.job, {
+          action: "source-clean",
+          entryId: id,
+          success: "题干已自动整理，请对照原图复核后确认",
+        });
+      } else if (sourceClean?.status === "not-started" || sourceClean?.status === "blocked") {
+        toast(sourceClean.errors?.join("；") || "自动整理题干未启动，请人工复核", true);
+      }
     } catch (error) { toast(error.message, true); }
     finally { button.disabled = !state.file; button.textContent = "上传并开始处理"; }
   });

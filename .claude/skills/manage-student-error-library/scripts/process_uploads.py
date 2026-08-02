@@ -154,6 +154,8 @@ def resolve_review_options(
 
 def review_entry_source(entry: Path, options: dict) -> dict:
     mode = options["mode"]
+    if mode == "registry":
+        return run_registry_visual_extract(entry, options)
     if mode == "adapter":
         if not options["command"]:
             return source_review.prepare_review(
@@ -171,6 +173,60 @@ def review_entry_source(entry: Path, options: dict) -> dict:
     return source_review.prepare_review(entry, "reasoning model has no image capability; human visual review required")
 
 
+def run_registry_visual_extract(entry: Path, options: dict) -> dict:
+    """Registry-routed visual extraction through the teacher-console thin CLI.
+
+    The thin entry runs the same orchestration as the web upload path and
+    stages ``visual-facts.json`` / ``visual-facts-gate.json`` / source-review
+    artifacts; it never grants source approval. process_uploads stays
+    deterministic — it only invokes the thin entry, it never builds provider
+    requests itself.
+    """
+    root = options.get("library_root")
+    thin = root / "teacher-console" / "scripts" / "entry_visual_extract.py" if root else None
+    if not thin or not thin.is_file():
+        packet = source_review.prepare_review(
+            entry, "registry visual extract requested but the thin CLI entry is missing"
+        )
+        packet["method"] = "registry-visual-extract"
+        kb.write_json(entry / "source-review.json", packet)
+        return packet
+    command = [
+        sys.executable,
+        str(thin),
+        entry.name,
+        "--library",
+        str(root / "student-error-library"),
+        "--tier",
+        str(options.get("tier", "auto")),
+    ]
+    completed = subprocess.run(command, text=True, capture_output=True, check=False)
+    if completed.returncode:
+        reason = (
+            completed.stderr.strip()
+            or completed.stdout.strip()
+            or f"registry visual extract failed (exit {completed.returncode})"
+        )
+        packet = source_review.prepare_review(entry, reason[:500])
+        packet["method"] = "registry-visual-extract"
+        packet["adapter_error"] = reason[:500]
+        kb.write_json(entry / "source-review.json", packet)
+        return packet
+    try:
+        summary = json.loads(completed.stdout.strip().splitlines()[-1])
+    except (json.JSONDecodeError, IndexError):
+        summary = {}
+    if summary.get("status") != "completed":
+        reason = str(summary.get("error") or "registry visual extract did not complete")[:500]
+        packet = source_review.prepare_review(entry, reason)
+        packet["method"] = "registry-visual-extract"
+        kb.write_json(entry / "source-review.json", packet)
+        return packet
+    # The thin entry already staged the visual-facts artifacts; the staged
+    # source-review.json is the canonical report for the work order.
+    return kb.load_json(entry / "source-review.json", {})
+
+
 def start(
     root: Path,
     input_path: Path,
@@ -186,6 +242,8 @@ def start(
     review_options = resolve_review_options(
         root, review_mode, vision_capability, visual_review_command, adapter_locality
     )
+    review_options["library_root"] = root
+    review_options["tier"] = "auto"
     inputs = kb.discover_inputs(input_path)
     results: list[dict] = []
     for item in inputs:
@@ -884,7 +942,11 @@ def main() -> int:
     start_parser.add_argument("--ocr", choices=("auto", "vision", "command", "none"), default="auto")
     start_parser.add_argument("--ocr-command")
     start_parser.add_argument("--subject", default="高中物理")
-    start_parser.add_argument("--source-review-mode", choices=("auto", "agent", "human", "adapter"), default="auto")
+    start_parser.add_argument(
+        "--source-review-mode",
+        choices=("auto", "agent", "human", "adapter", "registry"),
+        default="auto",
+    )
     start_parser.add_argument("--vision-capability", choices=("auto", "available", "unavailable"), default="auto")
     start_parser.add_argument("--visual-review-command")
     start_parser.add_argument("--adapter-locality", choices=("local", "remote"))

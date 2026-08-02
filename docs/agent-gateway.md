@@ -27,11 +27,14 @@ Gateway 只负责 provider 探测、隔离执行、候选文件运输、失败�
 1. 页面提交任务并立即获得 `202` 与 job ID；后台作业写入 `student-error-library/.cache/agent-jobs/`。
 2. Gateway 按任务 `input_paths` 白名单，把必需的普通文件复制到系统临时目录中的隔离候选区；不会整目录复制条目，也不会跟随符号链接。
 3. 原始题图、流程/批准记录、发布草稿和无关内部文件不会放入 Agent 可见候选区；只提供教师已经复核的题干、当前答案/模型、必要元数据和只读规则副本。首次解析、答案返修和可视化建模还可获得一份经过隐私裁剪和字符预算限制的 `.agent-context/knowledge-evidence.json`；缺失时任务正常继续。
-4. provider 只能生成任务声明的白名单文件。批准记录、流程记录、原始题图和其他条目均不在写集合中。
-5. 候选内容通过答案结构或物理模型验证，并确认 canonical 条目在任务期间未变化后，才在单题事务锁内执行带回滚的白名单批量提升；这不宣称文件系统支持目录级原子事务。
-6. 生命周期总控重建索引或确定性仿真，并把结果送回教师复核；Agent 不能自行批准。
+4. Gateway 在调用 provider 前先校验任务路径契约；若某个允许输出被禁止路径覆盖，直接返回 `task_contract_invalid`，不调用模型、不消耗推理预算。
+5. provider 只能生成任务声明的白名单文件。批准记录、流程记录、原始题图和其他条目均不在写集合中。
+6. 候选内容通过答案结构或物理模型验证，并确认 canonical 条目在任务期间未变化后，才在单题事务锁内执行带回滚的白名单批量提升；这不宣称文件系统支持目录级原子事务。
+7. 生命周期总控重建索引或确定性仿真，并把结果送回教师复核；Agent 不能自行批准。
 
-`analysis.generate` 采用专门的 `wuli.analysis.v2` 契约：模型只返回一份学生版正文、教师审计增量、私有方法自检、五类教学元数据和 2–6 个图示节点。方法自检必须比较可行路径并选择最短的高中范围解法；学生版缺少“最短主线”、超过五步或使用积分、导数等超纲方法时会被确定性拒绝。Gateway 在无文件工具模式下取得该对象；`analysis_artifacts.py` 再确定性合成教师版与兼容版、只合并允许的记录字段，并生成安全的 `assets/explanatory.svg`。
+`analysis.generate` 采用专门的 `wuli.analysis.v2` 契约：模型只返回一份学生版正文、教师审计增量、私有方法自检和五类教学元数据，废弃兼容字段 `diagram` 必须为 `null`。方法自检必须比较可行路径并选择最短的高中范围解法；学生版缺少“最短主线”、超过五步或使用积分、导数等超纲方法时会被确定性拒绝。Gateway 在无文件工具模式下取得该对象；`analysis_artifacts.py` 再确定性合成教师版与兼容版、只合并允许的记录字段，不再生成流程图。
+
+答案候选形成后，独立 `diagram.scene` 原子任务使用 `wuli.physics-diagram-scene.v1`：MiMo 只提供已复核 `visual-facts.json`，本地把周期场、空间投影和带电粒子义务编译成 `wuli.diagram-obligations.v1`，其中包含最多三个视图槽位和 `wuli.physics-diagram-component-catalog.v1` 语义组件切片。DeepSeek 输出的是组件组合配方、标签、强调重点及显式省略账本；`physics_diagram_assets.py` 在存在 `physics-model.json` 时，用事件—轨迹真源覆盖自由坐标，并修正边界顺序。`physics_diagram.py` 的硬门只裁决来源一致性、拓扑一致性、模型一致性和 SVG 安全/来源；周期图标签、投影说明、排版和美观作为 `warnings` 进入 `soft_revision` 提示包，不再触发整图阻断。提示包规定 MiMo/教师只给调整方向、DeepSeek Flash 最多执行一轮受限 Patch，并冻结物理模型、视觉事实和编译轨迹点。首轮硬门失败仍只允许一次受限 JSON Patch；越界、无进展、再次失败或安全错误立即停止。答案与图仍按组合事务处理，最终失败不会退化成流程图。`logic-flowchart` 只存在于显式可选插件接口。
 
 若条目已经存在 `physics-model.json`，重新生成解析时必须把该模型作为只读结构化上下文一并送入候选区。模型中的事件分支和答案语义用于一致性校验：候选答案若与其明确的选项判断冲突会被拒绝；已有物理过程 SVG 会被保留，不能被通用逻辑节点流程图覆盖。该门禁能阻止“答案返修时遗漏已建模后续事件”的回归，但不能替代无模型题目的独立语义 verifier。
 
@@ -45,6 +48,7 @@ provider 在没有产生候选修改前快速失败时，Gateway 才会尝试下
 
 | failure_type | 含义 |
 |---|---|
+| `task_contract_invalid` | Gateway 任务自身的路径契约自相矛盾，例如允许输出又被 denied pattern 覆盖；provider 调用前失败 |
 | `provider_unavailable` | 没有可用 provider 或隐私门禁排除了全部候选 |
 | `provider_timeout` / `provider_rate_limited` / `provider_budget_exceeded` / `provider_execution_failed` | provider 超时、限流、超过单次费用上限或非零退出 |
 | `structured_output_schema_invalid` | provider 在推理前拒绝结构化输出 Schema；此类确定性配置错误不计为已消耗推理预算，修复契约前不应直接重试 |
@@ -100,6 +104,20 @@ Gateway 会探测 CLI 版本及所需参数。普通文件任务中，`codex` �
 
 版本/help 探测只证明命令兼容，不证明认证、模型、网络和工具能力可用。`POST /api/agent/providers/probe` 默认执行不含学生数据、不可读写文件的主动连通探测；传入 `require_file_tools=true` 时，会在一次性空目录内要求 CLI 只写一个固定探测文件，并拒绝任何额外文件变化。模型注册表的 Codex/Claude 测试默认使用这一文件能力探测，避免把“能回复文本”误判为“能完成 Agent 文件任务”。探测结果在 health 端点中报告，但不再将 provider 整体标记为不可用。冷却已从 provider 级下移到任务级（`AgentJobManager`）：任务失败后，同一 (题目, 操作类型) 组合在默认 300 秒内不可重试，可通过 `TEACHER_CONSOLE_AGENT_FAILURE_COOLDOWN_SECONDS` 调整；但同一 provider 可继续服务其他题目。
 
+视觉模型另有独立探针（`wuli.vision-probe.v1`，见 `docs/visual-review-integration.md`），与文本连通探测分开持久化：文本探针通过而图片请求 404/鉴权/非法 JSON 时，模型公开状态为 `vision_probe=failed`，并被排除出 `vision` 路由，绝不显示为“视觉测试通过”。
+
+## Trait 路由（fail-closed）
+
+`resolve_model_id_for_trait` / `model_config_for_trait` 是视觉（`vision`）与
+Agent（`agent`）能力的唯一解析入口，规则：
+
+- 解析结果必须声明目标 trait（`traits.<trait>=true`）；
+- cost tier（economy/expert）覆盖仅在候选模型声明该 trait 时生效；`vision +
+  economy` 不会解析到纯文本模型，而是回退到 `defaults.vision`；
+- 显式指定不具备该 trait 的模型返回稳定错误，不在 provider 调用前静默降级；
+- `vision` 路由额外要求 `vision_probe.status != failed`（`untested` 不阻断，
+  生产提取仍在端点不兼容时失败关闭）。
+
 ## 运行时、模型与工具不是同一层
 
 `provider` 是执行请求的运行时；`model` 是该运行时连接的上游模型；`kind` 决定本次任务是否开放工具。三者不能互相推断：
@@ -108,6 +126,7 @@ Gateway 会探测 CLI 版本及所需参数。普通文件任务中，`codex` �
 |---|---|---|---|
 | `source.clean` | 文件候选 | 受限文件工具；不自动加载完整 Skill | 返回允许文件的候选内容；不能运行本地工具 |
 | `analysis.generate` | `wuli.analysis.v2` 结构化对象 | **禁用工具**；规则、题干与裁剪后的 RAG 证据按预算内联 | 一次结构化请求 |
+| `diagram.scene` | 首轮 `wuli.physics-diagram-scene.v1`；一次修订为 `wuli.physics-diagram-scene-patch.v1` | **禁用工具**；只读题干、MiMo 视觉事实、学生答案、可选物理模型；修订轮额外读取隔离候选和结构化诊断 | 本地应用受限 JSON Patch、语义门控与 SVG 渲染；禁止整图重试和流程图 fallback |
 | `answer.revise` | 文件候选 | 受限文件工具；expert 档可读总控 Skill | 返回允许文件的候选内容；不能运行本地工具 |
 | `visualization.model` | `physics-model.json` 候选 | 受限文件工具，可读仿真 Skill 与 schema | 可生成 JSON 候选；不能自行运行构建器或浏览器 |
 
@@ -212,7 +231,43 @@ adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr。
 `teacher-console/tests/fixtures/fake_agent_adapter.py` 与
 `teacher-console/e2e/fake_agent_adapter.py`。前者覆盖 Gateway/作业单元测试，后者驱动真实
 HTTP、生命周期和浏览器流程；只更新其中一个会造成单元测试通过而 E2E 停在
-`needs-analysis-and-answer`。提交前需同时运行 Python 测试和 3 条隔离 E2E。
+`needs-analysis-and-answer`。提交前需同时运行 Python 测试和 4 条隔离 E2E。
+
+W3 Claim Evidence 影子层使用内部结构化契约 `wuli.claim-verify.v2`。语义 verifier
+只接收当前题干、待验证 Claim、直接依赖和对应验证义务的最小快照，不读取历史答案
+正文；Gateway 运行时绑定真实 provider/model 身份和输入摘要，Agent 自报的身份或
+`verified` 状态不被采信。相同输入检查点可零 Token 重放；证书冲突、`insufficient`、
+自我验证或上下文未隔离都会失败关闭。该阶段仍属于一个 `analysis.generate` 影子作业，
+不新增审批、交付或发布权限。Claim Evidence 启用时，Solver 与 verifier 都必须使用
+`claude` provider，但由模型注册表分别解析 `analysis.generate` 与 `claim.verify`；
+两个上游模型身份必须不同，默认是 `Deepseek-v4-pro` 与 `Deepseek-v4-flash`。Solver
+使用 `wuli.solution-reasoning.v2.1` 声明真实阶段接口；verifier 同时审核 Claim 和需要
+语义确认的接口变换。Claim 按最多 8 条分批，以限制单次结构化调用体积；启用该链路后
+默认最多同时运行 2 批，可用
+`TEACHER_CONSOLE_W3_CLAIM_VERIFY_CONCURRENCY=1` 回滚串行。批次结果按原索引聚合，
+检查点在全部批次结束后统一写入，防止缓存写入造成兄弟事务的
+`canonical_changed`；Gateway 的 canonical 摘要检查不放宽。阶段遥测区分总耗时、
+provider 耗时、框架开销和批次编号。不再重复运行旧目标 verifier、Solver B 和
+仲裁器。Claude 单次默认费用上限仍为 0.50 美元；复杂竞赛题若超限会失败关闭，
+只有显式环境配置才提高该上限。
+
+Evidence Agent MVP-C 同样复用 `analysis.generate` 作为 provider runtime kind，但任务
+显式标记 `evidence_stage=evidence.build`，当前使用 `wuli.evidence-reflection.v2`
+结构化契约。候选池由本地 `single-route-bypass` 确定性生成；模型只能把候选
+`evidence_id` 逐条绑定到 RetrievalNeed facet、检查当前条件与每项 forbidden conflict；
+hard conflict 必须绑定已选择证据，未选择候选不能连坐否决 need。Gateway 不授予文件工具，任务
+`requires_change=false`，materializer 只返回内存 payload。最终 `sufficient` /
+`insufficient` / `not_needed` / `unavailable` 由本地 Coverage Gate 判定，不采信模型
+自报状态；该入口当前不接入 W3 生产路由。
+
+生产解析路由由 `wuli-analysis-adaptive-v1` 控制，配置位于
+`student-error-library/config/w3-production-routing.json`。`mode=default` 时，只有
+确定性复杂度初筛命中的题进入 W3；低风险题仍调用 W2。W3 的结构化阶段、候选验证、
+调用上限、延迟上限或教师核对卡门禁任一失败时，由 `w3_failure_policy` 决定行为：
+`stop` 直接结束且记录 `W3 → none`，避免为同一复杂题重复支付 W2 求解；旧的
+`fallback-w2` 才会在 canonical 未被污染的前提下调用 W2。将模式改为 `off` 即可让
+所有题由 W2 接管；配置在每次解析任务开始时读取，无需改变 provider、Gateway 权限
+或批准流程。
 
 `TEACHER_CONSOLE_AGENT_COMMAND` 旧模板仍兼容，但 prompt 可能出现在进程参数中，且无法提供结构化能力声明；新接入不要继续采用它。
 
@@ -234,6 +289,13 @@ export TEACHER_CONSOLE_AGENT_API_EXPERT_MODEL="STRONGER_MODEL_NAME"   # 可选
 export TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS=300
 export TEACHER_CONSOLE_AGENT_PROVIDER=openai-compatible
 ```
+
+DeepSeek 兼容端点可以直接作为该 provider 使用，不需要经过 Claude Code。对
+`deepseek-v4-flash` 的 W3 Solver，adapter 自动把大型结构化输出拆成“核心结论”和
+“阶段接口”两个 JSON 请求，合并后再执行完整 schema 与领域校验；API 返回的 token
+用量按两次请求相加。直接 API 只解决传输与结构稳定性，不等于模型内容已经通过：
+模型注册表仍须以冻结候选、隔离标准答案审核和独立正确率门禁决定是否授予
+`analysis.generate` 生产能力。
 
 页面提供 `auto`、`economy`、`expert` 三种任务档位。`auto` 对解析与答案返修使用标准模型，对 `visualization.model` 在配置存在时使用深度模型；显式档位缺少对应模型时使用标准模型，并在作业结果记录 `routing_notice`。档位只影响 provider 模型与最小上下文，不改变范围校验、教师批准或生命周期门禁。使用更强模型重跑必须创建新作业；系统的一次性内容纠正也会创建新的隔离候选，不在失败候选目录上继续叠加修改。
 

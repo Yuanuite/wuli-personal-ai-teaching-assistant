@@ -64,10 +64,89 @@ python3 teacher-console/scripts/rag_effectiveness_report.py \
 
 默认只读。仅在样本有代表性时加 `--record`，将报告保存为全库级 `evolve.observation.rag`。`comparison_ready=false` 表示同一任务类型的检索组和历史无检索组尚未分别达到最小样本量，不能据此调整策略。具体门槛见 [`evolve-roadmap.md`](evolve-roadmap.md)。
 
-恢复 W3 上线验收前，先看
-[`rag-completion-work-tree.md`](rag-completion-work-tree.md)。当前必须等待至少五道
-从未进入旧 W3 manifest 的教师复核题；该文档固定了真值先冻结、同条件 W2/W3、
-生产灰度和回滚验收的不可倒置顺序。旧题 replay 只能诊断，不能打开生产门禁。
+统一核心求解是当前生产默认。活动配置为
+`student-error-library/config/analysis-production-routing.json`：
+
+- `mode: core-first`：一次核心求解 + 确定性 Core Gate/教学渲染，当前 90 秒硬超时；
+- `mode: legacy-adaptive`：应急回滚到旧 W2/W3 自适应路由。
+
+核心失败不会自动再跑 W2，也不会因静态图未生成而把正确答案整体回滚。竞赛题调用方
+必须传 `method_profile=olympiad_official`；普通课堂默认 `high_school_standard`。
+
+旧 W3 上线验收记录与不可倒置顺序见
+[`rag-completion-work-tree.md`](rag-completion-work-tree.md)。W4 新鲜 holdout、生产
+灰度与补充官方竞赛题复核均已完成；`wuli-analysis-adaptive-v1` 现仅为回滚解析路由。
+复杂题进入 W3，低结构风险题保持 W2，W3 门禁失败时自动回退 W2。旧题 replay 仍
+只能诊断，不能作为今后的策略变更证据。
+
+旧路由的二级开关位于 `student-error-library/config/w3-production-routing.json`：
+
+- `mode: default`：复杂题 W3、低风险题 W2，并保留自动回退；
+- `mode: off`：紧急回滚，全部由 W2 接管；
+- `mode: gray`：只允许 `gray_entry_ids` 内的复杂题进入 W3，用于新策略再次灰度。
+
+服务在每次解析任务开始时重新读取配置。回滚后应用同一复杂题探针应记录
+`route=w2`、`reason=w3-production-disabled`；恢复后应记录 `route=w3`、
+`reason=deterministic-complexity-screen`。切换不改变 provider 配置、候选隔离或答案
+复核门禁。
+
+W3R 是 W3 成功后的独立渲染选择器，活动配置路径为
+`student-error-library/config/w3r-production-routing.json`；文件不存在或配置非法时
+等价于 `mode: off`。字段模板见 `docs/w3r-routing.example.json`。`shadow` 只记录结果，
+`gray` 还要求条目进入白名单、至少两道同 Brief 配对题完成教师盲审且六项忠实性硬门禁
+全过；`default` 额外要求至少 5 道、12 个目标的新鲜 holdout、教师可读性偏好占优且
+修改率不劣化。紧急回滚只把 W3R 配置切为 `off`；W3 结果、Proof Package、trace 和失败
+用量均保留，下一次候选物化使用当前确定性 renderer。
+
+Claim Evidence 多批验证默认最大并发为 2。若观察到 Claude 限流、机器资源紧张或需
+做串行对照，可在启动教师工作台前设置：
+
+```bash
+export TEACHER_CONSOLE_W3_CLAIM_VERIFY_CONCURRENCY=1
+```
+
+删除该变量恢复默认 2。允许值只有 1 或 2，其他值在 provider 调用前失败。排障时查看
+`w3-shadow-report.json.stages` 的 `batch_index`、`duration_seconds`、
+`provider_seconds` 与 `overhead_seconds`；并发总墙钟时间以
+`report.claim_evidence_shadow.semantic_audit.duration_seconds` 为准，不能把各批耗时
+直接相加当作整题耗时。
+
+盲审包与证据可用以下只读命令重建；私钥应写到临时目录并在 A/B 偏好锁定后才交给审核人：
+
+```bash
+python3 -B teacher-console/scripts/w3r_shadow_benchmark.py \
+  teacher-console/tests/fixtures/w3r/verified-multi-target.json \
+  teacher-console/tests/fixtures/w3r/verified-condition-matrix.json \
+  --blind-packet-out /tmp/w3r-packet.json \
+  --blind-key-out /tmp/w3r-private-key.json \
+  --evidence-out /tmp/w3r-evidence.json
+```
+
+断言级正确性证据链的只读诊断命令：
+
+解题 loop 的原子任务、Challenge 回跳、有限联想和熔断边界见
+[`解题loop.md`](解题loop.md)；下面命令只读，不会修改 canonical 答案、审批或学生端产物。
+
+```bash
+# 同题、同模型、同证据、固定种子的认知环 off/on 消融；不调用外部 provider
+python3 -B teacher-console/scripts/correctness_cognitive_loop_ablation.py --markdown
+
+# 旧 W3 实验只读投影；不写条目，不复用旧题宣称生产泛化
+python3 -B teacher-console/scripts/correctness_replay_diagnostic.py \
+  --experiment student-error-library/evals/w3-shadow-w4-replay-1 --markdown
+
+# 新鲜样本门禁；当前不足时只报告状态，不创建实验目录
+python3 -B teacher-console/scripts/w3_shadow_benchmark.py \
+  --experiment student-error-library/evals/w3-shadow-w4-fresh-1 \
+  status --holdout-count 5
+```
+
+`correctness_evidence_benchmark.py` 还需要由隔离 claim-evidence E2E 生成的
+`claim-evidence-summary.json`，用于联合计算证书覆盖、故障检出、回跳和重复率。完整命令与固定结果
+见 [`技术执行计划书.md`](技术执行计划书.md) 和
+[`reports/correctness-evidence-metrics-v1.md`](reports/correctness-evidence-metrics-v1.md)。
+开发时可为单独进程设置 `TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW=1` 查看私有账本，
+但该变量默认关闭、不是生产资格开关，也不会替代教师答案批准。
 
 建立并运行固定检索评测集：
 
@@ -84,7 +163,7 @@ python3 teacher-console/scripts/retrieval_benchmark.py \
 
 答案生成或检索逻辑变更后，按三层分别验收，不能用一项指标代替另一项：
 
-1. **生成契约**：验证 `wuli.analysis.v2` 的私有方法自检、学生版固定结构、最短主线、五步上限和超纲方法拒绝；同步运行单元测试与 3 条 E2E。
+1. **生成契约**：验证 `wuli.analysis.v2` 的私有方法自检、学生版固定结构、最短主线、五步上限和超纲方法拒绝；同步运行单元测试与 4 条 E2E。
 2. **检索能力**：在同一批 `approved` 固定集上比较改前/改后的 Hit@k、Recall@k、MRR、空结果率和 `teacher_phrase` 分类。Hit@5 达到 1 只表示每个查询至少命中一个相关条目；多相关条目仍可能漏召回，必须继续看 Recall@5。
 3. **教学质量**：检索指标提升只证明“更容易找到证据”，不能证明答案因此更短或更正确。需要固定模型、档位、prompt 和题目做成对生成，再比较确定性校验、Evaluator、教师修改量、首轮采用率与最终批准。
 
@@ -193,7 +272,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-默认运行 3 条隔离场景：基础交付、交互可视化生成/复核/交付、公开题图脱敏/预览/本地发布。
+默认运行 4 条隔离场景：基础交付、交互可视化生成/复核/交付、公开题图脱敏/预览/本地发布，以及断言级正确性证据影子。
 可视化场景实际操作仿真控件，并要求构建、运行时检查和 `interactive_visualization` 评价通过；
 公开发布场景实际绘制遮挡、确认原图字节未变，并扫描公开树中的私有引用。基础交付和可视化场景还会核对
 `delivery-manifest.json`、`evaluator.py` 领域评价与 `pipeline_quality_eval.py` 的质量、Token 和耗时诊断。报告位于
@@ -212,7 +291,7 @@ python3 -m pytest teacher-console/tests/ -q
 npm run test:e2e
 ```
 
-若 CI 的单元测试通过而 3 条 E2E 同时停在解析阶段，优先查看作业的 `failure_type`、`message`
+若 CI 的单元测试通过而 4 条 E2E 同时停在解析阶段，优先查看作业的 `failure_type`、`message`
 和保存的临时工作区。`adapter_protocol_error`（例如 `student_solution must be a string`）
 通常表示 E2E adapter 仍在返回旧式 `files`，并非生命周期或浏览器本身发生三处独立故障。
 
@@ -338,6 +417,10 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 
 ### 视觉边车环境变量
 
+> 默认视觉路由已是模型注册表 `defaults.vision`（`source_review.mode=registry`）；
+> 下表仅用于显式启用旧边车兼容路径（`--source-review-mode adapter` 或薄 CLI
+> `--legacy-adapter`）。
+
 | 变量 | 默认值 | 说明 |
 |---|---|---|
 | `VISUAL_REVIEW_BASE_URL` | 无 | OpenAI-compatible 服务的 `/v1` 基地址 |
@@ -347,6 +430,37 @@ python3 .claude/skills/manage-student-error-library/scripts/process_uploads.py \
 | `VISUAL_REVIEW_ALLOW_REMOTE` | 未设置 | 非回环端点必须明确设为 `true` |
 
 本地边车冒烟命令和返回 JSON 规范见 [`visual-review-integration.md`](visual-review-integration.md)。
+
+### 视觉模型探针
+
+视觉路由 fail-closed：候选模型必须声明 `traits.vision=true`，且
+`vision_probe.status != failed`。探针使用合成图片（禁止真实学生图）：
+
+```bash
+/Users/qingyuan/miniconda3/bin/python3 -B -c "
+import model_registry as mr
+from visual_extraction import run_vision_probe
+from pathlib import Path
+cfg = mr.model_config_for_trait('vision', model_id='mimo-v2.5-flash')
+result = run_vision_probe(cfg, 'teacher-console/tests/fixtures/visual-routing/clear-question.png',
+                          urlopen=__import__('urllib.request', fromlist=['urlopen']).urlopen,
+                          allow_remote=True)
+mr.record_vision_probe(cfg['id'], result)
+print(result['status'], result.get('reason'))
+"
+```
+
+### 单元测试运行时（固定入口）
+
+从项目根目录任意位置运行工作树验收单测，不依赖偶然进入 `teacher-console/`：
+
+```bash
+/Users/qingyuan/miniconda3/bin/python3 -B teacher-console/scripts/run_tests.py \
+  --python /Users/qingyuan/miniconda3/bin/python3
+```
+
+`--all` 运行全部单元测试；也可追加单个测试文件名。错误解释器会快速报告缺失
+依赖（Pillow 等）。
 
 ## 中间状态排查
 
