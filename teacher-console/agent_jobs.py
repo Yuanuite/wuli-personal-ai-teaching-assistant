@@ -227,7 +227,7 @@ class AgentJobManager:
                 record.update({
                     key: value
                     for key, value in metadata.items()
-                    if key in {"routing_tier", "model_id", "concurrency_group", "provider", "batch_id"}
+                    if key in {"routing_tier", "model_id", "concurrency_group", "provider", "batch_id", "route_snapshot"}
                 })
             self.active_by_entry[entry_id] = job_id
             self.pending_callbacks[job_id] = callback
@@ -544,6 +544,7 @@ class AgentJobManager:
                 "concurrency_group",
                 "provider",
                 "batch_id",
+                "route_snapshot",
                 "priority",
                 "status",
                 "created_at",

@@ -66,6 +66,18 @@ POST /api/agent/providers/probe
 模型探针结果通过模型注册表公开接口暴露（`vision_probe.status`，取值
 `passed / failed / untested`）；`failed` 的模型不能被视觉路由选中。
 
+### 作业路由快照与视觉调用账本
+
+- 每个 Agent 作业入队时冻结 `wuli.route-snapshot.v1`（kind、requested/resolved
+  model、provider、upstream model、模型注册表+生产路由摘要 digest、创建时间），
+  通过 `GET /api/jobs/<id>` 的 `route_snapshot` 字段公开。回调执行前校验 digest：
+  入队后配置变化返回 `route_snapshot_stale` 失败关闭，绝不静默更换模型。
+- 每次视觉提取（网页上传或 CLI）把脱敏后的 `wuli.visual-extract-outcome.v1`
+  写入条目私有 `visual-extract-request.json`（schema、模型/provider、耗时、
+  输入/输出指纹、失败分类；不含密钥、data URL 或绝对临时路径）。同一
+  source fingerprint 默认只发起一次 MiMo 视觉调用；`source.clean` 只消费
+  题干文本与当前 `visual-facts.json`，不再上传原图。
+
 网页运行环境接口：
 
 ```text
@@ -113,6 +125,7 @@ POST /api/entries/<entry-id>/<action>
 | `save-answer` | `layer`、`markdown`、可选 `base_digest` | 保存学生版或教师版 Markdown，并撤销旧答案批准 |
 | `refresh-difficulty-assessment` | 无 | 依据已复核题干和规范化标准解题路径重算六维客观难度量表；W3 路径优先使用 Solver、验证器与仲裁的解后关系做确定性投影，评分字段不进入或阻断解题主链。“题型距离与建模转换”按六级固定母题距离锚点计分，知识深度按不可绕过概念关键路径和 A–O 标杆校准；内部校准上限为 6，正式评分封顶 5，越过 5 必须有经验证的第一性重建链；知识整合按最小充分模块集去重；过程维按单一、串联、时序、同步、分支和嵌套全局六级组合拓扑评分；运算维按正确列式后的必要计算链评分；条件负担从决定性关系和关键审查节点而非审核标签数量推断。旧路径保守回退；没有标准路径时明确返回待评分 |
 | `save-difficulty-assessment` | `assessment` | 教师保存校准后的六维评分、核心判断、难度总结和校准依据；正式评分统一在 0–5 且步长为 0.1，教师结果优先但保留自动基线；不新增审批门禁 |
+| `build-diagram` | 可选 `routing_tier`、`model_id` | 显式请求静态解释图（C4）：仅在题干已批准、分层答案存在且 `visual-facts.json` 当前时运行 DeepSeek scene → 本地确定性 SVG → 硬门，至多一次受限 JSON-Patch；随后对安全 raster 运行一次非阻断 MiMo 软评审（无 vision 路由或 raster 不可用时降级 `blocked/unavailable`，不阻断图或答案）。生成或修改 `assets/explanatory.svg` 会通过答案摘要使旧答案批准失效并回到答案复核。结果写入私有 `diagram-build.json`。CLI 等价入口：`teacher-console/scripts/entry_action.py build-diagram <entry-id>` |
 | `approve-answer` | `reviewer`、`note` | 批准当前题干、答案、模型和引用图片的联合摘要 |
 | `request-revision` | 修改意见、可选 `routing_tier` 及页面提供的版本摘要 | 创建 `answer.revise` 后台作业，在隔离区返修答案和解释图 |
 | `build-visualization` | 可选 `message`、`runtime_check`、`routing_tier` | 无模型时创建 `visualization.model` 作业；已有与当前模型匹配的可用预览时返回 `unchanged` 并保留原字节与审批，只有模型变化或尚无可用预览时才确定性构建 |

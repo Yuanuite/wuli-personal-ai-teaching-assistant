@@ -109,6 +109,21 @@ def answer_artifact_digest(entry: Path) -> str:
         digest.update(b"\0")
         digest.update(referenced[key].read_bytes())
         digest.update(b"\0")
+    # The static diagram is an answer-scoped artifact: a change to the scene,
+    # gate report, rendered SVG, or provenance must invalidate the previous
+    # answer approval even when the answer markdown does not reference the SVG.
+    for name in (
+        "physics-diagram-scene.json",
+        "physics-diagram-gate.json",
+        "assets/explanatory.svg",
+        "svg-provenance.json",
+    ):
+        path = entry / name
+        if path.is_file():
+            digest.update(name.encode("utf-8"))
+            digest.update(b"\0")
+            digest.update(path.read_bytes())
+            digest.update(b"\0")
     return digest.hexdigest()
 
 

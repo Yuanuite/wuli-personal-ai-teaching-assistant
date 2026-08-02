@@ -46,6 +46,9 @@ ACCEPTANCE_TESTS = [
     "test_entry_visual_extract.py",
     "test_agent_gateway.py",
     "test_visual_application.py",
+    "test_route_snapshot.py",
+    "test_diagram_visual_review.py",
+    "test_diagram_application.py",
 ]
 
 _SKIPPED_RE = re.compile(r"\b(?:skipped|SKIPPED)\b")

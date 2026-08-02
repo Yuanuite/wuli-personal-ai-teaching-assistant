@@ -456,11 +456,25 @@ print(result['status'], result.get('reason'))
 
 ```bash
 /Users/qingyuan/miniconda3/bin/python3 -B teacher-console/scripts/run_tests.py \
-  --python /Users/qingyuan/miniconda3/bin/python3
+  --python /Users/qingyuan/miniconda3/bin/python3 --strict
 ```
 
-`--all` 运行全部单元测试；也可追加单个测试文件名。错误解释器会快速报告缺失
+`--all` 运行全部单元测试，`--strict` 把 missing/skipped 计为失败（`--exclude`
+声明已知排除项、单独报告）；也可追加单个测试文件名。错误解释器会快速报告缺失
 依赖（Pillow 等）。
+
+### 显式静态图动作（CLI）
+
+静态图是答案后的显式可选流程，网页按钮与 CLI 共用同一应用服务：
+
+```bash
+/Users/qingyuan/miniconda3/bin/python3 -B teacher-console/scripts/entry_action.py \
+  build-diagram <entry-id> --library student-error-library --tier economy
+```
+
+仅在题干已批准、分层答案存在且 `visual-facts.json` 当前时运行；无图不阻塞答案或
+交付。生成/修改 `assets/explanatory.svg` 会通过答案摘要使旧答案批准失效并回到
+答案复核（`visualization` 交互仿真仍是独立流程）。
 
 ## 中间状态排查
 

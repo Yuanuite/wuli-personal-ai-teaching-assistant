@@ -409,7 +409,7 @@ def main() -> int:
             "## 易错点\n\n不能把力直接当成加速度，还要除以物体质量。\n\n"
             "## 30 秒自测\n\n合力方向改变时，加速度方向如何变化？\n\n"
             "## 关联知识\n\n牛顿第二定律、合力与加速度方向。\n\n"
-            "![受力示意](assets/explanation.svg)\n"
+            "![关键关系示意图](assets/explanatory.svg)\n"
         )
     if task["kind"] == "source.clean":
         cleaned_problem = problem.replace("# 题目（OCR 草稿）", f"# {record['title']}", 1)

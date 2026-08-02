@@ -1,5 +1,26 @@
 # 变更记录
 
+## 2026-08-02：收口提交自包含 + 视觉服务去重 + 路由快照 + 静态图显式入口（wuli-mimo-deepseek-consistency-closure-v1）
+
+- 提交自包含闭包（C0/C1）：基线报告 `docs/reports/mimo-deepseek-closure-dependency-baseline-v1.json`
+  坐实 026b104 不自包含；归位 19 个未跟踪运行模块与验收测试/夹具后，`git archive HEAD`
+  解包可导入、可跑严格测试（C1.3/C1.4 通过）。
+- 视觉应用服务（C2.1-C2.5）：新增 `visual_application.run_visual_extract()`，
+  网页上传与薄 CLI 共用同一编排并输出 `wuli.visual-extract-outcome.v1` 与脱敏
+  调用账本 `visual-extract-request.json`；移除 source.clean 的
+  `vision_images/requires_vision` 与 Gateway `_maybe_vision_preprocess`，
+  同一 source fingerprint 默认只发起一次 MiMo 视觉调用。
+- 作业路由快照（C3）：入队冻结 `wuli.route-snapshot.v1`，执行前校验配置 digest，
+  变化即 `route_snapshot_stale` 失败关闭；job public 序列化含快照。
+- 静态图显式入口（C4）：`POST /api/entries/<id>/build-diagram` 与
+  `teacher-console/scripts/entry_action.py build-diagram` 共用
+  `diagram_application.build_diagram()`（题干已批准+答案存在才运行；scene→SVG→硬门
+  →至多一次 Patch→一次非阻断 MiMo 软评审）；改动 `explanatory.svg` 使旧答案批准
+  失效回到答案复核。
+- 严格测试入口（C5.1）：`run_tests.py --strict` 将 missing/skipped 计为失败；
+  修复 test_agent_http 的 W3 shadow 夹具（claude solver/verifier 身份 + 强制
+  adapter，与 E2E 同模式），4 个失败清零。验收 18/18，全量 70/70。
+
 ## 2026-08-02：MiMo–DeepSeek 网页/CLI 视觉协作一致性（wuli-mimo-deepseek-consistency-v1）
 
 - 模型注册表 trait 路由 fail-closed：`resolve_model_id_for_trait` /

@@ -183,6 +183,10 @@ class AgentHttpTest(unittest.TestCase):
         self.assertEqual(queued["status"], "queued")
         self.assertTrue(queued["job"]["url"].startswith("/api/jobs/"))
         self.assertEqual(queued["job"]["routing_tier"], "economy")
+        snapshot = queued["job"].get("route_snapshot") or {}
+        self.assertEqual(snapshot.get("schema"), "wuli.route-snapshot.v1")
+        self.assertEqual(snapshot.get("kind"), "analysis.generate")
+        self.assertTrue(snapshot.get("config_digest"))
 
         job = queued["job"]
         for _attempt in range(100):

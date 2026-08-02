@@ -58,6 +58,11 @@ import visual_source_review  # noqa: E402
 import w3_pipeline  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
+from route_snapshot import (  # noqa: E402
+    build_route_snapshot,
+    route_snapshot_is_stale,
+    route_snapshot_summary,
+)
 from visual_application import run_visual_extract  # noqa: E402
 from failure_intelligence import run_with_failure_repair  # noqa: E402
 from log import TraceContext, logger
@@ -506,16 +511,33 @@ def archive_claim_evidence_shadow(entry: Path, request: dict) -> dict:
 def queue_agent_job(kind: str, entry: Path, callback, *, routing_tier: str = "auto", model_id: str = "auto") -> dict:
     def guarded_callback():
         with visualization_lock(entry.name):
+            if route_snapshot_is_stale(frozen_snapshot, LIBRARY):
+                return {
+                    "status": "failed",
+                    "failure_type": "route_snapshot_stale",
+                    "message": (
+                        "作业入队后的模型注册表或生产路由配置已变化；"
+                        "为避免静默更换模型，已失败关闭。请重新提交作业。"
+                    ),
+                    "route_snapshot": route_snapshot_summary(frozen_snapshot),
+                }
             return callback()
 
     routing_tier = normalize_routing_tier(routing_tier)
     model_id = normalize_model_id(model_id)
+    config = model_config_for_task(kind, model_id, routing_tier)
+    frozen_snapshot = build_route_snapshot(
+        kind=kind,
+        routing_tier=routing_tier,
+        requested_model_id=model_id,
+        config=config,
+        library=LIBRARY,
+    )
     metadata: dict = {
         "routing_tier": routing_tier,
-        "model_id": model_id,
+        "model_id": frozen_snapshot["resolved_model_id"] or model_id,
+        "route_snapshot": route_snapshot_summary(frozen_snapshot),
     }
-    # 队列提交时预解析 provider，让前端运行时能正确显示，不必等任务完成后回填。
-    config = model_config_for_task(kind, model_id, routing_tier)
     if isinstance(config, dict):
         provider = str(config.get("provider", "")).strip()
         if provider:
@@ -2492,6 +2514,25 @@ class Handler(SimpleHTTPRequestHandler):
             result = save_difficulty_assessment(entry, data)
         elif action == "refresh-difficulty-assessment":
             result = {"status": "refreshed", "difficulty_assessment": assess_entry_difficulty(entry, force=True)}
+        elif action == "build-diagram":
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            raw_model_id = data.get("model_id")
+            from diagram_application import build_diagram
+
+            model_config = None
+            try:
+                model_id = resolve_model_id_for_task("analysis.generate", tier, raw_model_id)
+                model_config = model_config_for_task("analysis.generate", model_id, tier)
+            except Exception as exc:  # noqa: BLE001 - diagram can still run without config
+                result = {"status": "blocked", "errors": [f"模型路由解析失败：{exc}"]}
+                return self.json_response(result, status=200)
+            with LIBRARY_INDEX_LOCK:
+                result = build_diagram(
+                    entry,
+                    library=LIBRARY,
+                    routing_tier=tier,
+                    model_config=model_config,
+                )
         elif action == "approve-answer":
             agent_diff = _compute_agent_diff(entry)
             with LIBRARY_INDEX_LOCK:

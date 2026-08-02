@@ -115,7 +115,7 @@ def run_visual_extract(
         return outcome
 
     try:
-        report = visual_source_review.stage_visual_extraction(entry, extraction)
+        visual_source_review.stage_visual_extraction(entry, extraction)
     except Exception as exc:  # noqa: BLE001 - keep the human gate intact
         outcome = _failed_outcome(
             entry.name, "staging-failed", "visual_facts_staging_failed", str(exc)

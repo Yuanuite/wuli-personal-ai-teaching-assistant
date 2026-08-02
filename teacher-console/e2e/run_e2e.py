@@ -21,10 +21,12 @@ CONSOLE = ROOT / "teacher-console"
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SCRIPTS))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import kb  # noqa: E402
 import model_registry  # noqa: E402
 import server as teacher_server  # noqa: E402
+import visual_mock_server  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 
@@ -33,7 +35,24 @@ SCENARIOS = (
     "visualization.e2e.mjs",
     "publication.e2e.mjs",
     "claim-evidence.e2e.mjs",
+    "visual-web-clear.e2e.mjs",
+    "visual-cli-clear.e2e.mjs",
+    "visual-blurred-fail-closed.e2e.mjs",
+    "static-diagram-collaboration.e2e.mjs",
+    "runtime-route-rollback.e2e.mjs",
 )
+
+# Scenarios that need the controlled mock vision endpoint (one mode each).
+VISUAL_SCENARIOS = {
+    "visual-web-clear.e2e.mjs": "clear",
+    "visual-cli-clear.e2e.mjs": "clear",
+    "visual-blurred-fail-closed.e2e.mjs": "blurred",
+    "static-diagram-collaboration.e2e.mjs": "clear",
+}
+VISUAL_FIXTURES = {
+    "clear": CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png",
+    "blurred": CONSOLE / "tests" / "fixtures" / "visual-routing" / "blurred-question.png",
+}
 
 
 class E2EAgentGateway(AgentGateway):
@@ -77,6 +96,52 @@ def configure_w3_test_models(library: Path) -> None:
                 "reason": "deterministic E2E test double",
             },
         })
+
+
+def configure_visual_test_models(library: Path, base_url: str) -> None:
+    """Register a probed local mock vision model (controlled visual adapter).
+
+    Merges the ``e2e-mock-vision`` openai-compatible model into the current
+    registry and points ``defaults.vision`` at it, so the registry-routed
+    visual extraction hits the scenario's mock endpoint instead of any real
+    model. The mock URL must already be known here (started before the node
+    script), because a passed probe is a hard availability requirement and can
+    only be written in-process against the temp registry.
+    """
+    model_registry.LIBRARY = library
+    settings = model_registry.model_registry_settings()
+    defaults = settings.setdefault("defaults", {})
+    defaults["vision"] = "e2e-mock-vision"
+    models = settings.setdefault("models", [])
+    if not any(
+        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-vision"
+        for item in models
+    ):
+        models.append({
+            "id": "e2e-mock-vision",
+            "display_name": "E2E 受控视觉 Mock",
+            "provider": "openai-compatible",
+            "base_url": base_url,
+            "model": "mock-vision",
+            "traits": {"vision": True},
+            "capabilities": ["visual-extract"],
+            "api_key": "e2e-mock-key",
+            "timeout_seconds": "10",
+            "model_tier": "expert",
+        })
+    model_registry.save_model_registry_settings(settings)
+    model_registry.update_model_probe_result("e2e-mock-vision", {
+        "live_probe": {
+            "status": "passed",
+            "provider": "openai-compatible",
+            "reason": "deterministic E2E mock vision endpoint",
+        },
+    })
+    model_registry.record_vision_probe("e2e-mock-vision", {
+        "status": "passed",
+        "schema": "wuli.vision-probe.v1",
+        "reason": "synthetic image probe passed against mock endpoint",
+    })
 
 
 def parse_args() -> argparse.Namespace:
@@ -150,11 +215,28 @@ def main() -> int:
             image.save(fixture, "PNG")
             kb.init_library(library)
 
+            mock_server = None
+            mock_url = ""
+            visual_mode = VISUAL_SCENARIOS.get(script_name, "")
+            if visual_mode:
+                mock_server, mock_url = visual_mock_server.serve_visual_mock(visual_mode)
+
             teacher_server.LIBRARY = library
             teacher_server.UPLOADS = uploads
             teacher_server.PUBLIC_SITE = public_site
             teacher_server.MODEL_REGISTRY_PATH = library / "config" / "model-registry.json"
             configure_w3_test_models(library)
+            if mock_server is not None:
+                configure_visual_test_models(library, mock_url)
+            # Recompute the start-time identity snapshot against the temp
+            # library AFTER the test models are registered; the module-import
+            # snapshot referenced the real project library and would otherwise
+            # report stale immediately.
+            from runtime_environment import runtime_identity
+
+            teacher_server.SERVER_RUNTIME_IDENTITY_SNAPSHOT = runtime_identity(
+                project_root=ROOT, library=library
+            )
 
             agent_environment = dict(os.environ)
             agent_environment.update({
@@ -181,6 +263,12 @@ def main() -> int:
                 "E2E_ARTIFACT_DIR": str(scenario_artifacts),
                 "E2E_FIXTURE_IMAGE": str(fixture),
             })
+            if visual_mode:
+                child_environment.update({
+                    "E2E_VISUAL_MODE": visual_mode,
+                    "E2E_VISUAL_FIXTURE": str(VISUAL_FIXTURES[visual_mode]),
+                    "E2E_VISION_MOCK_URL": mock_url,
+                })
             try:
                 completed = subprocess.run(
                     [node, str(browser_test)],
@@ -192,6 +280,9 @@ def main() -> int:
                 httpd.shutdown()
                 httpd.server_close()
                 thread.join(timeout=5)
+                if mock_server is not None:
+                    mock_server.shutdown()
+                    mock_server.server_close()
                 teacher_server._JOB_MANAGER.shutdown(wait=True)
                 teacher_server._JOB_MANAGER = None
 
