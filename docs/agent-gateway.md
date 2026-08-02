@@ -81,6 +81,27 @@ JSON adapter 失败时会向 stderr 输出脱敏的结构化 envelope
 正文为空；决策写入请求的 `request_preflight`。预算保护仍生效：已实质消耗或超过
 30 秒的失败不自动完整重跑。
 
+## 任务级模型资格与期限契约（provider 可靠性）
+
+连通 probe 只证明端点可达，不能证明模型适合 `wuli.analysis.v2` 复杂负载。因此：
+
+- 每个模型可写入 `wuli.analysis-qualification.v1` 记录（`record_analysis_qualification`，
+  由维护者批准的固定公开复杂样本 canary 产生，含契约 digest、配置 digest、样本版本、
+  结构成功率、p50/p95 延迟、usage 与结论）。`analysis.generate` 的默认解析
+  （auto/tier）只选择当前资格记录为 `qualified` 且契约/配置摘要均当前的模型；
+  未资格化、过期或能力缺失都在 provider 调用前失败关闭，显式指定模型仅作为
+  实验性自定义选择放行。资格摘要通过 `analysis_qualification_public` 暴露给
+  路由预览与 UI。
+- 每次作业冻结三层期限预算 `wuli.deadline-budget.v1`：满足
+  `http_soft_deadline + cleanup_grace ≤ attempt_deadline ≤ task_deadline`。
+  attempt 期限为模型配置/环境超时与任务 SLA 的较小值；adapter 的 HTTP 期限由
+  Gateway 强制封顶到 soft deadline，禁止 adapter 300 秒默认静默越过作业期限。
+  作业与结果记录 `deadline_budget` 与 `deadline_budget_problems`。
+- 教师端在点击“运行解析流程”前可读取 `wuli.route-preview.v1`
+  （`POST /api/entries/<id>/route-preview`）：resolved model/provider、资格状态、
+  期限预算与路由配置摘要；预览与随后入队 job 的 route snapshot 身份一致，
+  配置变化时预览失效不猜测。
+
 每个终态作业还写入统一的 `outcome`。该结构由 `teacher-console/agent_outcome.py` 单点生成，只记录 provider、模型、结构化失败、provider 报告的 Token、尝试次数、阶段耗时、预算保护、检查点恢复和 evidence 预算，不保存 prompt、stdout、stderr 或学生正文。`usage.measurement` 明确区分 `provider-reported` 与 `unavailable`；系统不会把字符估算伪装成 provider 实测 Token。批量基准优先读取 `outcome`，旧作业继续兼容原有字段。
 
 同一个知识库只允许一个教师工作台服务持有 OS 文件锁；同题事务锁覆盖同步页面写入、canonical 摘要复查、候选提升和生命周期后处理。服务停止时会等待已经运行的 Agent 作业安全结束后再释放实例锁，不让旧 worker 与新服务同时提升。

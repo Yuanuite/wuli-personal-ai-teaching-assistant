@@ -393,6 +393,8 @@ class FailedJobReportTest(unittest.TestCase):
         by_id = {s["step_id"]: s for s in report["steps"]}
         self.assertEqual(by_id["P07"]["verification_result"], "failed")
         self.assertEqual(by_id["P08"]["verification_result"], "failed")
+        self.assertEqual(by_id["P06"]["verification_result"], "failed")
+        self.assertIn("request_preflight=missing", by_id["P06"]["verification_note"])
         self.assertIn("缺失", by_id["P00"]["verification_note"])
         # 失败作业的 P09 物理 Gate 不得伪造 passed
         self.assertIn(by_id["P09"]["verification_result"], ("not-run", "provisional", "failed"))

@@ -3,11 +3,9 @@
 
 from __future__ import annotations
 
-import base64
 import fnmatch
 import hashlib
 import json
-import mimetypes
 import os
 import re
 import shlex
@@ -122,7 +120,12 @@ def classify_agent_failure(result: dict) -> str:
                 return "output_truncated"
             content_chars = attempt.get("content_chars")
             reasoning_chars = attempt.get("reasoning_chars")
-            if isinstance(content_chars, int) and content_chars == 0 and isinstance(reasoning_chars, int) and reasoning_chars > 0:
+            if (
+                isinstance(content_chars, int)
+                and content_chars == 0
+                and isinstance(reasoning_chars, int)
+                and reasoning_chars > 0
+            ):
                 return "output_truncated"
     truncation_markers = {
         "truncated",
@@ -174,7 +177,15 @@ def _parse_failure_envelope(stderr: str) -> dict | None:
             return None
         return {
             key: parsed.get(key)
-            for key in ("failure_type", "finish_reason", "usage", "content_chars", "reasoning_chars", "request_count")
+            for key in (
+                "failure_type",
+                "finish_reason",
+                "usage",
+                "content_chars",
+                "reasoning_chars",
+                "request_count",
+                "request_preflight",
+            )
         }
     return None
 
@@ -383,6 +394,19 @@ class AgentGateway:
                 value = str(config.get(key, "")).strip()
                 if value:
                     env[target] = value
+            # A2.4: the adapter's HTTP timeout must never exceed the frozen
+            # soft deadline, otherwise it could silently run past the attempt
+            # hard deadline and get killed without a structured envelope.
+            budget = task.get("deadline_budget") if isinstance(task, dict) else None
+            soft = float(budget.get("http_soft_deadline") or 0) if isinstance(budget, dict) else 0.0
+            if soft > 0:
+                try:
+                    current = float(env.get("TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS") or 0)
+                except (TypeError, ValueError):
+                    current = 0.0
+                env["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"] = str(
+                    int(min(current, soft) if current > 0 else soft)
+                )
             api_key = str(config.get("api_key", "")).strip()
             if api_key:
                 env["TEACHER_CONSOLE_AGENT_API_KEY"] = api_key
@@ -415,7 +439,46 @@ class AgentGateway:
         safe = dict(task)
         # Inline context is materialized as a read-only staging file before the
         # child starts. Do not duplicate it in adapter stdin or CLI metadata.
-        safe.pop("context_payloads", None)
+        context_payloads = safe.pop("context_payloads", None)
+        # Preserve only deterministic complexity signals needed by a JSON
+        # adapter to choose its output/thinking policy.  The full Target Brief
+        # and Evidence Pack stay exclusively in staging and never re-enter
+        # adapter stdin.
+        if isinstance(context_payloads, dict):
+            complexity: dict[str, Any] = {}
+            target_brief = context_payloads.get(
+                ".agent-context/target-brief.json", {}
+            )
+            if isinstance(target_brief, dict):
+                targets = target_brief.get("targets")
+                if isinstance(targets, list):
+                    complexity["target_count"] = len(targets)
+                elif isinstance(targets, int) and not isinstance(targets, bool):
+                    complexity["target_count"] = max(0, targets)
+                else:
+                    target_count = target_brief.get("target_count")
+                    if isinstance(target_count, int) and not isinstance(
+                        target_count, bool
+                    ):
+                        complexity["target_count"] = max(0, target_count)
+            evidence = context_payloads.get(
+                ".agent-context/knowledge-evidence.json", {}
+            )
+            if isinstance(evidence, dict):
+                context_budget = evidence.get("context_budget")
+                truncated = evidence.get("truncated") is True or (
+                    isinstance(context_budget, dict)
+                    and context_budget.get("truncated") is True
+                )
+                complexity["evidence_truncated"] = truncated
+            contract = safe.get("output_contract")
+            schema = contract.get("schema") if isinstance(contract, dict) else None
+            if isinstance(schema, dict):
+                complexity["contract_schema_chars"] = len(
+                    json.dumps(schema, ensure_ascii=False)
+                )
+            if complexity:
+                safe["request_complexity"] = complexity
         config = safe.get("model_config")
         if isinstance(config, dict):
             safe_config = dict(config)
@@ -1282,6 +1345,19 @@ class AgentGateway:
         except ValueError:
             configured_timeout = 600
         timeout = min(task_timeout, max(30, min(configured_timeout, 1800)))
+        # A2.1/A2.4: freeze the three-layer deadline budget. The subprocess
+        # hard deadline is the attempt deadline; the adapter HTTP timeout is
+        # capped at the soft deadline via the child environment.
+        from deadline_budget import budget_is_valid, build_deadline_budget  # noqa: E402
+
+        budget = build_deadline_budget(
+            task_deadline=task_timeout,
+            configured_attempt=configured_timeout,
+            task_deadline_source="task.timeout_seconds",
+        )
+        budget_problems = budget_is_valid(budget)
+        timeout = budget.attempt_deadline
+        task["deadline_budget"] = budget.to_dict()
         task_deadline = time.monotonic() + task_timeout
         costly_failover_seconds = self._costly_failover_seconds(task_environ)
         budget_guard: dict[str, Any] | None = None
@@ -1447,7 +1523,13 @@ class AgentGateway:
                 # never "unavailable" on a failed provider run.
                 envelope = _parse_failure_envelope(completed.stderr)
                 if envelope:
-                    for key in ("finish_reason", "content_chars", "reasoning_chars", "request_count"):
+                    for key in (
+                        "finish_reason",
+                        "content_chars",
+                        "reasoning_chars",
+                        "request_count",
+                        "request_preflight",
+                    ):
                         if envelope.get(key) is not None:
                             attempt[key] = envelope[key]
                     raw_usage = envelope.get("usage")
@@ -1501,6 +1583,8 @@ class AgentGateway:
                         "unauthorized_changes": [],
                         "validation_errors": [],
                         "attempts": attempts,
+                        "deadline_budget": budget.to_dict(),
+                        "deadline_budget_problems": budget_problems,
                         **model_metadata,
                     }
                     if payload:
@@ -1568,10 +1652,18 @@ class AgentGateway:
         aggregated_usage = _aggregate_usage(attempts)
         if aggregated_usage:
             result["usage"] = aggregated_usage
+        if isinstance(last.get("request_preflight"), dict):
+            result["request_preflight"] = last["request_preflight"]
+        result["deadline_budget"] = budget.to_dict()
+        result["deadline_budget_problems"] = budget_problems
         if budget_guard:
             result["budget_guard"] = budget_guard
         result["failure_type"] = str(last.get("failure_type") or classify_agent_failure(result))
-        if last.get("finish_reason") == "length" or last.get("content_chars") == 0 and last.get("reasoning_chars", 0) > 0:
+        if (
+            last.get("finish_reason") == "length"
+            or last.get("content_chars") == 0
+            and last.get("reasoning_chars", 0) > 0
+        ):
             result["diagnosed_failure_type"] = "output_truncated"
         logger.info("gateway task=%s status=failed reason=exhausted attempts=%d", route_id, len(attempts))
         return result
@@ -1597,4 +1689,16 @@ class AgentGateway:
                     usage["total_tokens"] = input_tokens + output_tokens
             if usage:
                 metadata["usage"] = usage
+        request_preflight = payload.get("request_preflight")
+        if isinstance(request_preflight, dict):
+            metadata["request_preflight"] = {
+                key: request_preflight[key]
+                for key in (
+                    "mode",
+                    "max_output_tokens",
+                    "thinking",
+                    "reason",
+                )
+                if key in request_preflight
+            }
         return metadata

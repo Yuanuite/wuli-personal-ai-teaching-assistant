@@ -90,7 +90,8 @@ try {
   const quality = runPipelineQuality(entryId);
   assert.equal(quality.dimensions.pipeline_accuracy.score, 100);
   assert.ok(quality.telemetry.requests >= 2);
-  assert.equal(quality.telemetry.token_efficiency.total_tokens, 420);
+  // Deterministic fake usage: source.clean 60 + analysis 120 + visualization 270.
+  assert.equal(quality.telemetry.token_efficiency.total_tokens, 450);
   assert.deepEqual(browserErrors, []);
 
   const summary = {

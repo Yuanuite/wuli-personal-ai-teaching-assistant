@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kb  # noqa: E402
 import model_registry  # noqa: E402
 import server as teacher_server  # noqa: E402
+import slow_mock_server  # noqa: E402
 import truncation_mock_server  # noqa: E402
 import visual_mock_server  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
@@ -47,6 +48,11 @@ SCENARIOS = (
     "analysis-core-truncated.e2e.mjs",
     "analysis-w3-report.e2e.mjs",
     "analysis-w3-backjump.e2e.mjs",
+    # Wave 5: provider qualification + deadline budget + route preview
+    # (docs/analysis-provider-timeout-repair-work-tree.md, A2.2/A2.4/A4.1)
+    "analysis-qualified-route.e2e.mjs",
+    "analysis-soft-timeout.e2e.mjs",
+    "analysis-route-preview.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).
@@ -110,6 +116,19 @@ def configure_w3_test_models(library: Path) -> None:
                 "reason": "deterministic E2E test double",
             },
         })
+    # Task-level qualification (A2.2): the solver is the analysis.generate
+    # default and must carry a current qualification record.
+    model_registry.record_analysis_qualification("e2e-claude-solver", {
+        "provider": "claude",
+        "sample_set_version": "e2e-fixture-v1",
+        "sample_count": 3,
+        "structural_success_count": 3,
+        "gate_success_count": 3,
+        "p50_latency_ms": 4000,
+        "p95_latency_ms": 12000,
+        "usage": {"completion_tokens": 5000},
+        "conclusion": "qualified",
+    })
 
 
 def configure_truncation_test_model(library: Path, base_url: str) -> None:
@@ -149,6 +168,61 @@ def configure_truncation_test_model(library: Path, base_url: str) -> None:
             "provider": "openai-compatible",
             "reason": "deterministic E2E truncation mock endpoint",
         },
+    })
+
+
+def configure_slow_test_model(library: Path, base_url: str) -> None:
+    """Register a probed+qualified openai-compatible model that always hangs.
+
+    The local mock endpoint sleeps past the adapter's HTTP soft deadline, so
+    the ``analysis-soft-timeout`` scenario exercises the ordered three-layer
+    deadline budget (work-tree A2.1/A2.4) end to end: the adapter times out
+    first and the Gateway records a single ``provider_timeout`` attempt with
+    no second paid retry. The model is made the ``analysis.generate`` default
+    and must carry a current task-level qualification record — the
+    ``config_digest`` is computed by ``record_analysis_qualification`` from
+    the stored registry entry (no digest guessing in the scenario). Only this
+    scenario re-points the default; every other scenario keeps the
+    deterministic Claude double from ``configure_w3_test_models``.
+    """
+    model_registry.LIBRARY = library
+    settings = model_registry.model_registry_settings()
+    defaults = settings.setdefault("defaults", {})
+    defaults["analysis.generate"] = "e2e-mock-slow"
+    models = settings.setdefault("models", [])
+    if not any(
+        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow"
+        for item in models
+    ):
+        models.append({
+            "id": "e2e-mock-slow",
+            "display_name": "E2E 挂起 Mock",
+            "provider": "openai-compatible",
+            "base_url": base_url,
+            "model": "e2e-slow-model",
+            "capabilities": ["analysis.generate"],
+            "api_key": "e2e-mock-key",
+            "timeout_seconds": "8",
+            "model_tier": "standard",
+        })
+    model_registry.save_model_registry_settings(settings)
+    model_registry.update_model_probe_result("e2e-mock-slow", {
+        "live_probe": {
+            "status": "passed",
+            "provider": "openai-compatible",
+            "reason": "deterministic E2E slow mock endpoint",
+        },
+    })
+    model_registry.record_analysis_qualification("e2e-mock-slow", {
+        "provider": "openai-compatible",
+        "sample_set_version": "e2e-fixture-v1",
+        "sample_count": 3,
+        "structural_success_count": 3,
+        "gate_success_count": 3,
+        "p50_latency_ms": 4000,
+        "p95_latency_ms": 12000,
+        "usage": {"completion_tokens": 5000},
+        "conclusion": "qualified",
     })
 
 
@@ -290,6 +364,13 @@ def main() -> int:
                 truncation_server, truncation_url = truncation_mock_server.serve_truncation_mock()
                 mock_server = truncation_server
                 configure_truncation_test_model(library, truncation_url)
+            slow_url = ""
+            if script_name == "analysis-soft-timeout.e2e.mjs":
+                # Local hanging endpoint + probed+qualified openai-compatible
+                # model registered as the analysis.generate default (A2.1/A2.4).
+                slow_server, slow_url = slow_mock_server.serve_slow_mock()
+                mock_server = slow_server
+                configure_slow_test_model(library, slow_url)
             # Recompute the start-time identity snapshot against the temp
             # library AFTER the test models are registered; the module-import
             # snapshot referenced the real project library and would otherwise
@@ -338,6 +419,8 @@ def main() -> int:
                 })
             if truncation_url:
                 child_environment["E2E_TRUNCATION_MOCK_URL"] = truncation_url
+            if slow_url:
+                child_environment["E2E_SLOW_MOCK_URL"] = slow_url
             try:
                 completed = subprocess.run(
                     [node, str(browser_test)],

@@ -69,6 +69,20 @@ def main() -> int:
         "e2e-claude-solver",
         {"live_probe": {"status": "passed", "provider": "claude", "reason": "deterministic E2E mock"}},
     )
+    model_registry.record_analysis_qualification(
+        "e2e-claude-solver",
+        {
+            "provider": "claude",
+            "sample_set_version": "cli-fixture-v1",
+            "sample_count": 3,
+            "structural_success_count": 3,
+            "gate_success_count": 3,
+            "p50_latency_ms": 4000,
+            "p95_latency_ms": 12000,
+            "usage": {"completion_tokens": 5000},
+            "conclusion": "qualified",
+        },
+    )
     print("registered cli models")
     return 0
 

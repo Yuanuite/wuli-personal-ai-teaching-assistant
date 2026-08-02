@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import time
 import unicodedata
 import urllib.error
 import urllib.request
@@ -72,6 +73,9 @@ class _AdapterFailure(Exception):
         content_chars: int | None = None,
         reasoning_chars: int | None = None,
         request_count: int = 1,
+        request_preflight: dict | None = None,
+        phase: str = "",
+        stage_progress: list | None = None,
     ):
         super().__init__(message)
         self.failure_type = failure_type
@@ -81,13 +85,17 @@ class _AdapterFailure(Exception):
         self.content_chars = content_chars
         self.reasoning_chars = reasoning_chars
         self.request_count = request_count
+        self.request_preflight = dict(request_preflight or {})
+        self.phase = phase
+        self.stage_progress = list(stage_progress or [])
 
 
 def _emit_failure_envelope(exc: _AdapterFailure) -> None:
     """Write the structured, redacted failure envelope to stderr.
 
-    Contains finish_reason, usage, char counts and request count only — never
-    the reasoning body, prompt, keys, or entry content.
+    Contains finish_reason, usage, char counts, request count, phase progress
+    and request preflight only — never the reasoning body, prompt, keys, or
+    entry content.
     """
     envelope = {
         "failure_type": exc.failure_type,
@@ -96,6 +104,9 @@ def _emit_failure_envelope(exc: _AdapterFailure) -> None:
         "content_chars": exc.content_chars,
         "reasoning_chars": exc.reasoning_chars,
         "request_count": exc.request_count,
+        "request_preflight": exc.request_preflight,
+        "phase": exc.phase,
+        "stage_progress": exc.stage_progress,
         "message": str(exc.message)[:500],
     }
     print(
@@ -501,6 +512,24 @@ def task_is_complex(task: dict) -> bool:
     oversized output contract. The decision is written into the run report so
     it cannot silently raise cost ceilings.
     """
+    profile = task.get("request_complexity")
+    if isinstance(profile, dict):
+        target_count = profile.get("target_count")
+        if (
+            isinstance(target_count, int)
+            and not isinstance(target_count, bool)
+            and target_count >= COMPLEX_TARGET_THRESHOLD
+        ):
+            return True
+        if profile.get("evidence_truncated") is True:
+            return True
+        schema_chars = profile.get("contract_schema_chars")
+        if (
+            isinstance(schema_chars, int)
+            and not isinstance(schema_chars, bool)
+            and schema_chars > 4_000
+        ):
+            return True
     contract = task.get("output_contract")
     if isinstance(contract, dict):
         schema = contract.get("schema")
@@ -516,8 +545,13 @@ def task_is_complex(task: dict) -> bool:
         if isinstance(targets, list) and len(targets) >= COMPLEX_TARGET_THRESHOLD:
             return True
     evidence = task.get("context_payloads", {}).get(".agent-context/knowledge-evidence.json", {})
-    if isinstance(evidence, dict) and evidence.get("truncated") is True:
-        return True
+    if isinstance(evidence, dict):
+        context_budget = evidence.get("context_budget")
+        if evidence.get("truncated") is True or (
+            isinstance(context_budget, dict)
+            and context_budget.get("truncated") is True
+        ):
+            return True
     return False
 
 
@@ -593,8 +627,15 @@ def call_chat_completion(
     request = urllib.request.Request(
         endpoint(base), data=body, headers=headers, method="POST"
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except TimeoutError as exc:
+        raise _AdapterFailure(
+            "provider_timeout",
+            message=f"request timed out after {timeout}s (HTTP soft deadline)",
+            finish_reason="timeout",
+        ) from exc
     choice = payload["choices"][0]
     if choice.get("finish_reason") == "length":
         message = choice.get("message", {})
@@ -675,10 +716,30 @@ def main() -> int:
         }
     else:
         result_preflight = {}
+    deadline_budget = task.get("deadline_budget") if isinstance(task.get("deadline_budget"), dict) else {}
+    task_deadline = float(deadline_budget.get("task_deadline") or 0)
+    started_at_epoch = time.monotonic()
+    stage_progress: list[dict] = []
+
+    def record_stage(phase: str, started_at: float, payload: dict, request_count: int = 1) -> None:
+        choice = (payload.get("choices") or [{}])[0] if isinstance(payload, dict) else {}
+        usage_stage = normalized_usage(payload) if isinstance(payload, dict) else {}
+        remaining = round(max(0.0, task_deadline - (time.monotonic() - started_at_epoch)), 3) if task_deadline > 0 else None
+        stage_progress.append({
+            "phase": phase,
+            "started_at": started_at,
+            "duration_seconds": round(time.monotonic() - started_at, 3),
+            "request_count": request_count,
+            "finish_reason": str(choice.get("finish_reason", "")) if isinstance(choice, dict) else "",
+            "usage": usage_stage,
+            "remaining_deadline_seconds": remaining,
+        })
+
     try:
         parts = compact_solution_contracts(contract) if isinstance(contract, dict) else None
         usage: dict = {}
         if parts is None:
+            phase_started = time.monotonic()
             result, payload = call_chat_completion(
                 base=base,
                 model=model,
@@ -687,9 +748,11 @@ def main() -> int:
                 timeout=timeout,
                 options=options,
             )
+            record_stage("single", phase_started, payload)
             add_usage(usage, payload)
         else:
             core_contract, interface_contract = parts
+            core_started = time.monotonic()
             try:
                 core, core_payload = call_chat_completion(
                     base=base,
@@ -701,8 +764,13 @@ def main() -> int:
                     timeout=timeout,
                     options=options,
                 )
+            except _AdapterFailure as exc:
+                exc.phase = "compact-core"
+                exc.stage_progress = list(stage_progress)
+                raise
             except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
                 raise ValueError(f"compact core call failed: {exc}") from exc
+            record_stage("compact-core", core_started, core_payload)
             add_usage(usage, core_payload)
             payload = core_payload
             if str(core.get("status", "")).strip().lower() == "unsupported":
@@ -712,6 +780,7 @@ def main() -> int:
                     f"{context}\n\n--- VERIFIED CORE CANDIDATE (DO NOT ALTER) ---\n"
                     f"{json.dumps(core, ensure_ascii=False)}\n"
                 )
+                interface_started = time.monotonic()
                 try:
                     interfaces, interface_payload = call_chat_completion(
                         base=base,
@@ -723,6 +792,10 @@ def main() -> int:
                         timeout=timeout,
                         options=options,
                     )
+                except _AdapterFailure as exc:
+                    exc.phase = "compact-interface"
+                    exc.stage_progress = list(stage_progress)
+                    raise
                 except (
                     KeyError,
                     IndexError,
@@ -733,6 +806,7 @@ def main() -> int:
                     raise ValueError(
                         f"compact interface call failed: {exc}"
                     ) from exc
+                record_stage("compact-interface", interface_started, interface_payload)
                 add_usage(usage, interface_payload)
                 payload = interface_payload
                 result = merge_compact_solution(core, interfaces)
@@ -741,11 +815,20 @@ def main() -> int:
         result["requested_tier"] = requested_tier
         result["usage"] = usage
         result.update(result_preflight)
+        if stage_progress:
+            result["stage_progress"] = stage_progress
         if routing_notice:
             result["routing_notice"] = routing_notice
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except _AdapterFailure as exc:
+        if not exc.request_preflight:
+            exc.request_preflight = dict(
+                result_preflight.get("request_preflight", {})
+            )
+        if not exc.phase:
+            exc.phase = "single"
+        exc.stage_progress = list(stage_progress) or exc.stage_progress
         _emit_failure_envelope(exc)
         print(f"OpenAI-compatible Agent adapter failed: {exc}", file=sys.stderr)
         return 1
@@ -756,6 +839,7 @@ def main() -> int:
                 "provider_execution_failed",
                 message=f"HTTP {exc.code}",
                 usage=usage if "usage" in dir() else {},
+                request_preflight=result_preflight.get("request_preflight", {}),
             )
         )
         print(
@@ -764,6 +848,14 @@ def main() -> int:
         )
         return 1
     except (urllib.error.URLError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        _emit_failure_envelope(
+            _AdapterFailure(
+                "provider_execution_failed",
+                message=str(exc),
+                usage=usage if "usage" in dir() else {},
+                request_preflight=result_preflight.get("request_preflight", {}),
+            )
+        )
         print(f"OpenAI-compatible Agent adapter failed: {exc}", file=sys.stderr)
         return 1
 

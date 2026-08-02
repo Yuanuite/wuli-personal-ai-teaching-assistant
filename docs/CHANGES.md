@@ -1,5 +1,42 @@
 # 变更记录
 
+## 2026-08-03：Provider 超时与结构化输出失配修复 · 阶段收口（wuli-analysis-provider-reliability-v1）
+
+- 阶段进度（A3.2）：OpenAI-compatible adapter 在成功与失败两条路径都输出
+  `stage_progress`（阶段名、finish reason、usage、字符计数、剩余期限），
+  两阶段第二段超时能与“第一阶段未返回”区分；失败 envelope 携带阶段信息，
+  不保存 reasoning 正文。`test_provider_reliability` 4 项覆盖单阶段成功、
+  软超时 envelope 与阶段回传。
+- 真实 canary（A5.4，维护者批准后执行）：`teacher-console/scripts/
+  analysis_qualification_canary.py` 用 3 道合成复杂物理题（每题 6 目标、
+  无学生数据）经生产 adapter 调用 `deepseek-v4-flash-api`，复用
+  `wuli.core-solve.v1` 契约（Target Brief digest + `normalize_payload` Gate）；
+  2026-08-03 实测 3/3 结构完整且领域 Gate 通过（p50 5.97s / p95 7.11s），
+  已写入 `wuli.analysis-qualification.v1` 资格记录（结论 `qualified`），
+  脱敏报告见 `docs/reports/analysis-qualification-canary-v1.{md,json}`。
+- E2E 收口：`analysis-qualified-route` / `analysis-soft-timeout` /
+  `analysis-route-preview` 三个场景经 `run_e2e.py` 全量验证通过；修正
+  `visualization` 场景过期 token 断言（420→450，确定性组成
+  source.clean 60 + analysis 120 + visualization 270）。
+- 模型默认路由决议（A2.3/A5.5 条件 8）仍为维护者批准项。
+
+## 2026-08-02：Provider 超时与结构化输出失配修复（wuli-analysis-provider-reliability-v1）
+
+- 任务级模型资格（T1/A2.2）：新增 `wuli.analysis-qualification.v1` 与
+  `record_analysis_qualification`；`analysis.generate` 默认解析只选择当前
+  契约/配置摘要下 `qualified` 的模型，未资格化/过期/能力缺失在 provider
+  调用前失败关闭；显式指定仅作为实验性自定义放行。
+- 统一期限契约（T2/A2.1/A2.4）：`wuli.deadline-budget.v1` 三层期限
+  （task/attempt/http_soft + cleanup_grace）满足有序不变量；Gateway 把 adapter
+  HTTP 期限封顶到 soft deadline，作业记录冻结预算与问题列表；历史 90 秒
+  provider_timeout 场景（f7afb816...）被夹具固化。
+- 路由预览（T4/A4.1/A4.2）：`POST /api/entries/<id>/route-preview` 返回
+  `wuli.route-preview.v1`（resolved model/provider/资格/期限/路由摘要），UI 在
+  点击“运行解析流程”前显示本次解析真实路由，不再让通用 Codex 状态冒充解析模型。
+- 夹具与测试：`tests/fixtures/analysis-run/provider-soft-timeout.json`、
+  `valid-json-completed.json`；`test_deadline_budget` 6 项、model_registry 资格
+  门禁 8 项、route-preview HTTP 一致性测试；全套 73/73。
+
 ## 2026-08-02：解析失败修复与运行可观测（wuli-analysis-run-observability-v1）
 
 - 截断分类修复（T1/B1）：`output_truncated` 现在同时接受文本标记（`reached

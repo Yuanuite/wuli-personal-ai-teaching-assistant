@@ -486,6 +486,9 @@ class AgentGatewayTest(unittest.TestCase):
         def runner(command, cwd=None, input=None, **_kwargs):
             child_task = json.loads(input)
             self.assertNotIn("context_payloads", child_task)
+            self.assertEqual(
+                child_task["request_complexity"]["evidence_truncated"], False
+            )
             evidence_path = Path(cwd, ".agent-context", "knowledge-evidence.json")
             self.assertEqual(json.loads(evidence_path.read_text(encoding="utf-8"))["references"][0]["title"], "相似题")
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")

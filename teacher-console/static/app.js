@@ -621,6 +621,7 @@ function activateTab(tab, { force = false } = {}) {
   document.querySelectorAll(".tab").forEach(item => item.classList.toggle("active", item === button));
   document.querySelectorAll(".tab-panel").forEach(item => item.classList.add("hidden"));
   panel.classList.remove("hidden");
+  if (tab === "answer") refreshRoutePreview();
   return true;
 }
 
@@ -2282,6 +2283,36 @@ async function entryAction(action, body, success) {
   }
 }
 
+async function refreshRoutePreview() {
+  // A4.2: show the actual analysis.generate route before running; never
+  // let the generic Codex runtime summary impersonate the parse model.
+  const target = $("route-preview");
+  if (!target || !state.current) return;
+  try {
+    const result = await api(
+      `/api/entries/${encodeURIComponent(state.current.id)}/route-preview`,
+      { method: "POST", body: withRoutingTier() },
+    );
+    if (result.status === "blocked" || !result.resolved_model_id) {
+      target.textContent = `本次解析路由：不可用（${result.error || "未通过任务级资格验证"}）`;
+      target.classList.add("route-blocked");
+      return;
+    }
+    const qual = result.qualification || {};
+    const qualText = qual.status === "qualified"
+      ? `资格已验证（${qual.record?.sample_count || 0} 样本）`
+      : `资格：${qual.status || "未验证"}`;
+    const deadline = result.deadline_budget || {};
+    const deadlineText = deadline.task_deadline
+      ? ` · 期限 ${deadline.task_deadline}s（HTTP 软 ${deadline.http_soft_deadline}s）`
+      : "";
+    target.textContent = `本次解析路由：${result.resolved_model_id}（${result.provider}）· ${qualText}${deadlineText}`;
+    target.classList.remove("route-blocked");
+  } catch {
+    target.textContent = "本次解析路由：加载失败（服务未连接）";
+  }
+}
+
 async function visualizationAction(action, body, button, busyLabel, success) {
   const original = button.textContent;
   button.disabled = true;
@@ -2686,6 +2717,7 @@ $("agent-tier").addEventListener("change", () => {
   try { localStorage.setItem(AGENT_TIER_KEY, selectedAgentTier()); } catch (_error) { /* preference is optional */ }
   syncAgentModelVisibility();
   renderAgentMessage();
+  refreshRoutePreview();
 });
 $("agent-model").addEventListener("change", () => {
   try { localStorage.setItem(AGENT_MODEL_KEY, selectedAgentModelId()); } catch (_error) { /* preference is optional */ }

@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "name": "provider-soft-timeout",
+  "description": "Redacted fixture of the teacher-console reproduction (2026-08-02): analysis.generate on entry 20260802-screenshot-2026-08-02-at-17-55-28-830117d9, job f7afb816946a461d82b0f7313ec79cc5, provider subprocess killed at ~90s. No entry content, prompts, keys, or reasoning bodies.",
+  "job": {
+    "kind": "analysis.generate",
+    "route": "core-first",
+    "model_id": "deepseek-v4-flash-api",
+    "provider": "openai-compatible",
+    "duration_seconds": 90.01,
+    "target_count": 6,
+    "evidence_context": {
+      "reference_count": 3,
+      "serialized_chars": 7586,
+      "truncated": true
+    },
+    "task_timeout_seconds": 90,
+    "attempt_timeout_seconds": 90,
+    "changed_files": []
+  },
+  "terminal": {
+    "status": "failed",
+    "failure_type": "provider_timeout",
+    "budget_guard": "provider-timeout-consumed-budget",
+    "attempt_count": 1
+  },
+  "expected_deadline_order": ["http_soft_deadline", "attempt_deadline", "task_deadline"],
+  "expected_diagnosis": "provider_timeout"
+}

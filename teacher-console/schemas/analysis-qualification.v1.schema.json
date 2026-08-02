@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wuli.analysis-qualification.v1",
+  "title": "Analysis model qualification",
+  "description": "Task-level qualification record proving a model can complete the wuli.analysis.v2 contract on fixed public complex samples within the deadline and budget. Never contains prompts, reasoning bodies, keys, or entry content.",
+  "type": "object",
+  "required": [
+    "schema",
+    "model_id",
+    "provider",
+    "contract_digest",
+    "config_digest",
+    "sample_set_version",
+    "sample_count",
+    "structural_success_count",
+    "gate_success_count",
+    "p50_latency_ms",
+    "p95_latency_ms",
+    "usage",
+    "conclusion",
+    "recorded_at"
+  ],
+  "properties": {
+    "schema": { "const": "wuli.analysis-qualification.v1" },
+    "model_id": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "contract_digest": { "type": "string", "minLength": 32 },
+    "config_digest": { "type": "string", "minLength": 32 },
+    "sample_set_version": { "type": "string", "minLength": 1 },
+    "sample_count": { "type": "integer", "minimum": 1 },
+    "structural_success_count": { "type": "integer", "minimum": 0 },
+    "gate_success_count": { "type": "integer", "minimum": 0 },
+    "p50_latency_ms": { "type": "number", "minimum": 0 },
+    "p95_latency_ms": { "type": "number", "minimum": 0 },
+    "usage": {
+      "type": "object",
+      "description": "Redacted provider usage totals; integer fields only."
+    },
+    "conclusion": {
+      "enum": ["qualified", "unqualified", "provisional"]
+    },
+    "notes": { "type": "string" },
+    "recorded_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false,
+  "propertyNames": {
+    "not": {
+      "pattern": "(?i)(api[_-]?key|sk-|authorization|data:|reasoning_content)"
+    }
+  }
+}

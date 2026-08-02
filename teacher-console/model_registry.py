@@ -159,6 +159,11 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
             "message": str(vision_probe.get("message", "")).strip(),
             "checked_at": str(vision_probe.get("checked_at", "")).strip(),
         },
+        "analysis_qualification": (
+            raw.get("analysis_qualification")
+            if isinstance(raw.get("analysis_qualification"), dict)
+            else None
+        ),
     }
 
 
@@ -312,8 +317,12 @@ def resolve_model_id_for_task(kind: str, routing_tier: str, model_id: str | None
         return "auto"
     tier = _normalize_routing_tier(routing_tier)
     if tier in {"economy", "expert"}:
-        return normalize_model_id(defaults.get(tier))
-    return normalize_model_id(defaults.get(kind))
+        resolved = normalize_model_id(defaults.get(tier))
+    else:
+        resolved = normalize_model_id(defaults.get(kind))
+    if kind == "analysis.generate" and resolved != "auto":
+        _require_analysis_qualification(resolved)
+    return resolved
 
 
 def _model_to_config(raw: dict, public: dict) -> dict:
@@ -447,6 +456,123 @@ def _declared_traits(registry: dict, model_id: str) -> dict:
         traits_raw = raw.get("traits") if isinstance(raw.get("traits"), dict) else {}
         return {key: bool(traits_raw.get(key)) for key in TRAIT_KEYS}
     return {}
+
+
+# A2.2: task-level qualification gate for analysis.generate defaults. Only a
+# model with a CURRENT qualification record (this contract digest + its own
+# config digest) may be auto-resolved as the analysis default; the record is
+# produced by the maintainer-approved complex-load canary (A1.2/A5.4), never
+# by a plain connectivity probe.
+ANALYSIS_CONTRACT_VERSION = "wuli.analysis.v2"
+ANALYSIS_CONTRACT_DIGEST = hashlib.sha256(ANALYSIS_CONTRACT_VERSION.encode("utf-8")).hexdigest()
+QUALIFICATION_SCHEMA = "wuli.analysis-qualification.v1"
+
+
+def _model_raw_entry(registry: dict, model_id: str) -> dict | None:
+    for raw in registry.get("models", []):
+        if isinstance(raw, dict) and normalize_model_id(raw.get("id")) == model_id:
+            return raw
+    return None
+
+
+def record_analysis_qualification(model_id: str, result: dict) -> dict:
+    """Persist a task-level qualification record for analysis.generate.
+
+    ``result`` must carry the sample-set outcome; keys with secrets or entry
+    content are rejected by the schema at write time (best-effort).
+    """
+    model_id = normalize_model_id(model_id)
+    if model_id == "auto":
+        raise ValueError("model_id is required")
+    sample_count = int(result.get("sample_count") or 0)
+    structural = int(result.get("structural_success_count") or 0)
+    if sample_count < 1:
+        raise ValueError("sample_count must be >= 1")
+    if structural < 0 or structural > sample_count:
+        raise ValueError("structural_success_count out of range")
+    conclusion = str(result.get("conclusion", ""))
+    if conclusion not in {"qualified", "unqualified", "provisional"}:
+        raise ValueError("conclusion must be qualified|unqualified|provisional")
+    record = {
+        "schema": QUALIFICATION_SCHEMA,
+        "model_id": model_id,
+        "provider": str(result.get("provider", "")).strip(),
+        "contract_digest": str(result.get("contract_digest") or ANALYSIS_CONTRACT_DIGEST),
+        "config_digest": str(result.get("config_digest", "")).strip(),
+        "sample_set_version": str(result.get("sample_set_version", "")).strip(),
+        "sample_count": sample_count,
+        "structural_success_count": structural,
+        "gate_success_count": int(result.get("gate_success_count") or 0),
+        "p50_latency_ms": float(result.get("p50_latency_ms") or 0),
+        "p95_latency_ms": float(result.get("p95_latency_ms") or 0),
+        "usage": dict(result.get("usage") or {}),
+        "conclusion": conclusion,
+        "notes": str(result.get("notes", "")).strip(),
+        "recorded_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+    }
+    registry = kb.load_json(_registry_path(), {"schema_version": 1, "defaults": {}, "models": []})
+    raw = _model_raw_entry(registry, model_id)
+    if raw is None:
+        raise ValueError(f"未找到模型配置：{model_id}")
+    record["config_digest"] = str(result.get("config_digest") or _model_probe_digest(raw))
+    raw["analysis_qualification"] = record
+    kb.write_json(_registry_path(), registry)
+    return model_registry_settings()
+
+
+def _qualification_status(registry: dict, model_id: str) -> tuple[str, str]:
+    """Return (status, reason) for a model's current analysis qualification."""
+    raw = _model_raw_entry(registry, model_id)
+    if raw is None:
+        return "missing", "模型不存在"
+    record = raw.get("analysis_qualification") if isinstance(raw.get("analysis_qualification"), dict) else {}
+    if not record:
+        return "unqualified", "未执行任务级资格验证"
+    if str(record.get("schema", "")) != QUALIFICATION_SCHEMA:
+        return "unqualified", "资格记录 schema 不兼容"
+    if str(record.get("contract_digest", "")) != ANALYSIS_CONTRACT_DIGEST:
+        return "expired", "资格记录契约版本过期"
+    if str(record.get("config_digest", "")) != _model_probe_digest(raw):
+        return "expired", "资格记录配置摘要过期"
+    if record.get("conclusion") != "qualified":
+        return "unqualified", f"资格结论为 {record.get('conclusion')}"
+    if int(record.get("structural_success_count") or 0) < int(record.get("sample_count") or 0):
+        return "unqualified", "结构成功率未达 100%"
+    return "qualified", ""
+
+
+def _require_analysis_qualification(model_id: str) -> None:
+    registry = kb.load_json(_registry_path(), {"models": []})
+    status, reason = _qualification_status(registry, model_id)
+    if status != "qualified":
+        raise ValueError(
+            f"模型 {model_id} 未通过 analysis.generate 任务级资格验证（{reason}）"
+        )
+
+
+def analysis_qualification_public(model_id: str) -> dict:
+    """Public-safe qualification summary for route preview (A4.1)."""
+    registry = kb.load_json(_registry_path(), {"models": []})
+    status, reason = _qualification_status(registry, model_id)
+    record = {}
+    raw = _model_raw_entry(registry, model_id)
+    if raw is not None and isinstance(raw.get("analysis_qualification"), dict):
+        raw_record = raw["analysis_qualification"]
+        record = {
+            "schema": str(raw_record.get("schema", "")),
+            "sample_set_version": str(raw_record.get("sample_set_version", "")),
+            "sample_count": int(raw_record.get("sample_count") or 0),
+            "structural_success_count": int(raw_record.get("structural_success_count") or 0),
+            "p95_latency_ms": float(raw_record.get("p95_latency_ms") or 0),
+            "conclusion": str(raw_record.get("conclusion", "")),
+            "recorded_at": str(raw_record.get("recorded_at", "")),
+        }
+    return {
+        "model_id": model_id,
+        "status": status,
+        "reason": reason,
+        "record": record,
+    }
 
 
 def resolve_model_id_for_trait(trait: str, routing_tier: str = "auto", model_id: str | None = None) -> str:

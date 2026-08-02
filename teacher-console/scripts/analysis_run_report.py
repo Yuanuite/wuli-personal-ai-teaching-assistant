@@ -901,6 +901,47 @@ def build_steps(
         )
     else:
         request_count = sum(int(a.get("request_count") or 1) for a in attempts if isinstance(a, dict))
+        preflight = result.get("request_preflight")
+        if not isinstance(preflight, dict):
+            preflight = next(
+                (
+                    item.get("request_preflight")
+                    for item in attempts
+                    if isinstance(item, dict)
+                    and isinstance(item.get("request_preflight"), dict)
+                ),
+                None,
+            )
+        target_brief = result.get("target_brief")
+        target_count = len(target_brief.get("targets", [])) if isinstance(target_brief, dict) else 0
+        evidence_context = result.get("evidence_context")
+        evidence_budget = evidence_context.get("budget") if isinstance(evidence_context, dict) else None
+        complex_openai_request = (
+            str(job.get("provider") or result.get("provider") or "")
+            == "openai-compatible"
+            and (
+                target_count >= 5
+                or (
+                    isinstance(evidence_budget, dict)
+                    and evidence_budget.get("truncated") is True
+                )
+            )
+        )
+        if complex_openai_request:
+            preflight_passed = (
+                isinstance(preflight, dict)
+                and isinstance(preflight.get("max_output_tokens"), int)
+                and preflight["max_output_tokens"] >= 30_000
+                and preflight.get("thinking") == "disabled"
+            )
+            p06_result = "passed" if preflight_passed else "failed"
+        else:
+            p06_result = "passed"
+        preflight_note = (
+            f"；max_output_tokens={preflight.get('max_output_tokens')}；thinking={preflight.get('thinking')}"
+            if isinstance(preflight, dict)
+            else "；request_preflight=missing"
+        )
         steps.append(
             _step(
                 "P06",
@@ -914,8 +955,11 @@ def build_steps(
                 attempt_count=len(attempts),
                 upstream_request_count=request_count,
                 obligations=["契约摘要存在", "thinking/output 策略已校准", "request 索引单调"],
-                result="passed",
-                note=f"attempts={len(attempts)}；provider={job.get('provider') or result.get('provider')}",
+                result=p06_result,
+                note=(
+                    f"attempts={len(attempts)}；provider={job.get('provider') or result.get('provider')}"
+                    f"{preflight_note}"
+                ),
             )
         )
 

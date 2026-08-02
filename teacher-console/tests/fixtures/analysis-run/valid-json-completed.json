@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "valid-json-completed",
+  "description": "Synthetic valid analysis.generate completion for deadline/qualification contract tests. No entry content, prompts, keys, or reasoning bodies.",
+  "job": {
+    "kind": "analysis.generate",
+    "route": "core-first",
+    "model_id": "deepseek-v4-flash-api",
+    "provider": "openai-compatible",
+    "status": "completed",
+    "duration_seconds": 34.5,
+    "target_count": 4,
+    "changed_files": ["student-solution.md", "teacher-solution.md", "solution.md"]
+  },
+  "attempt": {
+    "finish_reason": "stop",
+    "content_chars": 6200,
+    "usage": {
+      "prompt_tokens": 2800,
+      "completion_tokens": 4200,
+      "total_tokens": 7000
+    }
+  }
+}

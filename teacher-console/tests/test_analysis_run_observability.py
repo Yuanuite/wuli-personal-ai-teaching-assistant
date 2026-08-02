@@ -17,6 +17,7 @@ for path in (SCRIPTS, CONSOLE):
         sys.path.insert(0, str(path))
 
 from agent_gateway import (  # noqa: E402
+    AgentGateway,
     _aggregate_usage,
     _parse_failure_envelope,
     classify_agent_failure,
@@ -129,6 +130,31 @@ class FailureEnvelopeTest(unittest.TestCase):
 
 
 class BudgetPolicyTest(unittest.TestCase):
+    def test_gateway_redaction_preserves_only_complexity_summary(self):
+        task = {
+            "context_payloads": {
+                ".agent-context/target-brief.json": {
+                    "targets": [{"id": f"Q{index}", "prompt_hint": "private"} for index in range(6)]
+                },
+                ".agent-context/knowledge-evidence.json": {
+                    "references": [{"title": "private evidence"}],
+                    "context_budget": {"truncated": True},
+                },
+            },
+            "output_contract": {"schema": {"type": "object"}},
+        }
+        safe = AgentGateway._task_without_secrets(task)
+        self.assertNotIn("context_payloads", safe)
+        self.assertEqual(safe["request_complexity"]["target_count"], 6)
+        self.assertTrue(safe["request_complexity"]["evidence_truncated"])
+        self.assertNotIn("private", json.dumps(safe, ensure_ascii=False))
+        self.assertTrue(task_is_complex(safe))
+        options = request_options(
+            "http://127.0.0.1:1/v1", "m", {}, complex_task=task_is_complex(safe)
+        )
+        self.assertEqual(options["max_tokens"], MAX_OUTPUT_TOKENS_COMPLEX)
+        self.assertEqual(options["thinking"], {"type": "disabled"})
+
     def test_complex_task_gets_wide_budget_and_thinking_disabled(self):
         task = {
             "context_payloads": {
@@ -144,6 +170,16 @@ class BudgetPolicyTest(unittest.TestCase):
         task = {
             "context_payloads": {
                 ".agent-context/knowledge-evidence.json": {"truncated": True}
+            }
+        }
+        self.assertTrue(task_is_complex(task))
+
+    def test_complex_detection_via_nested_context_budget(self):
+        task = {
+            "context_payloads": {
+                ".agent-context/knowledge-evidence.json": {
+                    "context_budget": {"truncated": True}
+                }
             }
         }
         self.assertTrue(task_is_complex(task))

@@ -372,6 +372,70 @@ class AgentHttpTest(unittest.TestCase):
         self.assertNotIn("input_fingerprint", encoded)
         self.assertNotIn("secret-task", encoded)
 
+    def test_route_preview_matches_queued_job_route_snapshot(self):
+        # Register a qualified analysis.generate default model.
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {"analysis.generate": "preview-solver", "economy": "preview-solver"},
+                "models": [
+                    {
+                        "id": "preview-solver",
+                        "display_name": "Preview Solver",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "preview-solver-model",
+                        "capabilities": ["analysis.generate"],
+                        "api_key": "local-test-key",
+                    }
+                ],
+            },
+        )
+        model_registry.update_model_probe_result(
+            "preview-solver",
+            {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
+        )
+        model_registry.record_analysis_qualification(
+            "preview-solver",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "http-preview-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 5000,
+                "p95_latency_ms": 15000,
+                "usage": {"completion_tokens": 5000},
+                "conclusion": "qualified",
+            },
+        )
+        status, preview = self.request_json(
+            f"/api/entries/{self.entry.name}/route-preview",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(preview["schema"], "wuli.route-preview.v1")
+        self.assertEqual(preview["status"], "ready")
+        self.assertEqual(preview["resolved_model_id"], "preview-solver")
+        self.assertEqual(preview["provider"], "openai-compatible")
+        self.assertEqual(preview["qualification"]["status"], "qualified")
+        budget = preview["deadline_budget"]
+        self.assertLessEqual(budget["http_soft_deadline"] + budget["cleanup_grace"], budget["attempt_deadline"])
+        self.assertLessEqual(budget["attempt_deadline"], budget["task_deadline"])
+        self.assertTrue(preview["route_config_digest"])
+        # The queued job's route snapshot must carry the same identity.
+        status, queued = self.request_json(
+            f"/api/entries/{self.entry.name}/analyze",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 202)
+        snapshot = queued["job"].get("route_snapshot") or {}
+        self.assertEqual(snapshot.get("resolved_model_id"), preview["resolved_model_id"])
+        self.assertEqual(snapshot.get("provider"), preview["provider"])
+
     def test_w3_shadow_fake_adapter_covers_claim_outcomes_without_canonical_write(self):
         canonical = "# 已批准解析\n\n此内容不得被影子链路修改。\n"
         kb.write_text(self.entry / "student-solution.md", canonical)
@@ -408,6 +472,22 @@ class AgentHttpTest(unittest.TestCase):
                 model_id,
                 {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}},
             )
+        # Task-level qualification (A2.2): the solver is the analysis.generate
+        # default and must carry a current qualification record.
+        model_registry.record_analysis_qualification(
+            "w3-claude-solver",
+            {
+                "provider": "claude",
+                "sample_set_version": "http-fixture-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 5000,
+                "p95_latency_ms": 15000,
+                "usage": {"completion_tokens": 6000},
+                "conclusion": "qualified",
+            },
+        )
         adapter = ROOT / "teacher-console" / "tests" / "fixtures" / "fake_agent_adapter.py"
         teacher_console_server.AGENT_GATEWAY = _AdapterForcingGateway(
             environ={

@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "policy_version": "wuli-core-first-routing-v1",
+  "mode": "core-first",
+  "max_latency_seconds": 90
+}

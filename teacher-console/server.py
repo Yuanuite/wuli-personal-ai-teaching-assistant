@@ -50,24 +50,17 @@ import process_uploads  # noqa: E402
 import public_site  # noqa: E402
 import solution_reasoning  # noqa: E402
 import solution_verification  # noqa: E402
-import source_review  # noqa: E402
 import svg_collaboration  # noqa: E402
 import teacher_feedback  # noqa: E402
 import teaching_method_policy  # noqa: E402
-import visual_source_review  # noqa: E402
 import w3_pipeline  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
-from route_snapshot import (  # noqa: E402
-    build_route_snapshot,
-    route_snapshot_is_stale,
-    route_snapshot_summary,
-)
-from visual_application import run_visual_extract  # noqa: E402
 from failure_intelligence import run_with_failure_repair  # noqa: E402
 from log import TraceContext, logger
 from log import configure as configure_logging  # noqa: E402
 from model_registry import (  # noqa: E402
+    analysis_qualification_public,
     model_config_for_task,
     model_registry_public,
     model_registry_settings,
@@ -75,6 +68,12 @@ from model_registry import (  # noqa: E402
     resolve_model_id_for_task,
     save_model_registry_settings,
     update_model_probe_result,
+)
+from route_snapshot import (  # noqa: E402
+    build_route_snapshot,
+    route_config_digest,
+    route_snapshot_is_stale,
+    route_snapshot_summary,
 )
 from runtime_environment import (  # noqa: E402
     classify_runtime_probe,
@@ -85,6 +84,7 @@ from runtime_environment import (  # noqa: E402
     save_runtime_settings,
     update_runtime_probe_result,
 )
+from visual_application import run_visual_extract  # noqa: E402
 
 CONSOLE_SCRIPTS = CONSOLE_DIR / "scripts"
 sys.path.insert(0, str(CONSOLE_SCRIPTS))
@@ -282,6 +282,8 @@ def gateway_routing_fields(gateway: dict) -> dict:
         "evidence_context",
         "failure_repair",
         "budget_guard",
+        "deadline_budget",
+        "deadline_budget_problems",
         "outcome",
         "materialization",
         "resumed_from_checkpoint",
@@ -2514,6 +2516,38 @@ class Handler(SimpleHTTPRequestHandler):
             result = save_difficulty_assessment(entry, data)
         elif action == "refresh-difficulty-assessment":
             result = {"status": "refreshed", "difficulty_assessment": assess_entry_difficulty(entry, force=True)}
+        elif action == "route-preview":
+            tier = normalize_routing_tier(data.get("routing_tier"))
+            requested = data.get("model_id")
+            try:
+                model_id = resolve_model_id_for_task("analysis.generate", tier, requested)
+                config = model_config_for_task("analysis.generate", model_id, tier)
+            except Exception as exc:  # noqa: BLE001 - preview must not guess
+                result = {
+                    "schema": "wuli.route-preview.v1",
+                    "kind": "analysis.generate",
+                    "status": "blocked",
+                    "error": str(exc)[:300],
+                }
+                return self.json_response(result, status=200)
+            from deadline_budget import build_deadline_budget
+
+            core_config = kb.load_json(
+                LIBRARY / "config" / "analysis-production-routing.json", {}
+            )
+            task_deadline = float(core_config.get("max_latency_seconds", 90))
+            budget = build_deadline_budget(task_deadline=task_deadline)
+            result = {
+                "schema": "wuli.route-preview.v1",
+                "kind": "analysis.generate",
+                "status": "ready",
+                "resolved_model_id": str(config.get("id", "")),
+                "provider": str(config.get("provider", "")),
+                "upstream_model": str(config.get("model", "")),
+                "qualification": analysis_qualification_public(str(config.get("id", ""))),
+                "deadline_budget": budget.to_dict(),
+                "route_config_digest": route_config_digest(LIBRARY),
+            }
         elif action == "build-diagram":
             tier = normalize_routing_tier(data.get("routing_tier"))
             raw_model_id = data.get("model_id")

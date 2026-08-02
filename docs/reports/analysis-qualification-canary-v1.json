@@ -1,0 +1,58 @@
+{
+  "model_id": "deepseek-v4-flash-api",
+  "qualification": {
+    "provider": "openai-compatible",
+    "sample_set_version": "canary-synthetic-v1",
+    "sample_count": 3,
+    "structural_success_count": 3,
+    "gate_success_count": 3,
+    "p50_latency_ms": 5969,
+    "p95_latency_ms": 7109,
+    "usage": {
+      "prompt_tokens": 2220,
+      "completion_tokens": 2513,
+      "total_tokens": 4733
+    },
+    "conclusion": "qualified",
+    "notes": "synthetic complex physics problems; no student data; wuli.core-solve.v1 gate"
+  },
+  "runs": [
+    {
+      "problem_id": "charged-particle-critical-motion",
+      "structural_ok": true,
+      "gate_ok": true,
+      "duration_seconds": 4.918,
+      "failure_type": "",
+      "finish_reason": "",
+      "target_count": 6,
+      "digest_match": true
+    },
+    {
+      "problem_id": "multi-body-energy-chain",
+      "structural_ok": true,
+      "gate_ok": true,
+      "duration_seconds": 7.109,
+      "failure_type": "",
+      "finish_reason": "",
+      "target_count": 6,
+      "digest_match": true
+    },
+    {
+      "problem_id": "dual-rod-electromagnetic",
+      "structural_ok": true,
+      "gate_ok": true,
+      "duration_seconds": 5.969,
+      "failure_type": "",
+      "finish_reason": "",
+      "target_count": 6,
+      "digest_match": true
+    }
+  ],
+  "redactions": [
+    "api-keys",
+    "full-prompts",
+    "reasoning-bodies",
+    "student-data",
+    "absolute-paths"
+  ]
+}

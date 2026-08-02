@@ -86,6 +86,23 @@ class ModelRegistryTest(unittest.TestCase):
             "vision-model",
             {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
         )
+        # Task-level qualification (A2.2): only qualified models may be
+        # auto-resolved as the analysis.generate default.
+        for qualified_id in ("analysis-model", "deep"):
+            model_registry.record_analysis_qualification(
+                qualified_id,
+                {
+                    "provider": "openai-compatible",
+                    "sample_set_version": "fixture-v1",
+                    "sample_count": 3,
+                    "structural_success_count": 3,
+                    "gate_success_count": 3,
+                    "p50_latency_ms": 8000,
+                    "p95_latency_ms": 20000,
+                    "usage": {"completion_tokens": 9000},
+                    "conclusion": "qualified",
+                },
+            )
 
     def tearDown(self):
         model_registry.LIBRARY = self.original_library
@@ -320,6 +337,88 @@ class ModelRegistryTest(unittest.TestCase):
         public = model_registry.model_registry_public()["models"]
         entry = next(item for item in public if item["id"] == "vision-model")
         self.assertEqual(entry["vision_probe"]["status"], "untested")
+
+    def test_analysis_qualification_gate_blocks_unqualified_default(self):
+        # Point the analysis default at a model with no qualification record.
+        registry = kb.load_json(self.library / "config" / "model-registry.json", {})
+        registry["defaults"]["analysis.generate"] = "cheap"
+        kb.write_json(self.library / "config" / "model-registry.json", registry)
+        with self.assertRaisesRegex(ValueError, "任务级资格验证"):
+            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto")
+
+    def test_analysis_qualification_gate_accepts_qualified_default(self):
+        model_registry.record_analysis_qualification(
+            "analysis-model",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "fixture-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 8000,
+                "p95_latency_ms": 20000,
+                "usage": {"completion_tokens": 9000},
+                "conclusion": "qualified",
+            },
+        )
+        self.assertEqual(
+            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto"),
+            "analysis-model",
+        )
+
+    def test_analysis_qualification_expires_on_config_change(self):
+        model_registry.record_analysis_qualification(
+            "analysis-model",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "fixture-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 8000,
+                "p95_latency_ms": 20000,
+                "usage": {},
+                "conclusion": "qualified",
+            },
+        )
+        # Change the model name -> config digest changes -> qualification expires.
+        registry = kb.load_json(self.library / "config" / "model-registry.json", {})
+        for raw in registry["models"]:
+            if raw.get("id") == "analysis-model":
+                raw["model"] = "changed-model"
+        kb.write_json(self.library / "config" / "model-registry.json", registry)
+        with self.assertRaisesRegex(ValueError, "配置摘要过期|资格"):
+            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "auto")
+
+    def test_explicit_model_id_bypasses_qualification_as_experimental(self):
+        # Explicit selection is allowed as an experimental custom choice.
+        self.assertEqual(
+            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep"
+        )
+
+    def test_public_entry_exposes_qualification_record(self):
+        public = model_registry.model_registry_public()["models"]
+        entry = next(item for item in public if item["id"] == "analysis-model")
+        self.assertEqual(
+            entry["analysis_qualification"]["schema"], "wuli.analysis-qualification.v1"
+        )
+
+    def test_record_qualification_rejects_bad_counts(self):
+        with self.assertRaises(ValueError):
+            model_registry.record_analysis_qualification(
+                "analysis-model",
+                {"sample_count": 0, "conclusion": "qualified"},
+            )
+        with self.assertRaises(ValueError):
+            model_registry.record_analysis_qualification(
+                "analysis-model",
+                {"sample_count": 3, "structural_success_count": 5, "conclusion": "qualified"},
+            )
+        with self.assertRaises(ValueError):
+            model_registry.record_analysis_qualification(
+                "analysis-model",
+                {"sample_count": 3, "structural_success_count": 3, "conclusion": "bogus"},
+            )
 
 
 if __name__ == "__main__":
