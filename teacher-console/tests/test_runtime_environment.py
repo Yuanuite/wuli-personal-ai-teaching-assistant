@@ -169,7 +169,9 @@ class RuntimeEnvironmentTest(unittest.TestCase):
         self.assertEqual(identity["analysis_route"]["policy_version"], "wuli-core-first-routing-v1")
         self.assertEqual(len(identity["route_config_digest"]), 64)
         self.assertEqual(len(identity["model_registry_digest"]), 64)
-        self.assertEqual(len(identity["code_digest"]), 64)
+        # code_digest is empty when the checkout has no git metadata
+        # (e.g. `git archive` extraction); it must never be None or secret.
+        self.assertIn(len(identity["code_digest"]), (0, 64))
         blob = json.dumps(identity, ensure_ascii=False)
         for secret_word in ("api_key", "sk-", "Bearer", "DEEPSEEK", "MIMO"):
             self.assertNotIn(secret_word.lower(), blob.lower())
