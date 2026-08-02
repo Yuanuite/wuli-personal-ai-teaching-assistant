@@ -8,6 +8,30 @@ sys.path.insert(0, str(ROOT / "teacher-console"))
 import solution_verification  # noqa: E402
 
 
+FINGERPRINT = "d" * 64
+
+
+def claim(claim_id="C1", *, depends_on=None):
+    return {
+        "id": claim_id,
+        "version": 1,
+        "kind": "model",
+        "statement": "粒子在该阶段做匀速圆周运动。",
+        "target_ids": ["Q1"],
+        "stage_ids": ["P1"],
+        "depends_on": depends_on or [],
+        "conditions": ["仅受洛伦兹力"],
+        "obligation_ids": ["V1"],
+        "check_spec": {"type": "semantic-required"},
+        "status": "candidate",
+        "source": {
+            "task_id": f"build-{claim_id}",
+            "input_fingerprint": FINGERPRINT,
+            "policy_version": "claim-ledger-v1",
+        },
+    }
+
+
 class SolutionVerificationTest(unittest.TestCase):
     def test_verifier_evidence_view_removes_historical_answer_prose(self):
         view = solution_verification.verification_evidence_view({
@@ -78,6 +102,108 @@ class SolutionVerificationTest(unittest.TestCase):
         self.assertEqual(len(focus), 2)
         self.assertNotIn("unresolved", str(focus))
         self.assertNotIn("Solver", str(focus))
+
+    def test_claim_verifier_receives_only_minimal_dependency_view(self):
+        upstream = claim("C0")
+        current = claim("C1", depends_on=["C0"])
+        view = solution_verification.claim_verification_view(
+            [{"claim": current, "dependencies": [upstream]}],
+            [{
+                "id": "S1",
+                "statement": "题干给出磁场均匀。",
+                "conditions": ["B 恒定"],
+                "historical_answer": "不应进入视图",
+                "local_path": "/private/answer.md",
+            }],
+        )
+        serialized = str(view)
+        self.assertNotIn("build-C1", serialized)
+        self.assertNotIn(FINGERPRINT, serialized)
+        self.assertNotIn("historical_answer", serialized)
+        self.assertNotIn("/private/answer.md", serialized)
+        self.assertEqual(
+            view["requests"][0]["dependencies"][0]["id"], "C0"
+        )
+
+    def test_claim_audit_requires_exact_coverage_and_decisive_pass(self):
+        payload = {
+            "status": "completed",
+            "message": "checked",
+            "interface_audit": None,
+            "claim_audits": [{
+                "claim_id": "C1",
+                "claim_version": 1,
+                "verdict": "pass",
+                "normalized_result": "模型适用",
+                "decisive_checks": ["洛伦兹力始终与速度垂直"],
+                "issues": [],
+            }],
+        }
+        normalized = solution_verification.normalize_claim_audit(
+            payload, {"C1": 1}
+        )
+        self.assertEqual(normalized["claim_audits"][0]["verdict"], "pass")
+
+        missing = {**payload, "claim_audits": []}
+        with self.assertRaisesRegex(ValueError, "cover every request"):
+            solution_verification.normalize_claim_audit(
+                missing, {"C1": 1}
+            )
+        no_check = {
+            **payload,
+            "claim_audits": [{
+                **payload["claim_audits"][0],
+                "decisive_checks": [],
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "decisive check"):
+            solution_verification.normalize_claim_audit(
+                no_check, {"C1": 1}
+            )
+
+    def test_runtime_not_agent_attaches_semantic_certificate_identity(self):
+        current = claim()
+        view = solution_verification.claim_verification_view(
+            [{"claim": current, "dependencies": []}],
+            [{"id": "S1", "statement": "已批准题干事实"}],
+        )
+        fingerprint = view["requests"][0]["input_fingerprint"]
+        audit = solution_verification.normalize_claim_audit(
+            {
+                "status": "completed",
+                "message": "checked",
+                "interface_audit": None,
+                "claim_audits": [{
+                    "claim_id": "C1",
+                    "claim_version": 1,
+                    "verdict": "pass",
+                    "normalized_result": "模型适用",
+                    "decisive_checks": ["独立重建受力模型"],
+                    "issues": [],
+                }],
+            },
+            {"C1": 1},
+        )
+        certificates = solution_verification.materialize_claim_certificates(
+            audit,
+            {("C1", 1): fingerprint},
+            model_id="verifier-model",
+            provider="test-adapter",
+            context_isolated=True,
+        )
+        self.assertEqual(certificates[0]["input_fingerprint"], fingerprint)
+        self.assertEqual(
+            certificates[0]["verifier_identity"]["model_id"],
+            "verifier-model",
+        )
+        with self.assertRaisesRegex(ValueError, "must be isolated"):
+            solution_verification.materialize_claim_certificates(
+                audit,
+                {("C1", 1): fingerprint},
+                model_id="same-context",
+                provider="test-adapter",
+                context_isolated=False,
+            )
 
 
 if __name__ == "__main__":

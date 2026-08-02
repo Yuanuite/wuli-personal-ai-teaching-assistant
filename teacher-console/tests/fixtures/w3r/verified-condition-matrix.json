@@ -1,0 +1,72 @@
+{
+  "problem": "物体从静止释放后经过分段区域，采用地面参考系并规定向上为正，求首次进入第二段时的速度。",
+  "blueprint": {
+    "question_targets": [
+      {"id": "q1", "prompt": "求首次进入第二段时的速度", "answer_type": "velocity"}
+    ],
+    "verification_obligations": [
+      {"id": "v1", "target_id": "q1", "check": "区分释放瞬时关系与全过程关系。", "risk": "critical"},
+      {"id": "v2", "target_id": "q1", "check": "核对分段接口、参考系、方向、单位与极限情况。", "risk": "critical"}
+    ]
+  },
+  "proof_package": {
+    "status": "completed",
+    "aggregation_status": "VERIFIED",
+    "allowed_symbols": ["v", "a", "s"],
+    "final_answers": [
+      {
+        "claim_id": "c3",
+        "target_ids": ["q1"],
+        "statement": "v=\\sqrt{2as}",
+        "status": "verified",
+        "complete": true
+      }
+    ],
+    "claims": [
+      {
+        "id": "c1",
+        "kind": "derived",
+        "statement": "在第一段内由静止释放条件建立运动关系。",
+        "target_ids": ["q1"],
+        "depends_on": [],
+        "conditions": [
+          "仅适用于从静止释放后的第一段，不能外推为任意全过程关系",
+          "采用地面参考系，向上为正"
+        ],
+        "status": "verified",
+        "formula_latex": "v^2=2as"
+      },
+      {
+        "id": "c2",
+        "kind": "derived",
+        "statement": "在 x=0 的分段接口按同一时刻连接两段状态。",
+        "target_ids": ["q1"],
+        "depends_on": ["c1"],
+        "conditions": [
+          "x=0 为第一段与第二段的接口",
+          "该事件是首次进入第二段"
+        ],
+        "status": "verified"
+      },
+      {
+        "id": "c3",
+        "kind": "final",
+        "statement": "v=\\sqrt{2as}",
+        "target_ids": ["q1"],
+        "depends_on": ["c2"],
+        "conditions": [
+          "速度单位为 m/s，量纲为 L/T",
+          "当 s→0 时 v→0"
+        ],
+        "status": "verified",
+        "formula_latex": "v=\\sqrt{2as}"
+      }
+    ],
+    "certificates": [
+      {"claim_id": "c1", "verdict": "pass"},
+      {"claim_id": "c2", "verdict": "pass"},
+      {"claim_id": "c3", "verdict": "pass"}
+    ],
+    "unresolved_obligations": []
+  }
+}

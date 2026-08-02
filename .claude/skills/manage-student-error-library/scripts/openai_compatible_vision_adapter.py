@@ -91,7 +91,7 @@ def main() -> int:
         model = os.environ["VISUAL_REVIEW_MODEL"]
         body = json.dumps(request_body(payload, model), ensure_ascii=False).encode("utf-8")
         headers = {"Content-Type": "application/json"}
-        api_key = os.environ.get("VISUAL_REVIEW_API_KEY")
+        api_key = os.environ.get("VISUAL_REVIEW_API_KEY") or os.environ.get("MIMO_API_KEY")
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         request = urllib.request.Request(endpoint_url(base_url), data=body, headers=headers, method="POST")

@@ -1,0 +1,1123 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-fresh-holdout-v2",
+  "dataset_version": "2026-07-30-v2",
+  "review_status": "draft",
+  "label_origin": "agent_proposed_fresh_holdout_v2",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "两小车在水平轨道上短时碰撞，取两车为系统，碰撞期间外力冲量相对内力冲量可忽略。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-momentum-collision-valid",
+        "question_snapshot_hash": "sha256:5f2c06f15f280fb5067f36c8387a6f19034e0c13902037e820bf2486b067a4d7",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "applicability_check",
+          "question": "该碰撞阶段采用系统动量守恒需要核对哪些条件？",
+          "required_facets": [
+            "系统边界",
+            "外力冲量",
+            "总动量守恒"
+          ],
+          "forbidden_conflicts": [
+            "系统边界中途改变"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4057ce0ba1a2b7e050192564"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4057ce0ba1a2b7e050192564"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "系统固定且碰撞期间外力冲量可忽略，满足动量守恒判据。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "静止物体在光滑水平面上爆炸成两部分，研究时间只取爆炸极短过程且系统包含全部碎片。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-momentum-explosion-valid",
+        "question_snapshot_hash": "sha256:f7f8d194f015433a2a26bcb24a0c207ed586a19b71133097d952d8616e2cac46",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "爆炸极短过程中为什么可以使用总动量守恒？",
+          "required_facets": [
+            "爆炸",
+            "研究时间",
+            "合外力冲量可忽略"
+          ],
+          "forbidden_conflicts": [
+            "把机械能守恒当作动量守恒前提"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4057ce0ba1a2b7e050192564"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4057ce0ba1a2b7e050192564"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "全部碎片属于固定系统，短过程外力冲量可忽略，机械能是否守恒不是必要条件。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "解答在碰撞前把两车作为系统，碰撞后却只保留其中一车，仍直接声称前后系统总动量守恒。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-momentum-boundary-conflict",
+        "question_snapshot_hash": "sha256:ccb200a8aae9c4ae8ce236865b2cbf6ce47607e2dccbe2c476749c79a2c2a4b0",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "研究过程中改变系统边界后还能否直接比较所谓系统总动量？",
+          "required_facets": [
+            "系统边界",
+            "研究时间",
+            "外力冲量"
+          ],
+          "forbidden_conflicts": [
+            "系统边界中途改变"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-4057ce0ba1a2b7e050192564"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "前后研究对象不同，证据的固定系统前提被破坏。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "闭合线圈面积和方向不变，垂直纸面向里的匀强磁场正在增强，需要判断感应电流产生的磁场方向。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-lenz-field-increase-valid",
+        "question_snapshot_hash": "sha256:1e7918769516a8facdf915b7c8403571aa1f4ef5cd228460e6f3aafa0354e7fc",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "应用楞次定律时应怎样从原磁通的方向和增减判断感应磁场？",
+          "required_facets": [
+            "原磁通方向",
+            "磁通量增加",
+            "阻碍磁通变化"
+          ],
+          "forbidden_conflicts": [
+            "把阻碍磁通量变化说成阻碍原磁场"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-61c464cd60e41b4b9de52a73"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-61c464cd60e41b4b9de52a73"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "闭合回路中磁通增加，证据给出从磁通变化到感应磁场的完整判断顺序。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "闭合线圈处在方向不变的匀强磁场中，线圈有效面积逐渐减小，需要判断感应电流方向。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-lenz-area-decrease-valid",
+        "question_snapshot_hash": "sha256:2af0f3808ea9961a42fc40d44e3b18eb008c235aa6596fa9dd7f7028d71a2023",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "applicability_check",
+          "question": "磁场本身不变但有效面积减小时，楞次定律是否仍依据磁通量变化？",
+          "required_facets": [
+            "闭合导体回路",
+            "面积变化",
+            "感应电流方向"
+          ],
+          "forbidden_conflicts": [
+            "只看磁场方向而不看面积或夹角变化"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-61c464cd60e41b4b9de52a73"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-61c464cd60e41b4b9de52a73"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "有效面积变化导致磁通变化，证据明确要求同时检查面积和夹角。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "一段导线与电阻之间存在断口，磁通量虽在变化，解答却画出了持续的闭合感应电流。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-lenz-open-loop-conflict",
+        "question_snapshot_hash": "sha256:9c9d35aef1828665f297ce06fa9a205444923816ac946765790ab23afbd70881",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "回路存在断口时能否依据楞次定律直接声称存在持续感应电流？",
+          "required_facets": [
+            "闭合导体回路",
+            "磁通量变化",
+            "感应电流方向"
+          ],
+          "forbidden_conflicts": [
+            "回路不闭合却声称有持续感应电流"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-61c464cd60e41b4b9de52a73"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "磁通变化可产生感应电动势，但断路不满足持续闭合电流的适用条件。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "理想变压器原、副线圈匝数分别为 N1、N2，原线圈接正弦交流电压 U1，需要求副线圈电压。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-transformer-voltage-valid",
+        "question_snapshot_hash": "sha256:eeaaf31c5fe0b31508950df69e4f08b99fdec3b9f3b463f1a4ec36ab1e30e121",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "理想变压器的电压比怎样由匝数比确定？",
+          "required_facets": [
+            "理想变压器",
+            "匝数比",
+            "电压比"
+          ],
+          "forbidden_conflicts": [
+            "直流稳态接入变压器仍套匝数比"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-1f17981b20eb71570a5f2385"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-1f17981b20eb71570a5f2385"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "明确为理想变压器和交流输入，可直接使用电压匝数比。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "理想变压器稳定工作，已知原副线圈匝数比和副线圈负载电流，需要求原线圈电流。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-transformer-current-valid",
+        "question_snapshot_hash": "sha256:c9d1ad11951a3f552ee54b491ecca2b1c253adf0c085cae9c39f897b2cfe209c",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "怎样利用功率守恒确认电流比与匝数比方向相反？",
+          "required_facets": [
+            "输入输出功率相等",
+            "电流比",
+            "匝数比互为倒数"
+          ],
+          "forbidden_conflicts": [
+            "把电流比写成匝数比同向"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-1f17981b20eb71570a5f2385"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-1f17981b20eb71570a5f2385"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "理想条件下功率守恒，证据明确给出电流比与匝数比的倒数关系。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "变压器效率明确只有 80%，解答仍令输入功率等于输出功率并直接套用理想电流比。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-transformer-loss-conflict",
+        "question_snapshot_hash": "sha256:b677083860ceee9253efa39abc16ac27a90e91d1ebf5b578de23995875d6e3a4",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "存在明确能量损耗时还能否直接使用理想变压器的功率与电流比？",
+          "required_facets": [
+            "理想变压器",
+            "功率守恒",
+            "电流比"
+          ],
+          "forbidden_conflicts": [
+            "非理想变压器仍直接令输入功率等于输出功率"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-1f17981b20eb71570a5f2385"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "效率小于 100% 直接破坏理想功率守恒前提。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "两列频率相同、相位差恒定的简谐波在同一区域持续叠加，需要判断是否形成稳定干涉图样。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-interference-coherent-valid",
+        "question_snapshot_hash": "sha256:1dc9cbda8d2b0e88a8c096e51a02145c3295ab037a57b44191aeb6db4bdbfd7d",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "applicability_check",
+          "question": "稳定干涉需要满足哪些相干条件？",
+          "required_facets": [
+            "频率相同",
+            "相位差恒定",
+            "观察区域叠加"
+          ],
+          "forbidden_conflicts": [
+            "只因两列波相遇就判定稳定干涉"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "频率、相位差和空间叠加三个条件均明确满足。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "两列相干波频率相同且相位差恒定，但振幅不同，在观察区域叠加。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-interference-amplitude-valid",
+        "question_snapshot_hash": "sha256:390971e1c349fab38a1a48802e85ddb3a57af96f6a67645fdf4bf03661a0f389",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "boundary_check",
+          "question": "振幅不同是否会破坏稳定干涉的相干条件？",
+          "required_facets": [
+            "稳定干涉图样",
+            "频率相同",
+            "相位差恒定"
+          ],
+          "forbidden_conflicts": [
+            "把振幅相同当作相干的充分条件"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "振幅相同不是稳定干涉的必要条件，关键是频率相同和相位差恒定。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "两列波频率略有不同，解答仅因它们在空间相遇就声称各加强点位置长期固定。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-interference-frequency-conflict",
+        "question_snapshot_hash": "sha256:9425a8234ec45daaf5aabc05d995da29e0add616e15a5392ff8ff9536a6a1318",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "频率不同的两列波能否形成条纹位置稳定的干涉图样？",
+          "required_facets": [
+            "频率相同",
+            "相位差恒定",
+            "稳定干涉图样"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "频率不同仍声称条纹位置稳定"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0e469416091f17642b095b5d"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确给出稳定干涉要求频率相同、相位差恒定，因此可以直接纠正“频率不同仍有稳定图样”的错误结论。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "甲乙在同一惯性系中均做匀速直线运动，计算得到某时刻二者相对位置与相对速度垂直，且该时刻位于题设时间区间内。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-relative-interior-valid",
+        "question_snapshot_hash": "sha256:0bed9cb089ceca496f3e342df04f78e0003b44cebc57934404f5b117ea218a52",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "匀速相对运动中如何判定区间内部的最近时刻？",
+          "required_facets": [
+            "相对位置",
+            "相对速度",
+            "垂直",
+            "时间区间"
+          ],
+          "forbidden_conflicts": [
+            "存在加速度仍把相对速度当常量"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "匀速和区间内部条件均满足，可用垂直条件判最近时刻。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "两物体均做匀速直线运动，但由相对位置与相对速度垂直求出的时刻早于题设观察区间。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-relative-endpoint-valid",
+        "question_snapshot_hash": "sha256:a095e6d006a3981244be713d211051e493e5a760d926b47c802296653891677b",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "boundary_check",
+          "question": "形式上求得的最近时刻不在观察区间时应怎样处理？",
+          "required_facets": [
+            "研究时间区间",
+            "垂直时刻",
+            "区间端点"
+          ],
+          "forbidden_conflicts": [
+            "求得的垂直时刻不在区间内却不检查端点"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确要求内部解越界时比较区间端点。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "乙物体正在做匀加速运动，解答仍把初始相对速度当作全程常量并套用相对位置垂直条件。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-relative-acceleration-conflict",
+        "question_snapshot_hash": "sha256:e86a146ba7bfc94a60b4f15d75884e8492fa5f2d65e056e6a129696160d50383",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "存在加速度时能否直接使用恒定相对速度的最近距离结论？",
+          "required_facets": [
+            "匀速直线运动",
+            "相对速度",
+            "最近距离"
+          ],
+          "forbidden_conflicts": [
+            "存在加速度仍把相对速度当常量"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "相对速度随时间变化，固定速度条件不成立。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "两颗卫星绕同一行星做半径不同的圆周运动，需要比较轨道线速度。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-satellite-speed-valid",
+        "question_snapshot_hash": "sha256:8b21f4f39c54c0f0d26ebcb5589c0ad66d13ebcc4d40026d34a9a1fa3ff02e85",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "同一中心天体圆轨道的线速度怎样随轨道半径变化？",
+          "required_facets": [
+            "同一中心天体",
+            "圆轨道",
+            "线速度",
+            "轨道半径"
+          ],
+          "forbidden_conflicts": [
+            "比较不同中心天体时忽略中心天体质量"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4e2db04917015f42e21f8de0"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4e2db04917015f42e21f8de0"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "同一中心天体且均为圆轨道，可使用 v 与 r 的比例关系。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "同步比较绕同一中心天体的两个圆轨道，外轨道半径更大，需要判断周期大小。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-satellite-period-valid",
+        "question_snapshot_hash": "sha256:678a7789150d6d15bd80e1927d3ff66880ccd06099e322739feb5ceba79e3258",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "圆轨道周期随轨道半径怎样变化？",
+          "required_facets": [
+            "周期",
+            "轨道半径",
+            "同一中心天体"
+          ],
+          "forbidden_conflicts": [
+            "把轨道高度直接当作轨道半径"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4e2db04917015f42e21f8de0"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4e2db04917015f42e21f8de0"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "满足同一中心天体和圆轨道条件，半径更大周期更大。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "卫星沿明显的椭圆轨道运动，解答把当前到中心天体的距离直接代入圆轨道 v=√(GM/r) 求瞬时速度。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-satellite-ellipse-conflict",
+        "question_snapshot_hash": "sha256:57d8150e39e49ae77686b0693fdb6276f365257bad5a9c8ef227b458a4497963",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "椭圆轨道某点的瞬时速度能否直接使用圆轨道速度公式？",
+          "required_facets": [
+            "圆轨道",
+            "瞬时速度",
+            "轨道半径"
+          ],
+          "forbidden_conflicts": [
+            "把椭圆轨道瞬时速度直接代入圆轨道比例"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-4e2db04917015f42e21f8de0"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "当前轨道不是圆轨道，圆轨道向心条件不能直接迁移。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "同一种金属受高于截止频率的单色光照射，现提高入射光频率并保持其他条件不变。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-photo-frequency-valid",
+        "question_snapshot_hash": "sha256:e3530cd43b3c921da438a2baed79df86045a78141d178b892b3483675bf44fc7",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "提高频率会怎样影响光电子最大初动能？",
+          "required_facets": [
+            "最大初动能",
+            "频率",
+            "逸出功"
+          ],
+          "forbidden_conflicts": [
+            "只提高光强就声称最大初动能增大"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "同一种金属的逸出功固定，爱因斯坦方程直接给出频率对最大初动能的影响。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "高于截止频率的单色光照射同一种金属，只提高光强，需要区分光电子最大初动能和单位时间逸出数。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-photo-intensity-valid",
+        "question_snapshot_hash": "sha256:fb8532ed69a7b4c85562f53fbde234a6748dd533563c0c23d3a4ae20e141d743",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "提高光强主要改变光电效应中的哪个量？",
+          "required_facets": [
+            "光强",
+            "光电子数",
+            "最大初动能"
+          ],
+          "forbidden_conflicts": [
+            "只提高光强就声称最大初动能增大"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "光频率不变时单个光子能量不变，光强主要改变光电子数。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    },
+    {
+      "problem": "入射单色光频率低于该金属截止频率，解答声称只要把光强调得足够大就能逸出光电子。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-photo-below-threshold-conflict",
+        "question_snapshot_hash": "sha256:5bd61a98f3f0e2cdc4737d831d449ae6c10f9fcf2876ea29d046cad8ccb916f7",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "低于截止频率时增大光强能否触发光电效应？",
+          "required_facets": [
+            "截止频率",
+            "光强",
+            "光电子"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "低于截止频率时靠增大光强产生光电子"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-05e31fa12735f575bd819262"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确说明低于截止频率时提高光强也不能发生光电效应，因此能够直接纠正当前错误结论。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-b"
+      }
+    }
+  ],
+  "evidence_snapshot_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869",
+  "dataset_fingerprint": "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e"
+}

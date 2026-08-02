@@ -1,15 +1,18 @@
 # 教师工作台 E2E
 
-这套测试为每个场景创建独立临时目录，启动真实 `ThreadingHTTPServer`，再通过 Playwright 操作教师端 UI。当前有 3 条可执行 E2E：
+这套测试为每个场景创建独立临时目录，启动真实 `ThreadingHTTPServer`，再通过 Playwright 操作教师端 UI。当前有 4 条可执行 E2E：
 
 ```text
 基础交付：上传 → 题干复核 → Agent 解析 → 答案批准 → finish → 评价与质量诊断
 可视化：基础复核 → Agent 物理模型 → 确定性 HTML/ZIP 构建 → 浏览器操作控件 → 重新批准答案 → 批准可视化 → 交付
 公开发布：交付 → 题图遮挡/确认 → 公开草稿 → 浏览器预览 → 隐私确认 → 本地 student-site 发布与泄漏扫描
+断言证据：W3 影子运行 → 正常/冲突/insufficient/熔断 → 完整证据账本 → canonical 不变
 ```
 
 外部不确定边界中，OCR 被显式关闭并由浏览器填写教师校对稿，Agent 被确定性 JSON adapter 替代；
-HTTP、入库、后台任务、候选提升、生命周期门禁、文件导出和浏览器交互均使用生产实现。测试不会读取或修改真实的 `error-collection/`、
+HTTP、入库、后台任务、候选提升、生命周期门禁、文件导出和浏览器交互均使用生产实现。第四条
+`claim-evidence` 场景会打开仅限测试进程的正确性证据影子开关，覆盖正常、冲突、
+`insufficient` 和熔断，并验证完整证据账本 UI 与 canonical 不变性。测试不会读取或修改真实的 `error-collection/`、
 `student-error-library/`、`output/` 或 `student-site/`。可视化场景会运行生产仿真构建器和浏览器运行时检查；公开发布场景会确认原图字节未变，
 并扫描公开树中是否出现条目 ID、原始文件名、教师版、内部记录或本地路径。
 
@@ -48,4 +51,5 @@ adapter 尚未跟随结构化解析契约更新，而不是浏览器步骤或交
 ```bash
 npm run test:e2e -- --scenario visualization
 npm run test:e2e -- --scenario publication
+npm run test:e2e -- --scenario claim-evidence
 ```

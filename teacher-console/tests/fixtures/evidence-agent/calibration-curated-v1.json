@@ -1,0 +1,245 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-curated-calibration",
+  "dataset_version": "2026-07-30-v1",
+  "dataset_fingerprint": "sha256:13f95f9534387a02bd1e9e17c981a788d8c7498f01079e39297797b3d2fe429f",
+  "review_status": "calibration_frozen",
+  "label_origin": "agent_proposed_calibration",
+  "source_scope": ["curated_technique"],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "带正电粒子在相互垂直的匀强电场和匀强磁场中运动，速度方向已使电场力与洛伦兹力方向相反，且粒子做匀速直线运动。判断使用 v=E/B 前必须核对哪些条件。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-velocity-selector-valid",
+        "question_snapshot_hash": "sha256:6187b2b1a446819ff39ad6fec1e2a64165c857872dd3ac2fb4e4142d645a8b55",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "applicability_check",
+          "question": "v=E/B 成立需要哪些受力方向和平衡条件？",
+          "required_facets": ["电场力与洛伦兹力反向", "两力大小相等", "匀速直线通过"],
+          "forbidden_conflicts": ["两种力同向", "未检查电性和方向"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-277d79cd61babffd9055b89c"],
+        "acceptable_evidence_ids": ["EU-277d79cd61babffd9055b89c"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据同时给出 v=E/B 的方向、大小与运动状态条件。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "带正电粒子的速度、电场力和洛伦兹力方向使两种力同向。判断能否仍直接使用 v=E/B。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-velocity-selector-conflict",
+        "question_snapshot_hash": "sha256:04121c3d12306bb203774e15d5878b30227310f3dd26f2a340d50f448aa34d1a",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "两种力同向时能否直接套用 v=E/B？",
+          "required_facets": ["受力方向兼容", "速度选择器平衡条件"],
+          "forbidden_conflicts": ["电场力与洛伦兹力同向"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": ["EU-277d79cd61babffd9055b89c"],
+        "expected_status": "insufficient",
+        "teacher_rationale": "候选结论的必要方向条件与当前题冲突，不能进入 Evidence Set。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "带电粒子仅在匀强磁场中运动，轨迹转过 φ 弧度。判断圆弧运动时间应如何计算以及需要核对哪些条件。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-magnetic-arc-time-valid",
+        "question_snapshot_hash": "sha256:0566bb24a05fd84a321d2e1fbe4d402a7cff2f7d99e750bf3b2e51450f26efcf",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "匀强磁场圆弧时间公式及适用条件是什么？",
+          "required_facets": ["圆弧时间公式", "偏转角使用弧度", "区域内只有匀强磁场"],
+          "forbidden_conflicts": ["跨越不同 B 的区域合并计算"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-e2d5218e3eee60c0ad25fb24"],
+        "acceptable_evidence_ids": ["EU-e2d5218e3eee60c0ad25fb24"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据绑定时间公式、弧度条件以及单一匀强磁场边界。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "粒子先后穿过磁感应强度不同的两个区域。判断能否把两段偏转角相加后，用同一个 B 一次计算总时间。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-magnetic-arc-time-conflict",
+        "question_snapshot_hash": "sha256:14293baa7fde9aee054dc1adb5c4ad84245087d04d10113f5d368f0b7f4ca217",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "不同 B 区域的圆弧时间能否使用单一 B 合并？",
+          "required_facets": ["分段磁场条件", "不同 B 的时间计算边界"],
+          "forbidden_conflicts": ["跨越不同 B 的圆弧合并计算"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1", "P2"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": ["EU-e2d5218e3eee60c0ad25fb24"],
+        "expected_status": "insufficient",
+        "teacher_rationale": "单一 B 的证据与当前两区域条件冲突，应拒绝而不是强行迁移。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "带电粒子从 a 点运动到 b 点，只有静电力做功。需要用电势差判断动能变化的正负。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-field-work-sign",
+        "question_snapshot_hash": "sha256:c542a0c56679649c12218ef1e0e11f28ee4616eea74b4c55e1c2fc19266ddcb0",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "怎样定义电势差并处理带符号电荷的动能变化？",
+          "required_facets": ["ΔEk=qU_ab", "U_ab=φa−φb", "保留 q 的符号"],
+          "forbidden_conflicts": ["用电荷量绝对值替代 q"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-931521d992cb01e737e183a2"],
+        "acceptable_evidence_ids": ["EU-931521d992cb01e737e183a2"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据明确绑定公式、下标定义和电荷符号。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "给出一幅物理图像，需要判断斜率和图像面积是否具有题目声称的物理意义。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-graph-dimension-check",
+        "question_snapshot_hash": "sha256:43a14c2e105f7a2bd87cce6ecf7c3af48d9f0e88313f87d1922057a29f67e50b",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "如何核对斜率和面积的物理意义？",
+          "required_facets": ["斜率量纲", "面积量纲", "坐标轴定义"],
+          "forbidden_conflicts": ["看到图像就机械套用斜率或面积"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-3a78ff1e58a1b5f7727e7e56"],
+        "acceptable_evidence_ids": ["EU-3a78ff1e58a1b5f7727e7e56"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据要求同时核对量纲与定义，不把图像规则当成无条件模板。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "题目要求粒子在第 4 次进入磁场之前首次到达边界。说明“之前”的事件范围应如何检查。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-deadline-before-entry",
+        "question_snapshot_hash": "sha256:3279979dc62e2c61f41931cde61537df26ec24d138175bfadb4bd3dd93595501",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "boundary_check",
+          "question": "“第 n 次进入之前”覆盖哪些事件，怎样检查首次命中？",
+          "required_facets": ["截止事件", "从初始时刻开始", "逐事件检查首次命中"],
+          "forbidden_conflicts": ["只看相邻两次进入之间"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-001becd1895a4e7c37e1fa59"],
+        "acceptable_evidence_ids": ["EU-001becd1895a4e7c37e1fa59"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据完整解释截止范围与首次命中的逐事件检查。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "物体做可分解的二维运动，需要确定到达目标点的时间。判断两个方向的时间参数应如何处理。",
+      "blueprint": {"schema": "wuli.evidence-calibration-blueprint.v1", "question_targets": ["Q1"], "verification_obligations": ["V1"]},
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "curated-projectile-common-time",
+        "question_snapshot_hash": "sha256:12454d94492c8354df534d25cabeffa5032b81231f6ae5ece5d8be8aaa04db9e",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "二维分运动怎样共享时间参数并选择求时方向？",
+          "required_facets": ["共同时间参数", "优先在信息充分的轴求时间", "代入另一轴"],
+          "forbidden_conflicts": ["两个方向分别设置不同时间"],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": ["Q1"],
+          "stage_ids": ["P1"],
+          "obligation_ids": ["V1"]
+        },
+        "required_evidence_ids": ["EU-ac99d72f9d43905c375c4d52"],
+        "acceptable_evidence_ids": ["EU-ac99d72f9d43905c375c4d52"],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该证据明确二维分运动共享同一时间，并给出低成本求时顺序。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    }
+  ]
+}

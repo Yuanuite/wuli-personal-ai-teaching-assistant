@@ -9,6 +9,8 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
+import structured_text
+
 BLUEPRINT_CONTRACT = "wuli.problem-decompose.v1"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 KNOWLEDGE_UNIT_REGISTRY_PATH = (
@@ -33,6 +35,16 @@ COGNITIVE_OPERATION_IDS = {
     "reconstruct",
     "algebra_only",
 }
+DEFAULT_OBLIGATION_POLICY = "wuli.default-obligation-rules.v1"
+
+_DEFAULT_SOLVE_PATTERN = re.compile(
+    r"(?:求|求出|计算|确定|给出).{0,24}(?:时刻|时间|位置|坐标|速度|范围|取值|结果|解)"
+)
+_ALL_SOLUTIONS_SUPPRESSOR = re.compile(
+    r"第一次|首次|最早|最后|唯一|最小正值|最小|最大|任一|一个可能|取一个|只求|只需|是否存在|判断是否|证明"
+)
+_EXPLICIT_ALL_SOLUTIONS = re.compile(r"所有|全部|各个|每个|所有可能|全部可能|可能的|解集|范围")
+_BRANCH_COMPLETENESS_CHECK = re.compile(r"所有|全部|可能|分支|解支|解集|枚举|完整")
 
 STRONG_PATTERNS = {
     "completeness-language": re.compile(r"第一次|首次|唯一|所有可能|全部|至少|至多|最大|最小|临界"),
@@ -305,7 +317,77 @@ def assessment_output_contract() -> dict[str, Any]:
 def _text(value: Any, field: str, maximum: int = 500) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be a non-empty string")
-    return value.strip()[:maximum]
+    return structured_text.reject_unsupported_controls(value, field).strip()[:maximum]
+
+
+def _default_obligation_id(target_id: str, suffix: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_]+", "_", target_id).strip("_")[:24] or "target"
+    return f"default_{safe}_{suffix}"
+
+
+def infer_default_obligation_suggestions(
+    problem: str,
+    blueprint: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Suggest default-convention obligations without changing solver gates.
+
+    These suggestions are diagnostic only. They are not appended to
+    verification_obligations, because doing so would change the solve contract
+    and could break already-correct answer paths.
+    """
+    problem_text = structured_text.reject_unsupported_controls(
+        str(problem or ""), "problem"
+    ).strip()
+    existing_obligations = [
+        item for item in blueprint.get("verification_obligations", []) if isinstance(item, dict)
+    ]
+    suggestions: list[dict[str, Any]] = []
+    for target in blueprint.get("question_targets", []) or []:
+        if not isinstance(target, dict):
+            continue
+        target_id = str(target.get("id", "")).strip()
+        prompt = structured_text.reject_unsupported_controls(
+            str(target.get("prompt", "")), "question_targets.prompt"
+        ).strip()
+        if not target_id or not prompt:
+            continue
+        combined = f"{prompt}\n{problem_text[:600]}"
+        if not _DEFAULT_SOLVE_PATTERN.search(prompt):
+            continue
+        explicit_all = bool(_EXPLICIT_ALL_SOLUTIONS.search(prompt))
+        suppressors = sorted(set(_ALL_SOLUTIONS_SUPPRESSOR.findall(combined)))
+        if suppressors and not explicit_all:
+            continue
+        already_covered = any(
+            str(item.get("target_id", "")).strip() == target_id
+            and _BRANCH_COMPLETENESS_CHECK.search(str(item.get("check", "")))
+            for item in existing_obligations
+        )
+        if already_covered:
+            continue
+        suggestions.append({
+            "id": _default_obligation_id(target_id, "all_physical_solutions"),
+            "target_id": target_id,
+            "type": "branch-completeness",
+            "source": "default-convention",
+            "policy": DEFAULT_OBLIGATION_POLICY,
+            "rule_id": "default.solve.all-physical-solutions.v1",
+            "trigger_text": prompt[:160],
+            "suppressed_by": [
+                "第一次",
+                "首次",
+                "最早",
+                "唯一",
+                "最小正值",
+                "只求一个",
+                "只需判断是否存在",
+                "指定区间",
+            ],
+            "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+            "risk": "high",
+            "status": "suggested",
+        })
+    return suggestions[:12]
 
 
 def _texts(value: Any, field: str, *, allow_empty: bool = True) -> list[str]:

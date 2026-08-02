@@ -1,0 +1,650 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "026b104103e0f7de4935fc623b6bffecd8dd6c00",
+  "generated_at": "2026-08-02T11:06:02.512671+00:00",
+  "runtime_dependencies": [
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/candidate_archive.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/knowledge_store.py",
+        ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+        "scripts/retrieval_benchmark.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/difficulty_assessment.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/evaluator.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/kb.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/candidate_archive.py",
+        ".claude/skills/manage-student-error-library/scripts/difficulty_assessment.py",
+        ".claude/skills/manage-student-error-library/scripts/evaluator.py",
+        ".claude/skills/manage-student-error-library/scripts/knowledge_store.py",
+        ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+        ".claude/skills/manage-student-error-library/scripts/public_site.py",
+        ".claude/skills/manage-student-error-library/scripts/source_review.py",
+        ".claude/skills/manage-student-error-library/scripts/visual_source_review.py",
+        "e2e/run_e2e.py",
+        "model_registry.py",
+        "runtime_environment.py",
+        "scripts/entry_visual_extract.py",
+        "scripts/retrieval_benchmark.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/knowledge_store.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/kb.py",
+        "scripts/retrieval_benchmark.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/pdf_export.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/kb.py",
+        ".claude/skills/manage-student-error-library/scripts/public_site.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/public_site.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/public_site.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/source_review.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+        ".claude/skills/manage-student-error-library/scripts/visual_source_review.py",
+        "scripts/entry_visual_extract.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/teacher_feedback.py",
+      "tracked": true,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/process_uploads.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/agent_gateway.py",
+      "tracked": true,
+      "imported_by": [
+        "e2e/run_e2e.py",
+        "scripts/entry_visual_extract.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/agent_jobs.py",
+      "tracked": true,
+      "imported_by": [
+        "e2e/run_e2e.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/agent_outcome.py",
+      "tracked": true,
+      "imported_by": [
+        "agent_jobs.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/analysis_artifacts.py",
+      "tracked": true,
+      "imported_by": [
+        "analysis_routing.py",
+        "server.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/failure_intelligence.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/log.py",
+      "tracked": true,
+      "imported_by": [
+        "agent_gateway.py",
+        "agent_jobs.py",
+        "failure_intelligence.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/model_registry.py",
+      "tracked": true,
+      "imported_by": [
+        "agent_gateway.py",
+        "e2e/run_e2e.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/problem_decomposition.py",
+      "tracked": true,
+      "imported_by": [
+        "analysis_routing.py",
+        "server.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/runtime_environment.py",
+      "tracked": true,
+      "imported_by": [
+        "scripts/entry_visual_extract.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/script_repair.py",
+      "tracked": true,
+      "imported_by": [
+        "agent_gateway.py"
+      ]
+    },
+    {
+      "module": "teacher-console/scripts/retrieval_benchmark.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/server.py",
+      "tracked": true,
+      "imported_by": [
+        "e2e/run_e2e.py"
+      ]
+    },
+    {
+      "module": "teacher-console/solution_reasoning.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/solution_verification.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/visual_extraction.py",
+      "tracked": true,
+      "imported_by": [
+        "agent_gateway.py"
+      ]
+    },
+    {
+      "module": "teacher-console/w3_pipeline.py",
+      "tracked": true,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": ".claude/skills/manage-student-error-library/scripts/visual_source_review.py",
+      "tracked": false,
+      "imported_by": [
+        "scripts/entry_visual_extract.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/analysis_routing.py",
+      "tracked": false,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/claim_ledger.py",
+      "tracked": false,
+      "imported_by": [
+        "claim_validation.py",
+        "cognitive_loop.py",
+        "proof_aggregation.py",
+        "solution_reasoning.py",
+        "solution_verification.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/claim_validation.py",
+      "tracked": false,
+      "imported_by": [
+        "proof_aggregation.py"
+      ]
+    },
+    {
+      "module": "teacher-console/cognitive_loop.py",
+      "tracked": false,
+      "imported_by": [
+        "proof_aggregation.py",
+        "solution_reasoning.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/core_analysis.py",
+      "tracked": false,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/correctness_policy.py",
+      "tracked": false,
+      "imported_by": [
+        "claim_ledger.py",
+        "claim_validation.py",
+        "cognitive_loop.py",
+        "server.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/diagram_plugins.py",
+      "tracked": false,
+      "imported_by": [
+        "analysis_artifacts.py",
+        "analysis_routing.py"
+      ]
+    },
+    {
+      "module": "teacher-console/evidence_contract.py",
+      "tracked": false,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/knowledge_store.py"
+      ]
+    },
+    {
+      "module": "teacher-console/physics_diagram.py",
+      "tracked": false,
+      "imported_by": [
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/physics_diagram_assets.py",
+      "tracked": false,
+      "imported_by": [
+        "physics_diagram.py"
+      ]
+    },
+    {
+      "module": "teacher-console/proof_aggregation.py",
+      "tracked": false,
+      "imported_by": [
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/structured_text.py",
+      "tracked": false,
+      "imported_by": [
+        "claim_ledger.py",
+        "cognitive_loop.py",
+        "problem_decomposition.py",
+        "solution_reasoning.py",
+        "solution_verification.py"
+      ]
+    },
+    {
+      "module": "teacher-console/svg_collaboration.py",
+      "tracked": false,
+      "imported_by": [
+        "physics_diagram.py",
+        "server.py"
+      ]
+    },
+    {
+      "module": "teacher-console/teaching_method_policy.py",
+      "tracked": false,
+      "imported_by": [
+        "analysis_artifacts.py",
+        "core_analysis.py",
+        "server.py",
+        "w3_pipeline.py",
+        "w3_rendering.py",
+        "w3r_contract.py"
+      ]
+    },
+    {
+      "module": "teacher-console/visual_facts.py",
+      "tracked": false,
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/visual_source_review.py",
+        "physics_diagram.py",
+        "svg_collaboration.py",
+        "visual_extraction.py"
+      ]
+    },
+    {
+      "module": "teacher-console/w3_rendering.py",
+      "tracked": false,
+      "imported_by": [
+        "analysis_routing.py",
+        "w3_pipeline.py"
+      ]
+    },
+    {
+      "module": "teacher-console/w3r_contract.py",
+      "tracked": false,
+      "imported_by": [
+        "analysis_routing.py",
+        "w3_pipeline.py",
+        "w3_rendering.py"
+      ]
+    }
+  ],
+  "untracked_runtime_modules": [
+    {
+      "path": ".claude/skills/manage-student-error-library/scripts/visual_source_review.py",
+      "imported_by": [
+        "server.py",
+        "scripts/entry_visual_extract.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/analysis_routing.py",
+      "imported_by": [
+        "server.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/claim_ledger.py",
+      "imported_by": [
+        "solution_reasoning.py",
+        "solution_verification.py",
+        "w3_pipeline.py",
+        "cognitive_loop.py",
+        "proof_aggregation.py",
+        "claim_validation.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/claim_validation.py",
+      "imported_by": [
+        "proof_aggregation.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/cognitive_loop.py",
+      "imported_by": [
+        "solution_reasoning.py",
+        "w3_pipeline.py",
+        "proof_aggregation.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/core_analysis.py",
+      "imported_by": [
+        "server.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/correctness_policy.py",
+      "imported_by": [
+        "server.py",
+        "w3_pipeline.py",
+        "claim_ledger.py",
+        "cognitive_loop.py",
+        "claim_validation.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/diagram_plugins.py",
+      "imported_by": [
+        "analysis_artifacts.py",
+        "analysis_routing.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/e2e/claim-evidence.e2e.mjs",
+      "imported_by": [
+        "e2e/run_e2e.py SCENARIOS (working-tree added, not in HEAD)"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/evidence_contract.py",
+      "imported_by": [
+        ".claude/skills/manage-student-error-library/scripts/knowledge_store.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/physics_diagram.py",
+      "imported_by": [
+        "server.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/physics_diagram_assets.py",
+      "imported_by": [
+        "physics_diagram.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/proof_aggregation.py",
+      "imported_by": [
+        "w3_pipeline.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/structured_text.py",
+      "imported_by": [
+        "problem_decomposition.py",
+        "solution_reasoning.py",
+        "solution_verification.py",
+        "claim_ledger.py",
+        "cognitive_loop.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/svg_collaboration.py",
+      "imported_by": [
+        "server.py",
+        "physics_diagram.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/teaching_method_policy.py",
+      "imported_by": [
+        "server.py",
+        "core_analysis.py",
+        "analysis_artifacts.py",
+        "w3_pipeline.py",
+        "w3_rendering.py",
+        "w3r_contract.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/visual_facts.py",
+      "imported_by": [
+        "visual_extraction.py",
+        "svg_collaboration.py",
+        "physics_diagram.py",
+        ".claude/skills/manage-student-error-library/scripts/visual_source_review.py"
+      ],
+      "class": "head_blocking"
+    },
+    {
+      "path": "teacher-console/w3_rendering.py",
+      "imported_by": [
+        "analysis_routing.py",
+        "w3_pipeline.py"
+      ],
+      "class": "worktree_only"
+    },
+    {
+      "path": "teacher-console/w3r_contract.py",
+      "imported_by": [
+        "analysis_routing.py",
+        "w3_pipeline.py",
+        "w3_rendering.py"
+      ],
+      "class": "head_blocking"
+    }
+  ],
+  "classification": {
+    "required_runtime": [
+      "teacher-console/analysis_routing.py",
+      "teacher-console/claim_ledger.py",
+      "teacher-console/claim_validation.py",
+      "teacher-console/cognitive_loop.py",
+      "teacher-console/core_analysis.py",
+      "teacher-console/correctness_policy.py",
+      "teacher-console/diagram_plugins.py",
+      "teacher-console/e2e/claim-evidence.e2e.mjs",
+      "teacher-console/evidence_contract.py",
+      "teacher-console/physics_diagram.py",
+      "teacher-console/physics_diagram_assets.py",
+      "teacher-console/proof_aggregation.py",
+      "teacher-console/structured_text.py",
+      "teacher-console/svg_collaboration.py",
+      "teacher-console/teaching_method_policy.py",
+      "teacher-console/visual_facts.py",
+      "teacher-console/w3_rendering.py",
+      "teacher-console/w3r_contract.py",
+      ".claude/skills/manage-student-error-library/scripts/visual_source_review.py"
+    ],
+    "required_tests": [
+      "teacher-console/tests/test_analysis_routing.py",
+      "teacher-console/tests/test_core_analysis.py",
+      "teacher-console/tests/test_mimo_deepseek_collaboration.py",
+      "teacher-console/tests/test_physics_diagram.py",
+      "teacher-console/tests/test_svg_collaboration.py",
+      "teacher-console/tests/test_visual_source_review.py",
+      "teacher-console/tests/fixtures/correctness_faults.v1.json",
+      "teacher-console/tests/fixtures/evidence-agent/",
+      "teacher-console/tests/fixtures/w3r/"
+    ],
+    "unrelated_work": {
+      "count": 131,
+      "categories": {
+        ".agents/skills/complex-process-decomposer": 1,
+        ".claude/skills/complex-process-decomposer": 1,
+        "docs (other)": 15,
+        "docs/reports": 71,
+        "teacher-console root modules (unimported)": 7,
+        "teacher-console/scripts": 26,
+        "teacher-console/schemas": 1,
+        "teacher-console/tests (non-acceptance)": 24
+      }
+    }
+  },
+  "clean_checkout_probe": {
+    "archive_ok": true,
+    "archive_dir": "mktemp -d (deleted after probe)",
+    "import_attempts": [
+      {
+        "target": "server",
+        "ok": false,
+        "error": "ModuleNotFoundError: No module named 'analysis_routing'",
+        "detail": "server.py line 40; first of 7 direct untracked top-level imports at HEAD (analysis_routing, core_analysis, correctness_policy, physics_diagram, svg_collaboration, teaching_method_policy, visual_source_review). Module-missing class, NOT a directory-missing class."
+      },
+      {
+        "target": "agent_gateway",
+        "ok": true,
+        "error": null,
+        "detail": "Top-level import succeeds at HEAD and in working tree: all local deps (log only at top level; model_registry/visual_extraction/script_repair are lazy function-level imports). Missing visual_facts only fails at runtime on the visual-extraction path."
+      },
+      {
+        "target": "entry_visual_extract",
+        "ok": false,
+        "error": "ModuleNotFoundError: No module named 'visual_source_review'",
+        "detail": "entry_visual_extract.py line 28 (PYTHONPATH includes teacher-console/scripts). Module-missing class."
+      },
+      {
+        "target": "kb",
+        "ok": true,
+        "error": null,
+        "detail": "Top-level deps resolve at HEAD (pdf_export tracked); knowledge_store import is lazy."
+      },
+      {
+        "target": "w3_pipeline",
+        "ok": true,
+        "error": null,
+        "detail": "HEAD version top-level imports only tracked modules; the untracked imports (claim_ledger, cognitive_loop, proof_aggregation, correctness_policy, solution_reasoning) were added by uncommitted working-tree changes."
+      }
+    ],
+    "iterative_fix_probe": {
+      "result": "import server SUCCEEDS after copying exactly 11 working-tree untracked modules into the archive (in failure order)",
+      "order": [
+        "analysis_routing.py",
+        "diagram_plugins.py",
+        "w3r_contract.py",
+        "teaching_method_policy.py",
+        "core_analysis.py",
+        "correctness_policy.py",
+        "physics_diagram.py",
+        "physics_diagram_assets.py",
+        "svg_collaboration.py",
+        "visual_facts.py",
+        ".claude/skills/manage-student-error-library/scripts/visual_source_review.py"
+      ],
+      "note": "After these 11, import server completes with no directory-structure failure; student-error-library/ empty dir is not touched at import time (only at runtime)."
+    }
+  },
+  "notes": "1. HEAD baseline 026b104 is NOT self-contained: server.py (unchanged import surface vs HEAD) top-level imports 7 untracked modules; probe fails at analysis_routing. 2. HEAD-vs-working-tree gap: w3_pipeline.py, analysis_artifacts.py, problem_decomposition.py, solution_reasoning.py, solution_verification.py, knowledge_store.py, agent_gateway.py, server.py, run_e2e.py carry uncommitted modifications; the working-tree versions add top-level imports of claim_ledger/cognitive_loop/proof_aggregation/structured_text/evidence_contract/diagram_plugins/teaching_method_policy. HEAD versions do NOT import these (verified via git show + archive probe). 3. required_runtime splits into: head_blocking (11 modules, needed for clean-checkout `import server`) + worktree_only (7 modules: claim_ledger, cognitive_loop, proof_aggregation, claim_validation, structured_text, evidence_contract, w3_rendering, needed only by uncommitted working-tree code) + claim-evidence.e2e.mjs (working-tree-added e2e scenario; HEAD run_e2e.py SCENARIOS has only lifecycle/visualization/publication). 4. evidence_contract is a top-level dependency of the working-tree knowledge_store.py only (HEAD version does not import it). 5. agent_gateway top-level import is green despite missing visual_facts; the failure is deferred to runtime (lazy imports) - unit tests exercising visual extraction (test_visual_extraction) will fail. 6. required_tests fixtures: w3r/verified-multi-target.json is referenced by acceptance test test_analysis_routing.py; evidence-agent/ (11 files) and correctness_faults.v1.json are referenced only by non-acceptance tests (test_evidence_*, test_correctness_*) - confirm whether Wave 1 should include them or defer. 7. run_tests.py --all runs every test_*.py including 24 untracked non-acceptance tests and their 7 unimported untracked modules (correctness_ablation, correctness_faults, correctness_metrics, correctness_replay, evidence_agent, evidence_benchmark, evidence_evaluation); these are classified unrelated_work and need a Wave 1 decision (track now vs leave untracked). 8. Runtime-directory class: student-error-library/ is gitignored, so a clean checkout lacks the data directory layout; not an import blocker but server runtime (OCR/model registry paths) will need it - outside import closure scope. 9. server.py working-tree diff only removes requires_vision/vision_images params; import surface identical to HEAD. 10. Report contains no secrets, no env vars, no student data."
+}

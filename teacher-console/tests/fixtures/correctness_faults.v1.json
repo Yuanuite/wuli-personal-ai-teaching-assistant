@@ -1,0 +1,204 @@
+{
+  "schema_version": "wuli.correctness-faults.v1",
+  "policy_version": "correctness-policy-v1",
+  "cases": [
+    {
+      "id": "F01-sign-flip",
+      "category": "arithmetic",
+      "fault": "正负号翻转",
+      "detector": "safe-arithmetic-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "arithmetic",
+        "variables": {"m": 2, "a": 3},
+        "relations": [
+          {"left": "-m*a", "operator": "==", "right": "6"}
+        ]
+      }
+    },
+    {
+      "id": "F02-coefficient-exponent",
+      "category": "arithmetic",
+      "fault": "系数或指数错误",
+      "detector": "safe-arithmetic-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "arithmetic",
+        "variables": {"v": 4},
+        "relations": [
+          {"left": "v**2", "operator": "==", "right": "8"}
+        ]
+      }
+    },
+    {
+      "id": "F03-dimension",
+      "category": "dimension",
+      "fault": "单位或量纲错误",
+      "detector": "dimension-vector-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "dimension",
+        "symbols": {
+          "F": {"M": 1, "L": 1, "T": -2},
+          "m": {"M": 1},
+          "v": {"L": 1, "T": -1}
+        },
+        "relations": [
+          {
+            "label": "F=mv",
+            "left": {"symbol": "F"},
+            "right": {
+              "op": "mul",
+              "args": [{"symbol": "m"}, {"symbol": "v"}]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "F04-interval-gap",
+      "category": "interval",
+      "fault": "漏掉一个合法区间",
+      "detector": "interval-partition-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "interval",
+        "domain": {
+          "lower": 0,
+          "upper": 3,
+          "lower_closed": true,
+          "upper_closed": true
+        },
+        "segments": [
+          {
+            "label": "left",
+            "lower": 0,
+            "upper": 1,
+            "lower_closed": true,
+            "upper_closed": true
+          },
+          {
+            "label": "right",
+            "lower": 2,
+            "upper": 3,
+            "lower_closed": true,
+            "upper_closed": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "F05-exists-as-all",
+      "category": "event-order",
+      "fault": "把存在误写成必然并漏掉另一分支",
+      "detector": "event-order-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "event-order",
+        "events": [
+          {"id": "branch_a", "time": 1, "admissible": true},
+          {"id": "branch_b", "time": 2, "admissible": true}
+        ],
+        "selected_event_ids": ["branch_a"],
+        "selection": "all"
+      }
+    },
+    {
+      "id": "F06-omitted-earlier-root",
+      "category": "event-order",
+      "fault": "遗漏更早正根",
+      "detector": "event-order-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "event-order",
+        "events": [
+          {"id": "negative_root", "time": -1, "admissible": true},
+          {"id": "earlier_root", "time": "1/2", "admissible": true},
+          {"id": "later_root", "time": 2, "admissible": true}
+        ],
+        "selected_event_ids": ["later_root"],
+        "selection": "first",
+        "time_lower_bound": {"value": 0, "inclusive": false}
+      }
+    },
+    {
+      "id": "F07-return-as-first-entry",
+      "category": "event-order",
+      "fault": "把返回事件当作第一次进入",
+      "detector": "event-order-v1",
+      "expected": "conflict",
+      "check_spec": {
+        "type": "event-order",
+        "events": [
+          {"id": "first_entry", "time": 1, "admissible": true},
+          {"id": "return_entry", "time": 5, "admissible": true}
+        ],
+        "selected_event_ids": ["return_entry"],
+        "selection": "first",
+        "time_lower_bound": {"value": 0, "inclusive": false}
+      }
+    },
+    {
+      "id": "F08-stage-direction",
+      "category": "interface",
+      "fault": "跨阶段方向或坐标系不一致",
+      "detector": "stage-interface-v1",
+      "expected": "conflict",
+      "mutation": "coordinate-and-direction"
+    },
+    {
+      "id": "F09-local-pass-global-conflict",
+      "category": "interface",
+      "fault": "模块局部正确但整体状态约束冲突",
+      "detector": "stage-interface-v1",
+      "expected": "conflict",
+      "mutation": "carried-speed"
+    },
+    {
+      "id": "F10-two-agents-same-error",
+      "category": "promotion",
+      "fault": "两个 Agent 给出相同错误",
+      "detector": "certificate-promotion-v1",
+      "expected": "disputed",
+      "check_spec": {
+        "type": "arithmetic",
+        "variables": {},
+        "relations": [
+          {"left": "2*3", "operator": "==", "right": "7"}
+        ]
+      },
+      "semantic_passes": 2
+    },
+    {
+      "id": "F11-repeated-hypothesis",
+      "category": "hypothesis",
+      "fault": "Challenge 重复提出旧假设",
+      "detector": "hypothesis-fingerprint-v1",
+      "expected": "rejected"
+    },
+    {
+      "id": "F12-backjump-collateral",
+      "category": "backjump",
+      "fault": "回跳误伤无关分支",
+      "detector": "dependency-impact-cone-v1",
+      "expected": "isolated",
+      "root_claim_ids": ["C2"],
+      "expected_affected_claim_ids": ["C2", "C3"],
+      "expected_preserved_claim_ids": ["C1", "C4", "C5"]
+    },
+    {
+      "id": "F13-generator-self-verification",
+      "category": "promotion",
+      "fault": "生成者用同一身份自证模型断言",
+      "detector": "certificate-promotion-v1",
+      "expected": "candidate"
+    },
+    {
+      "id": "F14-hard-fuse-false-promotion",
+      "category": "loop",
+      "fault": "熔断时把当前猜测误晋升为正确",
+      "detector": "bounded-loop-v1",
+      "expected": "UNRESOLVED"
+    }
+  ]
+}

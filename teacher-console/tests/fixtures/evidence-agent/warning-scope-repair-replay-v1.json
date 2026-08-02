@@ -1,0 +1,70 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-mvp-g2-warning-scope-replay",
+  "dataset_version": "2026-07-31-repair-v1",
+  "review_status": "draft",
+  "label_origin": "post_holdout_v2_repair_replay",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "两物体均做匀速直线运动，但由相对位置与相对速度垂直求出的时刻早于题设观察区间。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh2-relative-endpoint-valid",
+        "question_snapshot_hash": "sha256:a095e6d006a3981244be713d211051e493e5a760d926b47c802296653891677b",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "boundary_check",
+          "question": "形式上求得的最近时刻不在观察区间时应怎样处理？",
+          "required_facets": [
+            "研究时间区间",
+            "垂直时刻",
+            "区间端点"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "求得的垂直时刻不在区间内却不检查端点"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-9bf2d5d1e1066b1b510c0a31"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该警示描述证据要纠正的漏检行为，而不是使端点判据失效的物理条件；因此归入 diagnostic_targets。证据仍须完整覆盖时间区间、垂直时刻和区间端点。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    }
+  ],
+  "evidence_snapshot_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869",
+  "dataset_fingerprint": "sha256:255c6fed6ed9a558853bf303d8be3aa5c46d69e3708923f373934c01f8141744"
+}

@@ -1,0 +1,1062 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-fresh-holdout",
+  "dataset_version": "2026-07-30-v2",
+  "review_status": "draft",
+  "label_origin": "agent_proposed_holdout",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "正电荷以垂直于磁场的速度进入匀强磁场；当前检索需求只负责核对瞬时洛伦兹力方向，不负责给出完整轨迹解法。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-lorentz-positive-charge",
+        "question_snapshot_hash": "sha256:1f28489008a5f3c3a28fa79621bf08f431b8926210be4662d3e07abe3a7ed761",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "在只核对瞬时受力方向时，正电荷应怎样判断并用圆心侧复核？",
+          "required_facets": [
+            "速度垂直于磁场",
+            "正电荷左手定则",
+            "圆心位于受力一侧"
+          ],
+          "forbidden_conflicts": [
+            "把右手定则当作带电粒子受力定则"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "该 Need 明确限于方向复核；完整解题仍需另建包含速度分解或 qvBsinθ 的方法 Need，不能由这条口诀替代。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "负电荷斜着进入匀强磁场，需要先按正电荷判断再处理电性，并由弯曲方向复核。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-lorentz-negative-charge",
+        "question_snapshot_hash": "sha256:ff761f667f89f28ff0763390de1c23dd1dcb6e49b9243be59d2baab7c83798d5",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "负电荷的磁场力方向如何在正电荷规则基础上修正？",
+          "required_facets": [
+            "先按正电荷判断",
+            "负电荷方向反向",
+            "轨迹弯向复核"
+          ],
+          "forbidden_conflicts": [
+            "忽略电荷正负"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确要求负电荷反向，并提供独立的圆心侧复核。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "带电粒子的速度与匀强磁场完全平行，却准备使用左手定则给出非零洛伦兹力方向。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-lorentz-parallel-conflict",
+        "question_snapshot_hash": "sha256:6958b99ec156b7065a40e2b7438559ebea69171be99478b2535e4e80a3bc4b9e",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "速度与磁场平行时能否使用该方向判断得到非零磁场力？",
+          "required_facets": [
+            "速度与磁场夹角",
+            "洛伦兹力是否存在"
+          ],
+          "forbidden_conflicts": [
+            "速度与磁场平行"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "证据的适用前提要求速度不与磁场平行，当前情境直接冲突。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "待核对解答错误地用右手定则判断运动负电荷的磁场力方向；当前检索目的是找到正确规则来纠正该错误。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-lorentz-right-hand-conflict",
+        "question_snapshot_hash": "sha256:9bdc8496644f4684c7d73a062312c4dac6a6c1ae92aaee2ee5daafc463a6f372",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "什么证据能够指出右手定则误用，并给出负电荷受力方向的正确判断？",
+          "required_facets": [
+            "指出右手定则误用",
+            "先按正电荷使用左手定则",
+            "负电荷方向反向"
+          ],
+          "forbidden_conflicts": [
+            "速度与磁场平行而仍声称存在非零洛伦兹力"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-0da542351f084b059f89b89a"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "题面中的错误是待诊断对象，不是证据冲突；该证据能明确纠错并给出正确规则，应以 condition_warning 用途采纳。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "粒子沿圆形匀强磁场区域的半径方向入射，区域内只有磁场且速率不变，需要联系入射、出射半径与速度偏转角。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-radial-boundary-valid",
+        "question_snapshot_hash": "sha256:96aee3ea5f4550a617b93106ab4224c4c413c878ae84872a9893bc3f36e4d83e",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "沿圆形边界半径入射时，速度偏转角如何由几何关系确定？",
+          "required_facets": [
+            "圆形磁场边界",
+            "沿半径入射",
+            "速度偏转角等于半径圆心角"
+          ],
+          "forbidden_conflicts": [
+            "斜入射直接套角相等"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-eef1ded86a99a91d252132b6"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-eef1ded86a99a91d252132b6"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "题目满足圆边界、径向入射和纯匀强磁场的全部适用条件。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "粒子斜着穿过圆形磁场边界，入射速度并不沿边界半径，却准备直接令速度偏转角等于两条边界半径的夹角。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-radial-boundary-slanted-conflict",
+        "question_snapshot_hash": "sha256:fcad9919cd29f015e1015ccb1bd0ea675d35c77a657ed6c8f416ea0544e121a1",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "非径向入射时还能否直接使用偏转角等于半径圆心角？",
+          "required_facets": [
+            "入射方向条件",
+            "圆形边界几何关系"
+          ],
+          "forbidden_conflicts": [
+            "斜入射仍直接令两角相等"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-eef1ded86a99a91d252132b6"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "缺少径向入射前提，证据明确把该套用方式列为例外。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "圆形区域内电场和磁场同时存在，粒子速率发生变化，仍准备使用纯磁场圆弧的径向边界角关系。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-radial-boundary-electric-conflict",
+        "question_snapshot_hash": "sha256:f9b1462cd199a2d63572860e9a16a2b6a664c08d71c2e2376253ea418e62f93d",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "电场同时做功并改变速率时，该纯磁场几何结论是否仍可直接采用？",
+          "required_facets": [
+            "区域内受力类型",
+            "速率是否不变",
+            "轨迹是否为定半径圆弧"
+          ],
+          "forbidden_conflicts": [
+            "电场与磁场同时做功时直接套用"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-eef1ded86a99a91d252132b6"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "当前情境破坏纯匀强磁场和速率不变条件，证据不可采纳。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "粒子依次经过三个场区，每段转向和偏转角均已知，并统一规定逆时针为正，需要求最终速度方向。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-angle-ledger-valid",
+        "question_snapshot_hash": "sha256:bee367e1c8839e066eccd19a8f8d05493c96142fc8e90d29efea13cb86f04784",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "多段轨迹怎样用统一符号的方向角增量快速累计？",
+          "required_facets": [
+            "逐段方向角增量",
+            "统一正方向",
+            "按时间顺序累加"
+          ],
+          "forbidden_conflicts": [
+            "中途更换角度正方向",
+            "漏记返回段"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "每段转向可确定且符号约定统一，适合使用方向角账本。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "待核对解答在多场区轨迹中途改变角度正方向并直接相加；当前检索目的是找到正确的累计偏转角规则来纠正它。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-angle-ledger-sign-conflict",
+        "question_snapshot_hash": "sha256:feac06233d93f2adf4467f4063e691eefa17183b6ec9bd060d9426b1470ea3aa",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "什么证据能够解释累计偏转角为何必须统一正方向，并纠正当前做法？",
+          "required_facets": [
+            "统一角度正方向",
+            "带符号角增量",
+            "按时间顺序累计"
+          ],
+          "forbidden_conflicts": [
+            "每段转向或偏转角本身不可确定"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1",
+            "P2"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "错误做法是待纠正对象；证据完整给出正确累计规则，因此可以作为 condition_warning 采纳。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "解答把轨迹点相对原点的位置极角和速度方向角混在同一张角度账本中直接相加。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-angle-ledger-position-conflict",
+        "question_snapshot_hash": "sha256:6d59d30256176c0d31b8840b1f082f622735d9576e9cfe6e85939dd25e54a329",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "位置角与速度方向角能否作为同一种角增量直接累计？",
+          "required_facets": [
+            "速度方向角",
+            "位置极角",
+            "角度对象一致性"
+          ],
+          "forbidden_conflicts": [
+            "把位置角和速度方向角混用"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "证据只允许累计速度方向增量，当前混用正是明确例外。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "半径为 r 的圆上两点对应较小圆心角 θ，需要把两点直线距离写成 r 与 θ 的关系。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-chord-minor-arc-valid",
+        "question_snapshot_hash": "sha256:dc6e812c151c3d50491840012719bf52d27d76e098115626e139a48ce1cac6f0",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "圆上两点的弦长如何由半径和较小圆心角表示？",
+          "required_facets": [
+            "弦长",
+            "圆半径",
+            "较小圆心角",
+            "L=2r sin(θ/2)"
+          ],
+          "forbidden_conflicts": [
+            "混淆速度偏转角与位置圆心角"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-f77a25f68669afd927711788"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-f77a25f68669afd927711788"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "θ 明确是同一圆的较小圆心角，证据公式可直接使用。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "圆轨道上明确指定从 A 到 B 所取圆弧及其圆心角 θ，需要求端点间弦长。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-chord-specified-arc-valid",
+        "question_snapshot_hash": "sha256:12cbdb9d3b53af150a30ac674fa368243ab274089ecb3bfbec8c1ea7c52c38dc",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "已明确所取圆弧时，端点弦长怎样计算？",
+          "required_facets": [
+            "指定圆弧",
+            "对应圆心角",
+            "弦长公式"
+          ],
+          "forbidden_conflicts": [
+            "使用了不对应端点的角"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-f77a25f68669afd927711788"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-f77a25f68669afd927711788"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "题目已经明确所取弧与对应圆心角，满足证据的边界说明。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "圆周运动中只给出了速度方向的转角，却未证明它等于两位置半径的圆心角，解答便直接代入弦长公式。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-chord-velocity-angle-conflict",
+        "question_snapshot_hash": "sha256:12a9a64b719ca9fe51a29df5660500c3c5a046ed7cfa44e764fa4fc27da1c764",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "未建立角度对应关系时能否把速度偏转角直接代入弦长公式？",
+          "required_facets": [
+            "位置圆心角",
+            "速度偏转角",
+            "角度对应关系"
+          ],
+          "forbidden_conflicts": [
+            "把速度偏转角与位置圆心角混淆后直接代入"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-f77a25f68669afd927711788"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "当前解答没有建立两种角的对应，正中证据所列例外。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "推导得到一个含多个物理量的时间表达式，需要用与原推导不同的低成本方法检查结果。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-sanity-dimension-valid",
+        "question_snapshot_hash": "sha256:8627233f7410f89dc465fb5081514c302c2fab7485e309065ed64a5bbf23afcf",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "怎样用量纲、极端参数或对称情形对表达式做独立检查？",
+          "required_facets": [
+            "单位正确",
+            "极端参数趋势",
+            "对称情形恢复熟悉结论"
+          ],
+          "forbidden_conflicts": [
+            "只复算同一条推导"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-d1dc406ced943e167e2428f0"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-d1dc406ced943e167e2428f0"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "结果含物理量和参数，证据提供三种低成本独立检查入口。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "某结果依赖两个结构对称的参数，需要检查令二者相等时是否恢复熟悉的对称结论。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-sanity-symmetry-valid",
+        "question_snapshot_hash": "sha256:c58a1d30bef06dc2235e9139859239fcda35d7a5cc44498622d5ea6428dcf932",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "参数进入对称情形时应怎样验证结果合理性？",
+          "required_facets": [
+            "对称参数",
+            "恢复熟悉结论",
+            "独立于原推导"
+          ],
+          "forbidden_conflicts": [
+            "只复算原方程"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-d1dc406ced943e167e2428f0"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-d1dc406ced943e167e2428f0"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "对称情形是证据明确推荐的独立低成本检验。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "解答把原推导从头到尾按完全相同的代数步骤再算一遍，并声称这已经构成独立物理验证。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-sanity-same-derivation-conflict",
+        "question_snapshot_hash": "sha256:c6dea570497016cfbc79f617b211bacb08c9be2458c6ac91af83115131db0d74",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "重复同一条推导是否足以证明结果通过独立检查？",
+          "required_facets": [
+            "独立验证",
+            "量纲或极限检查",
+            "验证路径差异"
+          ],
+          "forbidden_conflicts": [
+            "只复算同一条推导当作独立验证"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-d1dc406ced943e167e2428f0"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "相同路径复算不能发现共享错误，证据明确排除这种做法。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "稳恒直流电路中含滑动变阻器，需要先标实际电流通路，再检查滑片位于两个端点时的短路或最大接入电阻。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-circuit-slider-boundary-valid",
+        "question_snapshot_hash": "sha256:68a6ce000f5e7af60730bc4e95dba775328462d45276324a25b84eac62c5ac92",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "boundary_check",
+          "question": "滑动变阻器等效电路怎样用端点状态做边界检查？",
+          "required_facets": [
+            "实际电流通路",
+            "滑片端点",
+            "短路或最大接入电阻"
+          ],
+          "forbidden_conflicts": [
+            "只按图形远近判断串并联"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "电路模型明确且为稳恒直流，证据完整覆盖通路和端点检查。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "电路图画法较复杂，但元件连接点明确，需要忽略几何形状，沿实际电流通路判断等效连接。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-circuit-path-valid",
+        "question_snapshot_hash": "sha256:02ada81df1b2e8be8e7dc5bdcdfc261a31525e69b209e7c1ca7f9905d9722569",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "复杂画法下应依据什么判断元件的串并联关系？",
+          "required_facets": [
+            "实际电流通路",
+            "连接节点",
+            "等效电路"
+          ],
+          "forbidden_conflicts": [
+            "只按图形远近判断串并联"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据要求从真实通路出发，正适合排除图形布局造成的误导。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "解答仅凭两个电阻在图上画得很近就判定并联，没有检查它们是否连接在相同两个节点。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-circuit-drawing-conflict",
+        "question_snapshot_hash": "sha256:e722c12d405972709dbd516c0d90b4307516201e73b22e784fa6a99a90bb6fe6",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "仅凭图形远近能否采纳该等效电路判断？",
+          "required_facets": [
+            "实际连接节点",
+            "电流通路",
+            "串并联判据"
+          ],
+          "forbidden_conflicts": [
+            "只按图形远近判断串并联"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "图形距离不是电路拓扑证据，当前做法正是明确例外。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    },
+    {
+      "problem": "题目明确给出电流表具有不可忽略的内阻，解答却仍按理想电流表短路处理并套用滑片端点结论。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-circuit-meter-resistance-conflict",
+        "question_snapshot_hash": "sha256:5c2b33af2aa11772c8908eaedd412f8898ff43e5fffbe68bc75c71a456dcff4c",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "exception_check",
+          "question": "电表内阻模型与理想设定不同时，能否直接采用原等效边界结论？",
+          "required_facets": [
+            "电表内阻设定",
+            "元件模型",
+            "端点等效"
+          ],
+          "forbidden_conflicts": [
+            "忽略电表内阻设定"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "题设元件模型与理想化前提不一致，证据不能无条件迁移。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-30-a"
+      }
+    }
+  ],
+  "dataset_fingerprint": "sha256:dc0b07818720ccc18c335dcab505ff5f270e64b8523d987a39947283a198f6e1"
+}

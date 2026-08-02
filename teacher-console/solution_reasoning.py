@@ -3,12 +3,83 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-SOLUTION_CONTRACT = "wuli.solution-reasoning.v1"
+import claim_ledger
+import cognitive_loop
+import structured_text
+
+SOLUTION_CONTRACT = "wuli.solution-reasoning.v2.1"
 ADJUDICATION_CONTRACT = "wuli.solution-adjudicate.v1"
 
 TEXT_ARRAY = {"type": "array", "items": {"type": "string"}, "maxItems": 12}
+STRING_MAP = {
+    "type": "object",
+    "additionalProperties": {"type": "string"},
+    "maxProperties": 64,
+}
+STAGE_INTERFACE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "stage_id": {"type": "string"},
+        "coordinate_frame": {"type": "string"},
+        "time_origin": {"type": "string"},
+        "directions": STRING_MAP,
+        "entry_state": STRING_MAP,
+        "exit_state": STRING_MAP,
+        "required_entry_keys": TEXT_ARRAY,
+        "carried_state_keys": TEXT_ARRAY,
+    },
+    "required": [
+        "stage_id",
+        "coordinate_frame",
+        "time_origin",
+        "directions",
+        "entry_state",
+        "exit_state",
+        "required_entry_keys",
+        "carried_state_keys",
+    ],
+}
+STAGE_TRANSITION_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "from_stage": {"type": "string"},
+        "to_stage": {"type": "string"},
+        "event": {"type": "string"},
+        "state_mapping": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "from_key": {"type": "string"},
+                    "to_key": {"type": "string"},
+                    "transform": {"type": ["string", "null"]},
+                },
+                "required": ["from_key", "to_key", "transform"],
+            },
+        },
+        "introduced_entry_keys": TEXT_ARRAY,
+        "coordinate_transform": {"type": ["string", "null"]},
+        "time_transform": {"type": ["string", "null"]},
+        "direction_transform": {"type": ["string", "null"]},
+    },
+    "required": [
+        "from_stage",
+        "to_stage",
+        "event",
+        "state_mapping",
+        "introduced_entry_keys",
+        "coordinate_transform",
+        "time_transform",
+        "direction_transform",
+    ],
+}
 
 SOLUTION_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -51,6 +122,16 @@ SOLUTION_SCHEMA: dict[str, Any] = {
             },
             "maxItems": 16,
         },
+        "stage_interfaces": {
+            "type": ["array", "null"],
+            "items": STAGE_INTERFACE_SCHEMA,
+            "maxItems": 16,
+        },
+        "stage_transitions": {
+            "type": ["array", "null"],
+            "items": STAGE_TRANSITION_SCHEMA,
+            "maxItems": 15,
+        },
         "option_verdicts": {
             "type": ["array", "null"],
             "items": {
@@ -87,6 +168,8 @@ SOLUTION_SCHEMA: dict[str, Any] = {
         "message",
         "targets",
         "stage_results",
+        "stage_interfaces",
+        "stage_transitions",
         "option_verdicts",
         "blueprint_audit",
     ],
@@ -142,9 +225,18 @@ def output_contract(*, role: str = "solver-a") -> dict[str, Any]:
             "只输出结构化求解结果，不写教学 Markdown。"
             f"{independent}"
             "每个目标给出最终结论、可复算的决定性关系、成立条件和已覆盖校验义务。"
+            "必须为蓝图每个物理阶段输出一个 stage_interface；entry_state/exit_state 使用"
+            "稳定 ASCII key 和可直接比较的字符串值。相邻阶段必须输出 stage_transition，"
+            "明确事件和状态映射；只有真实发生坐标、时间原点、方向或状态变换时才填写"
+            "对应 transform，否则填 null，禁止用空泛变换掩盖不一致。"
+            "事件中新加入、无法从上一阶段出口映射的入口量必须列入"
+            "introduced_entry_keys；它们仍必须存在于下一阶段 entry_state。"
+            "carried_state_keys 只是希望继续跟踪的状态量提示，可以在阶段内演化；"
+            "跨阶段连续性由 exit_state、下一阶段 entry_state 和 state_mapping 检查。"
             "不得把检索片段当作答案；当前题干优先，证据只提供高中方法及适用条件。"
             "必须覆盖蓝图中的全部题目目标和校验义务。"
-            "status=unsupported 时 targets、stage_results、option_verdicts、blueprint_audit 均为 null。"
+            "status=unsupported 时 targets、stage_results、stage_interfaces、"
+            "stage_transitions、option_verdicts、blueprint_audit 均为 null。"
         ),
     }
 
@@ -164,7 +256,13 @@ def adjudication_output_contract() -> dict[str, Any]:
 def _clean_text(value: Any, field: str, maximum: int = 800) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{field} must be a non-empty string")
-    return value.strip()[:maximum]
+    return structured_text.reject_unsupported_controls(value, field).strip()[:maximum]
+
+
+def _clean_optional_text(value: Any, field: str, maximum: int = 1000) -> str:
+    if value is None:
+        return ""
+    return structured_text.reject_unsupported_controls(value, field).strip()[:maximum]
 
 
 def _clean_list(value: Any, field: str, *, allow_empty: bool = True) -> list[str]:
@@ -180,11 +278,16 @@ def _clean_list(value: Any, field: str, *, allow_empty: bool = True) -> list[str
     return result[:12]
 
 
-def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> dict[str, Any]:
+def normalize_solution(
+    payload: dict[str, Any],
+    blueprint: dict[str, Any],
+    *,
+    require_stage_interfaces: bool = True,
+) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("solution output must be an object")
     status = str(payload.get("status", "")).strip().lower()
-    message = str(payload.get("message", "")).strip()[:1000]
+    message = _clean_optional_text(payload.get("message", ""), "message")
     if status == "unsupported":
         return {"status": status, "message": message}
     if status != "completed":
@@ -195,6 +298,14 @@ def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> di
         str(item.get("id", "")) for item in blueprint.get("verification_obligations", [])
     }
     stage_ids = {str(item.get("id", "")) for item in blueprint.get("physical_stages", [])}
+    ordered_stage_ids = [
+        str(item.get("id", "")) for item in blueprint.get("physical_stages", [])
+    ]
+    step_to_stage = {
+        str(item.get("step_id", "")): str(item.get("stage_id", ""))
+        for item in blueprint.get("stage_step_links", [])
+        if str(item.get("step_id", "")) and str(item.get("stage_id", ""))
+    }
     targets = []
     seen_targets: set[str] = set()
     covered_obligations: set[str] = set()
@@ -210,6 +321,50 @@ def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> di
         )
         if not set(covered).issubset(obligation_ids):
             raise ValueError("solution covers an unknown verification obligation")
+        if any(item.startswith("MFC_") for item in covered):
+            domain_text = "；".join([
+                *relations,
+                *_clean_list(raw.get("conditions"), "targets.conditions"),
+            ])
+            has_free_surface_height = bool(
+                re.search(
+                    r"(?:\bH(?:_oil)?\b|油柱高度|自由液面|油面位置|y_s)",
+                    domain_text,
+                    re.IGNORECASE,
+                )
+            )
+            has_full_oil_interval = bool(
+                re.search(
+                    r"(?:"
+                    r"(?:F_?oil|F_?油|油侧.{0,12}(?:合力|压力)).{0,160}"
+                    r"(?:H(?:_oil)?\s*(?:\^?2|²)|(?:0|from_0).{0,12}H)"
+                    r"|全润湿.{0,40}(?:y_s|H)"
+                    r"|(?:integral|∫).{0,24}(?:y_s).{0,24}h"
+                    r"|(?:integral|\\int|∫).{0,48}H(?:_oil)?"
+                    r")",
+                    domain_text,
+                    re.IGNORECASE,
+                )
+            )
+            if not (has_free_surface_height and has_full_oil_interval):
+                raise ValueError(
+                    "multi-fluid column solution must determine the free-surface "
+                    "height and cover the full oil-wetted plate interval"
+                )
+            final_answer = str(raw.get("final_answer", ""))
+            has_density_ratio = bool(
+                re.search(
+                    r"(?:rho_?0|ρ₀).{0,120}(?:/|}\s*\{).{0,80}"
+                    r"(?:rho_?\{?(?:\\mathrm\{)?oil|ρ_?oil)",
+                    final_answer,
+                    re.IGNORECASE,
+                )
+            )
+            if not has_density_ratio:
+                raise ValueError(
+                    "multi-fluid column final answer must retain the density "
+                    "ratio introduced by the actual oil-column height"
+                )
         seen_targets.add(target_id)
         covered_obligations.update(covered)
         targets.append({
@@ -222,17 +377,47 @@ def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> di
     if seen_targets != target_ids:
         raise ValueError("solution did not cover every question target")
 
-    stage_results = []
-    seen_stages: set[str] = set()
+    stage_result_parts: dict[str, list[str]] = {}
     for raw in payload.get("stage_results") or []:
         stage_id = _clean_text(raw.get("stage_id"), "stage_results.stage_id", 40)
-        if stage_id not in stage_ids or stage_id in seen_stages:
-            raise ValueError("stage result is unknown or duplicated")
-        seen_stages.add(stage_id)
-        stage_results.append({
+        if stage_id not in stage_ids and step_to_stage.get(stage_id) in stage_ids:
+            stage_id = step_to_stage[stage_id]
+        if stage_id not in stage_ids:
+            raise ValueError("stage result references an unknown physical stage")
+        result = _clean_text(raw.get("result"), "stage_results.result")
+        if result not in stage_result_parts.setdefault(stage_id, []):
+            stage_result_parts[stage_id].append(result)
+    stage_results = [
+        {
             "stage_id": stage_id,
-            "result": _clean_text(raw.get("result"), "stage_results.result"),
-        })
+            "result": "；".join(stage_result_parts[stage_id]),
+        }
+        for stage_id in ordered_stage_ids
+        if stage_id in stage_result_parts
+    ]
+
+    stage_interfaces = [
+        cognitive_loop.normalize_stage_interface(item)
+        for item in (payload.get("stage_interfaces") or [])
+    ]
+    interface_ids = [item["stage_id"] for item in stage_interfaces]
+    if require_stage_interfaces and (
+        len(interface_ids) != len(set(interface_ids)) or set(interface_ids) != stage_ids
+    ):
+        raise ValueError("solution stage_interfaces must cover every physical stage exactly once")
+
+    stage_transitions = [
+        cognitive_loop.normalize_stage_transition(item)
+        for item in (payload.get("stage_transitions") or [])
+    ]
+    expected_pairs = list(zip(ordered_stage_ids, ordered_stage_ids[1:]))
+    actual_pairs = [
+        (item["from_stage"], item["to_stage"]) for item in stage_transitions
+    ]
+    if require_stage_interfaces and actual_pairs != expected_pairs:
+        raise ValueError(
+            "solution stage_transitions must connect each adjacent physical stage in order"
+        )
 
     option_verdicts = []
     seen_options: set[str] = set()
@@ -271,6 +456,8 @@ def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> di
         "message": message,
         "targets": targets,
         "stage_results": stage_results,
+        "stage_interfaces": stage_interfaces,
+        "stage_transitions": stage_transitions,
         "option_verdicts": option_verdicts,
         "blueprint_audit": {
             "status": audit_status,
@@ -281,13 +468,34 @@ def normalize_solution(payload: dict[str, Any], blueprint: dict[str, Any]) -> di
     }
 
 
+def project_claim_ledger(
+    payload: dict[str, Any],
+    blueprint: dict[str, Any],
+    *,
+    input_fingerprint: str,
+    snapshot_version: int = 1,
+) -> dict[str, Any]:
+    """Compatibility projection from the current solution contract."""
+    normalized = normalize_solution(
+        payload, blueprint, require_stage_interfaces=False
+    )
+    if normalized.get("status") != "completed":
+        raise ValueError("unsupported solution cannot be projected to a claim ledger")
+    return claim_ledger.project_legacy_solution(
+        normalized,
+        blueprint,
+        input_fingerprint=input_fingerprint,
+        snapshot_version=snapshot_version,
+    )
+
+
 def normalize_adjudication(
     payload: dict[str, Any], expected_target_ids: set[str]
 ) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("adjudication output must be an object")
     status = str(payload.get("status", "")).strip().lower()
-    message = str(payload.get("message", "")).strip()[:1000]
+    message = _clean_optional_text(payload.get("message", ""), "message")
     if status == "unsupported":
         return {"status": status, "message": message}
     if status != "completed":
@@ -350,15 +558,19 @@ def normalize_adjudication_with_verified_equivalence(
             raise
         return {
             "status": "completed",
-            "message": str(payload.get("message", "")).strip()[:1000],
+            "message": _clean_optional_text(payload.get("message", ""), "message"),
             "target_decisions": [
                 {
                     "target_id": target_id,
-                    "selected_result": str(targets[target_id].get("final_answer", "")).strip(),
+                    "selected_result": _clean_text(
+                        targets[target_id].get("final_answer", ""),
+                        "target_decisions.selected_result",
+                    ),
                     "decision": "solver-a",
-                    "decisive_relation": str(
-                        next(iter(audits[target_id].get("decisive_checks", [])), "")
-                    ).strip()[:800],
+                    "decisive_relation": _clean_text(
+                        next(iter(audits[target_id].get("decisive_checks", [])), ""),
+                        "target_decisions.decisive_relation",
+                    ),
                     "reason": "两个独立求解结果被仲裁判定为等价，且独立验证器已复算通过。",
                 }
                 for target_id in sorted(expected_target_ids)

@@ -132,8 +132,8 @@ try {
   const quality = JSON.parse(qualityProcess.stdout.trim().split("\n").at(-1));
   assert.equal(quality.entry_id, entryId);
   assert.equal(quality.dimensions.pipeline_accuracy.score, 100);
-  assert.ok(quality.telemetry.requests >= 1);
-  assert.equal(quality.telemetry.token_efficiency.total_tokens, 150);
+  assert.ok(quality.telemetry.requests >= 2);
+  assert.equal(quality.telemetry.token_efficiency.total_tokens, 180);
 
   const summary = {
     status: "passed",

@@ -1,0 +1,240 @@
+{
+  "schema": "wuli.evidence-overlay.v1",
+  "overlay_id": "wuli-evidence-fresh-holdout-v3",
+  "overlay_fingerprint": "sha256:55b55578ff20cc29b62b49aa3f672723b0a441e0d290e647e21aed1fe46c2f1a",
+  "review_status": "draft",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "units": [
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-7f56ba8b658e18939f870500",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "circular-motion-radial-force-ledger",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "圆周运动中的向心力是所有实际力沿指向圆心方向的合力，不是额外增加的一种力；在惯性系中应列 ΣF径向=mv²/r。匀速圆周运动只是速率不变，速度方向和加速度仍在变化，合力不为零。",
+      "physics_facets": [
+        "圆周运动",
+        "径向合力",
+        "向心加速度",
+        "实际力",
+        "匀速圆周运动"
+      ],
+      "applicability": [
+        "物体在所研究瞬间沿圆弧运动",
+        "参考系为惯性系",
+        "圆心方向明确"
+      ],
+      "exceptions": [
+        "把向心力与重力或支持力重复计入",
+        "把匀速圆周运动误判为合力为零",
+        "物体离开圆形约束后仍套用径向合力公式"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:e4a2734350d43fa5a5fa8206453ee7a08ab8eeff95ab854bcc6079d244d7469f"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-e2ecf8dcde51348f388fc00c",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "horizontal-projectile-component-independence",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "忽略空气阻力、取重力加速度恒定时，平抛运动可分解为水平方向匀速x=v0t 和竖直方向自由落体 y=gt²/2；同一竖直落差的飞行时间由竖直运动决定，与水平初速度无关，落地速度必须由两个分量合成。",
+      "physics_facets": [
+        "平抛运动",
+        "运动独立性",
+        "水平初速度",
+        "竖直落差",
+        "飞行时间",
+        "速度合成"
+      ],
+      "applicability": [
+        "初速度水平",
+        "忽略空气阻力",
+        "重力加速度恒定"
+      ],
+      "exceptions": [
+        "存在不可忽略空气阻力",
+        "初速度并非水平方向",
+        "只用水平速度大小代替落地合速度"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:ee9babc663d327124ee8f9f0a75427155d684d2f03a56c43300d19537133a6e4"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-b288fd52bc840a8e53132a22",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "ideal-gas-fixed-amount-state-law",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "一定质量的理想气体在两个平衡态之间满足 pV/T 为常量，其中 T 必须使用热力学温度；只有气体物质的量不变时才能直接比较。等温、等容、等压过程分别是该关系在相应约束下的特例。",
+      "physics_facets": [
+        "理想气体",
+        "一定质量",
+        "平衡态",
+        "压强",
+        "体积",
+        "热力学温度"
+      ],
+      "applicability": [
+        "气体可视为理想气体",
+        "物质的量不变",
+        "比较确定的平衡态"
+      ],
+      "exceptions": [
+        "把摄氏温度直接代入状态方程比例",
+        "容器漏气后仍按一定质量处理",
+        "非平衡瞬态仍直接使用统一压强和温度"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:fb2b2aa9e95aa35f56c43adacf3619422c6de32add4d3ed8cfdeea3c05bc6789"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-76e39c9cea8a0d3d74a6ae45",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "motional-emf-effective-component",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "直导体切割匀强磁场时，动生电动势由有效长度和垂直切割分量决定；当导体、速度和磁场两两垂直时 ε=BLv，一般共面情形可写ε=BLv sinθ。开路仍可有电动势，但只有闭合回路才有持续电流。",
+      "physics_facets": [
+        "动生电动势",
+        "有效长度",
+        "速度垂直分量",
+        "匀强磁场",
+        "闭合回路",
+        "感应电流"
+      ],
+      "applicability": [
+        "直导体切割匀强磁场",
+        "有效切割长度明确",
+        "速度与磁场夹角明确"
+      ],
+      "exceptions": [
+        "斜切磁场仍直接使用全部速度",
+        "开路存在电动势就声称有持续电流",
+        "转动导体或非匀强磁场仍直接套 BLv"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:65a362fd979743994088cda7301eebc1156b081c469c407550e92ddc3c87612d"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-9db23c189878e5c7e5f88eeb",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "ideal-spring-shm-energy-phase",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "理想轻弹簧振子做简谐运动时 a=-ω²x，总机械能 E=kA²/2。经过平衡位置时速度最大、加速度为零；到达振幅端点时速度为零、加速度大小最大，动能与弹性势能在运动中相互转化。",
+      "physics_facets": [
+        "简谐运动",
+        "位移",
+        "加速度",
+        "平衡位置",
+        "振幅端点",
+        "机械能"
+      ],
+      "applicability": [
+        "理想轻弹簧振子",
+        "阻力可忽略",
+        "形变在线性弹性范围"
+      ],
+      "exceptions": [
+        "把平衡位置误判为速度和加速度都最大",
+        "把振幅端点误判为加速度为零",
+        "存在明显阻尼仍令振幅和机械能恒定"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:e3a444f22af6089c4b6ce55a66d902589ada5a31683b6493dd33430f10ea7448"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-2550bbfa123aac2855a6710d",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "total-internal-reflection-boundary",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "全反射只可能发生在光从折射率较大的介质射向折射率较小的介质时，且入射角大于临界角 C；临界角满足 sinC=n2/n1。入射角等于临界角时折射光沿界面传播，从光疏介质射向光密介质不会发生全反射。",
+      "physics_facets": [
+        "全反射",
+        "光密介质",
+        "光疏介质",
+        "入射角",
+        "临界角",
+        "折射率"
+      ],
+      "applicability": [
+        "两种均匀透明介质的清晰界面",
+        "光从高折射率介质射向低折射率介质"
+      ],
+      "exceptions": [
+        "光从光疏介质射向光密介质却声称全反射",
+        "入射角小于临界角却声称全反射",
+        "折射率连续变化介质仍直接套单一界面临界角"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:02176b0547bf32c8b4c5627b723219d66660673d0b55103ce118d4031ef69208"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-ca6fc7256929a19a64075552",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json",
+        "section": "radioactive-half-life-statistical-law",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "大量同种放射性原子核的剩余数满足 N=N0·2^(-t/T)，半衰期 T 由核素本身决定，通常不随温度、压强或化学状态改变；初始核数只改变衰变数量，不改变半衰期。统计规律不能预言某一个原子核的确切衰变时刻。",
+      "physics_facets": [
+        "放射性衰变",
+        "半衰期",
+        "剩余核数",
+        "统计规律",
+        "温度",
+        "初始核数"
+      ],
+      "applicability": [
+        "大量同种放射性原子核",
+        "只考虑自发衰变",
+        "半衰期在研究期间稳定"
+      ],
+      "exceptions": [
+        "升温或加压就改变核素半衰期",
+        "样品质量增加就改变半衰期",
+        "外来粒子轰击引发核反应仍只套自发衰变公式"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:545321726b1434ccbc2a013fd0b86fb901acb91e22fd3998574e4b161a789310"
+    }
+  ]
+}

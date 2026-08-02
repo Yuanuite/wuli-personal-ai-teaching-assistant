@@ -1,0 +1,177 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-mvp-f-repair-replay",
+  "dataset_version": "2026-07-30-repair-v1",
+  "review_status": "draft",
+  "label_origin": "post_holdout_repair_replay",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "待核对解答在多场区轨迹中途改变角度正方向并直接相加；当前检索目的是找到正确的累计偏转角规则来纠正它。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-angle-ledger-sign-conflict",
+        "question_snapshot_hash": "sha256:feac06233d93f2adf4467f4063e691eefa17183b6ec9bd060d9426b1470ea3aa",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "什么证据能够解释累计偏转角为何必须统一正方向，并纠正当前做法？",
+          "required_facets": [
+            "统一角度正方向",
+            "带符号角增量",
+            "按时间顺序累计"
+          ],
+          "forbidden_conflicts": [
+            "每段转向或偏转角本身不可确定"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1",
+            "P2"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "中途改变角度正方向并直接相加"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "错误做法是待纠正对象；证据完整给出正确累计规则，因此可以作为 condition_warning 采纳。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "电路图画法较复杂，但元件连接点明确，需要忽略几何形状，沿实际电流通路判断等效连接。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-circuit-path-valid",
+        "question_snapshot_hash": "sha256:02ada81df1b2e8be8e7dc5bdcdfc261a31525e69b209e7c1ca7f9905d9722569",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "复杂画法下应依据什么判断元件的串并联关系？",
+          "required_facets": [
+            "实际电流通路",
+            "连接节点",
+            "等效电路"
+          ],
+          "forbidden_conflicts": [
+            "只按图形远近判断串并联"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-bcf841d2038df8417c913c32"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-bcf841d2038df8417c913c32",
+          "EU-4a36df71d3e05cc730ea9aae"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "新增节点拓扑证据直接覆盖连接节点、实际电流通路和等效电路；旧边界证据仍可作为补充，但不能替代节点判据。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    },
+    {
+      "problem": "解答把轨迹点相对原点的位置极角和速度方向角混在同一张角度账本中直接相加。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "holdout-angle-ledger-position-conflict",
+        "question_snapshot_hash": "sha256:6d59d30256176c0d31b8840b1f082f622735d9576e9cfe6e85939dd25e54a329",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "位置角与速度方向角能否作为同一种角增量直接累计？",
+          "required_facets": [
+            "速度方向角",
+            "位置极角",
+            "角度对象一致性"
+          ],
+          "forbidden_conflicts": [
+            "把位置角和速度方向角混用"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-a4acafd42b4332c3ade8b8f8"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "证据只允许累计速度方向增量，当前混用正是明确例外。",
+        "evaluation_split": "calibration",
+        "batch_id": ""
+      }
+    }
+  ],
+  "dataset_fingerprint": "sha256:9073a4debd823cd8282d446720d9e301b4ec566a0f0022508db1626a2cacf559"
+}

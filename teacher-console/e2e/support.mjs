@@ -81,7 +81,13 @@ export async function createSession() {
 }
 
 export async function uploadAndApproveSource(page, { filename, problem, note }) {
-  await page.locator(".upload-card > summary").click();
+  const previousEntryId = String(
+    (await page.locator("#entry-id").textContent().catch(() => "")) || "",
+  ).trim();
+  const uploadCard = page.locator(".upload-card");
+  if ((await uploadCard.getAttribute("open")) === null) {
+    await uploadCard.locator(":scope > summary").click();
+  }
   await page.locator("#file-input").setInputFiles({
     name: filename,
     mimeType: "image/png",
@@ -89,7 +95,13 @@ export async function uploadAndApproveSource(page, { filename, problem, note }) 
   });
   await page.locator("#upload-run").click();
   await page.locator("#entry-view:not(.hidden)").waitFor();
-  await page.waitForFunction(() => document.querySelector("#entry-id")?.textContent?.trim());
+  await page.waitForFunction(
+    previous => {
+      const current = document.querySelector("#entry-id")?.textContent?.trim();
+      return Boolean(current && current !== previous);
+    },
+    previousEntryId,
+  );
   const entryId = String(await page.locator("#entry-id").textContent()).trim();
   assert.ok(entryId, "uploaded entry id should be visible");
   await waitForState(entryId, "needs-source-review");

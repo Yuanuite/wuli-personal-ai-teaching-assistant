@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Thin CLI entry for registry-routed visual extraction (work-tree A3.3).
+"""Thin CLI entry for registry-routed visual extraction (work-tree A3.3/C2.3).
 
-Runs the SAME orchestration as the web upload path — registry ``defaults.vision``
-route → ``extract_visual_facts`` → ``stage_visual_extraction`` — and produces the
-same ``visual-facts.json`` / ``visual-facts-gate.json`` / ``source-review``
-artifacts. It never grants source approval.
+Runs the SAME application service as the web upload path — shared
+``run_visual_extract()`` → registry ``defaults.vision`` route → staging — and
+produces the same ``VisualExtractOutcome.v1``, ``visual-facts.json`` /
+``visual-facts-gate.json`` / ``source-review`` artifacts and call ledger. It
+never grants source approval.
 
 The legacy sidecar adapter remains available as an explicit override and is
 recorded as ``legacy-adapter``; it never becomes a second result schema.
@@ -24,10 +25,7 @@ sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
 import kb  # noqa: E402
-import source_review  # noqa: E402
-import visual_source_review  # noqa: E402
-from agent_gateway import AgentGateway  # noqa: E402
-from runtime_environment import resolved_environment  # noqa: E402
+from visual_application import run_visual_extract  # noqa: E402
 
 
 def _fail(status: int, error: str) -> int:
@@ -77,44 +75,35 @@ def main() -> int:
         return _fail(2, f"entry not found: {args.entry_id}")
 
     config = kb.load_json(library / "config.json", {})
-    privacy = config.get("privacy", {})
-    allow_remote = bool(privacy.get("allow_remote_visual_review", False))
+    allow_remote = bool(config.get("privacy", {}).get("allow_remote_visual_review", False))
 
     if args.legacy_adapter:
         return _run_legacy_adapter(entry, args.legacy_adapter, args.adapter_locality, allow_remote)
 
-    record = kb.load_json(entry / "record.json", {})
-    ocr = kb.load_json(entry / "ocr.json", {})
-    try:
-        payload = source_review.review_payload(entry)
-        fingerprint = "sha256:" + source_review.input_digest(entry, record, ocr)
-        gateway = AgentGateway(environment_resolver=lambda: resolved_environment(library))
-        extraction = gateway.extract_visual_facts(
-            payload,
-            fingerprint,
-            allow_remote=allow_remote,
-            routing_tier=args.tier,
-            model_id=args.model,
-        )
-    except Exception as exc:  # noqa: BLE001 - fail closed with a durable reason
-        return _fail(3, str(exc))
-
-    try:
-        report = visual_source_review.stage_visual_extraction(entry, extraction)
-    except Exception as exc:  # noqa: BLE001 - keep the human gate intact
-        return _fail(3, f"visual facts staging failed: {exc}")
-    kb.rebuild_index(library)
-    summary = {
-        "status": "completed",
-        "entry_id": entry.name,
-        "source_review_status": report.get("status"),
-        "visual_gate_status": report.get("visual_gate_status"),
-        "model_id": (report.get("trace") or {}).get("model_id", ""),
-        "upstream_model": (report.get("trace") or {}).get("upstream_model", ""),
-        "uncertainties": len(report.get("uncertainties") or []),
-        "artifacts": ["visual-facts.json", "visual-facts-gate.json", "source-review.md", "source-review.json"],
-    }
-    print(json.dumps(summary, ensure_ascii=False))
+    outcome = run_visual_extract(
+        entry,
+        library=library,
+        routing_tier=args.tier,
+        model_id=args.model,
+        allow_remote=allow_remote,
+    )
+    if outcome.get("status") != "completed":
+        print(json.dumps({"status": "failed", "error": outcome.get("message", "")}, ensure_ascii=False))
+        return 3
+    print(json.dumps(
+        {
+            "status": "completed",
+            "entry_id": entry.name,
+            "outcome_schema": outcome.get("schema"),
+            "source_review_status": "needs-review",
+            "visual_gate_status": outcome.get("visual_gate_status"),
+            "model_id": outcome.get("model_id"),
+            "upstream_model": outcome.get("upstream_model"),
+            "uncertainties": outcome.get("uncertainties"),
+            "artifacts": ["visual-facts.json", "visual-facts-gate.json", "source-review.md", "source-review.json"],
+        },
+        ensure_ascii=False,
+    ))
     return 0
 
 

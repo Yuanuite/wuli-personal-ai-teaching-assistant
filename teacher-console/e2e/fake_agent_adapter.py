@@ -9,6 +9,219 @@ import sys
 from pathlib import Path
 
 
+def w3_stage_payload(task: dict, problem: str) -> dict | None:
+    """Mirror every private W3 contract used by the production Gateway."""
+    stage = str(task.get("w3_stage", ""))
+    if not stage:
+        return None
+    context_root = Path(task["entry_dir"]) / ".agent-context"
+    scenario = (
+        "conflict" if "[claim-conflict]" in problem
+        else "insufficient" if "[claim-insufficient]" in problem or "[claim-fuse]" in problem
+        else "normal"
+    )
+    blueprint = {
+        "status": "completed",
+        "message": "fake W3 blueprint",
+        "question_targets": [{
+            "id": "q1",
+            "prompt": "求全部可能结果并核对首次事件",
+            "answer_type": "value",
+        }],
+        "physical_stages": [{
+            "id": "p1",
+            "label": "单阶段运动",
+            "entry_conditions": ["t=0"],
+            "exit_conditions": ["到达目标事件"],
+            "state_carried": ["速度"],
+        }],
+        "stage_transitions": [],
+        "reasoning_steps": [{
+            "id": "r1",
+            "operation": "建立运动关系并枚举首次事件",
+            "depends_on": [],
+            "target_ids": ["q1"],
+            "decisive_relations": ["2×3=6"],
+        }],
+        "stage_step_links": [{"stage_id": "p1", "step_id": "r1"}],
+        "retrieval_needs": [{
+            "id": "n1",
+            "purpose": "核对首次事件的高中方法",
+            "query": "首次事件 枚举 边界条件",
+            "priority": 3,
+            "target_ids": ["q1"],
+            "stage_ids": ["p1"],
+        }],
+        "verification_obligations": [{
+            "id": "v1",
+            "target_id": "q1",
+            "check": "核对所有允许分支中的首次事件",
+            "risk": "medium",
+        }],
+    }
+    solver_blueprint = blueprint
+    try:
+        candidate = json.loads(
+            (context_root / "w3-blueprint.json").read_text(encoding="utf-8")
+        )
+        if isinstance(candidate, dict):
+            solver_blueprint = candidate
+    except (OSError, json.JSONDecodeError):
+        pass
+    solver_obligation_ids = [
+        str(item.get("id", ""))
+        for item in solver_blueprint.get("verification_obligations", [])
+        if isinstance(item, dict) and str(item.get("id", "")).strip()
+    ]
+    solution = {
+        "status": "completed",
+        "message": "fake W3 solution",
+        "targets": [{
+            "id": "q1",
+            "final_answer": "6",
+            "supporting_relations": ["2×3=6"],
+            "conditions": ["允许经过边界后再次返回"],
+            "covered_obligation_ids": solver_obligation_ids,
+        }],
+        "stage_results": [{
+            "stage_id": "p1",
+            "result": "枚举允许事件后由 2×3=6 得到结论。",
+        }],
+        "stage_interfaces": [{
+            "stage_id": "p1",
+            "coordinate_frame": "ground",
+            "time_origin": "t=0",
+            "directions": {"x": "positive along motion"},
+            "entry_state": {"speed": "initial speed"},
+            "exit_state": {"speed": "speed at target event"},
+            "required_entry_keys": ["speed"],
+            "carried_state_keys": [],
+        }],
+        "stage_transitions": [],
+        "option_verdicts": [],
+        "blueprint_audit": {
+            "status": "followed",
+            "covered_target_ids": ["q1"],
+            "covered_obligation_ids": solver_obligation_ids,
+            "revisions": [],
+        },
+    }
+    if stage == "decompose":
+        return blueprint
+    if stage in {"solver-a", "solver-b"}:
+        return solution
+    if stage == "verifier":
+        target_verdict = (
+            "conflict" if scenario == "conflict"
+            else "insufficient" if scenario == "insufficient"
+            else "pass"
+        )
+        return {
+            "status": "completed",
+            "message": "fake target audit",
+            "target_audits": [{
+                "target_id": "q1",
+                "verdict": target_verdict,
+                "recomputed_result": "6" if target_verdict == "pass" else "待定",
+                "decisive_checks": (
+                    ["独立复算 2×3=6"] if target_verdict == "pass" else []
+                ),
+                "issues": (
+                    [] if target_verdict == "pass"
+                    else [f"injected target {target_verdict}"]
+                ),
+            }],
+        }
+    if stage == "adjudicator":
+        return {
+            "status": "completed",
+            "message": "fake adjudication",
+            "target_decisions": [{
+                "target_id": "q1",
+                "selected_result": "6",
+                "decision": "recomputed",
+                "decisive_relation": "2×3=6",
+                "reason": "独立关系与题设一致",
+            }],
+        }
+    if stage == "claim-verifier":
+        view_path = context_root / "w3-verification_view.json"
+        view = json.loads(view_path.read_text(encoding="utf-8"))
+        verdict = {
+            "normal": "pass",
+            "conflict": "conflict",
+            "insufficient": "insufficient",
+        }[scenario]
+        return {
+            "status": "completed",
+            "message": f"fake claim audit {scenario}",
+            "interface_audit": {
+                "verdict": "pass",
+                "decisive_checks": ["single-stage interface is complete"],
+                "issues": [],
+            },
+            "claim_audits": [
+                {
+                    "claim_id": request["claim"]["id"],
+                    "claim_version": request["claim"]["version"],
+                    "verdict": verdict,
+                    "normalized_result": (
+                        "independently recomputed as 6"
+                        if verdict == "pass"
+                        else "recomputed value disagrees"
+                        if verdict == "conflict"
+                        else "source facts do not determine the boundary branch"
+                    ),
+                    "decisive_checks": (
+                        ["independently checked 2×3=6"] if verdict == "pass" else []
+                    ),
+                    "issues": (
+                        [] if verdict == "pass"
+                        else ["injected semantic conflict"]
+                        if verdict == "conflict"
+                        else ["injected insufficient evidence"]
+                    ),
+                }
+                for request in view.get("requests", [])
+            ],
+        }
+    raise ValueError(f"unsupported fake W3 stage: {stage}")
+
+
+def core_solve_payload(task: dict, problem: str) -> dict | None:
+    if task.get("output_contract", {}).get("name") != "wuli.core-solve.v1":
+        return None
+    brief = json.loads(
+        (Path(task["entry_dir"]) / ".agent-context" / "target-brief.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    charged = "带电粒子" in problem
+    final_answer = "临界磁感应强度为 $B^*=3mv_0/(qd)$" if charged else "物体的加速度为 $a=F/m$"
+    derivation = (
+        ["由 $qvB=mv^2/r$ 与临界相切条件联立，解得 $B^*=3mv_0/(qd)$"]
+        if charged
+        else ["水平方向由牛顿第二定律 $F=ma$，解得 $a=F/m$"]
+    )
+    return {
+        "status": "completed",
+        "message": "fake compact core solve",
+        "target_brief_digest": brief["digest"],
+        "targets": [
+            {
+                "id": item["id"],
+                "final_answer": final_answer,
+                "key_relations": [*derivation, "方向、量纲与题设边界复核通过"],
+            }
+            for item in brief["targets"]
+        ],
+        "model": "fake-e2e-core",
+        "model_tier": "standard",
+        "requested_tier": task.get("routing_tier", "auto"),
+        "usage": {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120},
+    }
+
+
 def visualization_model(entry_id: str, problem: str) -> dict:
     return {
         "schema_version": 1,
@@ -98,8 +311,21 @@ def visualization_model(entry_id: str, problem: str) -> dict:
 def main() -> int:
     task = json.load(sys.stdin)
     entry = Path(task["entry_dir"])
+    problem = (entry / "problem.md").read_text(encoding="utf-8")
+    stage_payload = w3_stage_payload(task, problem)
+    if stage_payload is not None:
+        stage_payload["model"] = (
+            "fake-claim-verifier"
+            if task.get("w3_stage") == "claim-verifier"
+            else "fake-w3-solver"
+        )
+        print(json.dumps(stage_payload, ensure_ascii=False))
+        return 0
+    core_payload = core_solve_payload(task, problem)
+    if core_payload is not None:
+        print(json.dumps(core_payload, ensure_ascii=False))
+        return 0
     if task["kind"] == "visualization.model":
-        problem = (entry / "problem.md").read_text(encoding="utf-8")
         files = {
             "physics-model.json": json.dumps(
                 visualization_model(task["entry_id"], problem),
@@ -128,7 +354,21 @@ def main() -> int:
         )
         return 0
 
-    problem = (entry / "problem.md").read_text(encoding="utf-8")
+    if task["kind"] == "diagram.scene":
+        facts = json.loads((entry / "visual-facts.json").read_text(encoding="utf-8"))
+        fact_ids = [item["id"] for item in facts.get("diagram_facts", [])]
+        print(json.dumps({
+            "status": "completed", "message": "fake typed physics scene", "title": "物理过程示意图",
+            "panels": [{"id": "p1", "title": "场区与轨迹"}],
+            "regions": [{"id": "r1", "panel_id": "p1", "kind": "magnetic", "x": 8, "y": 12, "width": 84, "height": 72, "label": "场区", "fact_ids": fact_ids, "direction": "into-page"}],
+            "objects": [{"id": "o1", "panel_id": "p1", "kind": "particle", "x": 15, "y": 55, "width": 4, "height": 6, "label": "粒子", "fact_ids": [], "polarity": "positive"}],
+            "paths": [{"id": "t1", "panel_id": "p1", "kind": "trajectory", "geometry": "smooth", "points": [{"x": 18, "y": 58}, {"x": 45, "y": 38}, {"x": 78, "y": 25}], "label": "运动轨迹", "direction": "right", "fact_ids": []}],
+            "annotations": [], "omissions": [],
+            "model": "fake-e2e", "model_tier": "standard", "requested_tier": task.get("routing_tier", "auto"),
+            "usage": {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120},
+        }, ensure_ascii=False))
+        return 0
+
     record = json.loads((entry / "record.json").read_text(encoding="utf-8"))
     charged_particle = "带电粒子" in problem
     if charged_particle:
@@ -171,15 +411,30 @@ def main() -> int:
             "## 关联知识\n\n牛顿第二定律、合力与加速度方向。\n\n"
             "![受力示意](assets/explanation.svg)\n"
         )
+    if task["kind"] == "source.clean":
+        cleaned_problem = problem.replace("# 题目（OCR 草稿）", f"# {record['title']}", 1)
+        print(
+            json.dumps(
+                {
+                    "status": "completed",
+                    "message": "已自动整理 OCR 题干草稿",
+                    "files": {
+                        "problem.md": cleaned_problem,
+                        "record.json": json.dumps(record, ensure_ascii=False, indent=2) + "\n",
+                    },
+                    "model": "fake-e2e",
+                    "model_tier": "economy",
+                    "requested_tier": task.get("routing_tier", "economy"),
+                    "usage": {"prompt_tokens": 40, "completion_tokens": 20, "total_tokens": 60},
+                },
+                ensure_ascii=False,
+            )
+        )
+        return 0
     if task["kind"] == "analysis.generate":
         student_solution = solution.replace(
             "\n![受力示意](assets/explanation.svg)\n",
             "\n",
-        )
-        diagram_nodes = (
-            ["分解电场运动", "确定入场速度", "建立圆周运动", "应用相切条件"]
-            if charged_particle
-            else ["确定研究对象", "完成受力分析", "应用牛顿第二定律", "检查方向量纲"]
         )
         print(
             json.dumps(
@@ -254,10 +509,7 @@ def main() -> int:
                         "grade": record["grade"],
                         "title": record["title"],
                     },
-                    "diagram": {
-                        "title": "端到端测试解题逻辑",
-                        "nodes": diagram_nodes,
-                    },
+                    "diagram": None,
                     "model": "fake-e2e",
                     "model_tier": "standard",
                     "requested_tier": task.get("routing_tier", "auto"),

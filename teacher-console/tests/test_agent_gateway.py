@@ -1,4 +1,5 @@
 import json
+import importlib.util
 import os
 import subprocess
 import sys
@@ -11,10 +12,51 @@ from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
+SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(CONSOLE))
+sys.path.insert(0, str(SCRIPTS))
 
 from agent_gateway import AgentGateway, classify_agent_failure  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
+
+SERVER_SPEC = importlib.util.spec_from_file_location(
+    "teacher_console_server_gateway_test", CONSOLE / "server.py"
+)
+teacher_server = importlib.util.module_from_spec(SERVER_SPEC)
+SERVER_SPEC.loader.exec_module(teacher_server)
+
+
+class SourceCleanNoVisionTest(unittest.TestCase):
+    """C2.4: source.clean consumes text + current visual facts only; it must
+    never request or upload the original image through the Gateway."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.entry = Path(self.temp.name) / "library" / "entries" / "entry-1"
+        assets = self.entry / "assets"
+        assets.mkdir(parents=True)
+        (assets / "original.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
+        (self.entry / "problem.md").write_text("# 题目\n\n测试题干。", encoding="utf-8")
+
+    def test_source_clean_task_carries_no_vision_fields(self):
+        task = teacher_server.source_clean_task(self.entry)
+        self.assertNotIn("requires_vision", task)
+        self.assertNotIn("vision_images", task)
+        self.assertIn("visual-facts.json", task["prompt"])
+        denied = " ".join(task["denied_paths"])
+        self.assertIn("original.png", denied)
+
+    def test_generic_task_builder_carries_no_vision_fields(self):
+        task = teacher_server._agent_task(
+            self.entry,
+            "answer.revise",
+            "revise",
+            ["solution.md"],
+            input_paths=["solution.md"],
+        )
+        self.assertNotIn("requires_vision", task)
+        self.assertNotIn("vision_images", task)
 
 
 class AgentGatewayTest(unittest.TestCase):
@@ -61,7 +103,7 @@ class AgentGatewayTest(unittest.TestCase):
             return subprocess.CompletedProcess(command, 0, stdout="done", stderr="")
 
         gateway = AgentGateway(environ={}, which=self.which, run=runner)
-        result = gateway.run(self.task())
+        result = gateway.run(self.task(model_config={"effort": "low"}))
         self.assertEqual(result["status"], "completed")
         self.assertEqual(result["provider"], "codex")
         self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "new solution")
@@ -69,6 +111,7 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertIn("--ignore-user-config", commands[0])
         self.assertIn("--ignore-rules", commands[0])
         self.assertNotIn("--ask-for-approval", commands[0])
+        self.assertNotIn("--effort", commands[0])
         self.assertNotIn(str(self.entry), " ".join(commands[0]))
 
     def test_falls_back_only_when_first_provider_changed_nothing(self):
@@ -104,6 +147,24 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertEqual(result["failure_type"], "unauthorized_change")
         self.assertIn("record.json", result["unauthorized_changes"])
         self.assertEqual((self.entry / "record.json").read_bytes(), original)
+
+    def test_rejects_conflicting_path_contract_before_provider_call(self):
+        called = False
+
+        def runner(*_args, **_kwargs):
+            nonlocal called
+            called = True
+            return subprocess.CompletedProcess([], 0, stdout="", stderr="")
+
+        result = AgentGateway(environ={}, which=self.which, run=runner).run(
+            self.task(denied_paths=["solution.md"])
+        )
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_type"], "task_contract_invalid")
+        self.assertEqual(result["attempts"], [])
+        self.assertIn("allowed path is denied by task policy: solution.md", result["contract_errors"])
+        self.assertFalse(called)
+        self.assertEqual((self.entry / "solution.md").read_text(encoding="utf-8"), "old solution")
 
     def test_validator_rejection_leaves_canonical_entry_unchanged(self):
         def runner(command, cwd=None, **_kwargs):
@@ -351,6 +412,47 @@ class AgentGatewayTest(unittest.TestCase):
         self.assertEqual(commands[0][commands[0].index("--tools") + 1], "")
         self.assertNotIn("old solution", commands[0][-1])
         self.assertEqual(result["usage"]["total_tokens"], 13)
+
+    def test_claude_structured_result_accepts_one_bare_json_fence(self):
+        provider = next(
+            item
+            for item in AgentGateway(
+                environ={"TEACHER_CONSOLE_AGENT_PROVIDER": "claude"},
+                which=self.which,
+            ).providers()
+            if item.name == "claude"
+        )
+        decoded = AgentGateway._decode_structured_payload(
+            provider,
+            json.dumps(
+                {
+                    "result": "```json\n{\"status\":\"completed\",\"message\":\"ok\"}\n```",
+                    "usage": {"input_tokens": 4, "output_tokens": 2},
+                }
+            ),
+        )
+        self.assertEqual(decoded["status"], "completed")
+        self.assertEqual(decoded["usage"]["output_tokens"], 2)
+
+    def test_claude_structured_result_rejects_prose_or_multiple_objects(self):
+        provider = next(
+            item
+            for item in AgentGateway(
+                environ={"TEACHER_CONSOLE_AGENT_PROVIDER": "claude"},
+                which=self.which,
+            ).providers()
+            if item.name == "claude"
+        )
+        for result in (
+            "Here is the result:\n```json\n{\"status\":\"completed\"}\n```",
+            "```json\n{\"status\":\"completed\"}\n```\n```json\n{\"status\":\"completed\"}\n```",
+        ):
+            with self.subTest(result=result):
+                with self.assertRaises((ValueError, json.JSONDecodeError)):
+                    AgentGateway._decode_structured_payload(
+                        provider,
+                        json.dumps({"result": result}),
+                    )
 
     def test_structured_checkpoint_replay_never_calls_provider(self):
         def runner(*_args, **_kwargs):

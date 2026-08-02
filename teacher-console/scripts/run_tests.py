@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed test runtime for teacher-console unit tests (T10/A6.3).
+"""Fixed test runtime for teacher-console unit tests (T10/A6.3, closure C5.1).
 
 Runs the work-tree acceptance test list (or every unit test) with the same
 sys.path layout from any working directory, so results do not depend on
@@ -8,13 +8,20 @@ accidentally landing in ``teacher-console/``.
 Usage:
     python3 teacher-console/scripts/run_tests.py                 # acceptance list
     python3 teacher-console/scripts/run_tests.py --all           # every unit test
+    python3 teacher-console/scripts/run_tests.py --strict        # fail on missing/skipped
     python3 teacher-console/scripts/run_tests.py test_foo.py     # selected files
+
+``--strict`` treats a missing required test or any skipped test as a failure
+(C-T10: no false green). Known environment exclusions can be declared with
+``--exclude``; excluded tests are reported separately and never count toward
+the pass/fail verdict.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -37,7 +44,11 @@ ACCEPTANCE_TESTS = [
     "test_svg_collaboration.py",
     "test_analysis_routing.py",
     "test_entry_visual_extract.py",
+    "test_agent_gateway.py",
+    "test_visual_application.py",
 ]
+
+_SKIPPED_RE = re.compile(r"\b(?:skipped|SKIPPED)\b")
 
 
 def _env_for(python: str) -> dict[str, str]:
@@ -69,6 +80,18 @@ def main() -> int:
         help="python interpreter to use (default: the interpreter running this script)",
     )
     parser.add_argument("--all", action="store_true", help="run every teacher-console unit test")
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="fail when a required test is missing or any test is skipped",
+    )
+    parser.add_argument(
+        "--exclude",
+        action="append",
+        default=[],
+        metavar="NAME",
+        help="known exclusion (file or file::test); reported separately, never a failure",
+    )
     parser.add_argument("targets", nargs="*", help="test file names; defaults to the acceptance list")
     args = parser.parse_args()
 
@@ -83,11 +106,19 @@ def main() -> int:
 
     env = _env_for(args.python)
     failures: list[tuple[str, str]] = []
+    excluded_reports: list[str] = []
+
+    def is_excluded(name: str) -> bool:
+        return any(name == item or name.startswith(item + "::") for item in args.exclude)
+
     for name in targets:
         target = CONSOLE / "tests" / name
         if not target.is_file():
-            print(f"[skip] {name}: not found")
-            failures.append((name, "missing"))
+            verdict = f"missing:{name}"
+            if is_excluded(name):
+                excluded_reports.append(verdict)
+            else:
+                failures.append((name, "missing"))
             continue
         print(f"== {name} ==")
         result = subprocess.run(
@@ -103,17 +134,33 @@ def main() -> int:
                 name,
             ],
             env=env,
+            capture_output=True,
+            text=True,
         )
+        combined = result.stdout + result.stderr
         if result.returncode != 0:
-            failures.append((name, f"exit={result.returncode}"))
+            verdict = f"exit={result.returncode}"
+            if is_excluded(name):
+                excluded_reports.append(f"{name}({verdict})")
+            else:
+                failures.append((name, verdict))
+            continue
+        if args.strict and _SKIPPED_RE.search(combined):
+            verdict = "skipped"
+            if is_excluded(name):
+                excluded_reports.append(f"{name}(skipped)")
+            else:
+                failures.append((name, verdict))
 
     print()
     if problems:
         print(f"环境问题 {len(problems)} 项；测试结果可能不可复现。")
+    for report in excluded_reports:
+        print(f"[排除项] {report}")
     if failures:
         print(f"失败 {len(failures)}/{len(targets)}: " + ", ".join(f"{n}({r})" for n, r in failures))
         return 1
-    print(f"全部通过 {len(targets)}/{len(targets)}")
+    print(f"全部通过 {len(targets)}/{len(targets)}" + (f"，排除项 {len(excluded_reports)} 单独报告" if excluded_reports else ""))
     return 0
 
 

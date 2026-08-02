@@ -1,0 +1,103 @@
+{
+  "problem": "带电粒子从边界进入匀强磁场，规定向右为正，求首次返回边界的时间，并列出满足同一边界条件的全部速度方向。",
+  "blueprint": {
+    "question_targets": [
+      {"id": "q1", "prompt": "求首次返回边界的时间", "answer_type": "time"},
+      {"id": "q2", "prompt": "列出满足条件的全部速度方向", "answer_type": "all solutions"}
+    ],
+    "verification_obligations": [
+      {"id": "v1", "target_id": "q1", "check": "核对首次返回而非再次返回。", "risk": "critical"},
+      {"id": "v2", "target_id": "q2", "check": "核对向右为正并枚举全部方向。", "risk": "critical"}
+    ]
+  },
+  "proof_package": {
+    "schema_version": 1,
+    "status": "completed",
+    "aggregation_status": "VERIFIED",
+    "allowed_symbols": ["m", "q", "B", "t", "v_x"],
+    "final_answers": [
+      {
+        "claim_id": "c3",
+        "claim_version": 1,
+        "target_ids": ["q1"],
+        "statement": "t=\\pi m/(qB)",
+        "conditions": ["q>0，且该事件是首次返回边界"],
+        "status": "verified",
+        "obligation_ids": ["v1"]
+      },
+      {
+        "claim_id": "c5",
+        "claim_version": 1,
+        "target_ids": ["q2"],
+        "statement": "v_x>0 或 v_x<0 两个方向分支均需保留",
+        "conditions": ["向右为正", "排除 v_x=0 的退化情形"],
+        "status": "verified",
+        "obligation_ids": ["v2"],
+        "complete": true
+      }
+    ],
+    "claims": [
+      {
+        "id": "c1",
+        "kind": "derived",
+        "statement": "粒子在匀强磁场中做匀速圆周运动。",
+        "target_ids": ["q1", "q2"],
+        "stage_ids": ["p1"],
+        "depends_on": [],
+        "conditions": ["只受洛伦兹力"],
+        "status": "verified",
+        "formula_latex": "qvB=\\frac{mv^2}{R}"
+      },
+      {
+        "id": "c2",
+        "kind": "derived",
+        "statement": "首次返回同一边界对应半个回旋周期。",
+        "target_ids": ["q1"],
+        "stage_ids": ["p2"],
+        "depends_on": ["c1"],
+        "conditions": ["该事件是首次返回边界"],
+        "status": "verified",
+        "formula_latex": "t=\\frac{T}{2}"
+      },
+      {
+        "id": "c3",
+        "kind": "final",
+        "statement": "t=\\pi m/(qB)",
+        "target_ids": ["q1"],
+        "stage_ids": [],
+        "depends_on": ["c2"],
+        "conditions": ["q>0，且该事件是首次返回边界"],
+        "status": "verified",
+        "formula_latex": "t=\\frac{\\pi m}{qB}"
+      },
+      {
+        "id": "c4",
+        "kind": "derived",
+        "statement": "按初速度相对正方向分类检查圆心所在侧。",
+        "target_ids": ["q2"],
+        "stage_ids": ["p3"],
+        "depends_on": ["c1"],
+        "conditions": ["向右为正", "排除 v_x=0 的退化情形"],
+        "status": "verified"
+      },
+      {
+        "id": "c5",
+        "kind": "final",
+        "statement": "v_x>0 或 v_x<0 两个方向分支均需保留",
+        "target_ids": ["q2"],
+        "stage_ids": [],
+        "depends_on": ["c4"],
+        "conditions": ["向右为正", "排除 v_x=0 的退化情形"],
+        "status": "verified"
+      }
+    ],
+    "certificates": [
+      {"claim_id": "c1", "claim_version": 1, "verdict": "pass", "check_type": "semantic"},
+      {"claim_id": "c2", "claim_version": 1, "verdict": "pass", "check_type": "boundary-event"},
+      {"claim_id": "c3", "claim_version": 1, "verdict": "pass", "check_type": "aggregation"},
+      {"claim_id": "c4", "claim_version": 1, "verdict": "pass", "check_type": "branch-enumeration"},
+      {"claim_id": "c5", "claim_version": 1, "verdict": "pass", "check_type": "aggregation"}
+    ],
+    "unresolved_obligations": []
+  }
+}

@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import base64
 import fnmatch
 import hashlib
 import json
+import mimetypes
 import os
+import re
 import shlex
 import shutil
 import subprocess
@@ -14,6 +17,8 @@ import sys
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -53,6 +58,8 @@ def classify_agent_failure(result: dict) -> str:
     status = str(result.get("status", "")).strip().lower()
     if status == "completed":
         return ""
+    if result.get("contract_errors"):
+        return "task_contract_invalid"
 
     unauthorized = result.get("unauthorized_changes")
     unauthorized = unauthorized if isinstance(unauthorized, list) else []
@@ -206,6 +213,54 @@ class AgentGateway:
         with self._health_lock:
             self._health_cache = None
             self._health_checked = 0.0
+
+    def extract_visual_facts(
+        self,
+        review_payload: dict,
+        expected_source_fingerprint: str,
+        *,
+        allow_remote: bool,
+        routing_tier: str = "auto",
+        model_id: str | None = None,
+        model_resolver: Callable | None = None,
+        urlopen: Callable | None = None,
+    ) -> dict:
+        """Run the registry-selected vision route without granting approval."""
+        if model_resolver is None:
+            from model_registry import model_config_for_trait
+
+            model_resolver = model_config_for_trait
+        try:
+            config = model_resolver(
+                "vision",
+                model_id=model_id,
+                routing_tier=routing_tier,
+            )
+        except TypeError:
+            config = model_resolver("vision", routing_tier=routing_tier)
+        if not isinstance(config, dict):
+            raise ValueError("没有可用的视觉模型路由")
+        expected_identity = {
+            "model_id": str(config.get("id", "")).strip(),
+            "provider": str(config.get("provider", "")).strip(),
+        }
+        if not all(expected_identity.values()):
+            raise ValueError("视觉模型路由缺少运行身份")
+
+        from visual_extraction import extract_visual_facts
+
+        def fixed_resolver(_trait: str, *, routing_tier: str = "auto") -> dict:
+            return config
+
+        return extract_visual_facts(
+            review_payload,
+            expected_source_fingerprint,
+            model_resolver=fixed_resolver,
+            expected_runtime_identity=expected_identity,
+            allow_remote=allow_remote,
+            urlopen=urlopen or urllib.request.urlopen,
+            routing_tier=routing_tier,
+        )
 
     @staticmethod
     def _costly_failover_seconds(environ: dict[str, str]) -> float:
@@ -406,10 +461,10 @@ class AgentGateway:
                     else []
                 ),
                 "capabilities": {
-                    "task_types": ["analysis.generate", "answer.revise", "visualization.model"],
+                    "task_types": ["analysis.generate", "diagram.scene", "answer.revise", "visualization.model"],
                     "filesystem": item.mode != "json-adapter",
                     "structured_output": item.mode == "json-adapter" or item.name in {"codex", "claude"},
-                    "structured_task_types": ["analysis.generate"]
+                    "structured_task_types": ["analysis.generate", "diagram.scene"]
                     if item.mode == "json-adapter" or item.name in {"codex", "claude"}
                     else [],
                     "vision": False,
@@ -628,6 +683,9 @@ class AgentGateway:
                 model = str(model_config.get("model", "")).strip()
                 if model:
                     tokens.extend(["--model", model])
+                effort = str(model_config.get("effort", "")).strip().lower()
+                if effort in {"low", "medium", "high", "xhigh", "max"}:
+                    tokens.extend(["--effort", effort])
             tokens.append(prompt)
             return tokens
         if provider.mode == "legacy-command":
@@ -697,6 +755,18 @@ class AgentGateway:
             if pattern.endswith("/**") and normalized.startswith(pattern[:-3].rstrip("/") + "/"):
                 return True
         return False
+
+    @classmethod
+    def _path_policy_errors(cls, allowed: list[str], denied: list[str]) -> list[str]:
+        errors: list[str] = []
+        for pattern in [*allowed, *denied]:
+            path = Path(pattern)
+            if path.is_absolute() or ".." in path.parts or not path.parts:
+                errors.append(f"invalid path policy pattern: {pattern}")
+        for pattern in allowed:
+            if not cls._allowed(pattern, [pattern], denied):
+                errors.append(f"allowed path is denied by task policy: {pattern}")
+        return errors
 
     def _apply_proposals(self, entry: Path, payload: dict, allowed: list[str], denied: list[str]) -> list[str]:
         entry_root = entry.resolve()
@@ -829,6 +899,25 @@ class AgentGateway:
         )
 
     @staticmethod
+    def _decode_single_json_object(text: str) -> dict:
+        """Decode one object, allowing only a single otherwise-bare JSON fence."""
+        source = str(text or "").strip()
+        try:
+            decoded = json.loads(source)
+        except json.JSONDecodeError:
+            fenced = re.fullmatch(
+                r"```(?:json)?\s*(\{.*\})\s*```",
+                source,
+                flags=re.DOTALL | re.IGNORECASE,
+            )
+            if not fenced:
+                raise
+            decoded = json.loads(fenced.group(1))
+        if not isinstance(decoded, dict):
+            raise ValueError("structured result is not an object")
+        return decoded
+
+    @staticmethod
     def _decode_structured_payload(provider: Provider, stdout: str) -> dict:
         decoded = json.loads(stdout)
         if not isinstance(decoded, dict):
@@ -842,9 +931,7 @@ class AgentGateway:
                 payload["model"] = model.strip()
             return payload
         if provider.name == "claude" and isinstance(decoded.get("result"), str):
-            nested = json.loads(decoded["result"])
-            if not isinstance(nested, dict):
-                raise ValueError("Claude structured result is not an object")
+            nested = AgentGateway._decode_single_json_object(decoded["result"])
             if isinstance(decoded.get("usage"), dict):
                 nested["usage"] = decoded["usage"]
             return nested
@@ -917,6 +1004,22 @@ class AgentGateway:
         denied = [str(item) for item in task.get("denied_paths", [])]
         hidden = [str(item) for item in task.get("hidden_paths", [])]
         input_paths = [str(item) for item in task["input_paths"]]
+        contract_errors = self._path_policy_errors(allowed, denied)
+        if contract_errors:
+            result = {
+                "status": "failed",
+                "provider": "checkpoint",
+                "routing_tier": str(task.get("routing_tier", "auto")),
+                "message": "Agent 任务路径契约自相矛盾；未恢复候选。",
+                "changed_files": [],
+                "unauthorized_changes": [],
+                "validation_errors": [],
+                "contract_errors": contract_errors,
+                "attempts": [],
+                "resumed_from_checkpoint": True,
+            }
+            result["failure_type"] = classify_agent_failure(result)
+            return result
         canonical_before = self._snapshot(entry)
         workspace_parent = Path(task.get("workspace_root") or entry.parent.parent / ".cache" / "agent-workspaces")
         workspace_parent.mkdir(parents=True, exist_ok=True)
@@ -1054,6 +1157,23 @@ class AgentGateway:
         denied = [str(item) for item in task.get("denied_paths", [])]
         hidden = [str(item) for item in task.get("hidden_paths", [])]
         input_paths = [str(item) for item in task["input_paths"]]
+        contract_errors = self._path_policy_errors(allowed, denied)
+        if contract_errors:
+            result = {
+                "status": "failed",
+                "provider": None,
+                "routing_tier": routing_tier,
+                "message": "Agent 任务路径契约自相矛盾；未调用 provider。",
+                "changed_files": [],
+                "unauthorized_changes": [],
+                "validation_errors": [],
+                "contract_errors": contract_errors,
+                "attempts": [],
+                **model_metadata,
+            }
+            result["failure_type"] = classify_agent_failure(result)
+            logger.info("gateway task=%s status=failed reason=contract errors=%d", route_id, len(contract_errors))
+            return result
         task_environ = self._task_environ(task)
         requested = task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
         candidates = [item for item in self._ordered(self.providers(environ=task_environ), requested) if item.available]

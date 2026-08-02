@@ -111,6 +111,30 @@ class ProblemDecompositionTest(unittest.TestCase):
         self.assertEqual(complex_case["decision"], "decompose")
         self.assertGreaterEqual(complex_case["score"], 2)
 
+    def test_default_obligation_suggests_all_solutions_when_not_limited(self):
+        blueprint = {
+            "question_targets": [
+                {"id": "Q1", "prompt": "求粒子进入区域的时刻", "answer_type": "time"}
+            ],
+            "verification_obligations": [
+                {"id": "V1", "target_id": "Q1", "check": "复算进入时刻", "risk": "medium"}
+            ],
+        }
+        suggestions = problem_decomposition.infer_default_obligation_suggestions(
+            "粒子可多次穿过区域边界。", blueprint
+        )
+        self.assertEqual(len(suggestions), 1)
+        self.assertEqual(suggestions[0]["source"], "default-convention")
+        self.assertEqual(suggestions[0]["rule_id"], "default.solve.all-physical-solutions.v1")
+        self.assertEqual(suggestions[0]["target_id"], "Q1")
+
+    def test_default_obligation_is_suppressed_by_first_event_wording(self):
+        suggestions = problem_decomposition.infer_default_obligation_suggestions(
+            "粒子进入磁场后第一次返回边界，求首次返回时间。",
+            valid_blueprint(),
+        )
+        self.assertEqual(suggestions, [])
+
     def test_inverse_modeling_and_three_targets_trigger_decomposition(self):
         result = problem_decomposition.complexity_screen(
             "由热功率随位置变化反推轨道方程。（1）求方程；（2）求安培力；（3）求功。"

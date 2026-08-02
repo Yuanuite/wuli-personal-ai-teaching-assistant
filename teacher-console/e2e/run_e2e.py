@@ -32,7 +32,51 @@ SCENARIOS = (
     "lifecycle.e2e.mjs",
     "visualization.e2e.mjs",
     "publication.e2e.mjs",
+    "claim-evidence.e2e.mjs",
 )
+
+
+class E2EAgentGateway(AgentGateway):
+    """Route registered Claude test identities through the deterministic adapter."""
+
+    def _task_environ(self, task: dict | None = None) -> dict[str, str]:
+        environment = super()._task_environ(task)
+        environment["TEACHER_CONSOLE_AGENT_PROVIDER"] = "adapter"
+        return environment
+
+
+def configure_w3_test_models(library: Path) -> None:
+    """Install two probed Claude identities without storing a real credential."""
+    model_registry.LIBRARY = library
+    model_registry.save_model_registry_settings({
+        "defaults": {
+            "analysis.generate": "e2e-claude-solver",
+            "expert": "e2e-claude-solver",
+            "claim.verify": "e2e-claude-verifier",
+        },
+        "models": [
+            {
+                "id": "e2e-claude-solver",
+                "provider": "claude",
+                "model": "e2e-solver-model",
+                "capabilities": ["analysis.generate"],
+            },
+            {
+                "id": "e2e-claude-verifier",
+                "provider": "claude",
+                "model": "e2e-verifier-model",
+                "capabilities": ["claim.verify"],
+            },
+        ],
+    })
+    for model_id in ("e2e-claude-solver", "e2e-claude-verifier"):
+        model_registry.update_model_probe_result(model_id, {
+            "live_probe": {
+                "status": "passed",
+                "provider": "claude",
+                "reason": "deterministic E2E test double",
+            },
+        })
 
 
 def parse_args() -> argparse.Namespace:
@@ -55,6 +99,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    os.environ["TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW"] = "1"
     node = args.node or os.environ.get("E2E_NODE") or shutil.which("node")
     if not node:
         raise SystemExit("Node.js is required for the Playwright E2E test")
@@ -109,14 +154,16 @@ def main() -> int:
             teacher_server.UPLOADS = uploads
             teacher_server.PUBLIC_SITE = public_site
             teacher_server.MODEL_REGISTRY_PATH = library / "config" / "model-registry.json"
-            model_registry.LIBRARY = library
+            configure_w3_test_models(library)
 
             agent_environment = dict(os.environ)
             agent_environment.update({
                 "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter",
                 "TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": shlex.join([sys.executable, str(adapter)]),
             })
-            teacher_server.AGENT_GATEWAY = AgentGateway(environ=agent_environment)
+            teacher_server.AGENT_GATEWAY = E2EAgentGateway(
+                environ=agent_environment
+            )
             teacher_server._JOB_MANAGER = AgentJobManager(library / ".cache" / "agent-jobs", max_workers=1)
 
             httpd = ThreadingHTTPServer(("127.0.0.1", 0), teacher_server.Handler)

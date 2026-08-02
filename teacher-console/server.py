@@ -58,6 +58,7 @@ import visual_source_review  # noqa: E402
 import w3_pipeline  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
+from visual_application import run_visual_extract  # noqa: E402
 from failure_intelligence import run_with_failure_repair  # noqa: E402
 from log import TraceContext, logger
 from log import configure as configure_logging  # noqa: E402
@@ -644,8 +645,6 @@ def _agent_task(
     routing_tier: str = "auto",
     model_config: dict | None = None,
     evidence: dict | None = None,
-    requires_vision: bool = False,
-    vision_images: list[str] | None = None,
 ) -> dict:
     routing_tier = normalize_routing_tier(routing_tier)
     context_files: dict[str, str] = {}
@@ -702,8 +701,6 @@ def _agent_task(
         "allow_remote": _remote_agent_allowed(entry),
         "routing_tier": routing_tier,
         "model_config": model_config or {},
-        "requires_vision": requires_vision,
-        "vision_images": vision_images or [],
         "workspace_root": str(Path(tempfile.gettempdir()) / "wuli-agent-workspaces"),
         "context_files": context_files,
     }
@@ -1326,23 +1323,15 @@ def validate_source_clean_candidate(
 def source_clean_task(entry: Path, routing_tier: str = "auto", model_config: dict | None = None) -> dict:
     """Construct an Agent task that cleans OCR text and sets a content-based title."""
     routing_tier = source_clean_routing_tier(routing_tier)
-    # Detect original images for vision preprocessing
-    vision_images: list[str] = []
-    assets_dir = entry / "assets"
-    if assets_dir.is_dir():
-        for ext in ("png", "jpg", "jpeg", "webp"):
-            for img in assets_dir.glob(f"*.{ext}"):
-                if img.is_file() and not img.is_symlink():
-                    vision_images.append(str(img.resolve()))
-            if vision_images:
-                break
     prompt = (
         "整理错题条目的 OCR 题干草稿。\n"
         "1. 读取 problem.md，修正 OCR 识别错误（公式、符号、下标、换行），保留原题完整信息。\n"
         "2. 从题干内容中提取一个有意义的中文标题（例如'带电粒子在磁场中的圆周运动'），"
         "写入 record.json 的 title 字段。不要保留'XX练习题 第N页'之类的文件名作为标题。\n"
         "3. 可初步标注 record.json 的 knowledge_points、difficulty、grade。\n"
-        "record.json 的其他字段为保护字段，不可修改。"
+        "record.json 的其他字段为保护字段，不可修改。\n"
+        "只消费 problem.md 文本与已存在且与当前原图匹配的 visual-facts.json；"
+        "不得请求或上传任何原图。视觉事实缺失或过期时不要自行补视觉调用。"
     )
     return _agent_task(
         entry,
@@ -1354,8 +1343,6 @@ def source_clean_task(entry: Path, routing_tier: str = "auto", model_config: dic
         requires_change=True,
         routing_tier=routing_tier,
         model_config=model_config,
-        requires_vision=bool(vision_images),
-        vision_images=vision_images,
     )
 
 
@@ -2367,7 +2354,6 @@ class Handler(SimpleHTTPRequestHandler):
                 None,
                 None,
             )
-            privacy = kb.load_json(LIBRARY / "config.json", {}).get("privacy", {})
             for item in report.get("results", []):
                 entry_id = str(item.get("entry_id", "")).strip()
                 if item.get("status") != "ingested" or not entry_id:
@@ -2377,24 +2363,25 @@ class Handler(SimpleHTTPRequestHandler):
                     entry.relative_to((LIBRARY / "entries").resolve())
                     if not entry.is_dir() or entry.name != entry_id:
                         raise FileNotFoundError(entry_id)
-                    payload = source_review.review_payload(entry)
-                    record = kb.load_json(entry / "record.json", {})
-                    ocr = kb.load_json(entry / "ocr.json", {})
-                    source_fingerprint = (
-                        "sha256:" + source_review.input_digest(entry, record, ocr)
-                    )
-                    extraction = AGENT_GATEWAY.extract_visual_facts(
-                        payload,
-                        source_fingerprint,
+                    outcome = run_visual_extract(
+                        entry,
+                        library=LIBRARY,
+                        routing_tier="auto",
                         allow_remote=bool(
-                            privacy.get("allow_remote_visual_review", False)
+                            kb.load_json(LIBRARY / "config.json", {}).get("privacy", {}).get(
+                                "allow_remote_visual_review", False
+                            )
                         ),
+                        gateway=AGENT_GATEWAY,
                     )
-                    item["source_review"] = (
-                        visual_source_review.stage_visual_extraction(
-                            entry, extraction
-                        )
-                    )
+                    item["visual_extract_outcome"] = outcome
+                    if outcome.get("status") != "completed":
+                        item["source_review"] = {
+                            "status": "needs-review",
+                            "method": "registry-visual-extract",
+                            "visual_extract_error": outcome.get("message", ""),
+                            "failure_type": outcome.get("failure_type", ""),
+                        }
                 except Exception as exc:  # noqa: BLE001 - preserve human gate
                     item["visual_extract_error"] = str(exc)[:500]
             kb.rebuild_index(LIBRARY)

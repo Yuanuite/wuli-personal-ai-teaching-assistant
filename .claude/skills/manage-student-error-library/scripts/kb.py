@@ -741,8 +741,10 @@ def validate_entry(
         for heading in REQUIRED_SOLUTION_HEADINGS:
             if heading not in solution:
                 errors.append(f"solution.md: missing heading {heading!r}")
-        if not markdown_image_refs(solution):
-            errors.append("solution.md: at least one explanatory/source image is required")
+        # Explanatory images are optional post-answer enhancements.  A correct,
+        # reviewed core solution must not be blocked merely because no static
+        # diagram was generated; any referenced image is still path-validated
+        # below.
 
     for markdown_name, text in (("problem.md", problem), ("solution.md", solution)):
         for ref in markdown_image_refs(text):

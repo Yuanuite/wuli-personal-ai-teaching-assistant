@@ -11,7 +11,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sqlite3
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -19,9 +21,25 @@ from typing import Any
 import candidate_archive
 import kb
 
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+TEACHER_CONSOLE = PROJECT_ROOT / "teacher-console"
+if str(TEACHER_CONSOLE) not in sys.path:
+    sys.path.insert(0, str(TEACHER_CONSOLE))
+
+import evidence_contract  # noqa: E402
+
 SCHEMA_VERSION = 2
+EVIDENCE_UNIT_PROJECTION_VERSION = "wuli-evidence-unit-shadow-v1"
 DEFAULT_DB_RELATIVE = Path("indexes") / "wuli-memory.db"
 DIRTY_MARKER_RELATIVE = Path("indexes") / "wuli-memory.dirty.json"
+CURATED_TECHNIQUES_PATH = (
+    PROJECT_ROOT
+    / ".claude"
+    / "skills"
+    / "build-physics-simulator"
+    / "references"
+    / "secondary-conclusions.json"
+)
 DOCUMENT_KINDS = (
     "metadata",
     "problem",
@@ -270,11 +288,32 @@ def init_schema(connection: sqlite3.Connection) -> bool:
           report_json TEXT NOT NULL,
           failure_reasons_json TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS evidence_unit (
+          evidence_id TEXT PRIMARY KEY,
+          entry_id TEXT,
+          unit_kind TEXT NOT NULL,
+          source_kind TEXT NOT NULL,
+          source_path TEXT NOT NULL,
+          source_section TEXT NOT NULL,
+          start_line INTEGER NOT NULL,
+          end_line INTEGER NOT NULL,
+          text TEXT NOT NULL,
+          physics_facets_json TEXT NOT NULL,
+          applicability_json TEXT NOT NULL,
+          exceptions_json TEXT NOT NULL,
+          authority_level TEXT NOT NULL,
+          content_hash TEXT NOT NULL,
+          projection_version TEXT NOT NULL,
+          FOREIGN KEY (entry_id) REFERENCES entry(id) ON DELETE CASCADE
+        );
         CREATE INDEX IF NOT EXISTS idx_entry_status ON entry(status);
         CREATE INDEX IF NOT EXISTS idx_entry_subject ON entry(subject);
         CREATE INDEX IF NOT EXISTS idx_event_entry_time ON candidate_event(entry_id, created_at);
         CREATE INDEX IF NOT EXISTS idx_scheduler_benchmark_time ON scheduler_benchmark(created_at);
         CREATE INDEX IF NOT EXISTS idx_evolve_observation_time ON evolve_observation(created_at);
+        CREATE INDEX IF NOT EXISTS idx_evidence_unit_entry ON evidence_unit(entry_id);
+        CREATE INDEX IF NOT EXISTS idx_evidence_unit_kind ON evidence_unit(unit_kind);
+        CREATE INDEX IF NOT EXISTS idx_evidence_unit_content_hash ON evidence_unit(content_hash);
         """
     )
     _ensure_column(connection, "candidate_event", "feedback_json", "TEXT NOT NULL DEFAULT '{}'")
@@ -289,6 +328,10 @@ def init_schema(connection: sqlite3.Connection) -> bool:
         )
     connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('schema_version', ?)", (str(SCHEMA_VERSION),))
     connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('fts5', ?)", ("1" if has_fts else "0",))
+    connection.execute(
+        "INSERT OR REPLACE INTO meta(key, value) VALUES('evidence_unit_projection_version', ?)",
+        (EVIDENCE_UNIT_PROJECTION_VERSION,),
+    )
     return has_fts
 
 
@@ -361,12 +404,466 @@ def _evaluation_summary(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _approved_answer_is_current(entry: Path, record: dict[str, Any]) -> bool:
+    review = record.get("answer_review")
+    if not isinstance(review, dict):
+        review = kb.load_json(entry / "answer-review.json", {}) or {}
+    if review.get("status") != "passed":
+        return False
+    expected = str(review.get("answer_digest", "")).strip()
+    return bool(expected and expected == kb.answer_artifact_digest(entry))
+
+
+def _approved_model_is_current(entry: Path, record: dict[str, Any]) -> bool:
+    review = record.get("visualization_review")
+    if not isinstance(review, dict):
+        review = kb.load_json(entry / "visualization-review.json", {}) or {}
+    model_path = entry / "physics-model.json"
+    if review.get("status") != "passed" or not model_path.exists():
+        return False
+    expected = str(review.get("model_digest", "")).strip()
+    return bool(expected and expected == kb.sha256_file(model_path))
+
+
+def _evidence_id(locator_key: str) -> str:
+    digest = hashlib.sha256(locator_key.encode("utf-8")).hexdigest()[:24]
+    return f"EU-{digest}"
+
+
+def _make_evidence_unit(
+    *,
+    locator_key: str,
+    unit_kind: str,
+    source_kind: str,
+    source_path: str,
+    source_section: str,
+    start_line: int,
+    end_line: int,
+    text: str,
+    physics_facets: list[str],
+    applicability: list[str],
+    exceptions: list[str],
+    authority_level: str,
+) -> dict[str, Any]:
+    return evidence_contract.normalize_evidence_unit(
+        {
+            "schema": evidence_contract.EVIDENCE_UNIT_SCHEMA,
+            "evidence_id": _evidence_id(locator_key),
+            "unit_kind": unit_kind,
+            "source_kind": source_kind,
+            "source_locator": {
+                "path": source_path,
+                "section": source_section,
+                "start_line": start_line,
+                "end_line": end_line,
+            },
+            "text": text,
+            "physics_facets": physics_facets,
+            "applicability": applicability,
+            "exceptions": exceptions,
+            "authority_level": authority_level,
+        }
+    )
+
+
+def _markdown_section_bullets(
+    path: Path, section_name: str
+) -> list[tuple[int, int, str]]:
+    if not path.exists():
+        return []
+    lines = path.read_text(encoding="utf-8").splitlines()
+    in_section = False
+    bullets: list[tuple[int, int, str]] = []
+    current_start = 0
+    current_lines: list[str] = []
+
+    def flush(end_line: int) -> None:
+        nonlocal current_start, current_lines
+        text = " ".join(part.strip() for part in current_lines if part.strip()).strip()
+        if text:
+            bullets.append((current_start, max(current_start, end_line), text))
+        current_start = 0
+        current_lines = []
+
+    for line_number, line in enumerate(lines, 1):
+        heading = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading:
+            if in_section:
+                flush(line_number - 1)
+                break
+            in_section = heading.group(1).strip() == section_name
+            continue
+        if not in_section:
+            continue
+        bullet = re.match(r"^\s*[-*]\s+(.+)$", line)
+        if bullet:
+            flush(line_number - 1)
+            current_start = line_number
+            current_lines = [bullet.group(1)]
+        elif current_lines and line.strip():
+            current_lines.append(line.strip())
+        elif current_lines:
+            flush(line_number - 1)
+        elif line.strip() and not line.lstrip().startswith(("![", "---")):
+            current_start = line_number
+            current_lines = [line.strip()]
+    if in_section:
+        flush(len(lines))
+    return bullets
+
+
+def _record_facets(record: dict[str, Any]) -> list[str]:
+    facets = [
+        str(item).strip()
+        for item in record.get("knowledge_points", [])
+        if str(item).strip()
+    ]
+    title = str(record.get("title", "")).strip()
+    if title and title not in facets:
+        facets.append(title)
+    return facets[:16] or ["高中物理"]
+
+
+def _structured_units(
+    *,
+    entry: Path,
+    record: dict[str, Any],
+    values: Any,
+    field: str,
+    unit_kind: str,
+    source_kind: str,
+    source_path: str,
+    authority_level: str,
+) -> list[dict[str, Any]]:
+    if not isinstance(values, list):
+        return []
+    units: list[dict[str, Any]] = []
+    for index, raw in enumerate(values):
+        if not isinstance(raw, dict):
+            continue
+        text = str(
+            raw.get("text")
+            or raw.get("conclusion")
+            or raw.get("method")
+            or ""
+        ).strip()
+        applicability = raw.get("applicability", raw.get("conditions", []))
+        exceptions = raw.get("exceptions", raw.get("forbidden", []))
+        facets = raw.get("physics_facets", raw.get("triggers", []))
+        if not text or not isinstance(applicability, list) or not applicability:
+            continue
+        normalized_facets = [
+            str(item).strip() for item in facets if str(item).strip()
+        ] if isinstance(facets, list) else []
+        units.append(
+            _make_evidence_unit(
+                locator_key=f"{entry.name}:{source_path}:{field}:{index}",
+                unit_kind=unit_kind,
+                source_kind=source_kind,
+                source_path=f"entries/{entry.name}/{source_path}",
+                source_section=field,
+                start_line=1,
+                end_line=1,
+                text=text,
+                physics_facets=normalized_facets or _record_facets(record),
+                applicability=[
+                    str(item).strip() for item in applicability if str(item).strip()
+                ],
+                exceptions=[
+                    str(item).strip()
+                    for item in exceptions
+                    if str(item).strip()
+                ] if isinstance(exceptions, list) else [],
+                authority_level=authority_level,
+            )
+        )
+    return units
+
+
+def _entry_evidence_units(entry: Path, record: dict[str, Any]) -> list[dict[str, Any]]:
+    if not _approved_answer_is_current(entry, record):
+        return []
+    units: list[dict[str, Any]] = []
+    facets = _record_facets(record)
+    title = str(record.get("title", entry.name)).strip()
+    applicability = [
+        "来源条目的答案摘要已由教师批准",
+        f"迁移前必须重新核对当前题是否满足“{title}”中的对应物理条件",
+    ]
+    solution_path = entry / "teacher-solution.md"
+    if not solution_path.exists():
+        solution_path = entry / "solution.md"
+    source_name = solution_path.name
+
+    recognition_bullets = _markdown_section_bullets(solution_path, "一眼识别")
+    recognition_context = next(
+        (
+            re.sub(r"^题型识别[：:]\s*", "", text).strip()
+            for _, _, text in recognition_bullets
+            if re.match(r"^题型识别[：:]", text)
+        ),
+        "",
+    )
+    for start_line, end_line, text in recognition_bullets:
+        if re.match(r"^最短主线[：:]", text):
+            method_text = re.sub(r"^最短主线[：:]\s*", "", text).strip()
+            if method_text:
+                units.append(
+                    _make_evidence_unit(
+                        locator_key=f"{entry.name}:{source_name}:一眼识别:method:{start_line}",
+                        unit_kind="method_applicability",
+                        source_kind="approved_solution",
+                        source_path=f"entries/{entry.name}/{source_name}",
+                        source_section="一眼识别/最短主线",
+                        start_line=start_line,
+                        end_line=end_line,
+                        text=method_text,
+                        physics_facets=facets,
+                        applicability=[
+                            *(
+                                [f"题型识别：{recognition_context}"]
+                                if recognition_context
+                                else []
+                            ),
+                            *applicability,
+                        ],
+                        exceptions=["只能迁移方法结构，不能复制来源题的数值或最终结论"],
+                        authority_level="B",
+                    )
+                )
+            continue
+        if re.match(r"^可用二级结论[：:]", text):
+            raw_conclusion = re.sub(r"^可用二级结论[：:]\s*", "", text).strip()
+            condition_match = re.search(
+                r"(?:\*\*)?适用条件(?:\*\*)?[：:]\s*(.+)$",
+                raw_conclusion,
+            )
+            if not condition_match:
+                continue
+            conclusion = raw_conclusion[: condition_match.start()].strip("；;。 ")
+            condition = condition_match.group(1).strip()
+            if conclusion and condition:
+                units.append(
+                    _make_evidence_unit(
+                        locator_key=f"{entry.name}:{source_name}:一眼识别:conclusion:{start_line}",
+                        unit_kind="secondary_conclusion",
+                        source_kind="approved_solution",
+                        source_path=f"entries/{entry.name}/{source_name}",
+                        source_section="一眼识别/可用二级结论",
+                        start_line=start_line,
+                        end_line=end_line,
+                        text=conclusion,
+                        physics_facets=facets,
+                        applicability=[condition],
+                        exceptions=["若当前题条件不同，不得直接套用该二级结论"],
+                        authority_level="B",
+                    )
+                )
+
+    for start_line, end_line, text in _markdown_section_bullets(
+        solution_path, "易错点"
+    ):
+        error_match = re.search(
+            r"(?:\*\*)?错误表现(?:\*\*)?[：:]\s*(.+?)(?=(?:\*\*)?纠正策略|$)",
+            text,
+        )
+        exceptions = [
+            error_match.group(1).strip("。；; ")
+        ] if error_match else ["不得把来源题的结论脱离条件直接迁移到当前题"]
+        units.append(
+            _make_evidence_unit(
+                locator_key=f"{entry.name}:{source_name}:易错点:{start_line}",
+                unit_kind="false_friend_warning",
+                source_kind="approved_solution",
+                source_path=f"entries/{entry.name}/{source_name}",
+                source_section="易错点",
+                start_line=start_line,
+                end_line=end_line,
+                text=text,
+                physics_facets=facets,
+                applicability=applicability,
+                exceptions=exceptions,
+                authority_level="B",
+            )
+        )
+
+    for start_line, end_line, text in _markdown_section_bullets(
+        solution_path, "教师审计"
+    ):
+        units.append(
+            _make_evidence_unit(
+                locator_key=f"{entry.name}:{source_name}:教师审计:{start_line}",
+                unit_kind="verification_rule",
+                source_kind="approved_solution",
+                source_path=f"entries/{entry.name}/{source_name}",
+                source_section="教师审计",
+                start_line=start_line,
+                end_line=end_line,
+                text=text,
+                physics_facets=facets,
+                applicability=applicability,
+                exceptions=["迁移后必须由当前题 W3 verifier 重新执行，不得直接晋升为 Claim"],
+                authority_level="B",
+            )
+        )
+
+    units.extend(
+        _structured_units(
+            entry=entry,
+            record=record,
+            values=record.get("methods", []),
+            field="methods",
+            unit_kind="method_applicability",
+            source_kind="approved_solution",
+            source_path="record.json",
+            authority_level="B",
+        )
+    )
+    units.extend(
+        _structured_units(
+            entry=entry,
+            record=record,
+            values=record.get("secondary_conclusions", []),
+            field="secondary_conclusions",
+            unit_kind="secondary_conclusion",
+            source_kind="approved_solution",
+            source_path="record.json",
+            authority_level="B",
+        )
+    )
+
+    if _approved_model_is_current(entry, record):
+        model = kb.load_json(entry / "physics-model.json", {}) or {}
+        teaching = model.get("teaching", {}) if isinstance(model, dict) else {}
+        if isinstance(teaching, dict):
+            units.extend(
+                _structured_units(
+                    entry=entry,
+                    record=record,
+                    values=teaching.get("methods", []),
+                    field="teaching.methods",
+                    unit_kind="method_applicability",
+                    source_kind="approved_physics_model",
+                    source_path="physics-model.json",
+                    authority_level="B",
+                )
+            )
+            units.extend(
+                _structured_units(
+                    entry=entry,
+                    record=record,
+                    values=teaching.get("secondary_conclusions", []),
+                    field="teaching.secondary_conclusions",
+                    unit_kind="secondary_conclusion",
+                    source_kind="approved_physics_model",
+                    source_path="physics-model.json",
+                    authority_level="B",
+                )
+            )
+    return units
+
+
+def _curated_evidence_units() -> list[dict[str, Any]]:
+    if not CURATED_TECHNIQUES_PATH.exists():
+        return []
+    raw_text = CURATED_TECHNIQUES_PATH.read_text(encoding="utf-8")
+    payload = json.loads(raw_text)
+    if not isinstance(payload, list):
+        return []
+    id_lines: dict[str, int] = {}
+    for line_number, line in enumerate(raw_text.splitlines(), 1):
+        match = re.search(r'"id"\s*:\s*"([^"]+)"', line)
+        if match:
+            id_lines[match.group(1)] = line_number
+    source_path = str(CURATED_TECHNIQUES_PATH.relative_to(PROJECT_ROOT))
+    units: list[dict[str, Any]] = []
+    for raw in payload:
+        if not isinstance(raw, dict):
+            continue
+        source_id = str(raw.get("id", "")).strip()
+        conclusion = str(raw.get("conclusion", "")).strip()
+        conditions = raw.get("conditions", [])
+        if not source_id or not conclusion or not isinstance(conditions, list) or not conditions:
+            continue
+        line_number = id_lines.get(source_id, 1)
+        module = str(raw.get("module", "")).strip()
+        unit_kind = (
+            "verification_rule"
+            if module in {"通用检验", "审题"} or source_id.endswith("-check")
+            else "secondary_conclusion"
+        )
+        triggers = raw.get("triggers", [])
+        facets = [module] if module else []
+        if isinstance(triggers, list):
+            facets.extend(str(item).strip() for item in triggers if str(item).strip())
+        units.append(
+            _make_evidence_unit(
+                locator_key=f"curated-technique:{source_id}",
+                unit_kind=unit_kind,
+                source_kind="curated_technique",
+                source_path=source_path,
+                source_section=source_id,
+                start_line=line_number,
+                end_line=line_number,
+                text=conclusion,
+                physics_facets=facets,
+                applicability=[
+                    str(item).strip() for item in conditions if str(item).strip()
+                ],
+                exceptions=[
+                    str(item).strip()
+                    for item in raw.get("forbidden", [])
+                    if str(item).strip()
+                ] if isinstance(raw.get("forbidden", []), list) else [],
+                authority_level="A",
+            )
+        )
+    return units
+
+
+def _insert_evidence_unit(
+    connection: sqlite3.Connection,
+    unit: dict[str, Any],
+    *,
+    entry_id: str | None,
+) -> None:
+    locator = unit["source_locator"]
+    connection.execute(
+        """
+        INSERT INTO evidence_unit(
+          evidence_id, entry_id, unit_kind, source_kind, source_path,
+          source_section, start_line, end_line, text, physics_facets_json,
+          applicability_json, exceptions_json, authority_level, content_hash,
+          projection_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            unit["evidence_id"],
+            entry_id,
+            unit["unit_kind"],
+            unit["source_kind"],
+            locator["path"],
+            locator["section"],
+            locator["start_line"],
+            locator["end_line"],
+            unit["text"],
+            _json(unit["physics_facets"]),
+            _json(unit["applicability"]),
+            _json(unit["exceptions"]),
+            unit["authority_level"],
+            unit["content_hash"],
+            EVIDENCE_UNIT_PROJECTION_VERSION,
+        ),
+    )
+
+
 def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
     root = root.expanduser().resolve()
     target = db_path(root, explicit_db)
     connection = connect(target)
     try:
         has_fts = init_schema(connection)
+        connection.execute("DELETE FROM evidence_unit")
         connection.execute("DELETE FROM candidate_event")
         connection.execute("DELETE FROM evaluation")
         connection.execute("DELETE FROM teaching_memory")
@@ -383,6 +880,8 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
         evaluation_count = 0
         benchmark_count = 0
         observation_count = 0
+        evidence_unit_count = 0
+        evidence_unit_projection_errors = 0
         for entry in kb.entry_dirs(root):
             record = kb.load_json(entry / "record.json", {}) or {}
             events = candidate_archive.read_events(entry)
@@ -504,6 +1003,18 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
                     record.get("updated_at"),
                 ),
             )
+            try:
+                entry_units = _entry_evidence_units(entry, record)
+            except (ValueError, OSError, json.JSONDecodeError):
+                entry_units = []
+                evidence_unit_projection_errors += 1
+            for unit in entry_units:
+                try:
+                    _insert_evidence_unit(connection, unit, entry_id=entry.name)
+                except (ValueError, sqlite3.DatabaseError):
+                    evidence_unit_projection_errors += 1
+                    continue
+                evidence_unit_count += 1
 
         for event in candidate_archive.read_library_events(root):
             if event.get("entry_id") != candidate_archive.LIBRARY_ENTRY_ID:
@@ -550,6 +1061,19 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
                 )
                 observation_count += 1
 
+        try:
+            curated_units = _curated_evidence_units()
+        except (ValueError, OSError, json.JSONDecodeError):
+            curated_units = []
+            evidence_unit_projection_errors += 1
+        for unit in curated_units:
+            try:
+                _insert_evidence_unit(connection, unit, entry_id=None)
+            except (ValueError, sqlite3.DatabaseError):
+                evidence_unit_projection_errors += 1
+                continue
+            evidence_unit_count += 1
+
         generated_at = kb.now_iso()
         library_events = candidate_archive.read_library_events(root)
         last_event_id = str(library_events[-1].get("event_id", "")) if library_events else ""
@@ -572,6 +1096,9 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
         "evaluations": evaluation_count,
         "scheduler_benchmarks": benchmark_count,
         "evolve_observations": observation_count,
+        "evidence_units": evidence_unit_count,
+        "evidence_unit_projection_version": EVIDENCE_UNIT_PROJECTION_VERSION,
+        "evidence_unit_projection_errors": evidence_unit_projection_errors,
     }
 
 
@@ -582,6 +1109,126 @@ def _loads(value: str | None, default: Any) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return default
+
+
+def load_evidence_unit_projection(
+    root: Path,
+    *,
+    exclude_entry_id: str = "",
+    unit_kinds: tuple[str, ...] = (),
+    limit: int = 500,
+    explicit_db: Path | None = None,
+) -> dict[str, Any]:
+    """Read the Phase-B shadow projection without affecting production query()."""
+    root = root.expanduser().resolve()
+    target = db_path(root, explicit_db)
+    if not target.exists():
+        return {
+            "status": "unavailable",
+            "reason": "knowledge-store-missing",
+            "units": [],
+        }
+    if (root / DIRTY_MARKER_RELATIVE).exists():
+        return {
+            "status": "unavailable",
+            "reason": "knowledge-store-stale",
+            "units": [],
+        }
+    normalized_kinds = tuple(
+        kind for kind in unit_kinds if kind in evidence_contract.UNIT_KINDS
+    )
+    if len(normalized_kinds) != len(unit_kinds):
+        return {
+            "status": "unavailable",
+            "reason": "invalid-unit-kind",
+            "units": [],
+        }
+    bounded_limit = max(1, min(int(limit), 2000))
+    connection = connect_readonly(target)
+    try:
+        tables = {
+            row["name"]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        if "evidence_unit" not in tables:
+            return {
+                "status": "unavailable",
+                "reason": "evidence-unit-projection-missing",
+                "units": [],
+            }
+        version_row = connection.execute(
+            "SELECT value FROM meta WHERE key='evidence_unit_projection_version'"
+        ).fetchone()
+        if not version_row or version_row["value"] != EVIDENCE_UNIT_PROJECTION_VERSION:
+            return {
+                "status": "unavailable",
+                "reason": "evidence-unit-projection-version-mismatch",
+                "units": [],
+            }
+        clauses: list[str] = []
+        parameters: list[Any] = []
+        if exclude_entry_id:
+            clauses.append("(entry_id IS NULL OR entry_id != ?)")
+            parameters.append(exclude_entry_id)
+        if normalized_kinds:
+            placeholders = ", ".join("?" for _ in normalized_kinds)
+            clauses.append(f"unit_kind IN ({placeholders})")
+            parameters.extend(normalized_kinds)
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        parameters.append(bounded_limit)
+        rows = connection.execute(
+            f"""
+            SELECT evidence_id, unit_kind, source_kind, source_path,
+                   source_section, start_line, end_line, text,
+                   physics_facets_json, applicability_json, exceptions_json,
+                   authority_level, content_hash
+            FROM evidence_unit
+            {where}
+            ORDER BY
+              CASE authority_level
+                WHEN 'A' THEN 4 WHEN 'B' THEN 3 WHEN 'C' THEN 2
+                WHEN 'D' THEN 1 ELSE 0
+              END DESC,
+              evidence_id
+            LIMIT ?
+            """,
+            parameters,
+        ).fetchall()
+    finally:
+        connection.close()
+
+    units = [
+        evidence_contract.normalize_evidence_unit(
+            {
+                "schema": evidence_contract.EVIDENCE_UNIT_SCHEMA,
+                "evidence_id": row["evidence_id"],
+                "unit_kind": row["unit_kind"],
+                "source_kind": row["source_kind"],
+                "source_locator": {
+                    "path": row["source_path"],
+                    "section": row["source_section"],
+                    "start_line": row["start_line"],
+                    "end_line": row["end_line"],
+                },
+                "text": row["text"],
+                "physics_facets": _loads(row["physics_facets_json"], []),
+                "applicability": _loads(row["applicability_json"], []),
+                "exceptions": _loads(row["exceptions_json"], []),
+                "authority_level": row["authority_level"],
+                "content_hash": row["content_hash"],
+            }
+        )
+        for row in rows
+    ]
+    return {
+        "status": "ready",
+        "projection_version": EVIDENCE_UNIT_PROJECTION_VERSION,
+        "unit_count": len(units),
+        "excluded_current_entry": bool(exclude_entry_id),
+        "units": units,
+    }
 
 
 def _fts_query(query: str) -> str:

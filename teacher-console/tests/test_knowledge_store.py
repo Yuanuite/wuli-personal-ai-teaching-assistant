@@ -170,6 +170,138 @@ class KnowledgeStoreTest(unittest.TestCase):
             evidence["evidence_set"]["traceable_document_count"],
             evidence["evidence_set"]["document_count"],
         )
+        self.assertGreater(report["evidence_units"], 0)
+        self.assertNotIn("evidence_units", evidence)
+
+    def test_rebuild_projects_traceable_high_value_evidence_units_in_shadow_only(self):
+        first = knowledge_store.rebuild(self.library)
+        projection = knowledge_store.load_evidence_unit_projection(self.library)
+        self.assertEqual(projection["status"], "ready")
+        self.assertEqual(projection["unit_count"], first["evidence_units"])
+        units = projection["units"]
+        false_friend = next(
+            item
+            for item in units
+            if item["unit_kind"] == "false_friend_warning"
+            and self.entry.name in item["source_locator"]["path"]
+        )
+        self.assertEqual(false_friend["source_kind"], "approved_solution")
+        self.assertEqual(false_friend["authority_level"], "B")
+        self.assertTrue(false_friend["applicability"])
+        self.assertTrue(false_friend["exceptions"])
+        self.assertTrue(false_friend["content_hash"].startswith("sha256:"))
+        curated = next(
+            item for item in units if item["source_kind"] == "curated_technique"
+        )
+        self.assertEqual(curated["authority_level"], "A")
+        self.assertNotIn(self.entry.name, curated["source_locator"]["path"])
+        circuit_node = next(
+            item for item in units
+            if item["source_locator"]["section"] == "circuit-node-topology"
+        )
+        self.assertEqual(circuit_node["authority_level"], "A")
+        self.assertIn("连接节点", circuit_node["physics_facets"])
+        self.assertIn("电流通路", circuit_node["physics_facets"])
+
+        identity_before = {
+            item["evidence_id"]: item["content_hash"] for item in units
+        }
+        second = knowledge_store.rebuild(self.library)
+        projection_after = knowledge_store.load_evidence_unit_projection(self.library)
+        identity_after = {
+            item["evidence_id"]: item["content_hash"]
+            for item in projection_after["units"]
+        }
+        self.assertEqual(first["evidence_units"], second["evidence_units"])
+        self.assertEqual(identity_before, identity_after)
+
+    def test_shadow_projection_excludes_current_entry_and_unapproved_answers(self):
+        unapproved = self.library / "entries" / "20260722-unapproved"
+        unapproved.mkdir(parents=True)
+        kb.write_text(
+            unapproved / "teacher-solution.md",
+            "# 解析\n\n## 易错点\n\n- 不应进入证据投影。",
+        )
+        kb.write_json(
+            unapproved / "record.json",
+            {
+                "schema_version": 1,
+                "id": unapproved.name,
+                "status": "ready",
+                "title": "未批准解析",
+                "subject": "高中物理",
+                "knowledge_points": ["动量守恒"],
+                "error_types": [],
+            },
+        )
+        knowledge_store.rebuild(self.library)
+        complete = knowledge_store.load_evidence_unit_projection(self.library)
+        serialized = json.dumps(complete, ensure_ascii=False)
+        self.assertNotIn(unapproved.name, serialized)
+
+        excluded = knowledge_store.load_evidence_unit_projection(
+            self.library, exclude_entry_id=self.entry.name
+        )
+        self.assertEqual(excluded["status"], "ready")
+        self.assertTrue(excluded["excluded_current_entry"])
+        self.assertNotIn(
+            f"entries/{self.entry.name}/",
+            json.dumps(excluded, ensure_ascii=False),
+        )
+
+    def test_shadow_projection_extracts_typed_method_and_conditioned_conclusion(self):
+        teacher_path = self.entry / "teacher-solution.md"
+        text = teacher_path.read_text(encoding="utf-8").replace(
+            "## 详细解答",
+            "## 一眼识别\n\n"
+            "- 题型识别：系统外力冲量可忽略的碰撞。\n"
+            "- 最短主线：先选系统，再规定正方向并列动量守恒。\n"
+            "- 可用二级结论：完全非弹性碰撞后共速；"
+            "**适用条件**：碰撞后两物体粘在一起。\n\n"
+            "## 详细解答",
+        )
+        teacher_path.write_text(text, encoding="utf-8")
+        record = kb.load_json(self.entry / "record.json", {})
+        review = record["answer_review"]
+        review["answer_digest"] = kb.answer_artifact_digest(self.entry)
+        record["answer_review"] = review
+        kb.write_json(self.entry / "answer-review.json", review)
+        kb.write_json(self.entry / "record.json", record)
+
+        knowledge_store.rebuild(self.library)
+        projection = knowledge_store.load_evidence_unit_projection(self.library)
+        entry_units = [
+            item
+            for item in projection["units"]
+            if self.entry.name in item["source_locator"]["path"]
+        ]
+        method = next(
+            item for item in entry_units if item["unit_kind"] == "method_applicability"
+        )
+        conclusion = next(
+            item for item in entry_units if item["unit_kind"] == "secondary_conclusion"
+        )
+        self.assertIn("规定正方向", method["text"])
+        self.assertTrue(any("题型识别" in item for item in method["applicability"]))
+        self.assertEqual(conclusion["applicability"], ["碰撞后两物体粘在一起。"])
+
+    def test_shadow_projection_failure_does_not_block_production_rebuild(self):
+        record = kb.load_json(self.entry / "record.json", {})
+        record["methods"] = [
+            {
+                "text": "过长方法" * 5000,
+                "conditions": ["条件明确"],
+                "forbidden": [],
+            }
+        ]
+        kb.write_json(self.entry / "record.json", record)
+        report = knowledge_store.rebuild(self.library)
+        self.assertEqual(report["status"], "rebuilt")
+        self.assertGreaterEqual(report["evidence_unit_projection_errors"], 1)
+        evidence = knowledge_store.query(
+            self.library, "动量守恒 非弹性碰撞", mode="teaching", top_k=3
+        )
+        self.assertEqual(evidence["status"], "ok")
 
     def test_kb_rebuild_refreshes_knowledge_store_fail_soft(self):
         report = kb.rebuild_index(self.library)

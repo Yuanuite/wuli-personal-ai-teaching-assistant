@@ -1,0 +1,232 @@
+{
+  "schema": "wuli.evidence-overlay.v1",
+  "overlay_id": "wuli-evidence-fresh-holdout-v2",
+  "review_status": "draft",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "units": [
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-4057ce0ba1a2b7e050192564",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "momentum-external-impulse-boundary",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "研究对象组成的系统明确，且研究时间内系统所受合外力冲量可忽略时，系统总动量守恒；内力是否做功、机械能是否守恒不影响这一判据。",
+      "physics_facets": [
+        "动量",
+        "系统边界",
+        "外力冲量",
+        "碰撞",
+        "爆炸"
+      ],
+      "applicability": [
+        "研究对象组成的系统明确",
+        "研究时间内合外力冲量可忽略"
+      ],
+      "exceptions": [
+        "把机械能守恒当作动量守恒前提",
+        "只检查瞬时合外力而不检查外力冲量",
+        "系统边界中途改变"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:ca6c068e79aa75f7461f7bb24bf0a5b661d525c9c365656bd1a1d71ffdf4c9c9"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-61c464cd60e41b4b9de52a73",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "induction-lenz-flux-change",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "闭合导体回路中，感应电流产生的磁场总是阻碍穿过回路的磁通量变化；应先判原磁通方向及增减，再判感应磁场方向，不能只看原磁场方向。",
+      "physics_facets": [
+        "电磁感应",
+        "楞次定律",
+        "磁通量变化",
+        "感应电流方向"
+      ],
+      "applicability": [
+        "导体回路闭合",
+        "穿过回路的磁通量发生变化"
+      ],
+      "exceptions": [
+        "把阻碍磁通量变化说成阻碍原磁场",
+        "只看磁场方向而不看面积或夹角变化",
+        "回路不闭合却声称有持续感应电流"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:68b050551bd9db4e3d27b0fbbaafad253c4fbafd362d9713a827e80421ab4945"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-1f17981b20eb71570a5f2385",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "ideal-transformer-ratio-ledger",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "理想变压器满足 U1/U2=N1/N2，且输入功率等于输出功率，所以 I1/I2=N2/N1；电压比与电流比互为倒数。",
+      "physics_facets": [
+        "交变电流",
+        "理想变压器",
+        "匝数比",
+        "电压比",
+        "电流比",
+        "功率守恒"
+      ],
+      "applicability": [
+        "理想变压器",
+        "忽略漏磁与线圈损耗"
+      ],
+      "exceptions": [
+        "把电流比写成匝数比同向",
+        "非理想变压器仍直接令输入功率等于输出功率",
+        "直流稳态接入变压器仍套匝数比"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:1b33853433c971f8d218c620ab6d3cd8b67c5e3e478757218c90dcc9b04135de"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-0e469416091f17642b095b5d",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "wave-stable-interference-condition",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "形成稳定干涉图样要求两列波频率相同、相位差保持恒定且在观察区域能够叠加；仅仅相遇或振幅相同都不足以保证稳定干涉。",
+      "physics_facets": [
+        "机械波",
+        "波的干涉",
+        "频率相同",
+        "相位差恒定",
+        "波的叠加"
+      ],
+      "applicability": [
+        "两列波在观察区域叠加",
+        "比较的是稳定干涉图样"
+      ],
+      "exceptions": [
+        "频率不同仍声称条纹位置稳定",
+        "只因两列波相遇就判定稳定干涉",
+        "把振幅相同当作相干的充分条件"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:fb25f9934a5256e4e69dd5381e7fa3c937b4e2b99ee5ba8038cb9d671bb3c0ce"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-9bf2d5d1e1066b1b510c0a31",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "relative-motion-closest-approach",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "两物体均做匀速直线运动时，可在惯性系中写相对位置和相对速度；若最近时刻位于给定时间区间内部，则相对位置与相对速度垂直，否则最近距离出现在区间端点。",
+      "physics_facets": [
+        "相对运动",
+        "匀速直线运动",
+        "最近距离",
+        "相对位置",
+        "相对速度",
+        "时间区间"
+      ],
+      "applicability": [
+        "两物体在同一惯性系中均做匀速直线运动",
+        "研究时间区间明确"
+      ],
+      "exceptions": [
+        "存在加速度仍把相对速度当常量",
+        "求得的垂直时刻不在区间内却不检查端点",
+        "混用不同参考系的位置和速度"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:26b0b9670306a91a0362c5fb0a5622401c01d3c501282f6a9352a46b6a4844a7"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-4e2db04917015f42e21f8de0",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "satellite-circular-orbit-scaling",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "同一中心天体的圆轨道满足 v=√(GM/r)、T=2π√(r³/GM)；轨道半径越大，线速度越小、周期越大，这些比例只适用于圆轨道比较。",
+      "physics_facets": [
+        "万有引力",
+        "卫星",
+        "圆轨道",
+        "线速度",
+        "周期",
+        "轨道半径"
+      ],
+      "applicability": [
+        "绕同一中心天体",
+        "轨道为圆轨道",
+        "中心天体质量不变"
+      ],
+      "exceptions": [
+        "把椭圆轨道瞬时速度直接代入圆轨道比例",
+        "比较不同中心天体时忽略中心天体质量",
+        "把轨道高度直接当作轨道半径"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:9821118b461bbb840f6e310cecd19f4b1618c52669111450b70bb98bc6491461"
+    },
+    {
+      "schema": "wuli.evidence-unit.v1",
+      "evidence_id": "EU-05e31fa12735f575bd819262",
+      "unit_kind": "secondary_conclusion",
+      "source_kind": "curated_technique",
+      "source_locator": {
+        "path": "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v2-evidence-overlay.json",
+        "section": "photoelectric-frequency-intensity-split",
+        "start_line": 1,
+        "end_line": 1
+      },
+      "text": "单色光照射金属时，最大初动能满足 Ek,max=hν−W0；频率决定单个光电子的最大初动能，光强主要影响单位时间逸出的光电子数。低于截止频率时，提高光强也不能发生光电效应。",
+      "physics_facets": [
+        "光电效应",
+        "截止频率",
+        "逸出功",
+        "最大初动能",
+        "光强",
+        "频率"
+      ],
+      "applicability": [
+        "单色光照射同一种金属",
+        "讨论光电子最大初动能或光电流"
+      ],
+      "exceptions": [
+        "只提高光强就声称最大初动能增大",
+        "低于截止频率时靠增大光强产生光电子",
+        "更换金属后仍沿用原逸出功"
+      ],
+      "authority_level": "A",
+      "content_hash": "sha256:23fe771298b885a794aec5a19d5424efcc7c71fc92b7d980b21850d33dfb5720"
+    }
+  ],
+  "overlay_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869"
+}

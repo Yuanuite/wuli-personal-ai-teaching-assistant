@@ -137,10 +137,7 @@ class AgentFailurePipelineTest(unittest.TestCase):
             set(schema["properties"]["metadata"]["required"]),
             set(schema["properties"]["metadata"]["properties"]),
         )
-        self.assertEqual(
-            set(schema["properties"]["diagram"]["required"]),
-            set(schema["properties"]["diagram"]["properties"]),
-        )
+        self.assertEqual(schema["properties"]["diagram"]["properties"], {})
         self.assertEqual(
             set(schema["properties"]["method_check"]["required"]),
             set(schema["properties"]["method_check"]["properties"]),
@@ -159,7 +156,124 @@ class AgentFailurePipelineTest(unittest.TestCase):
         evidence = task["context_payloads"][".agent-context/knowledge-evidence.json"]
         self.assertEqual(evidence["task_type"], "analysis.generate")
         self.assertNotIn(".agent-context/library-skill.md", task["context_files"])
-        self.assertIn("assets/explanatory.svg", task["allowed_paths"])
+        self.assertNotIn("assets/explanatory.svg", task["allowed_paths"])
+
+    def test_w3_claim_verifier_checkpoint_replays_before_gateway(self):
+        context = {
+            "verification_view": {
+                "schema_version": 1,
+                "source_facts": [],
+                "requests": [],
+            }
+        }
+        digest = teacher_console_server.w3_stage_checkpoint_digest(
+            stage="claim-verifier",
+            problem="approved problem",
+            context=context,
+            contract_name="wuli.claim-verify.v1",
+            model_id="verifier-model",
+            routing_tier="expert",
+        )
+        same_digest = teacher_console_server.w3_stage_checkpoint_digest(
+            stage="claim-verifier",
+            problem="approved problem",
+            context=context,
+            contract_name="wuli.claim-verify.v1",
+            model_id="verifier-model",
+            routing_tier="expert",
+        )
+        self.assertEqual(digest, same_digest)
+        checkpoint = self.entry / ".cache" / "w3-shadow" / f"claim-verifier-{digest}.json"
+        teacher_console_server.kb.write_json(
+            checkpoint,
+            {
+                "schema_version": 1,
+                "status": "completed",
+                "stage": "claim-verifier",
+                "contract": "wuli.claim-verify.v1",
+                "payload": {"status": "completed", "claim_audits": []},
+                "runtime_identity": {
+                    "model_id": "verifier-model",
+                    "provider": "fake",
+                    "context_isolated": True,
+                },
+            },
+        )
+        normalizer_calls = []
+
+        def normalizer(payload):
+            normalizer_calls.append(payload)
+            return payload
+
+        replayed = teacher_console_server.replay_w3_stage_checkpoint(
+            checkpoint,
+            normalizer,
+            include_runtime_identity=True,
+        )
+        self.assertEqual(len(normalizer_calls), 1)
+        self.assertEqual(replayed["status"], "completed")
+        self.assertEqual(
+            replayed["_runtime_identity"]["model_id"], "verifier-model"
+        )
+        self.assertNotIn("usage", replayed)
+
+    def test_w3_stage_timing_separates_provider_time_from_overhead(self):
+        timing = teacher_console_server.summarize_w3_stage_timing(
+            {
+                "attempts": [
+                    {"duration_seconds": 1.25},
+                    {"duration_seconds": "2.5"},
+                    {"duration_seconds": "invalid"},
+                    "invalid",
+                ]
+            },
+            elapsed_seconds=4.5,
+        )
+
+        self.assertEqual(timing["duration_seconds"], 4.5)
+        self.assertEqual(timing["provider_seconds"], 3.75)
+        self.assertEqual(timing["overhead_seconds"], 0.75)
+        self.assertEqual(timing["attempt_count"], 3)
+
+    def test_claim_evidence_archive_contains_only_compact_private_telemetry(self):
+        request = {
+            "status": "completed",
+            "routing_tier": "expert",
+            "model_id": "verifier-model",
+            "report": {
+                "claim_evidence_shadow": {
+                    "status": "completed",
+                    "ledger": {
+                        "claims": [{
+                            "statement": "private final answer",
+                            "local_path": str(self.entry / "answer.md"),
+                        }]
+                    },
+                    "certificates": [{
+                        "decisive_checks": ["private reasoning chain"]
+                    }],
+                    "aggregation": {"status": "PROVISIONAL"},
+                    "metrics": {
+                        "claim_count": 4,
+                        "certificate_count": 3,
+                        "verified_claim_count": 2,
+                        "critical_certificate_coverage": 0.5,
+                        "unresolved_claim_count": 2,
+                    },
+                }
+            },
+        }
+        event = teacher_console_server.archive_claim_evidence_shadow(
+            self.entry, request
+        )
+        encoded = json.dumps(event, ensure_ascii=False)
+        self.assertNotIn("private final answer", encoded)
+        self.assertNotIn("private reasoning chain", encoded)
+        self.assertNotIn(str(self.entry), encoded)
+        self.assertEqual(
+            event["result"]["aggregation_status"], "PROVISIONAL"
+        )
+        self.assertFalse(event["result"]["canonical_answer_changed"])
 
 
 if __name__ == "__main__":

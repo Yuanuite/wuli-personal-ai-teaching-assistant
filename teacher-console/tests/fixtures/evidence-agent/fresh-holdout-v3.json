@@ -1,0 +1,1115 @@
+{
+  "schema": "wuli.evidence-gold-dataset.v1",
+  "dataset_id": "wuli-evidence-fresh-holdout-v3",
+  "dataset_version": "2026-07-31-v1",
+  "review_status": "draft",
+  "label_origin": "agent_proposed_fresh_holdout_v3",
+  "source_scope": [
+    "curated_technique"
+  ],
+  "reviewer": "",
+  "reviewed_at": "",
+  "cases": [
+    {
+      "problem": "小球在水平圆盘上随圆盘做匀速圆周运动，需要列出水平方向的径向动力学方程。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-circle-radial-force-valid",
+        "question_snapshot_hash": "sha256:fc782191a1f4e34090dd25de2977dd031d15fb27aa1c60c3ec1c6f43628cb1ed",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "应怎样用实际力的径向分量建立向心运动方程？",
+          "required_facets": [
+            "径向合力",
+            "实际力",
+            "向心加速度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-7f56ba8b658e18939f870500"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-7f56ba8b658e18939f870500"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据直接给出实际力径向合力等于 mv²/r 的记账方式。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "某解答认为物体做匀速圆周运动时速度大小不变，所以加速度和合力都为零。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-circle-zero-result-diagnostic",
+        "question_snapshot_hash": "sha256:728e61622b407e148b527f7d4552da38d56f3ba2fc0985ed161fe5fcad4ea1da",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "速率不变是否意味着圆周运动的加速度和合力为零？",
+          "required_facets": [
+            "匀速圆周运动",
+            "向心加速度",
+            "径向合力"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "把匀速圆周运动误判为合力为零"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-7f56ba8b658e18939f870500"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-7f56ba8b658e18939f870500"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确区分速率不变与速度方向变化，可直接纠正该结论。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "小球已经脱离圆形轨道，之后做二维运动；现在需要求落地点位置和飞行时间。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-circle-detached-trajectory-insufficient",
+        "question_snapshot_hash": "sha256:5f182be31b220604b00e13c55ec3fefdf25f7ba471efb7f4bc8064a70fc47d68",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "脱离约束后的二维轨迹、飞行时间和落地点怎样确定？",
+          "required_facets": [
+            "脱离后轨迹",
+            "飞行时间",
+            "落地点"
+          ],
+          "forbidden_conflicts": [
+            "物体离开圆形约束后仍套用径向合力公式"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-7f56ba8b658e18939f870500"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "圆周径向合力证据不包含脱离后的二维运动分解和落点计算。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "两个小球从同一高度同时水平抛出，水平初速度不同，忽略空气阻力。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-projectile-time-valid",
+        "question_snapshot_hash": "sha256:23a0fd57d5671ae61f555560f18920ff1e12fb67c2a0f52e32a2c35a4fb0c582",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "两球落地时间是否相同，由哪个方向的运动决定？",
+          "required_facets": [
+            "竖直落差",
+            "飞行时间",
+            "水平初速度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-e2ecf8dcde51348f388fc00c"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-e2ecf8dcde51348f388fc00c"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "同一落差下飞行时间由竖直自由落体决定，与水平初速度无关。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "某解答声称平抛物体水平初速度越大，在同一高度下落地所需时间越长。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-projectile-horizontal-speed-diagnostic",
+        "question_snapshot_hash": "sha256:b1d0fe4ba895f532a7a0bcc6f63fce7fd70df63378d7ca12fd50aa4543b670b9",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "水平初速度会不会改变同一落差下的平抛飞行时间？",
+          "required_facets": [
+            "运动独立性",
+            "水平初速度",
+            "飞行时间"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "把水平初速度当作同一落差飞行时间的决定量"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-e2ecf8dcde51348f388fc00c"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-e2ecf8dcde51348f388fc00c"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据可以直接纠正水平速度决定下落时间的错误。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "小球在强空气阻力中运动，阻力大小与速度成正比，需要求速度随时间的变化和落地时间。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-projectile-drag-insufficient",
+        "question_snapshot_hash": "sha256:d5c5c2d256e4d27fa579e9f3d135f281d8be6fd06b3889662b266a774b639c1a",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "速度相关阻力下应怎样建立动力学方程并确定落地时间？",
+          "required_facets": [
+            "速度相关阻力",
+            "动力学方程",
+            "落地时间"
+          ],
+          "forbidden_conflicts": [
+            "存在不可忽略空气阻力"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-e2ecf8dcde51348f388fc00c"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "无阻力平抛分解不包含速度相关阻力的动力学模型。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "密闭容器内一定质量理想气体从一个平衡态缓慢变化到另一个平衡态，已知两态的 p、V、T 部分数据。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-gas-two-state-valid",
+        "question_snapshot_hash": "sha256:72d2fb165e903bc311340a32b9966249988654c9515b604c2f475f897b0a03a0",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "一定质量理想气体的两个平衡态应使用什么状态关系比较？",
+          "required_facets": [
+            "一定质量",
+            "平衡态",
+            "压强",
+            "体积",
+            "热力学温度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-b288fd52bc840a8e53132a22"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-b288fd52bc840a8e53132a22"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "物质的量固定且两端均为平衡态，可直接使用 pV/T 常量。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "某解答把 20℃ 和 40℃ 直接当作温度比 1:2 代入理想气体状态方程。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-gas-celsius-diagnostic",
+        "question_snapshot_hash": "sha256:97197ecbf0c952ccc7e4dd940ceb0c26a474243ab8de1e5f141c003a73115f7a",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "状态方程中的温度能否直接使用摄氏温度数值作比例？",
+          "required_facets": [
+            "理想气体",
+            "热力学温度",
+            "状态方程比例"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "把摄氏温度直接代入状态方程比例"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-b288fd52bc840a8e53132a22"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-b288fd52bc840a8e53132a22"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确要求使用热力学温度，可直接纠正摄氏温度比例错误。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "带微孔容器持续漏气，容器内气体物质的量随时间改变，需要求漏气质量与压强的时间关系。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-gas-leak-insufficient",
+        "question_snapshot_hash": "sha256:862686fb05013b5a3bd00154e525b7c58d346e4b66d96f5a9b8cf9534461db33",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "物质的量持续变化时如何联立漏气速率与压强演化？",
+          "required_facets": [
+            "漏气速率",
+            "物质的量变化",
+            "压强演化"
+          ],
+          "forbidden_conflicts": [
+            "容器漏气后仍按一定质量处理"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-b288fd52bc840a8e53132a22"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "固定物质的量的两态关系不包含漏气速率或开放系统质量变化。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "长为 L 的直导体棒以速度 v 垂直切割匀强磁场，导体、速度和磁场两两垂直。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-emf-perpendicular-valid",
+        "question_snapshot_hash": "sha256:9645a162b08e1137f0b2b72c1f7f52355f80cb41f6e5d7bfb07a0de4b55caeb8",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "该条件下如何确定导体两端的动生电动势？",
+          "required_facets": [
+            "动生电动势",
+            "有效长度",
+            "匀强磁场",
+            "速度垂直分量"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-76e39c9cea8a0d3d74a6ae45"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-76e39c9cea8a0d3d74a6ae45"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "两两垂直满足 ε=BLv 的直接适用条件。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "导体棒在磁场中切割磁感线但回路开路，某解答仍声称回路中存在持续感应电流。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-emf-open-current-diagnostic",
+        "question_snapshot_hash": "sha256:3ee5b69b8eadaa28ee01112d9dcb7b7ff2ad5ca14c43310aeb2b0f8bb8d4da66",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "开路时存在动生电动势是否等于存在持续感应电流？",
+          "required_facets": [
+            "动生电动势",
+            "闭合回路",
+            "感应电流"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "开路存在电动势就声称有持续电流"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-76e39c9cea8a0d3d74a6ae45"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-76e39c9cea8a0d3d74a6ae45"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确区分开路电动势与闭合回路持续电流。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "不规则导体在空间非匀强磁场中绕偏心轴转动，需要求各段电动势分布和总电动势。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-emf-rotating-nonuniform-insufficient",
+        "question_snapshot_hash": "sha256:ad071a92e5ca228a05a82d2b6f7950ddc337a16b50e65b33681f5373e1ba8e50",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "非匀强场内转动导体的局部电动势怎样沿导体汇总？",
+          "required_facets": [
+            "非匀强磁场",
+            "转动导体",
+            "局部电动势分布"
+          ],
+          "forbidden_conflicts": [
+            "转动导体或非匀强磁场仍直接套 BLv"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-76e39c9cea8a0d3d74a6ae45"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "直导体匀强场的有效分量公式不包含非匀强转动情形。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "理想水平弹簧振子经过平衡位置，需要比较此刻速度和加速度的大小。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-shm-equilibrium-valid",
+        "question_snapshot_hash": "sha256:c26db26c99d3741f8bc4936e13cc72a3078f06bbe221f0b254715f9e41f806c2",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "verification_support",
+          "question": "简谐振子经过平衡位置时速度和加速度分别怎样？",
+          "required_facets": [
+            "简谐运动",
+            "平衡位置",
+            "速度",
+            "加速度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-9db23c189878e5c7e5f88eeb"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-9db23c189878e5c7e5f88eeb"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据直接给出平衡位置速度最大、加速度为零。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "某解答认为弹簧振子到达振幅端点时位移最大，所以速度和加速度都为零。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-shm-endpoint-diagnostic",
+        "question_snapshot_hash": "sha256:ec6767336b4476a6930d63ae38b77dfe4b0625db8dab59c8c4687f6675fd0222",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "振幅端点的速度和加速度是否都为零？",
+          "required_facets": [
+            "振幅端点",
+            "速度",
+            "加速度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "把振幅端点误判为加速度为零"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-9db23c189878e5c7e5f88eeb"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-9db23c189878e5c7e5f88eeb"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确端点速度为零但加速度大小最大，可直接纠正。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "振子受到与速度成正比的明显阻尼，需要求振幅衰减率和机械能随时间的函数。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-shm-damping-insufficient",
+        "question_snapshot_hash": "sha256:4903efa2d142847615347210abf03778db68f63a175593de28faf17326fa5c4d",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "阻尼系数给定时振幅和机械能如何随时间衰减？",
+          "required_facets": [
+            "阻尼系数",
+            "振幅衰减率",
+            "机械能时间函数"
+          ],
+          "forbidden_conflicts": [
+            "存在明显阻尼仍令振幅和机械能恒定"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-9db23c189878e5c7e5f88eeb"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "理想无阻尼简谐运动证据不包含阻尼衰减规律。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "光从折射率较大的均匀介质射向折射率较小的均匀介质，入射角大于临界角。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-tir-critical-valid",
+        "question_snapshot_hash": "sha256:233b42059f5a84bab8ca71a8b129457c6e3910bf300ff0d2a47e9373031b5202",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "applicability_check",
+          "question": "该界面发生全反射需要满足哪些方向和角度条件？",
+          "required_facets": [
+            "光密介质",
+            "光疏介质",
+            "入射角",
+            "临界角",
+            "全反射"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-2550bbfa123aac2855a6710d"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-2550bbfa123aac2855a6710d"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "传播方向和入射角均满足全反射条件。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "光从空气射入玻璃，某解答因入射角很大就判断发生全反射。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-tir-thin-to-dense-diagnostic",
+        "question_snapshot_hash": "sha256:39379601fd3d7a2550f1f550f87f06979356e75ad22d2393e81357a18cfba8ad",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "光从光疏介质射向光密介质时能否仅凭入射角大判定全反射？",
+          "required_facets": [
+            "光疏介质",
+            "光密介质",
+            "全反射"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "光从光疏介质射向光密介质却声称全反射"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-2550bbfa123aac2855a6710d"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-2550bbfa123aac2855a6710d"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确此传播方向不会发生全反射，可直接纠正。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "介质折射率随深度连续变化，光线逐渐弯曲，需要求转向点位置和完整传播轨迹。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-tir-gradient-index-insufficient",
+        "question_snapshot_hash": "sha256:7c9bebe882bc2ca1fd738216cf2ed673d436b8a2d725df7c6c2cdff46566e540",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "连续折射率分布中光线轨迹和转向点怎样确定？",
+          "required_facets": [
+            "折射率连续变化",
+            "光线轨迹",
+            "转向点"
+          ],
+          "forbidden_conflicts": [
+            "折射率连续变化介质仍直接套单一界面临界角"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-2550bbfa123aac2855a6710d"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "单一清晰界面的临界角证据不包含连续梯度介质的轨迹模型。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "一批大量同种放射性原子核经过三个半衰期，需要求剩余核数占初始核数的比例。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-decay-half-life-valid",
+        "question_snapshot_hash": "sha256:8f235ca78afbfea8f4c977f44b11d58a5573b8f6b0f9f1aa7a74fe8977b05120",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "经过若干半衰期后剩余核数怎样计算？",
+          "required_facets": [
+            "放射性衰变",
+            "半衰期",
+            "剩余核数",
+            "初始核数"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-ca6fc7256929a19a64075552"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-ca6fc7256929a19a64075552"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据直接给出大量同种核的指数衰变关系。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "某解答认为把放射性样品加热到高温就会显著缩短该核素的半衰期。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-decay-temperature-diagnostic",
+        "question_snapshot_hash": "sha256:618fa94303670ea199cbd7064d13a93d2984166e581cc90849973759ce0d9619",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "false_friend_check",
+          "question": "通常的温度变化会不会改变核素自身的半衰期？",
+          "required_facets": [
+            "半衰期",
+            "核素",
+            "温度"
+          ],
+          "forbidden_conflicts": [],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ],
+          "diagnostic_targets": [
+            "升温或加压就改变核素半衰期"
+          ]
+        },
+        "required_evidence_ids": [
+          "EU-ca6fc7256929a19a64075552"
+        ],
+        "acceptable_evidence_ids": [
+          "EU-ca6fc7256929a19a64075552"
+        ],
+        "forbidden_evidence_ids": [],
+        "expected_status": "sufficient",
+        "teacher_rationale": "证据明确半衰期通常不随温度变化，可直接纠正。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    },
+    {
+      "problem": "样品同时受到高强度中子轰击并发生核反应，需要求反应产物生成率与原核数变化。",
+      "blueprint": {
+        "schema": "wuli.evidence-holdout-blueprint.v1",
+        "question_targets": [
+          "Q1"
+        ],
+        "verification_obligations": [
+          "V1"
+        ]
+      },
+      "gold_case": {
+        "schema": "wuli.evidence-gold-case.v1",
+        "case_id": "fresh3-decay-bombardment-insufficient",
+        "question_snapshot_hash": "sha256:5444f1bed469bdc9f6f0b331da705fe063504e2a7c55829b02cff8238a3dc07f",
+        "retrieval_need": {
+          "schema": "wuli.retrieval-need.v1",
+          "need_id": "N1",
+          "purpose": "method_candidate",
+          "question": "外来粒子诱发核反应时如何由反应截面和通量求产物生成率？",
+          "required_facets": [
+            "反应截面",
+            "粒子通量",
+            "核反应产物生成率"
+          ],
+          "forbidden_conflicts": [
+            "外来粒子轰击引发核反应仍只套自发衰变公式"
+          ],
+          "minimum_authority": "A",
+          "criticality": "required",
+          "target_ids": [
+            "Q1"
+          ],
+          "stage_ids": [
+            "P1"
+          ],
+          "obligation_ids": [
+            "V1"
+          ]
+        },
+        "required_evidence_ids": [],
+        "acceptable_evidence_ids": [],
+        "forbidden_evidence_ids": [
+          "EU-ca6fc7256929a19a64075552"
+        ],
+        "expected_status": "insufficient",
+        "teacher_rationale": "自发衰变统计律不包含外来粒子诱发反应的截面和通量。",
+        "evaluation_split": "holdout",
+        "batch_id": "evidence-holdout-2026-07-31-c"
+      }
+    }
+  ],
+  "evidence_snapshot_fingerprint": "sha256:55b55578ff20cc29b62b49aa3f672723b0a441e0d290e647e21aed1fe46c2f1a",
+  "dataset_fingerprint": "sha256:988da0615fce6e26b3cf67ee2429003690463e78357b1b1af88f75408e1ee1d6"
+}

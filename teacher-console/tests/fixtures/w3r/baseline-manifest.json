@@ -1,0 +1,44 @@
+{
+  "schema": "wuli.w3r-baseline-manifest.v1",
+  "status": "frozen",
+  "production_behavior_changed": false,
+  "cases": [
+    {
+      "case_id": "pre-24-high-quality",
+      "kind": "historical-high-quality",
+      "source": "student-error-library/evals/w3-shadow-v1/manifest.json",
+      "teacher_approval_state": "inherited-from-frozen-w3-manifest"
+    },
+    {
+      "case_id": "post-29-render-gap",
+      "kind": "known-render-gap",
+      "source": "docs/构建-W3R-非求解教学渲染与忠实性门禁-原子执行.md",
+      "teacher_approval_state": "diagnostic-only"
+    },
+    {
+      "case_id": "official-ipho-2021-t1-a1",
+      "kind": "official-competition",
+      "source": "docs/reports/w4-supplement-source/ipho2021-t1-a1-solution.md",
+      "teacher_approval_state": "production-gray-reviewed"
+    },
+    {
+      "case_id": "official-apho-2019-q3-a3",
+      "kind": "official-competition",
+      "source": "docs/reports/w4-supplement-source/apho2019-q3-a3-solution.md",
+      "teacher_approval_state": "production-gray-reviewed"
+    },
+    {
+      "case_id": "official-cpho-2021-semifinal-q3",
+      "kind": "official-competition",
+      "source": "docs/reports/w4-supplement-source/cpho2021-semifinal-q3-solution.md",
+      "teacher_approval_state": "production-gray-reviewed"
+    }
+  ],
+  "captured_metrics": [
+    "answer_signature",
+    "sections",
+    "length",
+    "latex",
+    "teacher_review_state"
+  ]
+}

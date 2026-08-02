@@ -82,13 +82,10 @@ class AnalysisArtifactsTest(unittest.TestCase):
                 "grade": "高二",
                 "title": "机械能守恒与方向判断",
             },
-            "diagram": {
-                "title": "解题主线",
-                "nodes": ["识别过程", "建立守恒", "求解", "检查方向"],
-            },
+            "diagram": None,
         }
 
-    def test_materialization_merges_only_teaching_metadata_and_builds_diagram(self):
+    def test_materialization_builds_answer_but_does_not_own_diagram(self):
         result = analysis_artifacts.materialize(self.entry, self.payload())
 
         record = json.loads((self.entry / "record.json").read_text(encoding="utf-8"))
@@ -104,29 +101,22 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertIn("assets/explanatory.svg", student)
         self.assertIn("## 教师审计", teacher)
         self.assertEqual(teacher, (self.entry / "solution.md").read_text(encoding="utf-8"))
-        self.assertIn("<svg", (self.entry / analysis_artifacts.EXPLANATION_PATH).read_text(encoding="utf-8"))
+        self.assertFalse((self.entry / analysis_artifacts.EXPLANATION_PATH).exists())
         self.assertEqual(result["contract"], analysis_artifacts.ANALYSIS_CONTRACT)
         self.assertEqual(
-            kb.validate_entry(
-                self.library,
-                self.entry,
-                ready_rules=True,
-                require_answer_review=False,
-            ),
-            [],
+            kb.validate_entry(self.library, self.entry, ready_rules=True, require_answer_review=False),
+            ["solution.md: missing image assets/explanatory.svg"],
         )
 
-    def test_output_contract_guides_complex_electricity_diagrams(self):
+    def test_output_contract_delegates_diagram_to_independent_scene_task(self):
         instructions = analysis_artifacts.output_contract()["instructions"]
 
-        self.assertIn("等效电路", instructions)
-        self.assertIn("电动势源", instructions)
-        self.assertIn("内阻", instructions)
+        self.assertIn("diagram 是兼容旧适配器的废弃字段", instructions)
+        self.assertIn("独立的强类型场景任务", instructions)
         self.assertIn("\\notag", instructions)
         self.assertIn("aqquad", instructions)
         self.assertIn("rac{", instructions)
         self.assertIn("rac34", instructions)
-        self.assertIn("端电压", instructions)
         self.assertIn("method_check", instructions)
         self.assertIn("禁止使用积分", instructions)
         self.assertIn("证据优先于层级模板", instructions)
@@ -192,6 +182,26 @@ class AnalysisArtifactsTest(unittest.TestCase):
         payload["method_check"]["student_step_count"] = 5
         with self.assertRaisesRegex(ValueError, "maximum is 5"):
             analysis_artifacts.normalize_payload(payload)
+
+    def test_olympiad_profile_allows_calculus_but_not_university_mechanics(self):
+        calculus = self.payload()["student_solution"].replace(
+            "建立方程并求解。",
+            "使用积分 $W=\\int F\\,dx$ 求解。",
+        )
+        self.assertFalse(
+            analysis_artifacts.student_method_errors(
+                calculus, "olympiad_official"
+            )
+        )
+        lagrange = calculus.replace("使用积分", "使用拉格朗日方程与积分")
+        self.assertTrue(
+            any(
+                "大学力学方法" in item
+                for item in analysis_artifacts.student_method_errors(
+                    lagrange, "olympiad_official"
+                )
+            )
+        )
 
     def test_rejects_method_check_step_count_mismatch(self):
         payload = self.payload()

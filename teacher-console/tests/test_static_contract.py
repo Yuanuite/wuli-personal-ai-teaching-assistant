@@ -78,7 +78,7 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("交给大模型修改", html)
         self.assertIn("解释图", html)
         self.assertIn('<textarea id="answer-note"', html)
-        self.assertIn('grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "approval"', css)
+        self.assertIn('grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "focus" "evidence" "approval"', css)
         self.assertIn(".approval-box { grid-area: approval; }", css)
         self.assertIn("overflow-y: auto", css)
         self.assertIn("max-height:min(38vh,320px)", css)
@@ -97,6 +97,11 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("useAuditAsRevision", script)
         self.assertIn("填入修改意见", script)
         self.assertIn(".w3-audit-block", css)
+        self.assertIn('<details id="claim-evidence-ledger"', html)
+        self.assertIn('id="claim-unresolved-obligations"', html)
+        self.assertIn("renderClaimEvidenceLedger", script)
+        self.assertIn("evidence.unresolved_obligations", script)
+        self.assertIn(".claim-evidence-body", css)
 
     def test_retrieval_review_uses_visual_selectable_cards(self):
         html = (STATIC / "index.html").read_text(encoding="utf-8")

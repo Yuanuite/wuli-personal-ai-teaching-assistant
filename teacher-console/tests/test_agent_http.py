@@ -31,6 +31,21 @@ teacher_console_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_console_server)
 
 
+class _AdapterForcingGateway(AgentGateway):
+    """Always route Agent execution through the deterministic test adapter.
+
+    Claim-evidence shadow resolves solver/verifier as claude identities in the
+    registry (the provider gate requires claude/openai-compatible), but the
+    test environment has no real claude CLI; this mirrors E2EAgentGateway in
+    teacher-console/e2e/run_e2e.py.
+    """
+
+    def _task_environ(self, task=None):
+        env = super()._task_environ(task)
+        env["TEACHER_CONSOLE_AGENT_PROVIDER"] = "adapter"
+        return env
+
+
 class AgentHttpTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -356,6 +371,46 @@ class AgentHttpTest(unittest.TestCase):
     def test_w3_shadow_fake_adapter_covers_claim_outcomes_without_canonical_write(self):
         canonical = "# 已批准解析\n\n此内容不得被影子链路修改。\n"
         kb.write_text(self.entry / "student-solution.md", canonical)
+        # Claim-evidence shadow requires claude/openai-compatible solver and
+        # verifier identities with distinct models; execution still routes
+        # through the deterministic adapter (mirrors E2E configure_w3_test_models).
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {
+                    "analysis.generate": "w3-claude-solver",
+                    "expert": "w3-claude-solver",
+                    "claim.verify": "w3-claude-verifier",
+                },
+                "models": [
+                    {
+                        "id": "w3-claude-solver",
+                        "provider": "claude",
+                        "model": "w3-solver-model",
+                        "capabilities": ["analysis.generate"],
+                    },
+                    {
+                        "id": "w3-claude-verifier",
+                        "provider": "claude",
+                        "model": "w3-verifier-model",
+                        "capabilities": ["claim.verify"],
+                    },
+                ],
+            },
+        )
+        for model_id in ("w3-claude-solver", "w3-claude-verifier"):
+            model_registry.update_model_probe_result(
+                model_id,
+                {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}},
+            )
+        adapter = ROOT / "teacher-console" / "tests" / "fixtures" / "fake_agent_adapter.py"
+        teacher_console_server.AGENT_GATEWAY = _AdapterForcingGateway(
+            environ={
+                "TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": f"{sys.executable} {adapter}",
+                "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter",
+            }
+        )
         previous_flag = os.environ.get("TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW")
         os.environ["TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW"] = "1"
         try:

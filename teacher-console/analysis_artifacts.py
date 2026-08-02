@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import hashlib
-import html
 import json
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+import teaching_method_policy
+import diagram_plugins
 
 ANALYSIS_CONTRACT = "wuli.analysis.v2"
 EXPLANATION_PATH = "assets/explanatory.svg"
@@ -137,16 +139,10 @@ ANALYSIS_OUTPUT_SCHEMA: dict[str, Any] = {
         "diagram": {
             "type": ["object", "null"],
             "additionalProperties": False,
-            "properties": {
-                "title": {"type": "string"},
-                "nodes": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "minItems": 2,
-                    "maxItems": 6,
-                },
-            },
-            "required": ["title", "nodes"],
+            # Deprecated transport slot retained for old adapters.  Analysis no
+            # longer designs images; the separate physics-diagram scene task owns
+            # that work and callers must send null here.
+            "properties": {},
         },
     },
     # Codex/OpenAI structured outputs reject conditional ``allOf`` schemas and
@@ -194,10 +190,8 @@ def output_contract() -> dict[str, Any]:
             "重复详细解答或挤占关键证明。"
             "公式只使用网页可稳定渲染的 LaTeX；不要使用 \\notag、\\tag 或编号控制命令，"
             "并在提交前检查是否出现 otag、aqquad、gqquad、rac{…}、rac34 等反斜杠丢失残片。"
-            "diagram.nodes 用 2–6 个短语概括解题逻辑链，程序会确定性生成 SVG。"
-            "复杂电学题的图示先把实际过程抽象为等效电路：用节点短语明确电动势源、"
-            "内阻、负载、测量端及其连接关系；例如不同材料圆环分别等效为感应电动势源"
-            "与对应内阻，并区分感应电动势和端电压。"
+            "diagram 是兼容旧适配器的废弃字段，必须设为 null；本任务不设计图片。"
+            "物理示意图由独立的强类型场景任务依据已完成答案和 MiMo 视觉事实生成。"
             "若上下文包含 physics-model.json，它是已建模的物理事件真源：答案选项、"
             "事件分支和返回后的后续运动必须与其一致，且不得用逻辑流程图覆盖已有物理示意图。"
             "status=unsupported 时将 student_solution、teacher_audit、method_check、metadata、diagram 设为 null。"
@@ -263,7 +257,10 @@ def _repair_latex_fragments(text: str) -> str:
     return re.sub(r"(?m)^[ \t]*otag[ \t]*\n?", "", text)
 
 
-def student_method_errors(student: str) -> list[str]:
+def student_method_errors(
+    student: str,
+    method_profile: str = teaching_method_policy.DEFAULT_PROFILE,
+) -> list[str]:
     """Return deterministic student-layer method and cognitive-load violations."""
     errors: list[str] = []
     if "最短主线" not in student:
@@ -273,9 +270,7 @@ def student_method_errors(student: str) -> list[str]:
         errors.append("student_solution must use numbered 第 N 步 headings")
     elif step_count > 5:
         errors.append(f"student_solution main line has {step_count} steps; maximum is 5")
-    for pattern, label in ADVANCED_STUDENT_METHODS:
-        if pattern.search(student):
-            errors.append(f"student_solution uses non-high-school method: {label}")
+    errors.extend(teaching_method_policy.method_errors(student, method_profile))
     if re.search(r"(?m)^\s*otag\s*$", student):
         errors.append("student_solution contains broken LaTeX fragment: otag")
     if re.search(r"(?<!\\)\b[a-z]*qquad\b", student):
@@ -447,16 +442,8 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
                 maximum=120,
             )
 
-    raw_diagram = payload.get("diagram")
-    if not isinstance(raw_diagram, dict):
-        raw_diagram = {}
-    diagram_title = str(raw_diagram.get("title", "")).strip() or "解题逻辑"
-    try:
-        diagram_nodes = _clean_list(raw_diagram.get("nodes"), field="diagram.nodes")[:6]
-    except ValueError:
-        diagram_nodes = ["识别题型", "建立关键关系", "计算并检查", "得到结论"]
-    if len(diagram_nodes) < 2:
-        diagram_nodes = ["识别题型", "建立关系", "得到结论"]
+    if payload.get("diagram") is not None:
+        raise ValueError("diagram is deprecated and must be null")
 
     return {
         "status": status,
@@ -476,7 +463,7 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             "student_step_count": reported_step_count,
         },
         "metadata": metadata,
-        "diagram": {"title": diagram_title[:120], "nodes": diagram_nodes},
+        "diagram": None,
     }
 
 
@@ -499,45 +486,12 @@ def _insert_explanation_reference(student: str) -> str:
     return "\n".join(lines).strip()
 
 
-def _render_diagram(diagram: dict[str, Any]) -> str:
-    nodes = [str(item)[:80] for item in diagram["nodes"]]
-    width = 960
-    margin = 36
-    gap = 24
-    node_width = max(110, (width - 2 * margin - gap * (len(nodes) - 1)) // len(nodes))
-    title = html.escape(str(diagram["title"]))
-    parts = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="170" viewBox="0 0 960 170">',
-        '<rect width="960" height="170" rx="18" fill="#f8fafc"/>',
-        f'<text x="480" y="30" text-anchor="middle" font-size="20" font-family="sans-serif" '
-        f'font-weight="700" fill="#0f172a">{title}</text>',
-        '<defs><marker id="arrow" markerWidth="9" markerHeight="7" refX="8" refY="3.5" '
-        'orient="auto"><path d="M0,0 L9,3.5 L0,7 Z" fill="#64748b"/></marker></defs>',
-    ]
-    y = 58
-    for index, label in enumerate(nodes):
-        x = margin + index * (node_width + gap)
-        parts.append(
-            f'<rect x="{x}" y="{y}" width="{node_width}" height="72" rx="12" '
-            'fill="#e0f2fe" stroke="#0284c7" stroke-width="2"/>'
-        )
-        words = re.findall(r".{1,12}", label)[:3]
-        first_y = 88 - 10 * (len(words) - 1)
-        for offset, word in enumerate(words):
-            parts.append(
-                f'<text x="{x + node_width / 2:.1f}" y="{first_y + offset * 21}" '
-                'text-anchor="middle" font-size="15" font-family="sans-serif" '
-                f'fill="#0f172a">{html.escape(word)}</text>'
-            )
-        if index < len(nodes) - 1:
-            x1 = x + node_width + 4
-            x2 = x + node_width + gap - 5
-            parts.append(
-                f'<line x1="{x1}" y1="94" x2="{x2}" y2="94" stroke="#64748b" '
-                'stroke-width="2" marker-end="url(#arrow)"/>'
-            )
-    parts.append("</svg>")
-    return "\n".join(parts) + "\n"
+def render_explanation_diagram(title: str, nodes: list[str], *, plugin_id: str) -> str:
+    """Compatibility entry point for an explicitly selected optional plugin."""
+    return diagram_plugins.render_optional_diagram(
+        plugin_id,
+        {"title": title, "nodes": nodes},
+    )
 
 
 def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
@@ -570,21 +524,11 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
     if audit.startswith("#"):
         audit = re.sub(r"^#+\s*", "", audit, count=1).strip()
     teacher = f"{student}\n\n## 教师审计\n\n{audit}\n"
-    existing_diagram = staging / EXPLANATION_PATH
-    # A reviewed physics model already owns a semantic trajectory/circuit image.
-    # Preserve that physical SVG instead of replacing it with a logic-chain card.
-    diagram = (
-        existing_diagram.read_text(encoding="utf-8")
-        if (staging / "physics-model.json").is_file() and existing_diagram.is_file()
-        else _render_diagram(normalized["diagram"])
-    )
-
     artifacts = {
         "record.json": json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         "student-solution.md": student + "\n",
         "teacher-solution.md": teacher,
         "solution.md": teacher,
-        EXPLANATION_PATH: diagram,
     }
     for relative, content in artifacts.items():
         target = staging / relative
@@ -600,7 +544,7 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
         "payload_digest": digest,
         "stages": [
             {"name": "answer-materialization", "status": "completed"},
-            {"name": "diagram-materialization", "status": "completed"},
+            {"name": "diagram-materialization", "status": "not-owned"},
         ],
     }
 
