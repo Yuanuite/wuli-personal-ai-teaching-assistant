@@ -220,6 +220,42 @@ class AnalysisRoutingTest(unittest.TestCase):
         )
         self.assertEqual(outside["reason"], "w3r-outside-gray-cohort")
 
+    def test_w3r_migrated_config_normalizes_without_errors(self):
+        # A2.1: the truth-source config must match the code contract (policy
+        # version + complete evidence field set); normalization keeps mode and
+        # reports no errors, so the W3R selection is a deliberate choice rather
+        # than a fail-closed accident.
+        migrated = {
+            "schema_version": 1,
+            "policy_version": analysis_routing.W3R_POLICY_VERSION,
+            "mode": "off",
+            "gray_entry_ids": [],
+            "evidence": dict(analysis_routing.DEFAULT_W3R_EVIDENCE),
+        }
+        config, errors = analysis_routing.normalize_w3r_config(migrated)
+        self.assertEqual(errors, [])
+        self.assertEqual(config["mode"], "off")
+        self.assertEqual(set(config["evidence"]), set(analysis_routing.W3R_EVIDENCE_FIELDS))
+
+    def test_w3r_legacy_contract_fails_closed_to_off(self):
+        # The pre-migration config (wrong policy version + wrong evidence
+        # fields) must fail closed to the default off config, never to default.
+        legacy = {
+            "schema_version": 1,
+            "policy_version": "teacher-console.w3r-renderer.v1",
+            "mode": "default",
+            "gray_entry_ids": [],
+            "evidence": {
+                "max_claim_count": 30,
+                "unsupported_claim_rate": 1.0,
+                "teacher_readability_preference": 0.5,
+                "teacher_edit_rate_non_regression": False,
+            },
+        }
+        config, errors = analysis_routing.normalize_w3r_config(legacy)
+        self.assertEqual(config["mode"], "off")
+        self.assertTrue(errors)
+
     def test_w3r_gray_requires_rollout_and_candidate_hard_gates(self):
         report = verified_w3r_report()
         insufficient = w3r_config(ids=["e1"])

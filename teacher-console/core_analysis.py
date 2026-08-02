@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 from typing import Any
 
+import physics_quality
 import teaching_method_policy
 
 
@@ -233,7 +234,12 @@ def _texts(value: Any, field: str, *, maximum_items: int, allow_empty: bool = Fa
     return result[:maximum_items]
 
 
-def normalize_payload(payload: Any, brief: dict[str, Any]) -> dict[str, Any]:
+def normalize_payload(
+    payload: Any,
+    brief: dict[str, Any],
+    *,
+    problem: str | None = None,
+) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("core solve output must be an object")
     status = str(payload.get("status", "")).strip().lower()
@@ -273,6 +279,18 @@ def normalize_payload(payload: Any, brief: dict[str, Any]) -> dict[str, Any]:
     method_errors = teaching_method_policy.method_errors(method_text, brief["method_profile"])
     if method_errors:
         raise ValueError("; ".join(method_errors))
+
+    if problem is not None:
+        physics_report = physics_quality.physics_quality_report(
+            {"status": "completed", "message": message, "target_brief_digest": brief["digest"], "targets": targets},
+            brief,
+            problem,
+        )
+        if physics_report["status"] == "fail":
+            details = "; ".join(
+                f"{item['code']}@{item['target_id']}" for item in physics_report["reason_codes"]
+            )
+            raise ValueError(f"physics quality gate rejected: {details}")
 
     return {
         "status": "completed",
@@ -317,7 +335,18 @@ def _student_markdown(core: dict[str, Any]) -> str:
 
 
 def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str, Any]:
-    core = normalize_payload(payload, brief)
+    problem = None
+    problem_path = staging / "problem.md"
+    if problem_path.is_file():
+        problem = problem_path.read_text(encoding="utf-8")
+    core = normalize_payload(payload, brief, problem=problem)
+    physics_report = None
+    if problem is not None:
+        physics_report = physics_quality.physics_quality_report(
+            {"status": core["status"], "message": core["message"], "target_brief_digest": core["target_brief_digest"], "targets": core["targets"]},
+            brief,
+            problem,
+        )
     record_path = staging / "record.json"
     if not record_path.is_file():
         raise ValueError("record.json is missing")
@@ -331,6 +360,16 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         "target_brief_digest": brief["digest"],
     }
     student = _student_markdown(core)
+    # Render fidelity is a real invariant check: every accepted final answer and
+    # decisive relation must appear verbatim in the rendered student markdown.
+    render_violations = [
+        f"{target['id']}: {expected}"
+        for target in core["targets"]
+        for expected in [target["final_answer"], *target["key_relations"]]
+        if expected not in student
+    ]
+    if render_violations:
+        raise ValueError("render fidelity gate rejected: missing content: " + "; ".join(render_violations[:3]))
     checks = "\n".join(
         f"- **{target['id']}**：已保留 {len(target['key_relations'])} 条决定性关系，等待权威答案复核。"
         for target in core["targets"]
@@ -343,13 +382,21 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         + checks
         + "\n"
     )
+    gate = {
+        "schema_version": 1,
+        "contract": physics_quality.PHYSICS_QUALITY_CONTRACT,
+        "status": "passed" if physics_report is None or physics_report["status"] == "pass" else "rejected",
+        "target_coverage": 1.0,
+        "unresolved_answer_count": 0,
+        "physics_quality": physics_report,
+    }
     core_artifact = {
         "schema_version": 1,
         "contract": CORE_CONTRACT,
         "method_profile": brief["method_profile"],
         "target_brief": brief,
         "result": core,
-        "gate": {"status": "passed", "target_coverage": 1.0, "unresolved_answer_count": 0},
+        "gate": gate,
     }
     artifacts = {
         "record.json": json.dumps(record, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -370,6 +417,7 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         "payload_digest": digest,
         "stages": [
             {"name": "core-gate", "status": "completed"},
+            {"name": "physics-quality-gate", "status": "completed"},
             {"name": "deterministic-teaching-render", "status": "completed"},
             {"name": "render-fidelity-gate", "status": "completed"},
         ],

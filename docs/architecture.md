@@ -56,7 +56,7 @@ uploaded → ingested → source-reviewed → analyzed → answered → answer-r
 
 `teacher-console/` 是生命周期总控的本地交互外壳，不复制 OCR、校验、导出或仿真逻辑。后端直接调用 `process_uploads.py` 与 `kb.py`，页面负责上传、展示原图、收集题干与答案确认，并对所有条目保留按需可视化入口；只有已生成物理模型的条目才进入动态产物复核。工作台还可通过本机 Agent Gateway 触发已配置的 provider、展示后台作业和提供必要成品下载。默认只绑定 `127.0.0.1`，因此不是公网发布站点。
 
-来源批准绑定题干摘要；答案批准绑定题干、学生版、教师版、同步答案、共享物理模型和答案所引用本地图像的联合摘要。解析意见可交给 Gateway provider 在隔离候选区修改 Markdown 与解释 SVG/PNG，但 Agent 不能自行批准。任一受保护文件发生变化，旧批准失效，`finish` 必须拒绝交付。
+来源批准绑定题干摘要；答案批准绑定题干、学生版、教师版、同步答案、共享物理模型和答案所引用本地图像的联合摘要。解析意见可交给 Gateway provider 在隔离候选区修改 Markdown；静态物理图由独立 `diagram.scene` 结构化任务规划并由本地渲染器生成，Agent 不直接写 SVG，也不能自行批准。任一受保护文件发生变化，旧批准失效，`finish` 必须拒绝交付。
 
 可视化页面始终保留，但标准解析不主动创建交互模型。没有 `physics-model.json` 时显示“尚未生成”，教师明确请求后才由 Agent 调用 `build-physics-simulator` 创建模型；这不是对题目适宜性的自动判断。模型创建会使答案摘要失效，因此先回到答案复核。可视化批准只适用于已经生成的动态交互仿真，并独立绑定当前模型、预审 HTML/ZIP、运行时证据和构建报告。动态仿真先在条目 `visualization/` 中构建并由教师通过 sandbox iframe 查看；`finish` 只复制这份已批准产物，不重新渲染。静态 SVG/PNG 始终留在答案复核。
 
@@ -78,10 +78,15 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 
 - `server.py` 只提交任务类型、教师意见、读写集合和隐私策略，不保存具体 CLI/API 参数；
 - provider 在系统临时目录工作，canonical entry 不作为工作目录；候选区按输入白名单构造，原始题图、批准记录和无关内部文件不被 Gateway 复制或写入 prompt；CLI 运行时的额外只读边界仍由其自身沙箱决定，严格披露边界应使用结构化 adapter；
-- 标准解析使用 `wuli.analysis.v2` 结构化契约：模型不操作文件，只输出一次学生正文、教师审计增量、私有方法自检、教学元数据和图示节点；首次解析会注入裁剪后的相似题方法证据，学生答案必须采用最短高中主线，本地确定性模块合成三份答案与解释 SVG；
+- 标准解析默认使用 `wuli.core-solve.v1`：模型只输出 Target Brief 绑定的最终结论、决定性推导、条件、复算检查和元数据建议，不输出教学 Markdown，也不生成阶段接口、Claim DAG、第二求解器或仲裁记录。本地 Core Gate 通过后确定性生成学生版、教师版和兼容版，渲染不得改变 `final_answer`。普通课堂使用 `high_school_standard`，官方竞赛评测显式使用 `olympiad_official`；一次核心调用失败即停止，不用旧 W2/W3 提示重复求解；
+- Core Gate 之后、渲染之前执行 `wuli.physics-quality-gate.v1`（`physics_quality.py`）：对每个目标的推导/结论内部一致性、符号与方向、变量定义做确定性检查，候选不通过即拒绝且不渲染；量纲与适用条件记录为 `deferred-verifier`，由独立 verifier 承担，不作为硬门禁。`core-solution.json` 的 `gate` 字段写入真实报告（reason codes 与 obligations），阶段序列含 `physics-quality-gate` 与真实 `render-fidelity-gate`；
+- 静态 `diagram.scene` 与交互仿真均为答案后的可选增强，不再与首次答案候选组成阻塞事务。显式请求静态图时，仍由强类型场景契约和本地确定性 SVG 渲染承担语义与安全门禁；
+- 磁场运动的静态教学投影遵循“先保几何、再表达深度”：x-y 轨迹等比例缩放，解析 `arc3d` 和通过共圆检验的采样段渲染为真实圆弧；不同案例用稳定配色和方向箭头区分，模型换向事件、圆心与半径作为构造层叠加。三维 z 位移以文字/独立视图表达，不能混入 x-y 坐标而把圆周轨迹拉成伪曲线；
+- 通用逻辑流程图不再是解析失败或缺图时的默认兜底。`logic-flowchart` 仅保留为必须显式指定的可选插件；未取得可信物理 scene 时任务失败关闭并回滚答案—图组合候选；
 - 每次 Agent 请求归一化为 `AgentRequestOutcome`，统一记录阶段、provider、尝试次数、错误分类、回退状态、隐私安全摘要与可用的 token/时延指标，供作业结果、候选档案和离线评测复用；
 - `analysis.generate`、`answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；证据构造使用确定性的字符预算、逐段裁剪和内容哈希，检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
-- W3 复杂题推理在一个 `analysis.generate` 作业内自适应执行确定性初筛、物理过程/推理过程双层蓝图、最多五路定向召回、结构化求解、目标级验证与证据仲裁；当前仅写入私有影子报告，不替换 W2 正式答案，详见 [`w3-reasoning-pipeline.md`](w3-reasoning-pipeline.md)；
+- `wuli-core-first-routing-v1` 是解析生成的默认路由策略。复杂度只产生可选增强信号，不再把题目分到 W2/W3 两套求解器。`student-error-library/config/analysis-production-routing.json` 可切为 `legacy-adaptive` 恢复旧 `wuli-analysis-adaptive-v1`；旧 W2/W3 代码与配置暂时保留但不在默认链执行，详见 [`w3-reasoning-pipeline.md`](w3-reasoning-pipeline.md)；
+- 默认关闭的 Claim Evidence 影子层可把 Solver 关系投影为版本化断言 DAG，为算术、量纲、区间、事件顺序和隔离语义复算生成证书，再做跨阶段接口检查、依赖定向回跳、受控假设搜索与确定性汇总。假设始终留在探索平面，冲突或缺证只会得到 `PROVISIONAL/UNRESOLVED`；完整账本仅供教师端读取，不修改 canonical 答案、批准或学生端产物。执行真源见 [`技术执行计划书.md`](技术执行计划书.md)，解题 loop 的原子任务、状态传递、反馈回路和熔断边界见 [`解题loop.md`](解题loop.md)；
 - `.agent-context/` 按任务和成本档位提供最小只读规则：答案任务以答案模板与职责边界为主，深度档才附完整知识库 Skill；可视化任务附仿真 Skill 与模型 Schema；
 - 候选修改仅限任务白名单，答案候选由知识库验证器检查，可视化候选由仿真模型构建器检查；
 - canonical 条目在排队期间变化、候选越权、删除文件或验证失败时均不提升；

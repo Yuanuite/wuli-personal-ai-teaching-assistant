@@ -1,5 +1,32 @@
 # 变更记录
 
+## 2026-08-03：Core–W3/W3R 复杂题质量恢复（wuli-core-w3-w3r-quality-recovery-v1）
+
+- 物理质量门禁（A0.2/A1.2/T1）：新增 `wuli.physics-quality-gate.v1`
+  （`teacher-console/physics_quality.py`），在 `core_analysis.normalize_payload`
+  中作为硬门禁执行——候选在提升前被拒绝，不再出现“core-solution.json 记录
+  gate=passed 但推导与答案自相矛盾”。四个确定性 reason code：
+  `derivation-answer-mismatch`（对数做功 vs 倒数差结论，同变量对）、
+  `sign-flip-unjustified`（题设同向 + 负解 + 取绝对值但最终答案未陈述方向调和）、
+  `internal-recheck-conflict`（复核行无条件为负而最终答案为正）、
+  `symbol-undefined`（下标符号从未定义）。量纲与适用条件按 A0.2 回跳规则记录为
+  `deferred-verifier`，不写成硬门禁。
+- 失败夹具与回归（A0.1）：`tests/test_physics_quality.py` 14 项，覆盖两类缺陷
+  （对数→倒数差跳跃、负值无依据取绝对值）+ 复核自相矛盾 + 符号未定义，相邻正确
+  样例不误拒绝；真实失败样例
+  （20260802-…-830117d9，Q3/Q4i/Q4iii）经门禁全部命中。
+- 渲染真值化（A3.1）：`core-solution.json` 的 `gate` 改为真实报告
+  （contract/status/obligations/reason codes），阶段序列新增
+  `physics-quality-gate`；`deterministic-teaching-render` 后增加真实
+  `render-fidelity-gate`（final_answer 与 key_relations 必须逐字出现在学生版）。
+- W3R 配置真源（A2.1/DC-4/T4）：`w3r-production-routing.json` 迁移到
+  `wuli-w3r-routing-v1` + 完整 evidence 字段，mode 保持 `off`；旧契约
+  （`teacher-console.w3r-renderer.v1`）规范化 fail-closed 到 off。迁移测试 +
+  失效配置测试各 1 项。
+- 资格 canary 同步：`analysis_qualification_canary.py` 的 `_validate` 现在传入
+  problem 文本，资格判定包含物理质量门禁，反映生产实际提升路径。
+- 路线决策门 G1（A1.4）与 W3R 默认化（A5.3）仍为维护者+教师代表批准项。
+
 ## 2026-08-03：Provider 超时与结构化输出失配修复 · 阶段收口（wuli-analysis-provider-reliability-v1）
 
 - 阶段进度（A3.2）：OpenAI-compatible adapter 在成功与失败两条路径都输出

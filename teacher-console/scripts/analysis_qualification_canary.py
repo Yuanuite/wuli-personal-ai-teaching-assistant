@@ -202,7 +202,10 @@ def _validate(problem: dict, run: dict) -> tuple[bool, list[str]]:
         return False, [f"no structured JSON: {run.get('reason', run.get('failure_type', '?'))}"]
     payload = run.get("payload", {})
     try:
-        core_analysis.normalize_payload(payload, run["brief"])
+        # Run the full production gate, including the deterministic physics
+        # quality gate (wuli.physics-quality-gate.v1), so qualification reflects
+        # what promotion actually enforces.
+        core_analysis.normalize_payload(payload, run["brief"], problem=problem["text"])
     except ValueError as error:
         return False, [str(error)]
     return True, []
