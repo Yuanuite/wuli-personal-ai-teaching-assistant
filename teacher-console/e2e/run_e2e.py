@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kb  # noqa: E402
 import model_registry  # noqa: E402
 import server as teacher_server  # noqa: E402
+import truncation_mock_server  # noqa: E402
 import visual_mock_server  # noqa: E402
 from agent_gateway import AgentGateway  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
@@ -40,6 +41,12 @@ SCENARIOS = (
     "visual-blurred-fail-closed.e2e.mjs",
     "static-diagram-collaboration.e2e.mjs",
     "runtime-route-rollback.e2e.mjs",
+    # Wave E2/E3: analysis-run observability
+    # (docs/analysis-run-observability-w3-pipeline-work-tree.md)
+    "analysis-core-report.e2e.mjs",
+    "analysis-core-truncated.e2e.mjs",
+    "analysis-w3-report.e2e.mjs",
+    "analysis-w3-backjump.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).
@@ -60,7 +67,14 @@ class E2EAgentGateway(AgentGateway):
 
     def _task_environ(self, task: dict | None = None) -> dict[str, str]:
         environment = super()._task_environ(task)
-        environment["TEACHER_CONSOLE_AGENT_PROVIDER"] = "adapter"
+        config = task.get("model_config") if isinstance(task, dict) else None
+        provider = str(config.get("provider", "")).strip() if isinstance(config, dict) else ""
+        # analysis-core-truncated registers an openai-compatible model against
+        # a local mock endpoint; let it route to the real openai-compatible
+        # adapter so the reasoning-only failure envelope is produced end to
+        # end. Every other scenario keeps the deterministic fake adapter.
+        if provider != "openai-compatible":
+            environment["TEACHER_CONSOLE_AGENT_PROVIDER"] = "adapter"
         return environment
 
 
@@ -96,6 +110,46 @@ def configure_w3_test_models(library: Path) -> None:
                 "reason": "deterministic E2E test double",
             },
         })
+
+
+def configure_truncation_test_model(library: Path, base_url: str) -> None:
+    """Register a probed openai-compatible model whose endpoint always truncates.
+
+    The mock endpoint returns ``finish_reason=length`` with reasoning-only
+    output, so the ``analysis-core-truncated`` scenario can exercise the
+    ``output_truncated`` classification and failure-envelope usage (work-tree
+    B1/B2) through the registry-routed openai-compatible adapter. The model is
+    only selected when the analyze request passes ``model_id=e2e-mock-truncated``
+    explicitly; ``defaults.analysis.generate`` keeps the deterministic Claude
+    double for every other scenario.
+    """
+    model_registry.LIBRARY = library
+    settings = model_registry.model_registry_settings()
+    settings.setdefault("defaults", {})
+    models = settings.setdefault("models", [])
+    if not any(
+        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-truncated"
+        for item in models
+    ):
+        models.append({
+            "id": "e2e-mock-truncated",
+            "display_name": "E2E 截断 Mock",
+            "provider": "openai-compatible",
+            "base_url": base_url,
+            "model": "e2e-truncation-model",
+            "capabilities": ["analysis.generate"],
+            "api_key": "e2e-mock-key",
+            "timeout_seconds": "10",
+            "model_tier": "standard",
+        })
+    model_registry.save_model_registry_settings(settings)
+    model_registry.update_model_probe_result("e2e-mock-truncated", {
+        "live_probe": {
+            "status": "passed",
+            "provider": "openai-compatible",
+            "reason": "deterministic E2E truncation mock endpoint",
+        },
+    })
 
 
 def configure_visual_test_models(library: Path, base_url: str) -> None:
@@ -228,6 +282,14 @@ def main() -> int:
             configure_w3_test_models(library)
             if mock_server is not None:
                 configure_visual_test_models(library, mock_url)
+            truncation_url = ""
+            if script_name == "analysis-core-truncated.e2e.mjs":
+                # Local reasoning-only truncation endpoint + probed
+                # openai-compatible model (registered before the node script
+                # runs, mirroring configure_visual_test_models).
+                truncation_server, truncation_url = truncation_mock_server.serve_truncation_mock()
+                mock_server = truncation_server
+                configure_truncation_test_model(library, truncation_url)
             # Recompute the start-time identity snapshot against the temp
             # library AFTER the test models are registered; the module-import
             # snapshot referenced the real project library and would otherwise
@@ -262,6 +324,11 @@ def main() -> int:
                 "E2E_PYTHON": sys.executable,
                 "E2E_ARTIFACT_DIR": str(scenario_artifacts),
                 "E2E_FIXTURE_IMAGE": str(fixture),
+                # Synthetic clear image used by the analysis-run scenarios
+                # (web upload path with ocr=none).
+                "E2E_ANALYSIS_FIXTURE": str(
+                    CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png"
+                ),
             })
             if visual_mode:
                 child_environment.update({
@@ -269,6 +336,8 @@ def main() -> int:
                     "E2E_VISUAL_FIXTURE": str(VISUAL_FIXTURES[visual_mode]),
                     "E2E_VISION_MOCK_URL": mock_url,
                 })
+            if truncation_url:
+                child_environment["E2E_TRUNCATION_MOCK_URL"] = truncation_url
             try:
                 completed = subprocess.run(
                     [node, str(browser_test)],

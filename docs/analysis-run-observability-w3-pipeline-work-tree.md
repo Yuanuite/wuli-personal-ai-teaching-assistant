@@ -1,6 +1,6 @@
 # 解析失败修复、W3 全链可观测与逐步验证原子 Work-Tree
 
-> 状态：执行中（Wave A/B 完成：A1 脱敏夹具、B1 截断分类、B2 失败 envelope、B3/B4 复杂题 30000 预算 + thinking 关闭已实现并通过 11 项单测与 71/71 全套；A3/D 报告脚本与 E2/E3 E2E 由并行任务进行中）
+> 状态：已实现并验证（A1-A3、B1-B4、C1、D1-D4、E1-E3 完成：72/72 严格单测、4 条新增可观测 E2E + 既有 E2E 全部通过；E4 真实无隐私 smoke 为维护者批准项，C2/C3 运行时事件埋点为后续演进；历史失败作业报告给出 diagnosed=output_truncated / recorded=candidate_no_change）
 > 版本：`wuli-analysis-run-observability-v1`
 > 日期：2026-08-02
 > 类型：故障修复 + 运行可观测性 + W3 过程验证 + 文档治理

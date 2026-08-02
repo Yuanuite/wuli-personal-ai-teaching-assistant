@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-reflection.v1",
+  "title": "Wuli Evidence Reflection",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": ["completed", "unsupported"]
+    },
+    "message": {
+      "type": "string"
+    },
+    "coverage": {
+      "type": ["array", "null"],
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "need_id": {"type": "string"},
+          "evidence_ids": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 32
+          },
+          "covered_facets": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 32
+          },
+          "hard_conflicts": {
+            "type": "array",
+            "items": {"type": "string"},
+            "maxItems": 32
+          },
+          "not_required": {"type": "boolean"},
+          "reason": {"type": "string"}
+        },
+        "required": [
+          "need_id",
+          "evidence_ids",
+          "covered_facets",
+          "hard_conflicts",
+          "not_required",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": ["status", "message", "coverage"]
+}

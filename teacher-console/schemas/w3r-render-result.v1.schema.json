@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.w3r-render-result.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "status",
+    "brief_fingerprint",
+    "student_solution_md",
+    "teacher_solution_md",
+    "claim_span_map",
+    "render_gate_report",
+    "attempt"
+  ],
+  "properties": {
+    "schema": {"const": "wuli.w3r-render-result.v1"},
+    "status": {"enum": ["completed", "needs_render_material", "rejected"]},
+    "brief_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "student_solution_md": {"type": "string", "maxLength": 100000},
+    "teacher_solution_md": {"type": "string", "maxLength": 120000},
+    "claim_span_map": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document", "section_id", "claim_ids", "step_ids", "text_fingerprint"],
+        "properties": {
+          "document": {"enum": ["student", "teacher"]},
+          "section_id": {"type": "string"},
+          "claim_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "step_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "text_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}
+        }
+      }
+    },
+    "render_gate_report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "violations", "metrics"],
+      "properties": {
+        "status": {"enum": ["pass", "retryable", "reject"]},
+        "violations": {"type": "array", "items": {"type": "object"}},
+        "metrics": {"type": "object"}
+      }
+    },
+    "attempt": {"type": "integer", "minimum": 1, "maximum": 2}
+  }
+}

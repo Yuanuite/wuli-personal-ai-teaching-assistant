@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-gold-dataset.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "dataset_id",
+    "dataset_version",
+    "dataset_fingerprint",
+    "review_status",
+    "label_origin",
+    "source_scope",
+    "reviewer",
+    "reviewed_at",
+    "cases"
+  ],
+  "properties": {
+    "schema": {"const": "wuli.evidence-gold-dataset.v1"},
+    "dataset_id": {"type": "string", "minLength": 1, "maxLength": 120},
+    "dataset_version": {"type": "string", "minLength": 1, "maxLength": 80},
+    "dataset_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "review_status": {
+      "enum": ["draft", "calibration_frozen", "teacher_approved"]
+    },
+    "label_origin": {"type": "string", "minLength": 1, "maxLength": 80},
+    "source_scope": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1, "maxLength": 120}
+    },
+    "reviewer": {"type": "string", "maxLength": 120},
+    "reviewed_at": {"type": "string", "maxLength": 80},
+    "evidence_snapshot_fingerprint": {
+      "description": "Optional fingerprint of an isolated Evidence Unit overlay bound into this dataset review.",
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["problem", "blueprint", "gold_case"],
+        "properties": {
+          "problem": {"type": "string", "minLength": 1, "maxLength": 12000},
+          "blueprint": {"type": "object"},
+          "gold_case": {"$ref": "evidence-gold-case.v1.schema.json"}
+        }
+      }
+    }
+  }
+}

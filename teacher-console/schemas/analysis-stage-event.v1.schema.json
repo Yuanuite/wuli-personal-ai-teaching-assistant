@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "wuli.analysis-stage-event.v1",
+  "title": "Analysis stage event",
+  "description": "One monotonic, run-scoped event for an analysis run (Core or W3). Produced by the Gateway, lifecycle, verifiers, and renderer; consumed by the run report aggregator. Never contains prompts, reasoning bodies, keys, or absolute paths.",
+  "type": "object",
+  "required": [
+    "schema",
+    "run_id",
+    "entry_id",
+    "sequence",
+    "step_id",
+    "name",
+    "category",
+    "kind",
+    "started_at"
+  ],
+  "properties": {
+    "schema": {
+      "const": "wuli.analysis-stage-event.v1"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Job or run identity the event belongs to."
+    },
+    "entry_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Monotonic sequence within the run; strictly increasing."
+    },
+    "step_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable step id (e.g. P00..P15, decompose, solver-a, claim-verifier)."
+    },
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "enum": [
+        "input",
+        "gate",
+        "provider-request",
+        "provider-response",
+        "checkpoint",
+        "verification",
+        "backjump",
+        "promotion",
+        "review",
+        "render"
+      ]
+    },
+    "kind": {
+      "enum": [
+        "queued",
+        "started",
+        "completed",
+        "failed",
+        "blocked",
+        "skipped",
+        "replayed",
+        "retried"
+      ]
+    },
+    "input_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 of the canonical input for this step."
+    },
+    "output_fingerprint": {
+      "type": "string",
+      "description": "SHA-256 of the canonical output for this step; empty when not produced."
+    },
+    "contract": {
+      "type": "string",
+      "description": "Structured contract id the step obeys, e.g. wuli.core-solve.v1."
+    },
+    "runtime_identity": {
+      "type": "object",
+      "properties": {
+        "model_id": { "type": "string" },
+        "provider": { "type": "string" },
+        "upstream_model": { "type": "string" },
+        "config_digest": { "type": "string" }
+      },
+      "required": ["model_id", "provider"]
+    },
+    "verification_result": {
+      "enum": ["passed", "failed", "provisional", "not-run", "blocked"]
+    },
+    "failure_type": {
+      "type": "string",
+      "description": "Stable low-cardinality failure code, empty on success."
+    },
+    "retry_or_backjump": {
+      "type": "boolean",
+      "description": "True when this step retried or a named backjump re-executed an affected task."
+    },
+    "duration_seconds": {
+      "type": "number",
+      "minimum": 0
+    },
+    "attempt_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "upstream_request_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "HTTP requests to the upstream model for this step."
+    },
+    "usage": {
+      "type": "object",
+      "description": "Redacted provider token usage; integer fields only."
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "description": "Repository-relative artifact path only; never absolute."
+      }
+    },
+    "provenance_checks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Redaction/consistency proofs; never raw evidence."
+    }
+  },
+  "additionalProperties": false
+}

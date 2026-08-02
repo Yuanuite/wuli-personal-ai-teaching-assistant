@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-reflection.v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "status": {"type": "string", "enum": ["completed", "unsupported"]},
+    "message": {"type": "string"},
+    "coverage": {
+      "type": ["array", "null"],
+      "maxItems": 16,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "need_id": {"type": "string"},
+          "covered_facets": {"type": "array", "items": {"type": "string"}, "maxItems": 32},
+          "evidence_bindings": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "evidence_id": {"type": "string"},
+                "covered_facets": {"type": "array", "items": {"type": "string"}, "minItems": 1, "maxItems": 32},
+                "reason": {"type": "string"}
+              },
+              "required": ["evidence_id", "covered_facets", "reason"]
+            }
+          },
+          "hard_conflicts": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "evidence_id": {"type": "string"},
+                "conflict": {"type": "string"}
+              },
+              "required": ["evidence_id", "conflict"]
+            }
+          },
+          "condition_verdict": {"type": "string", "enum": ["compatible", "incompatible", "uncertain"]},
+          "forbidden_conflict_checks": {
+            "type": "array",
+            "maxItems": 16,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "conflict": {"type": "string"},
+                "verdict": {"type": "string", "enum": ["present", "absent", "uncertain"]},
+                "reason": {"type": "string"}
+              },
+              "required": ["conflict", "verdict", "reason"]
+            }
+          },
+          "not_required": {"type": "boolean"},
+          "reason": {"type": "string"}
+        },
+        "required": [
+          "need_id",
+          "covered_facets",
+          "evidence_bindings",
+          "hard_conflicts",
+          "condition_verdict",
+          "forbidden_conflict_checks",
+          "not_required",
+          "reason"
+        ]
+      }
+    }
+  },
+  "required": ["status", "message", "coverage"]
+}

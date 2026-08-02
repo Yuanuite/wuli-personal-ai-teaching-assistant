@@ -468,6 +468,24 @@ print(result['status'], result.get('reason'))
 声明已知排除项、单独报告）；也可追加单个测试文件名。错误解释器会快速报告缺失
 依赖（Pillow 等）。
 
+### 分析运行报告（只读）
+
+输出一次解析运行的完整账本（`wuli.analysis-run-report.v1`），列出实际路由、模型、
+provider、请求次数、检查点、回撤、补充分析、验证与终态；绝不读取/输出密钥、
+reasoning 正文、学生原图或答案全文：
+
+```bash
+/Users/qingyuan/miniconda3/bin/python3 -B teacher-console/scripts/analysis_run_report.py \
+  --job-id <job-id> --format markdown --verify
+/Users/qingyuan/miniconda3/bin/python3 -B teacher-console/scripts/analysis_run_report.py \
+  --entry-id <entry-id> --latest --format json --output /private/tmp/analysis-run-report.json
+```
+
+退出码：0=自动 Gate 全通过（人工可 pending）；2=物理证据 PROVISIONAL/UNRESOLVED；
+3=作业失败/证据不完整/摘要不一致；4=输入不存在/schema 不兼容/敏感泄漏。历史
+reasoning-only 截断作业报告同时给出 `diagnosed_failure_type=output_truncated` 与
+原始 `recorded_failure_type`，不改写原作业。
+
 ### 显式静态图动作（CLI）
 
 静态图是答案后的显式可选流程，网页按钮与 CLI 共用同一应用服务：

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-usage-ledger.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "entries"],
+  "properties": {
+    "schema": {"const": "wuli.evidence-usage-ledger.v1"},
+    "entries": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "evidence_id",
+          "need_ids",
+          "usage",
+          "influenced_claim_ids",
+          "verification_ids"
+        ],
+        "properties": {
+          "evidence_id": {"type": "string", "minLength": 1, "maxLength": 120},
+          "need_ids": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "usage": {
+            "enum": [
+              "navigation_only",
+              "method_hint",
+              "condition_warning",
+              "false_friend_warning",
+              "secondary_conclusion_candidate",
+              "citation_support"
+            ]
+          },
+          "influenced_claim_ids": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "verification_ids": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    }
+  }
+}

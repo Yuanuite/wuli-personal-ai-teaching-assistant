@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-agent-run.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "task_fingerprint",
+    "question_snapshot_hash",
+    "blueprint_fingerprint",
+    "knowledge_store_fingerprint",
+    "fusion_policy",
+    "status",
+    "retrieval_needs",
+    "evidence_set",
+    "coverage",
+    "usage_ledger",
+    "retrieval_trace",
+    "insufficient_evidence"
+  ],
+  "properties": {
+    "schema": {"const": "wuli.evidence-agent-run.v1"},
+    "task_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "question_snapshot_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "blueprint_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "knowledge_store_fingerprint": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "fusion_policy": {
+      "enum": [
+        "single-route-bypass",
+        "weighted-rrf-shadow",
+        "weighted-rrf-production"
+      ]
+    },
+    "status": {"enum": ["sufficient", "insufficient", "not_needed", "unavailable"]},
+    "retrieval_needs": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {"$ref": "retrieval-need.v1.schema.json"}
+    },
+    "evidence_set": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "evidence-unit.v1.schema.json"}
+    },
+    "coverage": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "need_id",
+          "status",
+          "evidence_ids",
+          "covered_facets",
+          "missing_facets",
+          "hard_conflicts"
+        ],
+        "properties": {
+          "need_id": {"type": "string", "minLength": 1, "maxLength": 80},
+          "status": {"enum": ["covered", "missing", "conflicted", "not_required"]},
+          "evidence_ids": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "covered_facets": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "missing_facets": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          },
+          "hard_conflicts": {
+            "type": "array",
+            "maxItems": 32,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "usage_ledger": {"$ref": "evidence-usage-ledger.v1.schema.json"},
+    "retrieval_trace": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "round",
+          "query_ids",
+          "candidate_evidence_ids",
+          "newly_covered_need_ids",
+          "stop_reason"
+        ],
+        "properties": {
+          "round": {"type": "integer", "minimum": 1, "maximum": 2},
+          "query_ids": {"type": "array", "items": {"type": "string"}},
+          "candidate_evidence_ids": {"type": "array", "items": {"type": "string"}},
+          "newly_covered_need_ids": {"type": "array", "items": {"type": "string"}},
+          "stop_reason": {"type": "string", "minLength": 1, "maxLength": 500}
+        }
+      }
+    },
+    "insufficient_evidence": {
+      "type": ["string", "null"],
+      "maxLength": 2000
+    }
+  }
+}

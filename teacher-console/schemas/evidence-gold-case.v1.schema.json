@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wuli.evidence-gold-case.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "case_id",
+    "question_snapshot_hash",
+    "retrieval_need",
+    "required_evidence_ids",
+    "acceptable_evidence_ids",
+    "forbidden_evidence_ids",
+    "expected_status",
+    "teacher_rationale",
+    "evaluation_split",
+    "batch_id"
+  ],
+  "properties": {
+    "schema": {"const": "wuli.evidence-gold-case.v1"},
+    "case_id": {"type": "string", "minLength": 1, "maxLength": 120},
+    "question_snapshot_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "retrieval_need": {"$ref": "retrieval-need.v1.schema.json"},
+    "required_evidence_ids": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "acceptable_evidence_ids": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "forbidden_evidence_ids": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "expected_status": {"enum": ["sufficient", "insufficient", "not_needed"]},
+    "teacher_rationale": {"type": "string", "minLength": 1, "maxLength": 4000},
+    "evaluation_split": {"enum": ["calibration", "holdout"]},
+    "batch_id": {"type": "string", "maxLength": 120}
+  }
+}
