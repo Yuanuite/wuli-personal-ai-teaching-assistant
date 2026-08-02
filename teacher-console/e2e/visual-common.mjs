@@ -3,7 +3,6 @@
 // These scenarios are pure HTTP/CLI checks; no browser is launched.
 
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -71,25 +70,6 @@ export async function uploadEntry(fixtureName, { ocr = "none", subject = "高中
   const ingested = (report.results || []).find(item => item.status === "ingested");
   assert.ok(ingested, "run-upload should have ingested the image");
   return { entryId: ingested.entry_id, report, item: ingested };
-}
-
-// Replicate model_registry._model_probe_digest() in JS so a hand-written CLI
-// registry entry carries the exact config_digest the registry validator
-// computes (provider/base_url/model/api_key_env/api_key_digest/remote, sorted
-// keys, ", "/": " separators). A mismatch would silently make the vision model
-// "not passed connection test" and the CLI extraction would fail closed.
-function modelProbeDigest(baseUrl) {
-  const payload = {
-    provider: "openai-compatible",
-    base_url: baseUrl,
-    model: "mock-vision",
-    api_key_env: "TEACHER_CONSOLE_AGENT_API_KEY",
-    api_key_digest: createHash("sha256").update("e2e-mock-key").digest("hex"),
-    remote: false,
-  };
-  const keys = Object.keys(payload).sort();
-  const serialized = `{${keys.map(key => `"${key}": ${JSON.stringify(payload[key])}`).join(", ")}}`;
-  return createHash("sha256").update(serialized).digest("hex");
 }
 
 // Ingest a fixture through the official skill CLI with human source review
