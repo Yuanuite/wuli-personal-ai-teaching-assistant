@@ -1,6 +1,6 @@
 # MiMo–DeepSeek 一致性修复收口版原子 Work-Tree
 
-> 状态：执行中（C0-C5.6 已完成并验证：自包含闭包、视觉同源去重、路由快照、静态图显式入口、严格测试入口与 8/9 E2E；仅 visualization E2E 为预存 W3 流 token 计数漂移，作为已知排除项单独报告；C6 文档/图谱/最终验收进行中）
+> 状态：已验收（C0-C5.7 与 C6.1-C6.3 完成：干净克隆全链 18/18、70/70 单测、5 条收口 E2E 全通过；visualization E2E 为预存 W3 流 token 计数漂移，作为已知排除项单独报告；最终验收见 docs/reports/mimo-deepseek-consistency-closure-acceptance-v1.md，待维护者签署）
 > 类型：工程 + 流程治理 + 可复现验收
 > 基线提交：`026b104`
 > 计划版本：`wuli-mimo-deepseek-consistency-closure-v1`
