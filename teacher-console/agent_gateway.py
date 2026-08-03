@@ -1499,9 +1499,7 @@ class AgentGateway:
                 unauthorized = [name for name in changed if not self._allowed(name, allowed, denied)]
                 deleted = [name for name in changed if name in before and name not in after]
                 provider_output_ok = (provider.mode != "json-adapter" and not structured) or (
-                    not decode_error
-                    and not materializer_error
-                    and payload.get("status") == "completed"
+                    not decode_error and not materializer_error and payload.get("status") == "completed"
                 )
                 changed_enough = not task.get("requires_change") or bool(changed)
                 succeeded = (

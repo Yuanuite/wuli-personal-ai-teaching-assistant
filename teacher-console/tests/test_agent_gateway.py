@@ -282,6 +282,54 @@ class AgentGatewayTest(unittest.TestCase):
         }
         self.assertEqual(classify_agent_failure(timeout_attempt), "provider_timeout")
 
+    def test_materializer_rejection_not_truncated(self):
+        # Work-tree A2: provider completed with normal telemetry, but the
+        # local physics quality gate rejected the candidate. This must never
+        # be attributed to provider truncation.
+        attempt = {
+            "status": "failed",
+            "finish_reason": "stop",
+            "content_chars": 1256,
+            "reasoning_chars": 0,
+            "materializer_error": True,
+            "error": "physics quality gate rejected: symbol-undefined@Q4ii",
+            "stdout": '{"status": "completed", "finish_reason": "stop"}',
+        }
+        self.assertEqual(classify_agent_failure(attempt), "materializer_rejected")
+        self.assertNotEqual(classify_agent_failure(attempt), "output_truncated")
+        self.assertEqual(
+            classify_agent_failure({"status": "failed", "attempts": [attempt]}),
+            "materializer_rejected",
+        )
+
+    def test_normal_telemetry_field_names_not_truncated(self):
+        # Telemetry field names appearing in stdout ("finish_reason": "stop")
+        # are not truncation evidence.
+        attempt = {
+            "status": "failed",
+            "stdout": '{"finish_reason": "stop", "content_chars": 1256, "max_tokens": 4096}',
+        }
+        self.assertNotEqual(classify_agent_failure(attempt), "output_truncated")
+        self.assertEqual(classify_agent_failure(attempt), "provider_failed")
+
+    def test_real_truncation_still_classified(self):
+        attempt = {
+            "status": "failed",
+            "finish_reason": "length",
+            "content_chars": 0,
+            "reasoning_chars": 19162,
+        }
+        self.assertEqual(classify_agent_failure(attempt), "output_truncated")
+
+    def test_decode_error_classified(self):
+        attempt = {
+            "status": "failed",
+            "decode_error": True,
+            "parse_error": True,
+            "error": "Expecting value: line 1 column 1 (char 0)",
+        }
+        self.assertEqual(classify_agent_failure(attempt), "adapter_decode_error")
+
     def test_schema_rejection_does_not_count_as_material_inference_spend(self):
         self.assertFalse(
             AgentGateway._attempt_consumed_material_budget(
