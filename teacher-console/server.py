@@ -3005,6 +3005,11 @@ class Handler(SimpleHTTPRequestHandler):
         if core_config["mode"] == "core-first":
             result = self.run_core_analysis(entry, data, core_config=core_config)
             elapsed = round(time.monotonic() - started, 4)
+            # Work-tree D2: complex problems may bill two calls (solve +
+            # diagram); limits and observed metrics must reflect the real run
+            # instead of the historical hardcoded single call.
+            core_complexity = result.get("complexity", {}) if isinstance(result, dict) else {}
+            observed_calls = max(1, int(result.get("agent_call_count", 1) or 1)) if isinstance(result, dict) else 1
             return self._persist_adaptive_routing(
                 entry,
                 result,
@@ -3018,12 +3023,12 @@ class Handler(SimpleHTTPRequestHandler):
                     "legacy_rollback": "legacy-adaptive",
                     "limits": {
                         "max_latency_seconds": core_config["max_latency_seconds"],
-                        "max_agent_calls": 1,
+                        "max_agent_calls": 2 if core_complexity.get("decision") == "decompose" else 1,
                     },
                     "observed_metrics": {
                         "selected_route": "core",
                         "latency_seconds": elapsed,
-                        "agent_call_count": 1,
+                        "agent_call_count": observed_calls,
                         "fallback_used": False,
                     },
                 },
@@ -3227,6 +3232,43 @@ class Handler(SimpleHTTPRequestHandler):
                 )
             else:
                 resulting_state = process_uploads.pipeline_state(entry)
+            # Work-tree D2: a successful complex (rich) solve automatically gets
+            # the static physics diagram; simple problems keep the manual,
+            # teacher-triggered enhancement path.
+            diagram_task_info: dict = {
+                "status": "not-run",
+                "reason": "optional-post-answer-enhancement",
+            }
+            diagram_agent_calls = 0
+            if completed and rich:
+                if (entry / "visual-facts.json").is_file():
+                    from diagram_application import build_diagram
+
+                    diagram_summary = build_diagram(
+                        entry,
+                        library=LIBRARY,
+                        routing_tier=routing_tier,
+                        model_config=model_config,
+                        # The auto path stays within the two-call budget
+                        # (solve + diagram); the explicit teacher action keeps
+                        # the non-blocking soft review.
+                        enable_soft_review=False,
+                    )
+                    repair = diagram_summary.get("diagram_repair") or {}
+                    diagram_agent_calls = 1 + (1 if int(repair.get("retry_count", 0) or 0) else 0)
+                    diagram_task_info = {
+                        "status": diagram_summary.get("status", "failed"),
+                        "reason": "auto-queued-complex",
+                        "failure_type": str(diagram_summary.get("failure_type", "")),
+                        "diagram_repair": repair,
+                    }
+                    ctx.info(
+                        "stage=core-analysis entry_id=%s diagram_status=%s",
+                        entry.name,
+                        diagram_task_info["status"],
+                    )
+                else:
+                    diagram_task_info = {"status": "not-run", "reason": "missing-visual-facts"}
             request.update({
                 "status": "completed" if completed else gateway.get("status", "failed"),
                 "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -3247,10 +3289,8 @@ class Handler(SimpleHTTPRequestHandler):
                     },
                 ],
                 "resulting_state": resulting_state["state"],
-                "diagram_task": {
-                    "status": "not-run",
-                    "reason": "optional-post-answer-enhancement",
-                },
+                "diagram_task": diagram_task_info,
+                "agent_call_count": 1 + diagram_agent_calls,
                 **gateway_routing_fields(gateway),
             })
             if not completed:

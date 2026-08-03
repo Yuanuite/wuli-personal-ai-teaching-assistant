@@ -63,6 +63,9 @@ SCENARIOS = (
     # (A2/A3/A4) and B1 zero-token checkpoint replay.
     "analysis-core-materializer-rejection.e2e.mjs",
     "analysis-core-checkpoint-replay.e2e.mjs",
+    # Work-tree core-failure-attribution-repair D2: complex problems auto-queue
+    # the static diagram after a successful rich solve; simple problems do not.
+    "analysis-core-diagram-autoqueue.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).
@@ -71,6 +74,7 @@ VISUAL_SCENARIOS = {
     "visual-cli-clear.e2e.mjs": "clear",
     "visual-blurred-fail-closed.e2e.mjs": "blurred",
     "static-diagram-collaboration.e2e.mjs": "clear",
+    "analysis-core-diagram-autoqueue.e2e.mjs": "clear",
 }
 VISUAL_FIXTURES = {
     "clear": CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png",
