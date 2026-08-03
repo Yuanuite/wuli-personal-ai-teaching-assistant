@@ -101,8 +101,8 @@ def operational_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
         grouped[(str(job.get("kind")), cohort(job))].append(job)
     result = {}
     for (task_type, group), items in sorted(grouped.items()):
-        runtimes = [_seconds(item.get("started_at"), item.get("completed_at")) for item in items]
-        runtimes = [value for value in runtimes if value is not None]
+        raw_runtimes = [_seconds(item.get("started_at"), item.get("completed_at")) for item in items]
+        runtimes: list[float] = [value for value in raw_runtimes if value is not None]
         usage_values: list[float] = []
         for item in items:
             outcome = item.get("outcome") if isinstance(item.get("outcome"), dict) else {}
