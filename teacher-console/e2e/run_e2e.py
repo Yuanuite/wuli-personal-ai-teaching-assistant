@@ -59,6 +59,10 @@ SCENARIOS = (
     "analysis-w3-soft-timeout-stage-visible.e2e.mjs",
     "analysis-w3-verified-w3r-shadow.e2e.mjs",
     "analysis-w3r-off-not-run.e2e.mjs",
+    # Work-tree core-failure-attribution-repair T1: gate rejection attribution
+    # (A2/A3/A4) and B1 zero-token checkpoint replay.
+    "analysis-core-materializer-rejection.e2e.mjs",
+    "analysis-core-checkpoint-replay.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).

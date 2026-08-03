@@ -3,6 +3,7 @@
 
 import json
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -202,11 +203,26 @@ def w3_stage_payload(task):
     raise ValueError(f"unsupported fake W3 stage: {stage}")
 
 
+def _fake_core_call_path(entry_dir: Path) -> Path:
+    return Path(tempfile.gettempdir()) / f"wuli-fake-core-calls-{entry_dir.name}.txt"
+
+
+def _fake_core_call_count(entry_dir: Path) -> int:
+    """Work-tree T1: deterministic per-entry provider call counter."""
+    try:
+        return int(_fake_core_call_path(entry_dir).read_text(encoding="utf-8").strip() or 0)
+    except (OSError, ValueError):
+        return 0
+
+
 def core_solve_payload(task, problem):
     contract = task.get("output_contract", {})
     if contract.get("name") != "wuli.core-solve.v1":
         return None
-    brief = json.loads((Path(task["entry_dir"]) / ".agent-context" / "target-brief.json").read_text(encoding="utf-8"))
+    entry_dir = Path(task["entry_dir"])
+    brief = json.loads((entry_dir / ".agent-context" / "target-brief.json").read_text(encoding="utf-8"))
+    calls = _fake_core_call_count(entry_dir)
+    _fake_core_call_path(entry_dir).write_text(str(calls + 1), encoding="utf-8")
     charged = "带电粒子" in problem
     final_answer = "临界磁感应强度为 $B^*=3mv_0/(qd)$" if charged else "物体的加速度为 $a=F/m$"
     derivation = (
@@ -214,6 +230,26 @@ def core_solve_payload(task, problem):
         if charged
         else ["水平方向由牛顿第二定律 $F=ma$，解得 $a=F/m$"]
     )
+    gate_reject = (
+        "[gate-reject-always]" in problem
+        or ("[gate-reject-first-attempt]" in problem and calls == 0)
+        or ("[gate-reject-second-attempt]" in problem and calls >= 1)
+    )
+    if gate_reject:
+        # $Z_q$ is never defined in any fixture problem, so the deterministic
+        # physics quality gate must reject this payload with symbol-undefined.
+        final_answer = "到达底端的速度为 $v=\\sqrt{2gh}+Z_q$"
+        derivation = ["由机械能守恒列式，但结果引入了题面未定义的符号"]
+    cross_ref = "[cross-target-ref]" in problem and len(brief["targets"]) >= 2
+    first_id = brief["targets"][0]["id"] if brief["targets"] else ""
+
+    def target_answer(item):
+        if cross_ref and item["id"] != first_id:
+            # A1 scenario: later sub-questions legitimately cite an earlier
+            # target id; the physics gate must not flag it as undefined.
+            return f"代入 {first_id} 的结果，得临界磁感应强度 $B^*=3mv_0/(qd)$"
+        return final_answer
+
     return {
         "status": "completed",
         "message": "fake compact core solve",
@@ -221,7 +257,7 @@ def core_solve_payload(task, problem):
         "targets": [
             {
                 "id": item["id"],
-                "final_answer": final_answer,
+                "final_answer": target_answer(item),
                 "key_relations": [*derivation, "方向、量纲与题设边界复核通过"],
             }
             for item in brief["targets"]
