@@ -1078,7 +1078,9 @@ def rebuild(root: Path, explicit_db: Path | None = None) -> dict[str, Any]:
         library_events = candidate_archive.read_library_events(root)
         last_event_id = str(library_events[-1].get("event_id", "")) if library_events else ""
         connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('generated_at', ?)", (generated_at,))
-        connection.execute("INSERT OR REPLACE INTO meta(key, value) VALUES('last_archive_event_id', ?)", (last_event_id,))
+        connection.execute(
+            "INSERT OR REPLACE INTO meta(key, value) VALUES('last_archive_event_id', ?)", (last_event_id,)
+        )
         connection.commit()
     finally:
         connection.close()

@@ -11,7 +11,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
@@ -61,14 +61,14 @@ def evaluate_entry(
         paired_answer_web_run.configure_server(library, workspace)
         entry = library / "entries" / entry_id
         handler = object.__new__(server.Handler)
-        return handler.run_w3_shadow_analysis(
+        return cast(dict[str, Any], handler.run_w3_shadow_analysis(
             entry,
             {
                 "routing_tier": routing_tier,
                 "model_id": model_id,
                 "method_profile": method_profile,
             },
-        )
+        ))
 
     if keep_workspace:
         workspace = output_dir / "workspaces" / entry_id
@@ -123,11 +123,11 @@ def evaluate_entry(
         else []
     )
     measured_stage_work_seconds = round(
-        sum(item["duration_seconds"] for item in stage_timings),
+        float(sum(item["duration_seconds"] for item in stage_timings)),
         4,
     )
     measured_provider_seconds = round(
-        sum(item["provider_seconds"] for item in stage_timings),
+        float(sum(item["provider_seconds"] for item in stage_timings)),
         4,
     )
     semantic_audit = evidence.get("semantic_audit", {}) if isinstance(evidence.get("semantic_audit"), dict) else {}
@@ -136,7 +136,7 @@ def evaluate_entry(
         4,
     )
     critical_path_stage_seconds = round(
-        sum(item["duration_seconds"] for item in stage_timings if item["stage"] != "claim-verifier")
+        float(sum(item["duration_seconds"] for item in stage_timings if item["stage"] != "claim-verifier"))
         + claim_audit_wall_seconds,
         4,
     )
@@ -157,7 +157,7 @@ def evaluate_entry(
         "claim_audit_wall_seconds": claim_audit_wall_seconds,
         "critical_path_stage_seconds": critical_path_stage_seconds,
         "measured_framework_overhead_seconds": round(
-            sum(item["overhead_seconds"] for item in stage_timings),
+            float(sum(item["overhead_seconds"] for item in stage_timings)),
             4,
         ),
         "outside_stage_seconds": round(

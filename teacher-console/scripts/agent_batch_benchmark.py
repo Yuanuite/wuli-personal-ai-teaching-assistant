@@ -109,14 +109,19 @@ def usage_total(record: dict[str, Any]) -> int:
 
 
 def failure_type(record: dict[str, Any]) -> str:
-    outcome = record.get("outcome") if isinstance(record.get("outcome"), dict) else {}
-    if isinstance(outcome.get("failure_type"), str) and outcome["failure_type"]:
-        return outcome["failure_type"]
-    result = record.get("result") if isinstance(record.get("result"), dict) else {}
-    if isinstance(result.get("failure_type"), str) and result["failure_type"]:
-        return result["failure_type"]
-    if isinstance(record.get("failure_type"), str) and record["failure_type"]:
-        return record["failure_type"]
+    outcome_value = record.get("outcome")
+    outcome: dict[str, Any] = outcome_value if isinstance(outcome_value, dict) else {}
+    outcome_failure = outcome.get("failure_type")
+    if isinstance(outcome_failure, str) and outcome_failure:
+        return outcome_failure
+    result_value = record.get("result")
+    result: dict[str, Any] = result_value if isinstance(result_value, dict) else {}
+    result_failure = result.get("failure_type")
+    if isinstance(result_failure, str) and result_failure:
+        return result_failure
+    direct_failure = record.get("failure_type")
+    if isinstance(direct_failure, str) and direct_failure:
+        return direct_failure
     if result.get("validation_errors"):
         return "candidate_validation_failed"
     if result.get("unauthorized_changes"):
@@ -141,10 +146,14 @@ def record_passes_filters(record: dict[str, Any], args: argparse.Namespace) -> b
     if args.batch_id and record.get("batch_id") != args.batch_id:
         return False
     created = parse_time(record.get("created_at"))
-    if args.since and created and created < parse_time(args.since):
-        return False
-    if args.until and created and created > parse_time(args.until):
-        return False
+    if args.since and created is not None:
+        since_time = parse_time(args.since)
+        if since_time is not None and created < since_time:
+            return False
+    if args.until and created is not None:
+        until_time = parse_time(args.until)
+        if until_time is not None and created > until_time:
+            return False
     return True
 
 
@@ -171,10 +180,12 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
     for record in records:
         by_kind[str(record.get("kind", "unknown"))].append(record)
 
-    created_times = [parse_time(item.get("created_at")) for item in records]
-    completed_times = [parse_time(item.get("completed_at")) for item in records]
-    created_times = [item for item in created_times if item]
-    completed_times = [item for item in completed_times if item]
+    created_times: list[datetime] = [
+        item for item in (parse_time(item.get("created_at")) for item in records) if item is not None
+    ]
+    completed_times: list[datetime] = [
+        item for item in (parse_time(item.get("completed_at")) for item in records) if item is not None
+    ]
     wall_seconds = seconds_between(
         min(created_times) if created_times else None, max(completed_times) if completed_times else None
     )
@@ -221,9 +232,11 @@ def summarize(records: list[dict[str, Any]]) -> dict[str, Any]:
             if failure:
                 failures[failure] += 1
             result = item.get("result") if isinstance(item.get("result"), dict) else {}
-            repair = result.get("failure_repair") if isinstance(result.get("failure_repair"), dict) else {}
-            if repair.get("status"):
-                repair_outcomes[str(repair["status"])] += 1
+            repair_value = result.get("failure_repair")
+            repair: dict[str, Any] = repair_value if isinstance(repair_value, dict) else {}
+            repair_status = repair.get("status")
+            if repair_status:
+                repair_outcomes[str(repair_status)] += 1
         summary["kinds"][kind] = {
             "count": len(items),
             "completed": sum(1 for item in items if item.get("status") == "completed"),
