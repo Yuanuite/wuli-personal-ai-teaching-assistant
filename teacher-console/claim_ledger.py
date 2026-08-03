@@ -10,7 +10,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 import correctness_policy
 import structured_text
@@ -113,7 +113,7 @@ def _clean_id(value: Any, field: str) -> str:
 def _clean_positive_int(value: Any, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ValueError(f"{field} must be a positive integer")
-    return value
+    return cast(int, value)
 
 
 def _clean_fingerprint(value: Any, field: str) -> str:
@@ -181,7 +181,7 @@ def _clean_json_object(value: Any, field: str) -> dict[str, Any] | None:
         raise ValueError(f"{field} must contain finite JSON values") from exc
     if len(serialized.encode("utf-8")) > 16_384:
         raise ValueError(f"{field} exceeds 16384 bytes")
-    return json.loads(serialized)
+    return cast(dict[str, Any], json.loads(serialized))
 
 
 def normalize_claim(
@@ -520,7 +520,7 @@ def topological_claim_ids(claims: list[dict[str, Any]]) -> list[str]:
     """Return a deterministic dependency-first order or reject an invalid DAG."""
     resolved = active_claims(claims)
     indegree = {claim_id: 0 for claim_id in resolved}
-    downstream = {claim_id: set() for claim_id in resolved}
+    downstream: dict[str, set[str]] = {claim_id: set() for claim_id in resolved}
     for claim_id, claim in resolved.items():
         for dependency_id in claim["depends_on"]:
             if dependency_id not in resolved:
@@ -600,7 +600,7 @@ def dependency_impact_cone(
     unknown = changed_claim_ids - set(resolved)
     if unknown:
         raise ValueError(f"changed claims are unknown or superseded: {sorted(unknown)}")
-    downstream = {claim_id: set() for claim_id in resolved}
+    downstream: dict[str, set[str]] = {claim_id: set() for claim_id in resolved}
     for claim_id, claim in resolved.items():
         for dependency_id in claim["depends_on"]:
             if dependency_id not in resolved:

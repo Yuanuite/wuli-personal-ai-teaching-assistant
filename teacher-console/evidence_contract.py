@@ -188,7 +188,7 @@ def normalize_retrieval_need(payload: dict[str, Any]) -> dict[str, Any]:
 
 def _normalize_locator(payload: Any) -> dict[str, Any]:
     raw = _mapping(payload, "evidence_unit.source_locator")
-    locator = {
+    locator: dict[str, Any] = {
         "path": _relative_path(raw.get("path"), "evidence_unit.source_locator.path"),
         "section": _text(raw.get("section"), "evidence_unit.source_locator.section", 500),
     }

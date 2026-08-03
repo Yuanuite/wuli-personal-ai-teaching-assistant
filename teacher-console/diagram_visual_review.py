@@ -20,6 +20,7 @@ api_key 或 base64 data URL。
 import json
 import os
 from datetime import datetime
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
@@ -101,7 +102,7 @@ def run_diagram_visual_review(
     config: dict,
     image_path: str,
     *,
-    urlopen: callable,
+    urlopen: Callable[..., Any],
     allow_remote: bool,
 ) -> dict:
     """对静态物理图执行一次 MiMo 软评审，返回 wuli.diagram-visual-review.v1。

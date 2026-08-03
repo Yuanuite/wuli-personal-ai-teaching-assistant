@@ -460,7 +460,7 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
             raw.get("decisive_relations"),
             "reasoning_steps.decisive_relations",
         )
-        item = {
+        item: dict[str, Any] = {
             "id": _text(raw.get("id"), "reasoning_steps.id", 40),
             "operation": _text(raw.get("operation"), "reasoning_steps.operation", 240),
             "depends_on": _texts(raw.get("depends_on"), "reasoning_steps.depends_on"),
