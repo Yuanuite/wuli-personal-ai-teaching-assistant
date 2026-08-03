@@ -264,7 +264,7 @@ def save_model_registry_settings(data: dict) -> dict:
         provider = str(raw.get("provider", "openai-compatible")).strip() or "openai-compatible"
         if provider not in {"openai-compatible", "adapter", "codex", "claude"}:
             raise ValueError(f"unsupported provider for {model_id}: {provider}")
-        entry = {
+        entry: dict[str, Any] = {
             "id": model_id,
             "display_name": str(raw.get("display_name") or raw.get("name") or raw.get("model") or model_id).strip(),
             "provider": provider,
