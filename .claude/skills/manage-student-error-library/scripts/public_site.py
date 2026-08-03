@@ -749,10 +749,10 @@ def sync_published_difficulties(library: Path, site: Path = DEFAULT_SITE) -> dic
         if not isinstance(item, dict):
             continue
         identifier = str(item.get("id") or "")
-        entry = approved_entries.get(identifier)
-        if entry is None:
+        matched_entry = approved_entries.get(identifier)
+        if matched_entry is None:
             continue
-        difficulty = _public_difficulty(kb.load_json(entry / "record.json", {}))
+        difficulty = _public_difficulty(kb.load_json(matched_entry / "record.json", {}))
         if item.get("difficulty") != difficulty:
             item["difficulty"] = difficulty
             updated_ids.append(identifier)

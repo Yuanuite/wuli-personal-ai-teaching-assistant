@@ -108,7 +108,7 @@ def evaluate_entry(
         (artifact_dir / "teacher-solution.md").write_text(str(render["teacher_solution_md"]), encoding="utf-8")
 
     telemetry = result.get("stages", [])
-    stage_timings = (
+    stage_timings: list[dict[str, Any]] = (
         [
             {
                 "stage": str(item.get("stage", "")),

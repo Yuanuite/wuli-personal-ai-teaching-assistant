@@ -1337,7 +1337,7 @@ class AgentGateway:
         if claude_base and not _is_loopback_url(claude_base) and task.get("allow_remote") is not True:
             candidates = [item for item in candidates if item.name != "claude"]
         if not candidates:
-            result = {
+            unavailable_result = {
                 "status": "unavailable",
                 "provider": None,
                 "routing_tier": routing_tier,
@@ -1347,9 +1347,9 @@ class AgentGateway:
                 "message": "没有可用的 Agent provider；任务可保留为人工处理。",
                 **model_metadata,
             }
-            result["failure_type"] = classify_agent_failure(result)
+            unavailable_result["failure_type"] = classify_agent_failure(unavailable_result)
             logger.info("gateway task=%s status=unavailable providers=0", route_id)
-            return result
+            return unavailable_result
 
         provider_names = [p.name for p in candidates]
         logger.info("gateway task=%s status=routing candidates=%s", route_id, provider_names)

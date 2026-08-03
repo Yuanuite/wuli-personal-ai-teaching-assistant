@@ -262,14 +262,14 @@ def run_case(
         original_evidence_builder = teacher_server.agent_evidence_payload
 
         def use_fixed_evidence(
-            requested_entry: Path,
+            entry: Path,
             kind: str,
             routing_tier: str = "auto",
             evidence_selection_policy: str = "auto",
         ) -> dict:
-            if requested_entry.name == entry_id and kind == "analysis.generate":
+            if entry.name == entry_id and kind == "analysis.generate":
                 return copy.deepcopy(evidence_snapshot)
-            return original_evidence_builder(requested_entry, kind, routing_tier)
+            return original_evidence_builder(entry, kind, routing_tier)
 
         teacher_server.agent_evidence_payload = use_fixed_evidence
         httpd = ThreadingHTTPServer(("127.0.0.1", 0), teacher_server.Handler)
