@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import builtins
 import difflib
 import hashlib
 import json
@@ -3052,8 +3053,8 @@ class Handler(SimpleHTTPRequestHandler):
         decision["observed_metrics"]["fallback_used"] = True
         fallback_started = time.monotonic()
         result = self.run_analysis(entry, data)
-        elapsed: float = time.monotonic() - fallback_started
-        fallback["w2_latency_seconds"] = round(elapsed, 4)
+        elapsed_w2: float = time.monotonic() - fallback_started
+        fallback["w2_latency_seconds"] = builtins.round(elapsed_w2, 4)
         fallback["w2_status"] = str(result.get("status", "failed"))
         decision["observed_metrics"]["latency_seconds"] = round(time.monotonic() - started, 4)
         decision["observed_metrics"]["selected_route"] = "w2"
@@ -3526,12 +3527,12 @@ class Handler(SimpleHTTPRequestHandler):
 
                     instruction = "依据证据与可复算关系仲裁冲突，不得投票。"
                 elif stage == "claim-verifier":
-                    expected = {
+                    expected_versions = {
                         str(key): int(value) for key, value in context.get("expected_claim_versions", {}).items()
                     }
                     contract = solution_verification.claim_output_contract()
 
-                    def normalizer(payload, _e=expected):
+                    def normalizer(payload, _e=expected_versions):
                         return solution_verification.normalize_claim_audit(payload, _e)
 
                     instruction = "仅审计最小 Claim 快照；不得读取 Solver 身份、完整答案或历史答案。"
