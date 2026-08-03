@@ -44,7 +44,8 @@ def baseline_prediction(
 def _gateway_summary(result: dict[str, Any] | None) -> dict[str, Any] | None:
     if not isinstance(result, dict):
         return None
-    usage = result.get("usage") if isinstance(result.get("usage"), dict) else {}
+    usage_value = result.get("usage")
+    usage: dict[str, Any] = usage_value if isinstance(usage_value, dict) else {}
     attempts = []
     for item in result.get("attempts", []):
         if not isinstance(item, dict):
