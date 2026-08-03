@@ -48,7 +48,7 @@ E2E 只允许在独立临时知识库和输出目录中运行。教师真实处�
 
 Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——不要在 prompt 中重复已被 `allowed_paths`、`denied_paths` 和领域 validator 结构性兜底的约束。`analysis.generate`、`answer.revise` 和 `visualization.model` 会自动注入经过裁剪的 Knowledge Store 历史证据（`.agent-context/knowledge-evidence.json`），当前题干、当前答案和教师意见始终优先。
 
-`analysis.generate` 必须保持 `wuli.analysis.v2` 契约：私有 `method_check` 先比较可行路径，学生版只输出最短高中方法；缺少最短主线、超过五步或使用积分、导数等超纲方法的候选由确定性校验拒绝。契约变化必须同步单元测试与 E2E 的两个 fake adapter。
+`analysis.generate` 的契约由外层路由决定：Core-first 默认 `wuli.core-solve.v1`（复杂题升级 `wuli.core-rich.v2`），`legacy-adaptive` 回退路径保持 `wuli.analysis.v2` 契约。所有路径共同的质量底线：私有 `method_check` 先比较可行路径，学生版只输出最短高中方法；缺少最短主线、超过五步或使用积分、导数等超纲方法的候选由确定性校验拒绝。契约变化必须同步单元测试与 E2E 的两个 fake adapter。
 
 `knowledge_points`、`error_types`、`difficulty`、`grade` 是可编辑的 Agent 建议，不设置独立强制确认门禁；教师实际修改与最终批准才作为稳定教学观测。
 

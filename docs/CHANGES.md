@@ -1,5 +1,16 @@
 # 变更记录
 
+## 2026-08-04：Core-first 验证责任与路由配置真源统一（core-failure-attribution-repair B2/C1）
+
+- 验证责任归属（B2）：文档明确复杂题（decompose）由答案后自动 claim 验证链承担
+  独立验证（canonical/provisional），简单题的物理门 `deferred-verifier` 项归教师
+  `approve-answer` 前人工核对；SKILL 检查点不再用含混的“两重验证”措辞；Target Brief
+  `independent_verification=false` 语义注明为“无自动独立验证”而非“已验证”。
+- 路由配置多真源统一（C1）：`w3-production-routing.json` 标注
+  `enabled_in_core_first: false`（mode 仍为 legacy 语义，schema 不变）；`agent-gateway.md`
+  契约表述更新为 Core-first 默认 `wuli.core-solve.v1`/`wuli.core-rich.v2`；
+  `architecture.md` 新增路由配置真源表。
+
 ## 2026-08-04：复杂题质量对齐链落地与 7 月样本验收（core-failure-attribution-repair D1-D4）
 
 - 复杂题 rich 五段契约（D1）：`complexity_screen` 判 `decompose` 的题目改用

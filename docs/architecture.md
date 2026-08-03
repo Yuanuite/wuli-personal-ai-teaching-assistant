@@ -102,6 +102,17 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 
 Gateway 不拥有 OCR、答案或物理语义，也不得调用任何 `approve-*`、`finish` 或公开发布动作。详细 provider 协议和隐私门禁见 [`agent-gateway.md`](agent-gateway.md)。
 
+#### 路由配置真源表
+
+解析生成相关的路由配置只有三个真源，都在 `student-error-library/config/`；`route-preview` 返回的
+`wuli.route-execution-plan.v1` 从这三个文件推导，教师端不从按钮文案推断路线：
+
+| 配置文件 | 当前值 | 语义 |
+|---|---|---|
+| `analysis-production-routing.json` | `mode: core-first`，`max_latency_seconds: 90` | 顶层真源：Core-first 单次 `wuli.core-solve.v1`，复杂题链内升级 `wuli.core-rich.v2` + 自动 diagram + 独立 claim 验证（最多三次调用）；可切 `legacy-adaptive` 回退旧自适应链 |
+| `w3-production-routing.json` | `mode: default`，`enabled_in_core_first: false` | 仅在 `legacy-adaptive` 下生效的 W2/W3 分流参数；core-first 时不进入 W3 阶段，`mode: default` 不代表“默认会跑 W3” |
+| `w3r-production-routing.json` | `mode: off` | W3R 不运行；`shadow`/`gray`/`default` 需显式切换且满足证据门禁 |
+
 ### 学生端公开边界
 
 `student-site/` 是独立、只读、纯静态的发布目标，不是教师工作台的公开模式。数据只能单向流动：原始题图先生成不覆盖原文件的 WebP 公开副本，裁剪、遮挡、源文件摘要和教师确认记录在 `publication-images.json`；源图或副本变化后确认自动失效。已交付条目再生成 `publication-draft/`，安全扫描通过且教师查看预览、勾选隐私确认后，才把白名单产物复制到公开站。公开 ID 使用不可逆摘要，不暴露内部条目 ID；原始上传、教师版解析、流程记录、复核记录、模型 JSON、交付清单、私有交付 PDF 和绝对路径一律禁止进入公开目录。公开页面只读取相对路径的 `catalog.json`、Markdown、题目阅读页中的公开版 `带答案错题.pdf`、公开题图、答案图片及已批准仿真，不调用教师端 API；目录中的 `uploaded_at` 只保留条目首次创建日期，不暴露精确时间或时区，用于学生端新旧排序，重新发布不会改变该顺序。已经通过隐私复核且仍存在于公开站的条目，可单独刷新 `catalog.json` 中裁剪后的难度摘要；该维护动作不重新复制题目、答案、PDF 或仿真，不改变原发布时间，也不得公开标准解题路径、评估证据或内部摘要。公开 PDF 从脱敏后的 `content.md` 和公开题图重新生成：优先 `pandoc+xelatex`，失败时降级为 `reportlab`，并保留 Markdown 中的 LaTeX 编码；若两条链路都不可用则标记 `skipped`，Markdown 页面仍可发布且不显示无效下载入口。GitHub 推送是明确的人工后续操作。

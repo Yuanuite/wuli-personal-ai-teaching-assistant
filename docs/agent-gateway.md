@@ -32,7 +32,14 @@ Gateway 只负责 provider 探测、隔离执行、候选文件运输、失败�
 6. 候选内容通过答案结构或物理模型验证，并确认 canonical 条目在任务期间未变化后，才在单题事务锁内执行带回滚的白名单批量提升；这不宣称文件系统支持目录级原子事务。
 7. 生命周期总控重建索引或确定性仿真，并把结果送回教师复核；Agent 不能自行批准。
 
-`analysis.generate` 采用专门的 `wuli.analysis.v2` 契约：模型只返回一份学生版正文、教师审计增量、私有方法自检和五类教学元数据，废弃兼容字段 `diagram` 必须为 `null`。方法自检必须比较可行路径并选择最短的高中范围解法；学生版缺少“最短主线”、超过五步或使用积分、导数等超纲方法时会被确定性拒绝。Gateway 在无文件工具模式下取得该对象；`analysis_artifacts.py` 再确定性合成教师版与兼容版、只合并允许的记录字段，不再生成流程图。
+`analysis.generate` 的契约由外层路由决定：Core-first 默认使用 `wuli.core-solve.v1`
+（复杂题升级 `wuli.core-rich.v2`），旧 `legacy-adaptive` 路径保留 `wuli.analysis.v2`：
+模型只返回一份学生版正文、教师审计增量、私有方法自检和五类教学元数据，废弃兼容
+字段 `diagram` 必须为 `null`。方法自检必须比较可行路径并选择最短的高中范围解法；
+学生版缺少“最短主线”、超过五步或使用积分、导数等超纲方法时会被确定性拒绝。Gateway
+在无文件工具模式下取得结构化对象；Core 链由 `core_analysis.py` 物化学生版/教师版/兼容版，
+`wuli.analysis.v2` 路径由 `analysis_artifacts.py` 确定性合成教师版与兼容版、只合并允许
+的记录字段，均不再生成流程图。
 
 答案候选形成后，独立 `diagram.scene` 原子任务使用 `wuli.physics-diagram-scene.v1`：MiMo 只提供已复核 `visual-facts.json`，本地把周期场、空间投影和带电粒子义务编译成 `wuli.diagram-obligations.v1`，其中包含最多三个视图槽位和 `wuli.physics-diagram-component-catalog.v1` 语义组件切片。DeepSeek 输出的是组件组合配方、标签、强调重点及显式省略账本；`physics_diagram_assets.py` 在存在 `physics-model.json` 时，用事件—轨迹真源覆盖自由坐标，并修正边界顺序。`physics_diagram.py` 的硬门只裁决来源一致性、拓扑一致性、模型一致性和 SVG 安全/来源；周期图标签、投影说明、排版和美观作为 `warnings` 进入 `soft_revision` 提示包，不再触发整图阻断。提示包规定 MiMo/教师只给调整方向、DeepSeek Flash 最多执行一轮受限 Patch，并冻结物理模型、视觉事实和编译轨迹点。首轮硬门失败仍只允许一次受限 JSON Patch；越界、无进展、再次失败或安全错误立即停止。答案与图仍按组合事务处理，最终失败不会退化成流程图。`logic-flowchart` 只存在于显式可选插件接口。
 
@@ -83,7 +90,8 @@ JSON adapter 失败时会向 stderr 输出脱敏的结构化 envelope
 
 ## 任务级模型资格与期限契约（provider 可靠性）
 
-连通 probe 只证明端点可达，不能证明模型适合 `wuli.analysis.v2` 复杂负载。因此：
+连通 probe 只证明端点可达，不能证明模型适合 `analysis.generate` 的结构化复杂负载
+（Core-first 默认 `wuli.core-solve.v1`/`wuli.core-rich.v2`，旧路径 `wuli.analysis.v2`）。因此：
 
 - 每个模型可写入 `wuli.analysis-qualification.v1` 记录（`record_analysis_qualification`，
   由维护者批准的固定公开复杂样本 canary 产生，含契约 digest、配置 digest、样本版本、
@@ -183,7 +191,7 @@ Agent（`agent`）能力的唯一解析入口，规则：
 | 任务 `kind` | 输出方式 | Claude/Codex 本地工具 | OpenAI-compatible / LiteLLM |
 |---|---|---|---|
 | `source.clean` | 文件候选 | 受限文件工具；不自动加载完整 Skill | 返回允许文件的候选内容；不能运行本地工具 |
-| `analysis.generate` | `wuli.analysis.v2` 结构化对象 | **禁用工具**；规则、题干与裁剪后的 RAG 证据按预算内联 | 一次结构化请求 |
+| `analysis.generate` | Core-first 默认 `wuli.core-solve.v1`（复杂题 `wuli.core-rich.v2`）；`legacy-adaptive` 回退 `wuli.analysis.v2` 结构化对象 | **禁用工具**；规则、题干与裁剪后的 RAG 证据按预算内联 | 复杂题最多三次调用（求解+diagram+claim 验证），简单题一次结构化请求 |
 | `diagram.scene` | 首轮 `wuli.physics-diagram-scene.v1`；一次修订为 `wuli.physics-diagram-scene-patch.v1` | **禁用工具**；只读题干、MiMo 视觉事实、学生答案、可选物理模型；修订轮额外读取隔离候选和结构化诊断 | 本地应用受限 JSON Patch、语义门控与 SVG 渲染；禁止整图重试和流程图 fallback |
 | `answer.revise` | 文件候选 | 受限文件工具；expert 档可读总控 Skill | 返回允许文件的候选内容；不能运行本地工具 |
 | `visualization.model` | `physics-model.json` 候选 | 受限文件工具，可读仿真 Skill 与 schema | 可生成 JSON 候选；不能自行运行构建器或浏览器 |
@@ -285,7 +293,7 @@ adapter 的 stdout 只能返回一个 JSON 对象，诊断写 stderr。
 `analysis.generate` 不具备能力时，按 Schema 把五个内容字段设为 `null`；文件候选任务则返回
 `{"status":"unsupported","message":"原因","files":[]}`。不得返回 diff、绝对路径、批准记录或交付命令。
 
-修改 `wuli.analysis.v2` 时必须同时更新
+修改 `wuli.core-solve.v1`/`wuli.core-rich.v2`/`wuli.analysis.v2` 任一契约时必须同时更新
 `teacher-console/tests/fixtures/fake_agent_adapter.py` 与
 `teacher-console/e2e/fake_agent_adapter.py`。前者覆盖 Gateway/作业单元测试，后者驱动真实
 HTTP、生命周期和浏览器流程；只更新其中一个会造成单元测试通过而 E2E 停在
