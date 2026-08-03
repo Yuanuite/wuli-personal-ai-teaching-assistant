@@ -422,7 +422,7 @@ def _text(value: Any, field: str, maximum: int = 160) -> str:
     value = value.strip()
     if len(value) > maximum:
         raise ValueError(f"{field} is too long")
-    return value
+    return str(value)
 
 
 def _number(value: Any, field: str, *, positive: bool = False) -> float:

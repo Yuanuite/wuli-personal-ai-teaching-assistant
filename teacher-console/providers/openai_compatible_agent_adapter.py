@@ -14,6 +14,7 @@ import urllib.error
 import urllib.request
 from copy import deepcopy
 from pathlib import Path
+from typing import cast
 from urllib.parse import urlparse
 
 MAX_CONTEXT_CHARS = 300_000
@@ -232,7 +233,7 @@ def normalized_usage(payload: dict) -> dict:
         if isinstance(value, int) and value >= 0:
             result[target] = value
     if "total_tokens" not in result:
-        parts = [
+        parts: list[int] = [
             result.get("prompt_tokens", result.get("input_tokens")),
             result.get("completion_tokens", result.get("output_tokens")),
         ]
@@ -282,9 +283,9 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
                 "",
             )
             if field in {"supporting_relations", "conditions", "revisions"}:
-                result["maxItems"] = min(int(result.get("maxItems", 4)), 4)
+                result["maxItems"] = min(int(str(result.get("maxItems", 4))), 4)
         if "object" in types and isinstance(result.get("additionalProperties"), dict):
-            result["maxProperties"] = min(int(result.get("maxProperties", 24)), 24)
+            result["maxProperties"] = min(int(str(result.get("maxProperties", 24))), 24)
         return result
 
     def subset(fields: tuple[str, ...]) -> dict:
@@ -294,7 +295,7 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
             "properties": {field: deepcopy(properties[field]) for field in fields},
             "required": list(fields),
         }
-        return tighten(schema_subset)
+        return cast(dict, tighten(schema_subset))
 
     core = {
         "name": f"{contract['name']}.core",
