@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -292,6 +293,65 @@ def normalize_payload(
         "target_brief_digest": brief["digest"],
         "targets": targets,
     }
+
+
+def core_checkpoint_path(entry: Path) -> Path:
+    return entry.parent.parent / ".cache" / "core-checkpoints" / f"{entry.name}.json"
+
+
+def save_checkpoint(
+    entry: Path,
+    *,
+    fingerprint: str,
+    payload: Any,
+    brief: dict[str, Any],
+) -> Path:
+    """Persist a structurally valid solve before the physics gate runs.
+
+    Work-tree B1: the gate verdict may change after a repair (e.g. A1 symbol
+    scan fixes) while the provider payload stays valid, so checkpoint save
+    validates structure only (no ``problem``) and the gate stays a
+    materialization-stage decision. This keeps zero-token replay possible.
+    """
+    normalized = normalize_payload(payload, brief)
+    checkpoint = {
+        "schema_version": 1,
+        "contract": CORE_CONTRACT,
+        "entry_id": entry.name,
+        "input_fingerprint": fingerprint,
+        "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+        "stage": "core-solve",
+        "payload": normalized,
+    }
+    encoded = json.dumps(checkpoint, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    if len(encoded) > 400_000:
+        raise ValueError("core checkpoint exceeds 400000 characters")
+    path = core_checkpoint_path(entry)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(".json.tmp")
+    temporary.write_text(encoded, encoding="utf-8")
+    temporary.replace(path)
+    return path
+
+
+def load_checkpoint(entry: Path, *, fingerprint: str) -> dict[str, Any] | None:
+    path = core_checkpoint_path(entry)
+    if not path.is_file() or path.is_symlink():
+        return None
+    try:
+        checkpoint = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None
+    if not isinstance(checkpoint, dict):
+        return None
+    if checkpoint.get("contract") != CORE_CONTRACT:
+        return None
+    if checkpoint.get("entry_id") != entry.name:
+        return None
+    if checkpoint.get("input_fingerprint") != fingerprint:
+        return None
+    payload = checkpoint.get("payload")
+    return payload if isinstance(payload, dict) else None
 
 
 def _student_markdown(core: dict[str, Any]) -> str:

@@ -3149,14 +3149,43 @@ class Handler(SimpleHTTPRequestHandler):
                     allow_missing_explanatory_image=True,
                 )
 
-            gateway = run_agent_gateway(
+            # Work-tree B1: a structurally valid solve is checkpointed before
+            # the deterministic gates, so a gate-only failure (e.g. a repaired
+            # physics symbol scan) replays zero-token instead of re-billing.
+            fingerprint = analysis_artifacts.input_fingerprint(
                 entry,
-                task,
-                validator,
-                materializer=lambda staging, payload: core_analysis.materialize(staging, payload, brief),
-                # A failed solve is not repeated under a different W2/W3 prompt.
-                bounded_failure_repair=False,
+                instruction=instruction,
+                model_id=model_id,
+                routing_tier=routing_tier,
+                evidence_digest=str(brief.get("digest", "")),
             )
+            checkpoint = core_analysis.load_checkpoint(entry, fingerprint=fingerprint)
+            if checkpoint is not None:
+                gateway = AGENT_GATEWAY.replay_structured(
+                    task,
+                    checkpoint,
+                    validator,
+                    materializer=lambda staging, payload: core_analysis.materialize(staging, payload, brief),
+                )
+            else:
+
+                def materialize_with_checkpoint(staging, payload):
+                    core_analysis.save_checkpoint(
+                        entry,
+                        fingerprint=fingerprint,
+                        payload=payload,
+                        brief=brief,
+                    )
+                    return core_analysis.materialize(staging, payload, brief)
+
+                gateway = run_agent_gateway(
+                    entry,
+                    task,
+                    validator,
+                    materializer=materialize_with_checkpoint,
+                    # A failed solve is not repeated under a different W2/W3 prompt.
+                    bounded_failure_repair=False,
+                )
             completed = gateway.get("status") == "completed"
             if completed:
                 marked = mark_answer_needs_review(
