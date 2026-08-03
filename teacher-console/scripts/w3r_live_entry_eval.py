@@ -61,14 +61,17 @@ def evaluate_entry(
         paired_answer_web_run.configure_server(library, workspace)
         entry = library / "entries" / entry_id
         handler = object.__new__(server.Handler)
-        return cast(dict[str, Any], handler.run_w3_shadow_analysis(
-            entry,
-            {
-                "routing_tier": routing_tier,
-                "model_id": model_id,
-                "method_profile": method_profile,
-            },
-        ))
+        return cast(
+            dict[str, Any],
+            handler.run_w3_shadow_analysis(
+                entry,
+                {
+                    "routing_tier": routing_tier,
+                    "model_id": model_id,
+                    "method_profile": method_profile,
+                },
+            ),
+        )
 
     if keep_workspace:
         workspace = output_dir / "workspaces" / entry_id

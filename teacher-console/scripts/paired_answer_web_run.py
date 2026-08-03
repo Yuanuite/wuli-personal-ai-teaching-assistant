@@ -183,7 +183,7 @@ def fixed_evidence_snapshot(entry: Path, evidence_mode: str) -> dict[str, Any]:
         "omitted_reference_count": candidate_count,
         "truncated": bool(candidate_count),
     })
-    disabled = {
+    disabled: dict[str, Any] = {
         "schema_version": 1,
         "kind": "agent-evidence",
         "task_type": "analysis.generate",
@@ -265,7 +265,8 @@ def run_case(
             requested_entry: Path,
             kind: str,
             routing_tier: str = "auto",
-        ) -> dict[str, Any]:
+            evidence_selection_policy: str = "auto",
+        ) -> dict:
             if requested_entry.name == entry_id and kind == "analysis.generate":
                 return copy.deepcopy(evidence_snapshot)
             return original_evidence_builder(requested_entry, kind, routing_tier)
@@ -295,11 +296,21 @@ def run_case(
                 timeout=timeout_seconds + 60,
             )
         except subprocess.TimeoutExpired as exc:
+            _exc_stdout = (
+                exc.stdout
+                if isinstance(exc.stdout, str)
+                else (exc.stdout.decode() if isinstance(exc.stdout, bytes) else "")
+            )
+            _exc_stderr = (
+                exc.stderr
+                if isinstance(exc.stderr, str)
+                else (exc.stderr.decode() if isinstance(exc.stderr, bytes) else "")
+            )
             completed = subprocess.CompletedProcess(
                 args=exc.cmd,
                 returncode=124,
-                stdout=exc.stdout or "",
-                stderr=(exc.stderr or "") + "\nweb benchmark driver timed out",
+                stdout=_exc_stdout,
+                stderr=_exc_stderr + "\nweb benchmark driver timed out",
             )
         finally:
             httpd.shutdown()

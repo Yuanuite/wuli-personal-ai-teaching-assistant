@@ -45,10 +45,10 @@ def sanitize(value: Any) -> Any:
         return cleaned
     if isinstance(value, list):
         items = value[:MAX_LIST]
-        cleaned = [sanitize(item) for item in items]
+        cleaned_items = [sanitize(item) for item in items]
         if len(value) > MAX_LIST:
-            cleaned.append(f"... {len(value) - MAX_LIST} more")
-        return cleaned
+            cleaned_items.append(f"... {len(value) - MAX_LIST} more")
+        return cleaned_items
     if isinstance(value, str):
         return _short_text(value)
     return value
