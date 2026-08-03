@@ -20,7 +20,7 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 CONSOLE_DIR = Path(__file__).resolve().parent
@@ -224,7 +224,7 @@ def job_manager() -> AgentJobManager:
 
 
 def agent_health(*, force: bool = False) -> dict:
-    result = json.loads(json.dumps(AGENT_GATEWAY.health(force=force)))
+    result = cast(dict, json.loads(json.dumps(AGENT_GATEWAY.health(force=force))))
     if not remote_agent_allowed():
         for provider in result.get("providers", []):
             if provider.get("data_locality") == "remote":
@@ -1070,7 +1070,7 @@ def w3_stage_task(
     stage: str,
     prompt: str,
     output_contract: dict,
-    context_payloads: dict[str, dict],
+    context_payloads: dict[str, Any],
     *,
     routing_tier: str,
     model_config: dict | None,
@@ -1157,7 +1157,7 @@ def replay_w3_stage_checkpoint(
             **normalized,
             "_runtime_identity": checkpoint.get("runtime_identity", {}),
         }
-    return normalized
+    return cast(dict | None, normalized)
 
 
 def summarize_w3_stage_timing(
@@ -1518,7 +1518,7 @@ def validate_visualization_candidate(staging: Path, _changed: list[str]) -> list
     if report.get("status") == "ok":
         return []
     if report.get("errors"):
-        return report["errors"]
+        return list(report["errors"])
     if report.get("status") == "unsupported":
         supported = ", ".join(str(item) for item in report.get("supported", [])) or ", ".join(
             SUPPORTED_SIMULATOR_MODEL_TYPES
@@ -1671,7 +1671,7 @@ def assess_entry_difficulty(entry: Path, *, force: bool = False) -> dict:
     standard_path = record.get("standard_solution_path")
     previous = record.get("difficulty_assessment")
     if not force and difficulty_assessment.current(previous, problem, standard_path):
-        return previous
+        return cast(dict, previous)
     if isinstance(previous, dict) and previous.get("status") == "teacher-edited":
         history = record.setdefault("difficulty_assessment_history", [])
         if isinstance(history, list):
