@@ -162,7 +162,7 @@ def seed(
         },
     }
     if fresh_only:
-        manifest["independence"] = {
+        independence_manifest: dict[str, Any] = {
             "fresh_only": True,
             "prior_experiment_count": len({name for names in history.values() for name in names}),
             "excluded_prior_case_count": len(history),
@@ -176,6 +176,7 @@ def seed(
                 "replay cases are regression controls and never count toward independent holdout eligibility"
             ),
         }
+        manifest["independence"] = independence_manifest
         manifest["truth_contract"] = {
             "state": "pending-freeze",
             "rule": "teacher target truth must be approved and locked before any W3 replay",

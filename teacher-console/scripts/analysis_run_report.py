@@ -35,7 +35,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
