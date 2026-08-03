@@ -4,7 +4,7 @@
 Serves ``POST /v1/chat/completions`` with ``finish_reason=length``,
 ``message.content=""`` and ``message.reasoning_content="x"*500`` plus
 ``usage.completion_tokens=6000`` — the reasoning-only truncation shape fixed
-in the analysis-run observability work-tree (docs/analysis-run-observability-
+in the analysis-run observability work-tree (docs/archive/2026-08-03/analysis-run-observability-
 w3-pipeline-work-tree.md sections 2/3, A1 fixture). The registry-routed
 openai-compatible adapter raises ``_AdapterFailure("output_truncated")`` on
 this response and emits the redacted failure envelope, so the
