@@ -13,6 +13,7 @@ import tempfile
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 import candidate_archive
 import evaluator
@@ -191,6 +192,7 @@ def run_registry_visual_extract(entry: Path, options: dict) -> dict:
         packet["method"] = "registry-visual-extract"
         kb.write_json(entry / "source-review.json", packet)
         return packet
+    assert root is not None
     command = [
         sys.executable,
         str(thin),
@@ -224,7 +226,7 @@ def run_registry_visual_extract(entry: Path, options: dict) -> dict:
         return packet
     # The thin entry already staged the visual-facts artifacts; the staged
     # source-review.json is the canonical report for the work order.
-    return kb.load_json(entry / "source-review.json", {})
+    return cast(dict, kb.load_json(entry / "source-review.json", {}))
 
 
 def start(
@@ -409,7 +411,7 @@ def visualization_snapshot(entry: Path) -> dict:
 
 def should_render_answers(model_path: Path) -> bool:
     model = kb.load_json(model_path, {})
-    return model.get("source", {}).get("answer_render_mode", "model") != "manual"
+    return bool(model.get("source", {}).get("answer_render_mode", "model") != "manual")
 
 
 def build_simulator(entry: Path, output_dir: Path, runtime_mode: str = "auto") -> dict:
@@ -434,7 +436,7 @@ def build_simulator(entry: Path, output_dir: Path, runtime_mode: str = "auto") -
     ]
     result = subprocess.run(command, text=True, capture_output=True, check=False)
     try:
-        report = json.loads(result.stdout)
+        report: dict = json.loads(result.stdout)
     except json.JSONDecodeError:
         report = {"status": "failed", "stderr": result.stderr.strip()[:1000]}
     report["model_digest"] = kb.sha256_file(model_path)

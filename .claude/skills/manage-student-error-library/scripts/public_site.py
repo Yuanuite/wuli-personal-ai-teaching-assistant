@@ -567,7 +567,7 @@ def _copy_public_simulator(source: Path, destination: Path, identifier: str) -> 
             match = m
             model = candidate
             break
-    if not match:
+    if not match or model is None:
         raise ValueError("approved simulator has no sanitizable physics model")
     model["entry_id"] = identifier
     model["source"] = {"publication": "student-site"}
