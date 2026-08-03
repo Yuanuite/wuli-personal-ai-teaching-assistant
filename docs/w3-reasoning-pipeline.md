@@ -34,13 +34,20 @@
 
 `student-error-library/config/analysis-production-routing.json`：
 
-- `mode: core-first`：当前默认；一条求解链、一次模型调用；
+- `mode: core-first`：当前默认；复杂题（`complexity_screen` 判 `decompose`）在 Core 链内
+  升级 `wuli.core-rich.v2`，答案成功后自动排队 `diagram.scene` 与独立 claim 验证，
+  最多三次 Agent 调用；简单题保持单次 `wuli.core-solve.v1` 调用；
 - `mode: legacy-adaptive`：显式回滚到下文保留的 W2/W3 自适应链；
 - `max_latency_seconds`：核心调用的硬超时，当前为 90 秒。
 
 条件增强仅由风险触发：定向召回可注入同一次核心调用；独立验证只有在冻结标准答案
 或真正不同模型/证据视角存在时才有权改变正确性状态；阶段状态只服务真实多阶段传递
 或 `physics-model.json`；仲裁只处理两个真正独立结论的冲突。
+
+Target Brief 的 `enhancements.independent_verification` 是增强信号而非执行记录：
+复杂题（`decompose`）或带 `boundary-or-branch` 风险信号时为 `true`，复杂题由答案后
+自动排队的 claim 验证链实际承接；简单题为 `false`，表示没有自动独立验证，量纲与
+适用条件核对由教师 `approve-answer` 前人工承担，不能把 `false` 误读为“已验证”。
 
 ## 旧 W3 固定流程（仅回滚/研究）
 
@@ -242,7 +249,8 @@ manifest，历史分数因此必须刷新。详见
 已经由五道新教师复核题和十五个冻结目标满足：W2/W3 均为 15/15，首批生产灰度
 9/9、官方竞赛补充灰度 8/8，并完成 W2 可逆回滚演练。这些是旧自适应链的历史验收
 事实；当前外层 `analysis-production-routing.json=core-first` 优先，复杂题也不会自动进入
-W3。只有显式切换为 `legacy-adaptive` 或运行 W3 shadow 命令才执行下文 W3 阶段。
+W3 阶段，而是在 Core 链内复用 W3 claim-verifier 批次机制做答案后独立验证（全 pass
+才 `canonical`）。只有显式切换为 `legacy-adaptive` 或运行 W3 shadow 命令才执行下文 W3 阶段。
 Claim Evidence 与受控认知环仍保持默认关闭的私有影子层。
 
 2026-08-03（w3-w3r-route-deadline-repair）实际路线核实：route-preview 现返回
