@@ -15,6 +15,7 @@ import knowledge_store  # noqa: E402
 SPEC = importlib.util.spec_from_file_location(
     "slow_loop_report", ROOT / "teacher-console" / "scripts" / "slow_loop_report.py"
 )
+assert SPEC is not None
 slow_loop = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(slow_loop)
 

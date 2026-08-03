@@ -445,14 +445,14 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     transitions = []
     for raw in payload.get("stage_transitions") or []:
-        item = {
+        transition = {
             "from_stage": _text(raw.get("from_stage"), "stage_transitions.from_stage", 40),
             "to_stage": _text(raw.get("to_stage"), "stage_transitions.to_stage", 40),
             "event": _text(raw.get("event"), "stage_transitions.event", 200),
         }
-        if item["from_stage"] not in stage_ids or item["to_stage"] not in stage_ids:
+        if transition["from_stage"] not in stage_ids or transition["to_stage"] not in stage_ids:
             raise ValueError("stage transition references an unknown stage")
-        transitions.append(item)
+        transitions.append(transition)
 
     steps = []
     for raw in payload.get("reasoning_steps") or []:

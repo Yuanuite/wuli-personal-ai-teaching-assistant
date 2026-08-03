@@ -16,6 +16,7 @@ import knowledge_store  # noqa: E402
 SPEC = importlib.util.spec_from_file_location(
     "retrieval_benchmark", ROOT / "teacher-console" / "scripts" / "retrieval_benchmark.py"
 )
+assert SPEC is not None
 benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(benchmark)
 

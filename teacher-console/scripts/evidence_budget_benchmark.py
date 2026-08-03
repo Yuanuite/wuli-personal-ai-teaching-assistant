@@ -95,7 +95,7 @@ def evaluate_case(
     candidate_chars: int,
     top_k: int,
 ) -> dict[str, Any]:
-    common = {
+    common: dict[str, Any] = {
         "root": library,
         "entry_id": str(case["entry_id"]),
         "text": str(case["query"]),

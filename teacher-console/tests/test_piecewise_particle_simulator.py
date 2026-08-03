@@ -13,6 +13,7 @@ SKILL = ROOT / ".claude" / "skills" / "build-physics-simulator"
 
 def load_builder():
     spec = importlib.util.spec_from_file_location("piecewise_builder", SKILL / "scripts" / "build_simulator.py")
+    assert spec is not None
     module = importlib.util.module_from_spec(spec)
     assert spec and spec.loader
     spec.loader.exec_module(module)

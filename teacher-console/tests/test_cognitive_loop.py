@@ -3,6 +3,7 @@ import random
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
@@ -243,7 +244,7 @@ class ConflictDiagnosisTest(unittest.TestCase):
         }
 
     def evidence(self, **updates):
-        result = {
+        result: dict[str, Any] = {
             "interface_issue_codes": [],
             "event_order_claim_ids": [],
             "missing_obligation_ids": [],
@@ -558,7 +559,7 @@ class HypothesisPoolTest(unittest.TestCase):
         second["proposal"] = "A previously ignored boundary crossing occurs first."
         second["novelty_basis"] = "It changes event order rather than velocity direction."
         original = [copy.deepcopy(first), copy.deepcopy(second)]
-        arguments = {
+        arguments: dict[str, Any] = {
             "conflict_class": "order",
             "claim_risks": {"C1": 0.9, "C2": 0.8},
             "operator_stats": {
@@ -636,7 +637,7 @@ class BoundedCognitiveLoopGateTest(unittest.TestCase):
     def test_random_dag_impact_cones_match_naive_reachability(self):
         rng = random.Random(20260729)
         claims = []
-        downstream = {f"C{index}": set() for index in range(30)}
+        downstream: dict[str, set[str]] = {f"C{index}": set() for index in range(30)}
         for index in range(30):
             claim_id = f"C{index}"
             dependencies = [f"C{parent}" for parent in range(index) if rng.random() < 0.08]

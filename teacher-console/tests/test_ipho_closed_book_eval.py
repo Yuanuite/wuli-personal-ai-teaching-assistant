@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
 SCRIPT = ROOT / "teacher-console" / "scripts" / "ipho_closed_book_eval.py"
 SPEC = importlib.util.spec_from_file_location("ipho_closed_book_eval", SCRIPT)
+assert SPEC is not None
 module = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(module)

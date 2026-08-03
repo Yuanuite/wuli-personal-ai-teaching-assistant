@@ -9,6 +9,7 @@ SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "script
 sys.path.insert(0, str(SCRIPTS))
 SCRIPT = ROOT / "teacher-console" / "scripts" / "evidence_budget_benchmark.py"
 SPEC = importlib.util.spec_from_file_location("evidence_budget_benchmark", SCRIPT)
+assert SPEC is not None
 benchmark = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(benchmark)
 

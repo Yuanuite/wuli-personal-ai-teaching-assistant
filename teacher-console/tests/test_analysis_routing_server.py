@@ -12,6 +12,7 @@ CONSOLE_ROOT = Path(__file__).resolve().parents[1]
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
 SERVER_SPEC = importlib.util.spec_from_file_location("analysis_routing_server", CONSOLE_ROOT / "server.py")
+assert SERVER_SPEC is not None
 server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(server)
 import analysis_routing

@@ -8,6 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "teacher-console" / "scripts" / "default_obligation_shadow_report.py"
 SPEC = importlib.util.spec_from_file_location("default_obligation_shadow_report", SCRIPT)
+assert SPEC is not None
 module = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(module)

@@ -5,6 +5,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts" / "difficulty_assessment.py"
 SPEC = importlib.util.spec_from_file_location("difficulty_assessment", SCRIPT)
+assert SPEC is not None
 difficulty = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(difficulty)
 

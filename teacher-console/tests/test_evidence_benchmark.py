@@ -398,6 +398,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             "build_evidence_warning_scope_replay",
             WARNING_SCOPE_REPLAY_SCRIPT,
         )
+        assert spec is not None
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(module)

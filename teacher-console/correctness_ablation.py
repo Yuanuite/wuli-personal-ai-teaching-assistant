@@ -101,7 +101,7 @@ def _controlled_hypotheses(scenario: str) -> list[dict[str, Any]]:
 
 
 def _select_controlled_hypothesis(scenario: str) -> dict[str, Any]:
-    arguments = {
+    arguments: dict[str, Any] = {
         "conflict_class": "order",
         "claim_risks": {"C1": 0.9},
         "operator_stats": {},

@@ -13,6 +13,7 @@ import kb  # noqa: E402
 SERVER_SPEC = importlib.util.spec_from_file_location(
     "teacher_console_server_retrieval_review", ROOT / "teacher-console" / "server.py"
 )
+assert SERVER_SPEC is not None
 server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(server)
 

@@ -59,7 +59,7 @@ def build_report(
     false_promotions = sum(item["false_promotion"] for item in outcomes)
     category_counts = Counter(item["category"] for item in outcomes)
     category_detected = Counter(item["category"] for item in outcomes if item["detected"])
-    backjump = next(
+    backjump: dict[str, Any] = next(
         (item["detail"] for item in outcomes if item["category"] == "backjump"),
         {},
     )

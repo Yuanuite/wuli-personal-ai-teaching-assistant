@@ -16,6 +16,7 @@ import knowledge_store  # noqa: E402
 SPEC = importlib.util.spec_from_file_location(
     "rag_effectiveness_report", ROOT / "teacher-console" / "scripts" / "rag_effectiveness_report.py"
 )
+assert SPEC is not None
 reporter = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(reporter)
 

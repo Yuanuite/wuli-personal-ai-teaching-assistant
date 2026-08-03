@@ -1,9 +1,9 @@
-# Core 失败归因链修复执行树
+# Core 失败归因链修复与复杂题质量对齐执行树
 
 > 状态：待执行（只读审计完成，未改动文件）
 > 起因：2026-08-03 18:22 一道 6 小题物理题的 Core 重生成被误报为 `output_truncated`，真实阻断点是本地物理质量门把跨小问引用 `Q4i` 误识别成未定义物理量 `Q4`，随后 Gateway/分类器/阶段遥测/UI 连环归因错误。
-> 范围：教师控制台 Core-first 解析链的失败归因、物理门符号扫描、阶段遥测、答案版本展示与检查点重放。
-> 契约基线：`wuli.core-solve.v1`、`wuli.physics-quality-gate.v1`、`wuli.analysis.v2`（旧路径）。
+> 范围：教师控制台 Core-first 解析链的失败归因、物理门符号扫描、阶段遥测、答案版本展示与检查点重放（A/B/C/T 系列）；复杂题生成质量对齐 7 月教师审核样本（D 系列）。
+> 契约基线：`wuli.core-solve.v1`、`wuli.physics-quality-gate.v1`、`wuli.analysis.v2`（旧路径）、`wuli.core-rich.v2`（D1 新增 rich 五段契约）、`wuli.claim-verify.v1`（D3 复用）。
 
 ## 1. 背景与根因摘要
 
@@ -42,17 +42,25 @@ provider（openai-compatible / DeepSeek Flash）已完整返回 6 小题 JSON：
 | 单元测试 | `teacher-console/tests/test_physics_quality.py` | 覆盖 4 个 obligation；`FIXTURE_D` 测 `v2` 未定义，但无 `Q4i` 跨小问引用用例 |
 | 分类测试 | `teacher-console/tests/test_agent_gateway.py:183-298` | `test_failure_classifier_prefers_actionable_root_causes` 用 "response was truncated" 文本判定；无"正常遥测+门禁失败"组合 |
 | fake adapter | `tests/fixtures/fake_agent_adapter.py:193-225` | `core_solve_payload` 返回 `final_answer="a=F/m"`，不含跨小问引用；e2e 版同构 |
+| 复杂度信号 | `problem_decomposition.py:53-81` | `complexity_screen` 纯确定性文本模式匹配，输出 `decision="decompose"\|"w2"` 与 `score`；当前仅 legacy-adaptive 的 W2/W3 分流调用，core-first 未用 |
+| 图示任务构建 | `server.py:867-930` | `physics_diagram_task` 构建 `diagram.scene`，前置条件 `visual-facts.json` 存在；`run_core_analysis` 的 `diagram_task` 当前固定 `not-run`（server.py:3169-3172） |
+| claim-verifier | `w3_pipeline.py:380-460` | `stage_runner("claim-verifier", ...)` 产出 `semantic_certificates`，用独立模型身份（server.py:3448-3452 `resolve_model_id_for_task("claim.verify")`）；当前仅 W3 链调用 |
+| v2 五段校验 | `analysis_artifacts.py:321-339`、`w3_rendering.py:12-20` | `REQUIRED_STUDENT_HEADINGS`/`REQUIRED_STUDENT_SECTIONS` 校验五段标题齐全；`core_analysis._student_markdown` 为硬编码模板，未复用该校验 |
 
 ## 3. 修复目标与约束
 
-**目标**：让 Core-first 链的失败归因与教师 UI 一致地反映真实阻断点，修复后同一题可零 Token 重放，并把组合场景纳入测试盲区。
+**目标**：
+1. （A/B/C/T 系列）让 Core-first 链的失败归因与教师 UI 一致地反映真实阻断点，修复后同一题可零 Token 重放，并把组合场景纳入测试盲区。
+2. （D 系列）让复杂题的生成答案达到 7 月教师审核样本的质量：rich 五段内容、静态图示、独立验证，按复杂度信号分支调用数。
 
 **硬约束**：
-- 不改 `wuli.core-solve.v1` 与 `wuli.physics-quality-gate.v1` 契约的外部形状；obligation 集合不变。
+- A/B/C/T 系列不改 `wuli.core-solve.v1` 与 `wuli.physics-quality-gate.v1` 契约的外部形状；obligation 集合不变。
+- D1 新增 `wuli.core-rich.v2` 契约供复杂题使用，不修改 `wuli.core-solve.v1`；简单题仍走紧凑契约。
 - `analysis.generate` 必须保持无工具结构化输出；不在 prompt 中重复 `allowed_paths`/`denied_paths`/领域 validator 已兜底的约束。
 - 契约变化必须同步单元测试与 E2E 的两个 fake adapter（`tests/fixtures/fake_agent_adapter.py` 与 `e2e/fake_agent_adapter.py`）。
 - 不自动调高 `max_tokens`/timeout；保留"未完成不删旧 canonical 答案"的安全策略。
 - Agent 永远不能调用 `approve-*`/`finish`/发布；本次只修确定性链路与 UI。
+- D 系列不恢复 legacy-adaptive 的 W3 双求解器与仲裁；复杂题仍单次求解，只在 core-first 内叠加图示与验证。
 
 ## 4. 原子任务总览（DAG）
 
@@ -66,6 +74,10 @@ provider（openai-compatible / DeepSeek Flash）已完整返回 6 小题 JSON：
 | B2 | 复杂题质量策略明确 | P1 | docs/, config | — |
 | C1 | 配置与文档多真源统一 | P2 | docs/, config | B2 |
 | T1 | 组合场景测试套件 + 双 fake adapter | P0 | tests/, e2e/ | A1-A3 |
+| D1 | 升级 core 契约产 rich 五段 | P0 | core_analysis.py, analysis_artifacts.py | A1 |
+| D2 | 复杂题自动排队 diagram | P1 | server.py | D1 |
+| D3 | 复杂题自动验证复用 claim-verifier | P1 | server.py, w3_pipeline.py, claim_ledger.py | D1, A2 |
+| D4 | 7 月样本对照集验收 | P1 | e2e/, tests/, docs/ | D1-D3 |
 
 依赖图：
 
@@ -79,9 +91,16 @@ flowchart LR
     B2 --> C1
     A4 --> T1
     B1 --> T1
+    A1 --> D1
+    D1 --> D2
+    D1 --> D3
+    A2 --> D3
+    D1 --> D4
+    D2 --> D4
+    D3 --> D4
 ```
 
-A1、A2 可并行启动（不同文件、无冲突）；A3 需 A2 先把 materializer 失败从 `parse_error` 中分离出来，才能正确标记阶段；A4 需 A3 提供真实阶段与版本来源字段；T1 在各任务落定后补齐组合场景。
+A1、A2 可并行启动（不同文件、无冲突）；A3 需 A2 先把 materializer 失败从 `parse_error` 中分离出来，才能正确标记阶段；A4 需 A3 提供真实阶段与版本来源字段；T1 在各任务落定后补齐组合场景。D1 依赖 A1（物理门修复后 claims 的跨小问引用才能通过）；D2/D3 依赖 D1（需 rich 契约的 claims 与求解成功后排队），D3 另依赖 A2；D4 在 D1-D3 落定后建对照集。
 
 ## 5. 原子任务详情
 
@@ -309,6 +328,119 @@ A1、A2 可并行启动（不同文件、无冲突）；A3 需 A2 先把 materia
 - `npm run test:e2e`（`python3 teacher-console/e2e/run_e2e.py`）全绿。
 - 两个 fake adapter 行为一致。
 
+---
+
+## 5.5 复杂题质量对齐（D 系列）架构定位
+
+**契约**（面向执行 Agent）：
+- core-first 内部按复杂度信号分支调用数，复杂度信号复用 `problem_decomposition.complexity_screen`（纯确定性文本模式匹配，`decision="decompose"` 为复杂题）：
+  - 简单题（`decision="w2"`）：1 调用（求解 + 确定性渲染），走 `wuli.core-solve.v1`。
+  - 复杂题（`decision="decompose"`）：3 调用（求解 + 图示 + 验证），求解走 `wuli.core-rich.v2`。
+- 复杂题仍单次求解，不引入 W3 的双求解器（Solver B）与仲裁记录；图示与验证是求解成功后的叠加阶段。
+- 图示在复杂题中从"可选后置增强"（当前 `diagram_task.status="not-run"`）升为"自动排队 `diagram.scene`"；交互仿真仍手动。
+- 验证在复杂题中从"不跑"升为"canonical 提升前置"：`claim.verify` 产出 `VERIFIED` 证书后才提升 canonical。
+- `max_agent_calls` 上限：简单题 1，复杂题 3。需同步把 `docs/architecture.md` 第 88 行"复杂度只产生可选增强信号"修订为"复杂度分支 core-first 内部调用数（简单题 1 / 复杂题 3）"。
+
+---
+
+### D1 升级 core 契约产 rich 五段
+
+**优先级**：P0（复杂题质量对齐核心）
+**依赖**：A1（物理门修复 target id 后，claims 的跨小问引用才能通过）
+**涉及文件**：`teacher-console/core_analysis.py`、`teacher-console/analysis_artifacts.py`（复用五段校验）、`teacher-console/w3_rendering.py`（`REQUIRED_STUDENT_SECTIONS`）
+
+**问题**：`_student_markdown`（core_analysis.py:297-326）是硬编码模板，"一眼识别/易错点/30秒自测"为写死占位文案，复杂题无法达到 7 月样本（v2 rich 五段）质量。
+
+**具体改动**：
+1. 新增 `wuli.core-rich.v2` 契约与 `CORE_RICH_OUTPUT_SCHEMA`：provider 产出扩为：
+   - `student_solution`：rich 五段 Markdown，复用 `w3_rendering.REQUIRED_STUDENT_SECTIONS`（答案速览/一眼识别/详细解答/易错点/30秒自测）校验标题齐全；
+   - `teacher_audit`：教师审计文本；
+   - `method_check`：方法检查结构，复用 `analysis_artifacts.normalize_payload`（321-400）的 method_check 校验逻辑；
+   - `claims`：`[{id, final_answer, key_relations}]`，作为物理门与 render fidelity 的校验锚点（等价于现 `targets`）。
+2. `normalize_payload` 增加 rich 分支：当契约版本为 v2 时，校验 student_solution 五段 + teacher_audit + method_check + claims；claims 仍走现有 target 校验与物理门（problem 非 None 时）。
+3. `_student_markdown` 拆为两路：紧凑契约（v1）保留现有模板；rich 契约（v2）改为组装 provider 产出的 student_solution（参考 `analysis_artifacts.materialize` 的组装模式），不再套模板。
+4. render fidelity gate 校验 claims 的 `final_answer`/`key_relations` 逐字出现在组装后的 student-solution.md 中。
+5. `build_target_brief` 的 `enhancements.independent_verification` 语义对齐 D3（复杂题为 true）。
+
+**验收标准**：
+- 复杂题 provider 产出 rich 五段，materialize 组装后 student-solution.md 五段标题齐全、内容针对本题（非占位文案）。
+- claims 的 final_answer/key_relations 全部逐字出现在 student-solution.md。
+- 简单题仍走 `wuli.core-solve.v1` 紧凑契约，行为不变（回归保护）。
+- 跨小问引用（`Q4i`）在 claims 中不触发 `symbol-undefined`（依赖 A1）。
+
+**测试要求**（见 T1/D4）：
+- 新增 `test_core_analysis.py` 用例：rich 契约五段校验、claims fidelity、简单题回归。
+- 双 fake adapter 增加 rich payload 产出。
+
+---
+
+### D2 复杂题自动排队 diagram
+
+**优先级**：P1
+**依赖**：D1（core 成功后才有答案供 diagram 引用）
+**涉及文件**：`teacher-console/server.py`（`run_core_analysis`、`physics_diagram_task`）
+
+**问题**：`run_core_analysis` 的 `diagram_task` 固定 `not-run`（server.py:3169-3172），复杂题图示需教师手动触发。
+
+**具体改动**：
+1. `run_core_analysis` 成功后，计算 `complexity_screen(problem, has_physics_model=...)`；若 `decision="decompose"` 且 `(entry/"visual-facts.json").is_file()`，自动排队 `diagram.scene`（复用 `physics_diagram_task`，server.py:867）。
+2. `max_agent_calls` 复杂题 1→2（求解 + 图示）；`run_adaptive_analysis` 的 `limits.max_agent_calls` 与 `observed_metrics.agent_call_count` 按实际调用数写入，不再硬编码 1（server.py:2982/2987）。
+3. 静态 SVG 默认；交互仿真（`build-physics-simulator`）仍手动触发，不改。
+4. `visual-facts.json` 缺失时不排队 diagram（保持 `physics_diagram_task` 现有门禁），`diagram_task.status="not-run"` 理由更新为 `missing-visual-facts`。
+
+**验收标准**：
+- 复杂题（decompose）core 成功且 visual-facts.json 存在 → diagram.scene 自动排队。
+- 简单题（w2）不排队 diagram。
+- visual-facts.json 缺失 → 不排队，`diagram_task` 标记 `missing-visual-facts`。
+
+**测试要求**：E2E 覆盖"复杂题 core 成功 → diagram 自动排队"与"简单题不排队"。
+
+---
+
+### D3 复杂题自动验证复用 claim-verifier
+
+**优先级**：P1
+**依赖**：D1（需要 claims）、A2（需要 `materializer_error` 分类区分求解失败与验证失败）
+**涉及文件**：`teacher-console/server.py`、`teacher-console/w3_pipeline.py`（claim-verifier stage）、`teacher-console/claim_ledger.py`、`teacher-console/claim_validation.py`
+
+**问题**：core-first 不跑 claim-verifier，教师复核是唯一可信层；复杂题需独立验证防同模型自证。
+
+**具体改动**：
+1. Core 成功且 `decision="decompose"` 后，排队 `claim.verify` 任务；用独立模型身份（复用 server.py:3448-3452 `resolve_model_id_for_task("claim.verify", ...)`，与求解模型不同 provider/模型）。
+2. claims → Claim DAG 适配：把 D1 的 `claims[{id, final_answer, key_relations}]` 投影为 `claim_ledger` 的 Claim 结构，供 claim-verifier 消费。
+3. 复用 `w3_pipeline` 的 claim-verifier 批次逻辑（380-460）产出 `semantic_certificates`；不引入 Solver B 与仲裁。
+4. canonical 提升前置：仅当全部 final claims 的证书为 `VERIFIED` 才提升；否则标记 `PROVISIONAL` 并保留教师裁决项，不自动晋升。
+5. `max_agent_calls` 复杂题 2→3（求解 + 图示 + 验证）。
+
+**验收标准**：
+- 复杂题 core 成功后 claim.verify 自动排队，且 verifier 模型身份与求解模型不同。
+- VERIFIED 证书产出后才 canonical 提升；非 VERIFIED 时答案标记 `PROVISIONAL`，不晋升。
+- 简单题不跑 claim.verify。
+
+**测试要求**：单元测试覆盖 claims→ledger 适配与 VERIFIED/PROVISIONAL 分支；E2E 覆盖复杂题验证链。
+
+---
+
+### D4 7 月样本对照集验收
+
+**优先级**：P1
+**依赖**：D1、D2、D3
+**涉及文件**：`teacher-console/e2e/`、`teacher-console/tests/`、`student-site/catalog.json`（只读参照）、`docs/answer-quality-benchmark.md`
+
+**问题**：无黄金样本对照集，无法验证复杂题生成质量是否达到 7 月教师审核样本效果。
+
+**具体改动**：
+1. 从 `catalog.json` 选 `difficulty.score>=60` 的题（如 question-1edcc8241bf2(66)、ccdf4cfc702c(80)、4a1ddcd4877a(82)、83c1f4acef52(67)、212ecbad04d3(67)）作为黄金对照集，记录其 7 月 `content.md` 的质量特征。
+2. 定义六维对照清单：①五段齐全且内容针对本题；②跨小问引用正确；③易错点"错误表现+纠正策略"成对；④二级结论带适用条件；⑤静态 SVG 图示存在；⑥量纲/适用条件核对项列出。
+3. 新增 E2E：对对照集题目跑 D1-D3 链，断言六维通过；结果写入 `docs/reports/complex-quality-alignment-report.md`。
+4. 对照集只读参照 7 月样本，不修改 `student-site/`。
+
+**验收标准**：
+- 黄金对照集与六维清单落档。
+- 对照集题目经 D1-D3 链生成后六维断言全通过。
+
+**测试要求**：纳入 `npm run test:e2e`；报告可由 `neat-freak` 收尾审计。
+
 ## 6. 测试矩阵
 
 | 场景 | 触发 | 期望 failure_type | 期望 stages 关键项 | 覆盖任务 |
@@ -327,8 +459,9 @@ A1、A2 可并行启动（不同文件、无冲突）；A3 需 A2 先把 materia
 2. **第 2 波**：A3（依赖 A2 的 `materializer_error` 字段）、B1（依赖 A2 的归类）。
 3. **第 3 波**：A4（依赖 A3 的真实阶段与 failure_type）。
 4. **第 4 波**：T1 组合测试（依赖 A1-A3 落地），含双 fake adapter 同步。
-5. **并行/后续**：B2（文档与策略明确）、C1（配置多真源统一），可由 `neat-freak` 收尾审计。
-6. 全部完成后 `graphify update .` 更新知识图谱。
+5. **第 5 波（D 系列，复杂题质量对齐）**：D1（依赖 A1）落定后，D2、D3（依赖 D1，D3 另依赖 A2）可并行，最后 D4（依赖 D1-D3）。D1 未完成前不动 D2/D3。
+6. **并行/后续**：B2（文档与策略明确）、C1（配置多真源统一），可由 `neat-freak` 收尾审计；D 系列的 `docs/architecture.md` 第 88 行修订随 D1 落地。
+7. 全部完成后 `graphify update .` 更新知识图谱。
 
 每波结束运行：`python3 -m pytest teacher-console/tests/ -v --tb=short` + `npm run test:e2e`。
 
@@ -356,3 +489,6 @@ A1、A2 可并行启动（不同文件、无冲突）；A3 需 A2 先把 materia
 - 不在 `analysis.generate` prompt 中重复 `allowed_paths`/`denied_paths`/领域 validator 已兜底的约束。
 - 不让 Agent 调用 `approve-*`/`finish`/发布。
 - 不自动推送 GitHub；公开发布是交付后的独立门禁。
+- D 系列不恢复 W3 双求解器（Solver B）与仲裁记录；复杂题仍单次求解，只叠加图示与验证。
+- D 系列不对简单题强制 rich 契约、diagram 或 claim.verify；复杂度信号为 `w2` 时保持单调用紧凑路径。
+- D4 对照集只读参照 7 月样本，不修改 `student-site/` 已发布产物。

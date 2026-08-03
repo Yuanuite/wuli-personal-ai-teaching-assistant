@@ -27,6 +27,7 @@ from agent_jobs import AgentJobManager  # noqa: E402
 SERVER_SPEC = importlib.util.spec_from_file_location(
     "teacher_console_server_http", ROOT / "teacher-console" / "server.py"
 )
+assert SERVER_SPEC is not None
 teacher_console_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_console_server)
 

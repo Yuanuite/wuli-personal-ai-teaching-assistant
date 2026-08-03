@@ -7,6 +7,7 @@ SPEC = importlib.util.spec_from_file_location(
     "openai_compatible_agent_adapter",
     ROOT / "teacher-console" / "providers" / "openai_compatible_agent_adapter.py",
 )
+assert SPEC is not None
 adapter = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(adapter)
 

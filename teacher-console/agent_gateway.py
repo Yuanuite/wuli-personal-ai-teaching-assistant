@@ -1599,7 +1599,7 @@ class AgentGateway:
                         result["materialization"] = materialization
                     return result
                 if changed or canonical_changed:
-                    result: dict[str, Any] = {
+                    failed_result: dict[str, Any] = {
                         "status": "failed",
                         "provider": provider.name,
                         "routing_tier": routing_tier,
@@ -1613,14 +1613,14 @@ class AgentGateway:
                         "attempts": attempts,
                         **model_metadata,
                     }
-                    result["failure_type"] = classify_agent_failure(result)
+                    failed_result["failure_type"] = classify_agent_failure(failed_result)
                     logger.info(
                         "gateway task=%s status=failed reason=validation changed=%s unauthorized=%s",
                         route_id,
                         len(changed),
                         len(unauthorized),
                     )
-                    return result
+                    return failed_result
                 if self._attempt_consumed_material_budget(attempt, costly_failover_seconds):
                     attempt["budget_guard"] = "stopped-before-costly-failover"
                     budget_guard = {
@@ -1641,7 +1641,7 @@ class AgentGateway:
             exhausted_message = "选定的 Agent provider 在修改文件前失败；任务已安全停止。"
         else:
             exhausted_message = "所有 Agent provider 均在修改文件前失败；任务已安全停止。"
-        result: dict[str, Any] = {
+        exhausted_result: dict[str, Any] = {
             "status": "failed",
             "provider": last.get("provider"),
             "routing_tier": routing_tier,
@@ -1660,7 +1660,7 @@ class AgentGateway:
         # the frontend, never fabricated here.
         for attempt in attempts:
             if attempt.get("timeout_layer"):
-                result["timeout_summary"] = {
+                exhausted_result["timeout_summary"] = {
                     "schema": "wuli.timeout-summary.v1",
                     "timeout_layer": attempt.get("timeout_layer"),
                     "child_stdout_empty": bool(attempt.get("child_stdout_empty")),
@@ -1670,22 +1670,22 @@ class AgentGateway:
                 break
         aggregated_usage = _aggregate_usage(attempts)
         if aggregated_usage:
-            result["usage"] = aggregated_usage
+            exhausted_result["usage"] = aggregated_usage
         if isinstance(last.get("request_preflight"), dict):
-            result["request_preflight"] = last["request_preflight"]
-        result["deadline_budget"] = budget.to_dict()
-        result["deadline_budget_problems"] = budget_problems
+            exhausted_result["request_preflight"] = last["request_preflight"]
+        exhausted_result["deadline_budget"] = budget.to_dict()
+        exhausted_result["deadline_budget_problems"] = budget_problems
         if budget_guard:
-            result["budget_guard"] = budget_guard
-        result["failure_type"] = str(last.get("failure_type") or classify_agent_failure(result))
+            exhausted_result["budget_guard"] = budget_guard
+        exhausted_result["failure_type"] = str(last.get("failure_type") or classify_agent_failure(exhausted_result))
         if (
             last.get("finish_reason") == "length"
             or last.get("content_chars") == 0
             and last.get("reasoning_chars", 0) > 0
         ):
-            result["diagnosed_failure_type"] = "output_truncated"
+            exhausted_result["diagnosed_failure_type"] = "output_truncated"
         logger.info("gateway task=%s status=failed reason=exhausted attempts=%d", route_id, len(attempts))
-        return result
+        return exhausted_result
 
     @staticmethod
     def _adapter_metadata(payload: dict) -> dict:

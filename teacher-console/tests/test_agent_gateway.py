@@ -20,6 +20,7 @@ from agent_gateway import AgentGateway, classify_agent_failure  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 
 SERVER_SPEC = importlib.util.spec_from_file_location("teacher_console_server_gateway_test", CONSOLE / "server.py")
+assert SERVER_SPEC is not None
 teacher_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_server)
 

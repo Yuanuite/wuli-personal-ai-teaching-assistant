@@ -25,6 +25,7 @@ for path in (CONSOLE,):
         sys.path.insert(0, str(path))
 
 SPEC = importlib.util.spec_from_file_location("analysis_run_report", CONSOLE / "scripts" / "analysis_run_report.py")
+assert SPEC is not None
 report_mod = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(report_mod)
 
