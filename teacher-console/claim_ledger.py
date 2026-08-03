@@ -798,3 +798,95 @@ def project_legacy_solution(
         len(target_ids),
     )
     return snapshot
+
+
+def project_core_claims(
+    claims: list[dict[str, Any]],
+    *,
+    task_id: str,
+    input_fingerprint: str,
+    source_contract: str,
+) -> list[dict[str, Any]]:
+    """Project core-solve claims into ledger Claims (work-tree D3).
+
+    Core claims only carry ``{id, final_answer, key_relations}``; the
+    projection turns each into a ``candidate`` final Claim grounded on the
+    approved problem statement so the isolated claim-verifier can audit them
+    without any solver provenance.
+    """
+    if not isinstance(claims, list) or not claims:
+        raise ValueError("core claims must be a non-empty list")
+    fingerprint = _clean_fingerprint(input_fingerprint, "input_fingerprint")
+    ledger_task_id = _clean_id(task_id, "task_id")
+    projected: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(claims):
+        item = _require_object(raw, f"core_claims[{index}]")
+        claim_id = _clean_id(item.get("id"), f"core_claims[{index}].id")
+        if claim_id in seen:
+            raise ValueError(f"core_claims[{index}].id is duplicated")
+        seen.add(claim_id)
+        statement = _clean_text(item.get("final_answer"), f"core_claims[{index}].final_answer", 2_000)
+        relations = item.get("key_relations")
+        if not isinstance(relations, list) or not relations:
+            raise ValueError(f"core_claims[{index}].key_relations must be a non-empty array")
+        conditions = [
+            _clean_text(relation, f"core_claims[{index}].key_relations[{relation_index}]", 2_000)[:300]
+            for relation_index, relation in enumerate(relations)
+        ]
+        projected.append(
+            normalize_claim({
+                "id": claim_id,
+                "version": 1,
+                "kind": "final",
+                "status": "candidate",
+                "statement": statement,
+                "target_ids": ["approved-problem"],
+                "stage_ids": ["core-solve"],
+                "depends_on": [],
+                "conditions": conditions,
+                "obligation_ids": [],
+                "check_spec": {
+                    "type": "semantic-required",
+                    "reason": "core solve carries no atomic derivation graph",
+                    "source_contract": source_contract,
+                },
+                "source": {
+                    "task_id": ledger_task_id,
+                    "input_fingerprint": fingerprint,
+                    "policy_version": correctness_policy.CLAIM_LEDGER_POLICY_VERSION,
+                },
+            })
+        )
+    return projected
+
+
+def evaluate_claim_verification(
+    claims: list[dict[str, Any]],
+    certificates: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Gate canonical promotion on a passing certificate per final Claim (D3).
+
+    Every projected Claim needs a ``pass`` certificate; anything missing or
+    non-passing keeps the answer ``provisional`` with a teacher adjudication
+    item instead of auto-promoting.
+    """
+    normalized = [normalize_claim(item, agent_submission=False) for item in claims]
+    pass_keys = {
+        (str(item.get("claim_id", "")), int(item.get("claim_version", 0)))
+        for item in certificates
+        if isinstance(item, dict) and str(item.get("verdict", "")).strip().lower() == "pass"
+    }
+    adjudication = [
+        {
+            "claim_id": claim["id"],
+            "claim_version": claim["version"],
+            "reason": "missing-or-non-pass-certificate",
+        }
+        for claim in normalized
+        if (claim["id"], claim["version"]) not in pass_keys
+    ]
+    return {
+        "answer_status": "canonical" if normalized and not adjudication else "provisional",
+        "teacher_adjudication": adjudication,
+    }

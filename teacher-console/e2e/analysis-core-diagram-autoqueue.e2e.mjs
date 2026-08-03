@@ -125,11 +125,28 @@ try {
   assert.equal(complexRequest.complexity?.contract, "wuli.core-rich.v2");
   assert.equal(complexRequest.diagram_task?.status, "completed", JSON.stringify(complexRequest.diagram_task).slice(0, 300));
   assert.equal(complexRequest.diagram_task?.reason, "auto-queued-complex");
-  assert.equal(complexRequest.agent_call_count, 2, "solve + diagram must bill exactly two calls");
+  assert.equal(complexRequest.agent_call_count, 3, "solve + diagram + claim verification must bill three calls");
 
   const routing = complexRequest.adaptive_routing || {};
-  assert.equal(routing.limits?.max_agent_calls, 2, "complex runs get a two-call budget");
-  assert.equal(routing.observed_metrics?.agent_call_count, 2, "observed calls must match the real run");
+  assert.equal(routing.limits?.max_agent_calls, 3, "complex runs get a three-call budget");
+  assert.equal(routing.observed_metrics?.agent_call_count, 3, "observed calls must match the real run");
+
+  // Work-tree D3: the isolated claim-verifier must run with a distinct model
+  // identity and gate the answer on VERIFIED certificates.
+  const verification = complexRequest.claim_verification || {};
+  assert.equal(verification.status, "completed", JSON.stringify(verification).slice(0, 300));
+  assert.equal(verification.reason, "auto-queued-complex");
+  assert.equal(verification.answer_status, "canonical", "all-pass certificates promote the answer");
+  assert.ok(verification.verifier_model_id, "claim.verify must record the verifier identity");
+  assert.notEqual(verification.verifier_model_id, complexRequest.model_id, "verifier must differ from solver");
+  assert.equal(verification.agent_call_count, 1, "two claims fit one verifier batch");
+  const claimArtifact = readJson(path.join(entryDirFor(complexId), "claim-verification.json"));
+  assert.equal(claimArtifact.task, "claim.verify");
+  assert.equal(claimArtifact.answer_status, "canonical");
+  assert.equal(claimArtifact.verifier_model_id, "e2e-claude-verifier");
+  assert.equal(claimArtifact.solver_model_id, "e2e-claude-solver");
+  assert.ok(Array.isArray(claimArtifact.certificates) && claimArtifact.certificates.length >= 2);
+  assert.equal(claimArtifact.teacher_adjudication.length, 0);
 
   const complexDir = entryDirFor(complexId);
   assert.ok(fs.existsSync(path.join(complexDir, "physics-diagram-scene.json")), "auto diagram scene must exist");
@@ -146,6 +163,11 @@ try {
   assert.equal(simpleRequest.diagram_task?.reason, "optional-post-answer-enhancement");
   assert.equal(simpleRequest.agent_call_count, 1);
   assert.equal(simpleRequest.adaptive_routing?.limits?.max_agent_calls, 1);
+  assert.equal(simpleRequest.claim_verification?.status, "not-run", "simple problems never run claim.verify");
+  assert.ok(
+    !fs.existsSync(path.join(entryDirFor(simpleId), "claim-verification.json")),
+    "simple problems must not leave a claim verification artifact",
+  );
   assert.ok(
     !fs.existsSync(path.join(entryDirFor(simpleId), "physics-diagram-scene.json")),
     "simple problems must not auto-generate a diagram scene",

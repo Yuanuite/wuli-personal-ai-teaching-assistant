@@ -40,6 +40,7 @@ sys.path.insert(0, str(CONSOLE_DIR))
 import analysis_artifacts  # noqa: E402
 import analysis_routing  # noqa: E402
 import candidate_archive  # noqa: E402
+import claim_ledger  # noqa: E402
 import core_analysis  # noqa: E402
 import correctness_policy  # noqa: E402
 import difficulty_assessment  # noqa: E402
@@ -3005,9 +3006,9 @@ class Handler(SimpleHTTPRequestHandler):
         if core_config["mode"] == "core-first":
             result = self.run_core_analysis(entry, data, core_config=core_config)
             elapsed = round(time.monotonic() - started, 4)
-            # Work-tree D2: complex problems may bill two calls (solve +
-            # diagram); limits and observed metrics must reflect the real run
-            # instead of the historical hardcoded single call.
+            # Work-tree D2: complex problems may bill up to three calls
+            # (solve + diagram + claim verification); limits and observed
+            # metrics must reflect the real run instead of a hardcoded count.
             core_complexity = result.get("complexity", {}) if isinstance(result, dict) else {}
             observed_calls = max(1, int(result.get("agent_call_count", 1) or 1)) if isinstance(result, dict) else 1
             return self._persist_adaptive_routing(
@@ -3023,7 +3024,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "legacy_rollback": "legacy-adaptive",
                     "limits": {
                         "max_latency_seconds": core_config["max_latency_seconds"],
-                        "max_agent_calls": 2 if core_complexity.get("decision") == "decompose" else 1,
+                        "max_agent_calls": 3 if core_complexity.get("decision") == "decompose" else 1,
                     },
                     "observed_metrics": {
                         "selected_route": "core",
@@ -3104,6 +3105,154 @@ class Handler(SimpleHTTPRequestHandler):
             decision,
             fallback=fallback,
         )
+
+    def run_core_claim_verification(
+        self,
+        entry: Path,
+        core_claims: list,
+        problem: str,
+        *,
+        solve_fingerprint: str,
+        solver_model_id: str,
+        solver_model_config: dict | None,
+    ) -> dict:
+        """Work-tree D3: isolated claim-verifier audit before canonical promotion."""
+        summary: dict[str, Any] = {
+            "status": "failed",
+            "reason": "",
+            "answer_status": "provisional",
+            "verifier_model_id": "",
+            "solver_model_id": solver_model_id,
+            "agent_call_count": 0,
+            "teacher_adjudication": [],
+        }
+        if not core_claims:
+            summary.update({"status": "skipped", "reason": "missing-core-claims"})
+            return summary
+        try:
+            verifier_model_id = resolve_model_id_for_task("claim.verify", "auto", "auto")
+            verifier_model_config = model_config_for_task("claim.verify", verifier_model_id, "auto")
+        except Exception as exc:  # noqa: BLE001 - no verifier is fail-closed, not a solve failure
+            summary.update({"status": "skipped", "reason": f"verifier-unavailable: {exc}"})
+            return summary
+        solver_model_name = str((solver_model_config or {}).get("model") or solver_model_id)
+        verifier_model_name = str((verifier_model_config or {}).get("model") or verifier_model_id)
+        if verifier_model_id == solver_model_id or verifier_model_name == solver_model_name:
+            summary.update({
+                "status": "skipped",
+                "reason": "verifier-identity-collision",
+                "verifier_model_id": verifier_model_id,
+            })
+            return summary
+        ledger_claims = claim_ledger.project_core_claims(
+            core_claims,
+            task_id="core-solve",
+            input_fingerprint=solve_fingerprint,
+            source_contract=core_analysis.CORE_RICH_CONTRACT,
+        )
+        semantic_requests = [{"claim": item, "dependencies": []} for item in ledger_claims]
+        source_facts = [{"id": "approved-problem", "statement": problem, "conditions": []}]
+        agent_calls = 0
+
+        def stage_runner(stage: str, context: dict) -> dict:
+            nonlocal agent_calls
+            expected_versions = {
+                str(key): int(value) for key, value in context.get("expected_claim_versions", {}).items()
+            }
+            contract = solution_verification.claim_output_contract()
+
+            def normalizer(payload, _e=expected_versions):
+                return solution_verification.normalize_claim_audit(payload, _e)
+
+            payloads = {
+                f".agent-context/w3-{name}.json": value
+                for name, value in context.items()
+                if isinstance(value, (dict, list))
+            }
+            task = w3_stage_task(
+                entry,
+                stage,
+                "仅审计最小 Claim 快照；不得读取 Solver 身份、完整答案或历史答案。",
+                contract,
+                payloads,
+                routing_tier="auto",
+                model_config=verifier_model_config,
+            )
+
+            def materializer(_staging, payload):
+                domain_payload = {
+                    key: value
+                    for key, value in payload.items()
+                    if key not in {"model", "model_tier", "requested_tier", "routing_notice", "usage"}
+                }
+                return {"payload": normalizer(domain_payload)}
+
+            gateway = run_agent_gateway(entry, task, None, materializer=materializer)
+            agent_calls += 1
+            if gateway.get("status") != "completed":
+                return {
+                    "status": "failed",
+                    "message": gateway_failure_detail(gateway, "core claim-verifier 失败"),
+                    "claim_audits": [],
+                    "interface_audit": None,
+                }
+            payload = gateway.get("materialization", {}).get("payload")
+            if not isinstance(payload, dict):
+                return {
+                    "status": "failed",
+                    "message": "claim-verifier 未返回规范化结构",
+                    "claim_audits": [],
+                    "interface_audit": None,
+                }
+            payload["_runtime_identity"] = {
+                "model_id": gateway.get("model") or gateway.get("model_id") or verifier_model_id,
+                "provider": gateway.get("provider", ""),
+                "context_isolated": True,
+            }
+            return payload
+
+        try:
+            audit_batches, certificates, concurrency, duration = w3_pipeline.run_claim_verification_batches(
+                semantic_requests,
+                source_facts,
+                stage_runner,
+                claim_verifier_concurrency=1,
+                log_prefix="core_claim_verify",
+            )
+        except ValueError as exc:
+            summary.update({
+                "reason": f"verification-batches-rejected: {exc}",
+                "agent_call_count": agent_calls,
+                "verifier_model_id": verifier_model_id,
+            })
+            return summary
+        evaluation = claim_ledger.evaluate_claim_verification(ledger_claims, certificates)
+        artifact = {
+            "schema_version": 1,
+            "task": "claim.verify",
+            "policy_version": correctness_policy.CLAIM_LEDGER_POLICY_VERSION,
+            "solver_model_id": solver_model_id,
+            "verifier_model_id": verifier_model_id,
+            "claims": ledger_claims,
+            "certificates": certificates,
+            "claim_audits": [audit for batch in audit_batches for audit in batch.get("claim_audits", [])],
+            "answer_status": evaluation["answer_status"],
+            "teacher_adjudication": evaluation["teacher_adjudication"],
+            "batch_count": len(audit_batches),
+            "batch_concurrency": concurrency,
+            "duration_seconds": duration,
+        }
+        kb.write_json(entry / "claim-verification.json", artifact)
+        summary.update({
+            "status": "completed",
+            "reason": "auto-queued-complex",
+            "answer_status": evaluation["answer_status"],
+            "verifier_model_id": verifier_model_id,
+            "agent_call_count": agent_calls,
+            "teacher_adjudication": evaluation["teacher_adjudication"],
+            "certificate_count": len(certificates),
+        })
+        return summary
 
     def run_core_analysis(
         self,
@@ -3269,6 +3418,29 @@ class Handler(SimpleHTTPRequestHandler):
                     )
                 else:
                     diagram_task_info = {"status": "not-run", "reason": "missing-visual-facts"}
+            # Work-tree D3: a complex answer must survive an isolated
+            # claim-verifier audit before it counts as canonical; simple
+            # problems never run claim.verify.
+            verification_info: dict = {"status": "not-run", "reason": "optional-post-answer-enhancement"}
+            if completed and rich:
+                core_artifact = kb.load_json(entry / "core-solution.json", {})
+                core_result = core_artifact.get("result") if isinstance(core_artifact.get("result"), dict) else {}
+                raw_core_claims = core_result.get("claims")
+                solver_config_id = str((model_config or {}).get("id", "")) if isinstance(model_config, dict) else ""
+                verification_info = self.run_core_claim_verification(
+                    entry,
+                    raw_core_claims if isinstance(raw_core_claims, list) else [],
+                    problem,
+                    solve_fingerprint=fingerprint,
+                    solver_model_id=solver_config_id or model_id,
+                    solver_model_config=model_config,
+                )
+                ctx.info(
+                    "stage=core-analysis entry_id=%s claim_verify_status=%s answer_status=%s",
+                    entry.name,
+                    verification_info.get("status"),
+                    verification_info.get("answer_status"),
+                )
             request.update({
                 "status": "completed" if completed else gateway.get("status", "failed"),
                 "completed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -3290,7 +3462,8 @@ class Handler(SimpleHTTPRequestHandler):
                 ],
                 "resulting_state": resulting_state["state"],
                 "diagram_task": diagram_task_info,
-                "agent_call_count": 1 + diagram_agent_calls,
+                "claim_verification": verification_info,
+                "agent_call_count": 1 + diagram_agent_calls + int(verification_info.get("agent_call_count", 0) or 0),
                 **gateway_routing_fields(gateway),
             })
             if not completed:

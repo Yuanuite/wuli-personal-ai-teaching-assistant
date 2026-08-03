@@ -272,6 +272,91 @@ def _loop_snapshot(
     }
 
 
+def run_claim_verification_batches(
+    semantic_requests: list[dict[str, Any]],
+    source_facts: list[dict[str, Any]],
+    stage_runner: Callable[[str, dict[str, Any]], dict[str, Any]],
+    *,
+    stage_interface_view: dict[str, Any] | None = None,
+    claim_verifier_concurrency: int | None = None,
+    log_prefix: str = "w3_shadow",
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], int, float]:
+    """Run the isolated claim-verifier batches shared by W3 and core-first (D3).
+
+    Returns ``(audit_batches, semantic_certificates, concurrency, duration)``.
+    The stage runner must accept ``("claim-verifier", {verification_view,
+    expected_claim_versions, batch_index})`` and return the normalized audit
+    payload with a trusted ``_runtime_identity`` attachment.
+    """
+    batch_inputs = []
+    for batch_index, start in enumerate(range(0, len(semantic_requests), 8)):
+        view = claim_verification_view(semantic_requests[start : start + 8], source_facts)
+        if batch_index == 0 and stage_interface_view is not None:
+            view["stage_interface_view"] = stage_interface_view
+        expected_versions = {item["claim"]["id"]: item["claim"]["version"] for item in view["requests"]}
+        batch_inputs.append((batch_index, view, expected_versions))
+
+    def run_audit_batch(batch_input):
+        batch_index, view, expected_versions = batch_input
+        batch_audit = stage_runner(
+            "claim-verifier",
+            {
+                "verification_view": view,
+                "expected_claim_versions": expected_versions,
+                "batch_index": batch_index,
+            },
+        )
+        runtime_identity = batch_audit.pop("_runtime_identity", {})
+        input_fingerprints = {
+            (
+                item["claim"]["id"],
+                item["claim"]["version"],
+            ): item["input_fingerprint"]
+            for item in view["requests"]
+        }
+        certificates = materialize_claim_certificates(
+            batch_audit,
+            input_fingerprints,
+            model_id=str(runtime_identity.get("model_id", "")),
+            provider=str(runtime_identity.get("provider", "")),
+            context_isolated=bool(runtime_identity.get("context_isolated")),
+        )
+        return batch_audit, certificates
+
+    concurrency = (
+        correctness_policy.claim_verify_concurrency()
+        if claim_verifier_concurrency is None
+        else int(claim_verifier_concurrency)
+    )
+    if not 1 <= concurrency <= correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY:
+        raise ValueError(
+            f"claim_verifier_concurrency must be between 1 and {correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY}"
+        )
+    audit_started = time.monotonic()
+    if concurrency > 1 and len(batch_inputs) > 1:
+        with ThreadPoolExecutor(
+            max_workers=min(concurrency, len(batch_inputs)),
+            thread_name_prefix="claim-verify",
+        ) as executor:
+            batch_results = list(executor.map(run_audit_batch, batch_inputs))
+    else:
+        batch_results = [run_audit_batch(item) for item in batch_inputs]
+    audit_duration_seconds = round(time.monotonic() - audit_started, 4)
+    logger.info(
+        "stage=%s audit=completed batch_count=%d concurrency=%d duration_seconds=%.4f certificate_count=%d",
+        log_prefix,
+        len(batch_inputs),
+        concurrency,
+        audit_duration_seconds,
+        sum(len(item[1]) for item in batch_results),
+    )
+    audit_batches = [item[0] for item in batch_results]
+    semantic_certificates = [
+        certificate for _, batch_certificates in batch_results for certificate in batch_certificates
+    ]
+    return audit_batches, semantic_certificates, concurrency, audit_duration_seconds
+
+
 def run_claim_evidence_shadow(
     problem: str,
     blueprint: dict[str, Any],
@@ -369,75 +454,17 @@ def run_claim_evidence_shadow(
             "conditions": [],
         }
     ]
-    batch_inputs = []
-    for batch_index, start in enumerate(range(0, len(semantic_requests), 8)):
-        view = claim_verification_view(semantic_requests[start : start + 8], source_facts)
-        if batch_index == 0:
-            view["stage_interface_view"] = {
-                "interfaces": solver_a.get("stage_interfaces", []),
-                "transitions": solver_a.get("stage_transitions", []),
-                "deterministic_report": deterministic_interface_report,
-            }
-        expected_versions = {item["claim"]["id"]: item["claim"]["version"] for item in view["requests"]}
-        batch_inputs.append((batch_index, view, expected_versions))
-
-    def run_audit_batch(batch_input):
-        batch_index, view, expected_versions = batch_input
-        batch_audit = stage_runner(
-            "claim-verifier",
-            {
-                "verification_view": view,
-                "expected_claim_versions": expected_versions,
-                "batch_index": batch_index,
-            },
-        )
-        runtime_identity = batch_audit.pop("_runtime_identity", {})
-        input_fingerprints = {
-            (
-                item["claim"]["id"],
-                item["claim"]["version"],
-            ): item["input_fingerprint"]
-            for item in view["requests"]
-        }
-        certificates = materialize_claim_certificates(
-            batch_audit,
-            input_fingerprints,
-            model_id=str(runtime_identity.get("model_id", "")),
-            provider=str(runtime_identity.get("provider", "")),
-            context_isolated=bool(runtime_identity.get("context_isolated")),
-        )
-        return batch_audit, certificates
-
-    concurrency = (
-        correctness_policy.claim_verify_concurrency()
-        if claim_verifier_concurrency is None
-        else int(claim_verifier_concurrency)
+    audit_batches, semantic_certificates, concurrency, audit_duration_seconds = run_claim_verification_batches(
+        semantic_requests,
+        source_facts,
+        stage_runner,
+        stage_interface_view={
+            "interfaces": solver_a.get("stage_interfaces", []),
+            "transitions": solver_a.get("stage_transitions", []),
+            "deterministic_report": deterministic_interface_report,
+        },
+        claim_verifier_concurrency=claim_verifier_concurrency,
     )
-    if not 1 <= concurrency <= correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY:
-        raise ValueError(
-            f"claim_verifier_concurrency must be between 1 and {correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY}"
-        )
-    audit_started = time.monotonic()
-    if concurrency > 1 and len(batch_inputs) > 1:
-        with ThreadPoolExecutor(
-            max_workers=min(concurrency, len(batch_inputs)),
-            thread_name_prefix="w3-claim-verify",
-        ) as executor:
-            batch_results = list(executor.map(run_audit_batch, batch_inputs))
-    else:
-        batch_results = [run_audit_batch(item) for item in batch_inputs]
-    audit_duration_seconds = round(time.monotonic() - audit_started, 4)
-    logger.info(
-        "stage=w3_shadow audit=completed batch_count=%d concurrency=%d duration_seconds=%.4f certificate_count=%d",
-        len(batch_inputs),
-        concurrency,
-        audit_duration_seconds,
-        sum(len(item[1]) for item in batch_results),
-    )
-    audit_batches = [item[0] for item in batch_results]
-    semantic_certificates = [
-        certificate for _, batch_certificates in batch_results for certificate in batch_certificates
-    ]
     audit = {
         "status": (
             "completed"
