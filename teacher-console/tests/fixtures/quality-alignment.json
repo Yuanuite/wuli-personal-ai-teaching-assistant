@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "work_tree": "core-failure-attribution-repair D4",
+  "description": "7 月教师审核黄金对照集与六维质量清单；E2E analysis-core-quality-alignment 用 D1-D3 链重跑对照集题干并断言六维。对照集只读参照 student-site/ 七月样本，不修改公开发布产物。",
+  "source": "student-site/catalog.json difficulty.score>=60",
+  "rubric": [
+    {
+      "id": "five-sections",
+      "dimension": "五段齐全且内容针对本题",
+      "check": "student-solution.md 含答案速览/一眼识别/详细解答/易错点/30 秒自测五段，且每条 claim 的 final_answer 与 key_relations 逐字出现"
+    },
+    {
+      "id": "cross-target-references",
+      "dimension": "跨小问引用正确",
+      "check": "每个 target claim 在详细解答段内有独立编号步骤引用，结论与 claim id 一一对应，不串问"
+    },
+    {
+      "id": "paired-pitfalls",
+      "dimension": "易错点错误表现+纠正策略成对",
+      "check": "易错点段每条同时含「错误表现」与「纠正策略」，条数覆盖全部 claim"
+    },
+    {
+      "id": "conditioned-conclusions",
+      "dimension": "二级结论带适用条件",
+      "check": "一眼识别段含二级结论且显式标注适用条件"
+    },
+    {
+      "id": "static-svg",
+      "dimension": "静态 SVG 图示存在",
+      "check": "复杂题自动排队的 diagram 产物 assets/explanatory.svg 存在"
+    },
+    {
+      "id": "dimension-checks",
+      "dimension": "量纲/适用条件核对项列出",
+      "check": "30 秒自测段逐 target 列出量纲与适用条件核对项"
+    }
+  ],
+  "golden_set": [
+    {
+      "id": "question-1edcc8241bf2",
+      "title": "方波电场与匀强磁场中的带电粒子运动",
+      "difficulty_score": 66,
+      "july_quality_features": "五段齐全；5 个编号步骤；易错点成对；半圆几何与方波周期逐段核对；静态 SVG 关键关系图"
+    },
+    {
+      "id": "question-ccdf4cfc702c",
+      "title": "交替电场与磁场中带电粒子的分段运动",
+      "difficulty_score": 80,
+      "july_quality_features": "五段齐全；5 个编号步骤；易错点强调磁场力不做功与时间窗枚举；二级结论带适用条件；静态 SVG"
+    },
+    {
+      "id": "question-4a1ddcd4877a",
+      "title": "三维复合场中电子的类平抛、螺旋运动与共圆心条件",
+      "difficulty_score": 82,
+      "july_quality_features": "五段齐全；4 个编号步骤；易错点覆盖负电荷受力方向与螺旋分解；共圆心条件带适用条件；静态 SVG"
+    },
+    {
+      "id": "question-83c1f4acef52",
+      "title": "两种材料圆环的感应电动势与端电压",
+      "difficulty_score": 67,
+      "july_quality_features": "五段齐全；3 个编号步骤；易错点区分感应电动势与端电压；感生电动势按圆心角分配带适用条件；静态 SVG"
+    },
+    {
+      "id": "question-212ecbad04d3",
+      "title": "带电粒子在同心圆复合场中的运动",
+      "difficulty_score": 67,
+      "july_quality_features": "五段齐全；截止条件枚举第三次进入；二级结论 r=R_tan(theta/2) 显式标注适用条件；静态 SVG"
+    }
+  ]
+}

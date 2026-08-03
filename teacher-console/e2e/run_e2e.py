@@ -66,6 +66,10 @@ SCENARIOS = (
     # Work-tree core-failure-attribution-repair D2: complex problems auto-queue
     # the static diagram after a successful rich solve; simple problems do not.
     "analysis-core-diagram-autoqueue.e2e.mjs",
+    # Work-tree core-failure-attribution-repair D4: July golden-set acceptance
+    # replays five teacher-reviewed complex problems through the D1-D3 chain
+    # and asserts the six-dimension quality rubric.
+    "analysis-core-quality-alignment.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).
@@ -75,6 +79,7 @@ VISUAL_SCENARIOS = {
     "visual-blurred-fail-closed.e2e.mjs": "blurred",
     "static-diagram-collaboration.e2e.mjs": "clear",
     "analysis-core-diagram-autoqueue.e2e.mjs": "clear",
+    "analysis-core-quality-alignment.e2e.mjs": "clear",
 }
 VISUAL_FIXTURES = {
     "clear": CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png",

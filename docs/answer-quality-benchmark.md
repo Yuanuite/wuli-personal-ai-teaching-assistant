@@ -104,3 +104,12 @@ W2 首批真实网页验收覆盖中等、较难、挑战各 1 题。三题的�
 首轮分层试验、人工复核结论及检索证据计数记录在
 `student-error-library/evals/answer-paired-v1/result-summary.md`。若网页运行的
 `evidence_reference_count=0`，不得把该轮答案变化归因于 RAG。
+
+## 复杂题黄金对照集（自动化验收）
+
+成对评测之外，复杂题（`complexity_screen` 判 `decompose`）的生成质量用 7 月教师
+审核黄金对照集做自动化回归：对照集与六维清单落档于
+`teacher-console/tests/fixtures/quality-alignment.json`，由 E2E
+`analysis-core-quality-alignment` 重放题干跑 D1-D3 链并逐维断言；验收结果与排查
+沉淀记录在 `docs/reports/complex-quality-alignment-report.md`。对照集只读参照
+`student-site/` 七月样本，不修改公开发布产物。

@@ -1,5 +1,19 @@
 # 变更记录
 
+## 2026-08-04：复杂题质量对齐链落地与 7 月样本验收（core-failure-attribution-repair D1-D4）
+
+- 复杂题 rich 五段契约（D1）：`complexity_screen` 判 `decompose` 的题目改用
+  `wuli.core-rich.v2`，学生版产出答案速览/一眼识别/详细解答/易错点/30 秒自测五段。
+- 复杂题自动排队 diagram（D2）：rich 答案物化成功后自动排队 `diagram.scene`，
+  两次调用预算与实际计数写入 analysis-request。
+- 复杂题自动 claim 验证（D3）：复用 W3 claim-verifier 批次机制，独立 verifier
+  全 pass 才置 `answer_status=canonical`，否则 provisional 并列教师裁决清单；
+  产物落盘 `claim-verification.json`。
+- 7 月样本对照集验收（D4）：5 道难度分 ≥60 的黄金题重放 D1-D3 链，六维清单
+  （五段齐全/跨问引用/易错点成对/二级结论带适用条件/静态 SVG/量纲核对项）全通过；
+  对照集与清单落档 `teacher-console/tests/fixtures/quality-alignment.json`，报告见
+  `docs/reports/complex-quality-alignment-report.md`，E2E 场景总数 24。
+
 ## 2026-08-03：可视化审批对称失效与难度量表自动保存
 
 - 可视化审批对称失效（viz-review-stale-on-answer-edit）：答案 Markdown 编辑后，若可视化已批准则自动标记为 `stale`，与“可视化生成使答案审批失效”对称。

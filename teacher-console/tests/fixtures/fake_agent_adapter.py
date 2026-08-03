@@ -2,6 +2,7 @@
 """Deterministic JSON Agent adapter used only by teacher-console tests."""
 
 import json
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -231,16 +232,26 @@ def _fake_rich_student_markdown(claims):
             lines.extend(f"\n- {relation}" for relation in claim["key_relations"])
             lines.append(f"\n因此，{claim['final_answer']}。")
         blocks.append("\n".join(lines))
+    # Work-tree D4: mirror the July teacher-reviewed quality contract — paired
+    # pitfall items, conditioned secondary conclusions and per-target
+    # dimension/applicability checks.
+    pitfalls = "\n".join(
+        f"- **错误表现**：套用 {claim['id']} 的结论时未核对题设边界与分支条件。"
+        f" → **纠正策略**：回到 {claim['key_relations'][0]}，先确认适用条件再代入。"
+        for claim in claims
+    )
+    selftest = "\n".join(
+        f"- {claim['id']}：核对量纲与适用条件，独立复算 {claim['final_answer']}" for claim in claims
+    )
     return (
         f"## 答案速览\n\n{quick}\n\n"
         "## 一眼识别\n\n"
-        "- **最短主线**：逐问建立决定性关系，得到结论后检查题设边界。\n\n"
+        "- **最短主线**：逐问建立决定性关系，得到结论后检查题设边界。\n"
+        "- **二级结论**：临界与边界关系只在题设条件成立时有效（适用条件：题目给定过程与方向不变）。\n\n"
         "## 详细解答\n\n"
         + "\n\n".join(blocks)
-        + "\n\n## 易错点\n\n"
-        "- 复核本题的符号、方向、分支与题设边界是否一致。\n\n"
-        "## 30 秒自测\n\n"
-        "能否只用上述决定性关系，独立复算每个最终结论并检查适用条件？\n"
+        + f"\n\n## 易错点\n\n{pitfalls}\n\n"
+        f"## 30 秒自测\n\n{selftest}\n"
     )
 
 
@@ -254,12 +265,22 @@ def core_solve_payload(task, problem):
     calls = _fake_core_call_count(entry_dir)
     _fake_core_call_path(entry_dir).write_text(str(calls + 1), encoding="utf-8")
     charged = "带电粒子" in problem
-    final_answer = "临界磁感应强度为 $B^*=3mv_0/(qd)$" if charged else "物体的加速度为 $a=F/m$"
-    derivation = (
-        ["由 $qvB=mv^2/r$ 与临界相切条件联立，解得 $B^*=3mv_0/(qd)$"]
-        if charged
-        else ["水平方向由牛顿第二定律 $F=ma$，解得 $a=F/m$"]
-    )
+    # Derive every subscripted symbol from the problem statement itself (the
+    # July golden set writes $U_0$/$t_0$ rather than $v_0$); the deterministic
+    # physics gate rejects final answers whose symbols never appear in the
+    # problem text or the derivation.
+    subscripted = sorted({match for match in re.findall(r"\$[A-Za-z]+_0\$", problem)} or {"$v_0$"})
+    symbol_clause = "、".join(subscripted)
+    lead_symbol = subscripted[0].strip("$")
+    if charged:
+        final_answer = f"临界磁感应强度为 $B^*=3m{lead_symbol}/(qd)$"
+        derivation = [
+            f"设题给量 {symbol_clause}，质量 $m$、电荷量 $q$、特征长度 $d$、磁感应强度 $B$；"
+            f"由 $qvB=mv^2/r$ 与临界相切条件联立，解得 $B^*=3m{lead_symbol}/(qd)$"
+        ]
+    else:
+        final_answer = "物体的加速度为 $a=F/m$"
+        derivation = ["设质量 $m$、合外力 $F$；水平方向由牛顿第二定律 $F=ma$，解得 $a=F/m$"]
     gate_reject = (
         "[gate-reject-always]" in problem
         or ("[gate-reject-first-attempt]" in problem and calls == 0)
@@ -277,7 +298,7 @@ def core_solve_payload(task, problem):
         if cross_ref and item["id"] != first_id:
             # A1 scenario: later sub-questions legitimately cite an earlier
             # target id; the physics gate must not flag it as undefined.
-            return f"代入 {first_id} 的结果，得临界磁感应强度 $B^*=3mv_0/(qd)$"
+            return f"代入 {first_id} 的结果，得临界磁感应强度 $B^*=3m{lead_symbol}/(qd)$"
         return final_answer
 
     claims = [
