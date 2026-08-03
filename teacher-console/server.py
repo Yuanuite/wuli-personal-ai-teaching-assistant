@@ -2884,13 +2884,13 @@ class Handler(SimpleHTTPRequestHandler):
             for relative, content in files.items():
                 kb.write_text(entry / relative, content)
         except Exception:
-            for relative, content in originals.items():
+            for relative, original_bytes in originals.items():
                 target = entry / relative
-                if content is None:
+                if original_bytes is None:
                     if target.exists():
                         target.unlink()
                 else:
-                    target.write_bytes(content)
+                    target.write_bytes(original_bytes)
             raise
 
         marked = mark_answer_needs_review(
@@ -3052,7 +3052,8 @@ class Handler(SimpleHTTPRequestHandler):
         decision["observed_metrics"]["fallback_used"] = True
         fallback_started = time.monotonic()
         result = self.run_analysis(entry, data)
-        fallback["w2_latency_seconds"] = round(time.monotonic() - fallback_started, 4)
+        elapsed: float = time.monotonic() - fallback_started
+        fallback["w2_latency_seconds"] = round(elapsed, 4)
         fallback["w2_status"] = str(result.get("status", "failed"))
         decision["observed_metrics"]["latency_seconds"] = round(time.monotonic() - started, 4)
         decision["observed_metrics"]["selected_route"] = "w2"
@@ -3102,7 +3103,7 @@ class Handler(SimpleHTTPRequestHandler):
                 model_config,
             )
             config = core_config or core_analysis.DEFAULT_ROUTING
-            task["timeout_seconds"] = int(config.get("max_latency_seconds", 90))
+            task["timeout_seconds"] = int(cast(int, config.get("max_latency_seconds", 90)))
             request = {
                 "schema_version": 1,
                 "entry_id": entry.name,
