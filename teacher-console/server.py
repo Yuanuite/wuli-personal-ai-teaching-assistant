@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import builtins
 import difflib
 import hashlib
 import json
@@ -3044,7 +3043,7 @@ class Handler(SimpleHTTPRequestHandler):
                     "policy": "stop-after-w3-failure",
                 },
             )
-        fallback = {
+        fallback: dict[str, Any] = {
             "from": "w3",
             "to": "w2",
             "reason_codes": sorted(set(readiness_errors)),
@@ -3053,8 +3052,8 @@ class Handler(SimpleHTTPRequestHandler):
         decision["observed_metrics"]["fallback_used"] = True
         fallback_started = time.monotonic()
         result = self.run_analysis(entry, data)
-        elapsed_w2: float = time.monotonic() - fallback_started
-        fallback["w2_latency_seconds"] = builtins.round(elapsed_w2, 4)
+        elapsed_w2 = time.monotonic() - fallback_started
+        fallback["w2_latency_seconds"] = int(elapsed_w2 * 10000) / 10000
         fallback["w2_status"] = str(result.get("status", "failed"))
         decision["observed_metrics"]["latency_seconds"] = round(time.monotonic() - started, 4)
         decision["observed_metrics"]["selected_route"] = "w2"
