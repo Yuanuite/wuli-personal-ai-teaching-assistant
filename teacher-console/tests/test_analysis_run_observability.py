@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -35,7 +36,7 @@ FIXTURE = ROOT / "teacher-console" / "tests" / "fixtures" / "analysis-run" / "re
 
 
 def _load_fixture() -> dict:
-    return json.loads(FIXTURE.read_text(encoding="utf-8"))
+    return cast(dict, json.loads(FIXTURE.read_text(encoding="utf-8")))
 
 
 class TruncationDiagnosisTest(unittest.TestCase):
@@ -87,6 +88,7 @@ class FailureEnvelopeTest(unittest.TestCase):
             '"request_count": 1, "message": "reached max_tokens"}'
         )
         envelope = _parse_failure_envelope(stderr)
+        assert envelope is not None
         self.assertEqual(envelope["finish_reason"], "length")
         self.assertEqual(envelope["content_chars"], 0)
         self.assertEqual(envelope["reasoning_chars"], 18547)
@@ -95,7 +97,7 @@ class FailureEnvelopeTest(unittest.TestCase):
 
     def test_parse_envelope_ignores_unmarked_stderr(self):
         self.assertIsNone(_parse_failure_envelope("some random stderr without marker"))
-        self.assertIsNone(_parse_failure_envelope(None))
+        self.assertIsNone(_parse_failure_envelope(cast(str, None)))
 
     def test_envelope_never_contains_reasoning_body_or_keys(self):
         with tempfile.TemporaryDirectory() as _:

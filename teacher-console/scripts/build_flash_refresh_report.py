@@ -11,6 +11,7 @@ import statistics
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 REVIEW = {
     1: ["optical-surface-equation-wrong", "beam-radius-ratio-wrong"],
@@ -25,7 +26,7 @@ REVIEW = {
 
 
 def load(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(dict, json.loads(path.read_text(encoding="utf-8")))
 
 
 def digest(path: Path) -> str:

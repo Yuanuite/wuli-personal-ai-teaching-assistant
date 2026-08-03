@@ -35,6 +35,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
@@ -164,7 +165,7 @@ def _iso_seconds(start: str | None, end: str | None) -> float | None:
     s, e = _parse_iso(start), _parse_iso(end)
     if s is None or e is None:
         return None
-    return max(0.0, (e - s).total_seconds())
+    return cast(float, max(0.0, (e - s).total_seconds()))
 
 
 def _safe_artifact_refs(paths, entry_name: str) -> tuple[list[str], list[str]]:
@@ -1681,8 +1682,9 @@ def build_report(job: dict, entry_dir: Path, library: Path, *, job_id: str | Non
         "terminal": terminal,
         "redactions": list(REDACTED_CATEGORIES),
     }
-    report["verification_summary"]["exit_code"] = evaluate_exit(report, count_problems)
-    report["verification_summary"]["exit_reason"] = _exit_reason(report, count_problems)
+    verification_summary: dict[str, Any] = report["verification_summary"]
+    verification_summary["exit_code"] = evaluate_exit(report, count_problems)
+    verification_summary["exit_reason"] = _exit_reason(report, count_problems)
     return report
 
 

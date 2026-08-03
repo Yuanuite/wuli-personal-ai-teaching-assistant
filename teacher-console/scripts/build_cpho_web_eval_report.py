@@ -12,6 +12,7 @@ import statistics
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from typing import cast
 
 ROOT = Path("/private/tmp/cpho-2021-web-pipeline-v1")
 LIBRARY = ROOT / "web-workspace" / "student-error-library"
@@ -92,7 +93,7 @@ def now() -> str:
 
 
 def load(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(dict, json.loads(path.read_text(encoding="utf-8")))
 
 
 def digest(path: Path) -> str:
