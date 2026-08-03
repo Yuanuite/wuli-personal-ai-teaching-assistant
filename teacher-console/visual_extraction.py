@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 from datetime import datetime
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
@@ -100,10 +101,10 @@ def extract_visual_facts(
     review_payload: dict,
     expected_source_fingerprint: str,
     *,
-    model_resolver: callable,
+    model_resolver: Callable[..., Any],
     expected_runtime_identity: dict,
     allow_remote: bool,
-    urlopen: callable,
+    urlopen: Callable[..., Any],
     routing_tier: str = "auto",
 ) -> dict:
     """Extract visual facts through the registry-routed model."""
@@ -319,7 +320,7 @@ def run_vision_probe(
     config: dict,
     image_path: str,
     *,
-    urlopen: callable,
+    urlopen: Callable[..., Any],
     allow_remote: bool,
 ) -> dict:
     """Probe a vision-capable model with a synthetic, privacy-free image.
