@@ -13,6 +13,9 @@ import claim_ledger
 import cognitive_loop
 import proof_aggregation
 import solution_reasoning
+from log import TraceContext, get_logger
+
+logger = get_logger("w3_pipeline")
 
 from problem_decomposition import complexity_screen, infer_default_obligation_suggestions
 from solution_verification import (
@@ -312,6 +315,8 @@ def run_claim_evidence_shadow(
     claim_verifier_concurrency: int | None = None,
 ) -> dict[str, Any]:
     """Run the claim verifier as a private extension of an existing W3 solve."""
+    with TraceContext("w3-claim-evidence-shadow", log=logger) as ctx:
+        ctx.info("stage=w3_shadow status=started cognitive_loop_enabled=%s", cognitive_loop_enabled)
     input_fingerprint = claim_ledger.stable_fingerprint(
         "w3-claim-evidence-input-v1",
         {
@@ -468,6 +473,13 @@ def run_claim_evidence_shadow(
     else:
         batch_results = [run_audit_batch(item) for item in batch_inputs]
     audit_duration_seconds = round(time.monotonic() - audit_started, 4)
+    logger.info(
+        "stage=w3_shadow audit=completed batch_count=%d concurrency=%d duration_seconds=%.4f certificate_count=%d",
+        len(batch_inputs),
+        concurrency,
+        audit_duration_seconds,
+        sum(len(item[1]) for item in batch_results),
+    )
     audit_batches = [item[0] for item in batch_results]
     semantic_certificates = [
         certificate
@@ -560,9 +572,11 @@ def run_claim_evidence_shadow(
         if interface_audit.get("verdict") == "pass":
             interface_report["status"] = "pass"
             interface_report["semantic_verification"] = interface_audit
+            logger.info("stage=w3_shadow interface_status=upgraded_to_pass")
         elif interface_audit.get("verdict") == "conflict":
             interface_report["status"] = "conflict"
             interface_report["semantic_verification"] = interface_audit
+            logger.warning("stage=w3_shadow interface_status=downgraded_to_conflict")
         else:
             interface_report["semantic_verification"] = interface_audit
     aggregation_args = {
@@ -577,12 +591,21 @@ def run_claim_evidence_shadow(
         certificates,
         **aggregation_args,
     )
+    logger.info(
+        "stage=w3_shadow aggregation_status=%s verified_count=%d",
+        aggregation["status"],
+        len(aggregation["claim_evidence"]["verified_claim_ids"]),
+    )
     if cognitive_loop_enabled:
         challenges = _challenge_tickets_from_evidence(
             aggregation,
             snapshot_version=snapshot["snapshot_version"],
         )
         if challenges:
+            logger.info(
+                "stage=w3_shadow challenge_count=%d re-aggregating",
+                len(challenges),
+            )
             aggregation = proof_aggregation.aggregate_proof(
                 snapshot["claims"],
                 certificates,
@@ -590,6 +613,11 @@ def run_claim_evidence_shadow(
                 **aggregation_args,
             )
         loop = _loop_snapshot(aggregation, certificates, challenges)
+        logger.info(
+            "stage=w3_shadow loop_action=%s fuse_triggered=%s",
+            loop["transition"]["action"] if isinstance(loop.get("transition"), dict) else "N/A",
+            loop["fuse_triggered"],
+        )
     else:
         challenges = []
         loop = {
@@ -602,6 +630,7 @@ def run_claim_evidence_shadow(
             "repeated_task_count": 0,
             "fuse_triggered": False,
         }
+        logger.info("stage=w3_shadow cognitive_loop=disabled")
     return {
         "status": "completed",
         "policy": correctness_policy.CORRECTNESS_POLICY_VERSION,

@@ -8,6 +8,9 @@ from typing import Any
 import claim_ledger
 import claim_validation
 import cognitive_loop
+from log import TraceContext, get_logger
+
+logger = get_logger("proof_aggregation")
 
 AGGREGATION_POLICY = "wuli.proof-aggregation.v1"
 
@@ -39,6 +42,14 @@ def aggregate_proof(
     generator_identities: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Always expose complete final candidates; add VERIFIED only when earned."""
+    trace_id = f"aggregate-{claim_ledger.stable_fingerprint('proof-aggregate-input-v1', {'targets': sorted(expected_target_ids)})[:16]}"
+    with TraceContext(trace_id, log=logger) as ctx:
+        ctx.info(
+            "stage=aggregate_proof status=started claim_count=%d certificate_count=%d target_count=%d",
+            len(claims),
+            len(certificates),
+            len(expected_target_ids),
+        )
     evidence = claim_validation.evaluate_claim_graph_evidence(
         claims,
         certificates,
@@ -128,6 +139,13 @@ def aggregate_proof(
     else:
         status = "VERIFIED"
 
+    logger.info(
+        "stage=aggregate_proof status=%s final_claim_count=%d issue_count=%d open_challenge_count=%d",
+        status,
+        len(final_claims),
+        len(issues),
+        len(active_challenges),
+    )
     return {
         "schema_version": 1,
         "policy": AGGREGATION_POLICY,

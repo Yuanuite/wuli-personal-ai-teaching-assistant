@@ -14,6 +14,9 @@ from typing import Any
 
 import correctness_policy
 import structured_text
+from log import get_logger
+
+logger = get_logger("claim_ledger")
 
 LEDGER_CONTRACT = "wuli.claim-ledger.v1"
 CERTIFICATE_CONTRACT = "wuli.verification-certificate.v1"
@@ -366,6 +369,13 @@ def normalize_graph_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
     task_ids = [item["task_id"] for item in tasks]
     if len(task_ids) != len(set(task_ids)):
         raise ValueError("snapshot tasks must have unique task_id values")
+    logger.info(
+        "stage=graph_snapshot status=normalized snapshot_version=%d claim_count=%d certificate_count=%d task_count=%d",
+        raw["snapshot_version"],
+        len(claims),
+        len(certificates),
+        len(tasks),
+    )
     return {
         "schema_version": 1,
         "snapshot_version": _clean_positive_int(
@@ -523,6 +533,7 @@ def active_claims(claims: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         raise ValueError("claims must be an array")
     resolved: dict[str, dict[str, Any]] = {}
     seen_versions: set[tuple[str, int]] = set()
+    superseded_count = 0
     for raw in claims:
         claim = normalize_claim(raw, agent_submission=False)
         key = (claim["id"], claim["version"])
@@ -530,12 +541,19 @@ def active_claims(claims: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             raise ValueError("claims must have unique id/version pairs")
         seen_versions.add(key)
         if claim["status"] == "superseded":
+            superseded_count += 1
             continue
         if claim["id"] in resolved:
             raise ValueError(
                 f"claim {claim['id']} has multiple non-superseded versions"
             )
         resolved[claim["id"]] = claim
+    if superseded_count:
+        logger.info(
+            "stage=active_claims resolved_count=%d superseded_count=%d",
+            len(resolved),
+            superseded_count,
+        )
     return resolved
 
 
@@ -661,7 +679,13 @@ def dependency_impact_cone(
                 visited.add(child_id)
                 frontier.append(child_id)
     order = topological_claim_ids(claims)
-    return [claim_id for claim_id in order if claim_id in affected]
+    result = [claim_id for claim_id in order if claim_id in affected]
+    logger.info(
+        "stage=impact_cone changed_count=%d affected_count=%d",
+        len(changed_claim_ids),
+        len(result),
+    )
+    return result
 
 
 def _legacy_projection_id(role: str, source_id: str, index: int = 0) -> str:
@@ -839,5 +863,11 @@ def project_legacy_solution(
         snapshot["claims"],
         expected_target_ids=target_ids,
         expected_obligation_ids=obligation_ids,
+    )
+    logger.info(
+        "stage=legacy_projection status=completed snapshot_version=%d claim_count=%d target_count=%d",
+        snapshot_version,
+        len(snapshot["claims"]),
+        len(target_ids),
     )
     return snapshot

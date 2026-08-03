@@ -12,6 +12,9 @@ from typing import Any
 import claim_ledger
 import correctness_policy
 import structured_text
+from log import get_logger
+
+logger = get_logger("cognitive_loop")
 
 _ID_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9._-]{0,79}$")
 _DIRECTION_KEY_PATTERN = re.compile(r"^[+-]?[A-Za-z][A-Za-z0-9._-]{0,31}$")
@@ -502,6 +505,14 @@ def check_stage_interfaces(
         status = "provisional"
     else:
         status = "pass"
+    logger.info(
+        "stage=interface_check status=%s interface_count=%d transition_count=%d hard_issues=%d semantic_issues=%d",
+        status,
+        len(normalized_interfaces),
+        len(normalized_transitions),
+        len(hard_issues),
+        len(semantic_issues),
+    )
     return {
         "status": status,
         "interface_count": len(normalized_interfaces),
@@ -684,6 +695,12 @@ def diagnose_minimal_conflict(
         conflict_class = "decomposition"
         rationale = "no narrower deterministic cause is available; revisit decomposition"
 
+    logger.info(
+        "stage=conflict_diagnosis challenge_id=%s conflict_class=%s minimal_root_count=%d",
+        ticket["id"],
+        conflict_class,
+        len(minimal_roots),
+    )
     return {
         "challenge_id": ticket["id"],
         "snapshot_version": ticket["snapshot_version"],
@@ -725,6 +742,12 @@ def invalidate_dependency_cone(
         claim_ledger.dependency_impact_cone(
             claims, root_claim_ids, include_changed=False
         )
+    )
+    logger.info(
+        "stage=backjump challenge_id=%s root_count=%d affected_count=%d",
+        normalized_challenge_id,
+        len(root_claim_ids),
+        len(affected),
     )
     topological_order = claim_ledger.topological_claim_ids(claims)
     rebuild_order = [
@@ -923,6 +946,14 @@ def advance_loop_control(
     normalized_evidence = str(evidence_status).strip().upper()
     if normalized_evidence not in {"VERIFIED", "PROVISIONAL", "UNRESOLVED"}:
         raise ValueError("evidence_status is invalid")
+    logger.info(
+        "stage=loop_advance iteration=%d transition_count=%d stagnant_rounds=%d strategy_index=%d evidence_status=%s",
+        current["iteration"],
+        current["transition_count"],
+        current["stagnant_rounds"],
+        current["strategy_index"],
+        normalized_evidence,
+    )
     settings = dict(DEFAULT_LOOP_POLICY)
     if policy is not None:
         if set(policy) != set(DEFAULT_LOOP_POLICY):
@@ -941,6 +972,7 @@ def advance_loop_control(
     }
     if normalized_evidence == "VERIFIED":
         next_control["terminal_status"] = "VERIFIED"
+        logger.info("stage=loop_advance action=stop-verified iteration=%d", next_control["iteration"])
         return {
             "action": "stop-verified",
             "control": next_control,
@@ -951,6 +983,12 @@ def advance_loop_control(
     if next_control["transition_count"] >= settings["max_transitions"]:
         next_control["terminal_status"] = (
             "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
+        )
+        logger.warning(
+            "stage=loop_advance action=hard-fuse transition_count=%d max=%d terminal_status=%s",
+            next_control["transition_count"],
+            settings["max_transitions"],
+            next_control["terminal_status"],
         )
         return {
             "action": "hard-fuse",
@@ -976,6 +1014,10 @@ def advance_loop_control(
         if next_control["strategy_index"] + 1 < settings["strategy_count"]:
             next_control["strategy_index"] += 1
             next_control["stagnant_rounds"] = 0
+            logger.info(
+                "stage=loop_advance action=switch-strategy new_strategy_index=%d stagnant_rounds_reset",
+                next_control["strategy_index"],
+            )
             return {
                 "action": "switch-strategy",
                 "control": next_control,
@@ -984,6 +1026,10 @@ def advance_loop_control(
             }
         next_control["terminal_status"] = (
             "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
+        )
+        logger.warning(
+            "stage=loop_advance action=strategy-fuse all_strategies_exhausted terminal_status=%s",
+            next_control["terminal_status"],
         )
         return {
             "action": "strategy-fuse",
@@ -1175,12 +1221,23 @@ def add_hypothesis_to_pool(
     if len(pool) >= maximum_pool_size:
         reasons.append("hypothesis pool is full; unresolved status must be preserved")
     if reasons:
+        logger.info(
+            "stage=hypothesis_admission decision=rejected challenge_id=%s reason_count=%d",
+            ticket["id"],
+            len(reasons),
+        )
         return {
             "decision": "rejected",
             "reasons": reasons,
             "fingerprint": candidate_fingerprint,
             "pool": pool,
         }
+    logger.info(
+        "stage=hypothesis_admission decision=accepted challenge_id=%s hypothesis_id=%s pool_size=%d",
+        ticket["id"],
+        candidate["id"],
+        len(pool) + 1,
+    )
     return {
         "decision": "accepted",
         "reasons": [],
