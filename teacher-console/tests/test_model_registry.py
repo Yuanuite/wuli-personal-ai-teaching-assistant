@@ -131,6 +131,7 @@ class ModelRegistryTest(unittest.TestCase):
             "analysis-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}}
         )
         config = model_registry.model_config_for_task("analysis.generate", "analysis-model", "auto")
+        assert config is not None
         self.assertEqual(config["model"], "analysis-model")
 
     def test_claude_timeout_is_preserved_in_task_config(self):
@@ -152,6 +153,7 @@ class ModelRegistryTest(unittest.TestCase):
             "claude-analysis", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
         )
         config = model_registry.model_config_for_task("analysis.generate", "claude-analysis", "auto")
+        assert config is not None
         self.assertEqual(config["timeout_seconds"], "900")
 
     def test_claude_compatible_backend_credentials_are_preserved_per_model(self):
@@ -175,6 +177,7 @@ class ModelRegistryTest(unittest.TestCase):
             "deepseek-agent", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
         )
         config = model_registry.model_config_for_task("analysis.generate", "deepseek-agent", "auto")
+        assert config is not None
         self.assertEqual(config["base_url"], "http://127.0.0.1:9001")
         self.assertEqual(config["model"], "deepseek-agent-model")
         self.assertEqual(config["api_key"], "local-agent-token")
@@ -208,6 +211,7 @@ class ModelRegistryTest(unittest.TestCase):
             "remote-model", {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}}
         )
         config = model_registry.model_config_for_task("analysis.generate", "remote-model", "auto")
+        assert config is not None
         self.assertEqual(config["api_key"], "sk-local-secret")
 
     def test_blank_api_key_preserves_previous_saved_key(self):
@@ -302,6 +306,7 @@ class ModelRegistryTest(unittest.TestCase):
     def test_explicit_vision_model_is_accepted_with_trait_config(self):
         self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "auto", "vision-model"), "vision-model")
         config = model_registry.model_config_for_trait("vision", model_id="vision-model")
+        assert config is not None
         self.assertEqual(config["model"], "vision-model")
         self.assertTrue(config["traits"]["vision"])
 
@@ -328,6 +333,7 @@ class ModelRegistryTest(unittest.TestCase):
         entry = next(item for item in public if item["id"] == "vision-model")
         self.assertEqual(entry["vision_probe"]["status"], "passed")
         config = model_registry.model_config_for_trait("vision", model_id="vision-model")
+        assert config is not None
         self.assertEqual(config["model"], "vision-model")
         self.assertEqual(model_registry.model_config_for_trait("vision", routing_tier="auto")["model"], "vision-model")
 
