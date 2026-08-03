@@ -77,7 +77,8 @@ class CoreAnalysisTest(unittest.TestCase):
     def test_rejects_stale_target_binding(self):
         payload = self.payload()
         payload["target_brief_digest"] = "0" * 64
-        with self.assertRaisesRegex(ValueError, "target_brief_digest"):            core_analysis.normalize_payload(payload, self.brief)
+        with self.assertRaisesRegex(ValueError, "target_brief_digest"):
+            core_analysis.normalize_payload(payload, self.brief)
 
     def test_rejects_missing_target_instead_of_guessing_coverage(self):
         payload = self.payload()
