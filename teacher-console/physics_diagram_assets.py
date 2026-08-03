@@ -120,12 +120,11 @@ def _segment_points(segment: dict[str, Any]) -> list[tuple[float, float, float]]
     points: list[tuple[float, float, float]] = []
     for index in range(steps + 1):
         angle = math.radians(float(start) + sweep * index / steps)
-        points.append(
-            tuple(
-                center[axis] + float(radius) * (math.cos(angle) * basis_u[axis] + math.sin(angle) * basis_v[axis])
-                for axis in range(3)
-            )
-        )
+        coords = [
+            center[axis] + float(radius) * (math.cos(angle) * basis_u[axis] + math.sin(angle) * basis_v[axis])
+            for axis in range(3)
+        ]
+        points.append((coords[0], coords[1], coords[2]))
     return points
 
 
@@ -407,7 +406,10 @@ def compile_model_scene(
         else None
     )
     if start_event is not None:
-        start = normalize(_project(_point3(start_event["position"])))
+        position = _point3(start_event["position"])
+        if position is None:
+            position = (0.0, 0.0, 0.0)
+        start = normalize(_project(position))
         particle = next(
             (item for item in compiled.get("objects", []) if isinstance(item, dict) and item.get("kind") == "particle"),
             None,

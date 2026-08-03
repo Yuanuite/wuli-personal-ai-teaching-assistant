@@ -316,9 +316,10 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
 
     target_set, claim_set, step_set = set(target_ids), set(claim_ids), set(step_ids)
     for answer in answers:
-        if not set(answer["claim_ids"]).issubset(claim_set):
+        answer_claim_ids = list(answer["claim_ids"])
+        if not set(answer_claim_ids).issubset(claim_set):
             raise ValueError("final_answer references an unknown Claim")
-        supporting_claims = [item for item in claims if item["claim_id"] in answer["claim_ids"]]
+        supporting_claims = [item for item in claims if item["claim_id"] in answer_claim_ids]
         if not any(answer_signature(item["statement"]) == answer["answer_signature"] for item in supporting_claims):
             raise ValueError("final_answer signature is not sourced by its Claims")
         if (
