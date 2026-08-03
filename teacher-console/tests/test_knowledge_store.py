@@ -437,7 +437,7 @@ class KnowledgeStoreTest(unittest.TestCase):
         self.assertIn("轨迹衔接", additions)
 
     def test_query_runs_independent_routes_and_exposes_rrf_contributions(self):
-        fixtures: list[tuple[str, dict[str, Any], str, str]] = (
+        fixtures: list[tuple[str, dict[str, Any], str, str]] = [
             (
                 "cross-route-match",
                 {"knowledge_points": ["回旋半径判据"]},
@@ -446,17 +446,17 @@ class KnowledgeStoreTest(unittest.TestCase):
             ),
             (
                 "problem-route-match",
-                {},
+                dict[str, Any](),
                 "# 题目\n\n使用回旋半径判据。",
                 "",
             ),
             (
                 "solution-route-match",
-                {},
+                dict[str, Any](),
                 "# 题目\n\n判断粒子运动范围。",
                 "解析采用回旋半径判据，将轨迹半径与区域宽度比较。",
             ),
-        )
+        ]
         for entry_id, metadata, problem, solution in fixtures:
             entry = self.library / "entries" / entry_id
             entry.mkdir(parents=True)

@@ -298,7 +298,7 @@ class TestDiagramVisualReview(unittest.TestCase):
 
         # Failure paths also keep secrets out of the result
         def bad_urlopen(req, timeout=None):
-            raise HTTPError(req.full_url, 503, "Service Unavailable", {}, None)
+            raise HTTPError(req.full_url, 503, "Service Unavailable", email.message.Message(), None)
 
         failed = run_diagram_visual_review(
             self.config,

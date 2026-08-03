@@ -17,6 +17,7 @@ from deadline_budget import (  # noqa: E402
     PROVIDER_DEADLINE_BINDING_SCHEMA,
     TIMEOUT_LAYER_ATTEMPT_HARD,
     TIMEOUT_LAYER_HTTP_SOFT,
+    DeadlineBudget,
     budget_from_dict,
     budget_is_valid,
     build_deadline_budget,
@@ -64,7 +65,7 @@ class DeadlineBudgetTest(unittest.TestCase):
             def to_dict(self):
                 return {}
 
-        problems = budget_is_valid(_Bad())
+        problems = budget_is_valid(cast(DeadlineBudget, _Bad()))
         self.assertIn("http_soft_deadline + cleanup_grace > attempt_deadline", problems)
 
     def test_analysis_task_budget_fits_within_90s(self):

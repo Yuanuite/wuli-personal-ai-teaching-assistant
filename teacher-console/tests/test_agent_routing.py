@@ -1,7 +1,7 @@
 import importlib.util
 import unittest
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -83,7 +83,7 @@ class AgentRoutingTest(unittest.TestCase):
             adapter.parse_content('{"status":"completed" "message":"missing comma"}')
 
     def test_large_solver_contract_is_split_and_merged_losslessly(self):
-        fields = {
+        fields: dict[str, Any] = {
             field: {"type": ["array", "null"]}
             for field in (
                 "targets",

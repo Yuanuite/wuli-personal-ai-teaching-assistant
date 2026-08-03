@@ -153,8 +153,9 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
         self.assertEqual(result["diagram_repair"]["retry_count"], 1)
 
     def test_flowchart_plugin_is_never_implicit(self):
+        render = getattr(analysis_artifacts, "render_explanation_diagram")
         with self.assertRaisesRegex(TypeError, "plugin_id"):
-            analysis_artifacts.render_explanation_diagram("关系", ["读图", "求解"])
+            render("关系", ["读图", "求解"])
 
     def test_provenance_binds_mimo_facts_and_deepseek_route(self):
         result = server._stage_svg_provenance(
