@@ -2,6 +2,7 @@ import copy
 import sys
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
@@ -105,7 +106,7 @@ class ClaimValidationRoutingTest(unittest.TestCase):
         }
         self.assertTrue(claim_validation.certificate_matches_route(certificate, route))
         shared_context = copy.deepcopy(certificate)
-        shared_context["verifier_identity"]["context_isolated"] = False
+        cast(dict, shared_context["verifier_identity"])["context_isolated"] = False
         self.assertFalse(claim_validation.certificate_matches_route(shared_context, route))
 
 

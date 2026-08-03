@@ -2,6 +2,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 from unittest import mock
 
 import analysis_artifacts
@@ -26,7 +27,7 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
             "uncertainties": [],
             "model_identity": {"model_id": "mimo-v2.5-flash", "provider": "openai-compatible"},
         }
-        facts = normalize_payload(raw, raw["source_fingerprint"])
+        facts = normalize_payload(raw, str(raw["source_fingerprint"]))
         (self.entry / "visual-facts.json").write_text(json.dumps(facts), encoding="utf-8")
         (self.entry / "problem.md").write_text("# 物理题\n", encoding="utf-8")
         (self.entry / "record.json").write_text("{}\n", encoding="utf-8")
@@ -161,6 +162,7 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
             model_config={"id": "deepseek-v4-flash-api", "provider": "openai-compatible"},
             generation_fingerprint="b" * 64,
         )
+        assert result is not None
         self.assertEqual(result["model_identity"]["model_id"], "deepseek-v4-flash-api")
         self.assertTrue(result["visual_facts_fingerprint"].startswith("sha256:"))
         self.assertTrue((self.entry / "svg-provenance.json").is_file())

@@ -1,4 +1,5 @@
 import base64
+import email.message
 import json
 import os
 import sys
@@ -453,7 +454,7 @@ class TestVisionProbe(unittest.TestCase):
         from urllib.error import HTTPError
 
         def fake_urlopen(req, timeout=None):
-            raise HTTPError(req.full_url, 404, "Not Found", cast(dict[str, str], {}), None)
+            raise HTTPError(req.full_url, 404, "Not Found", email.message.Message(), None)
 
         result = run_vision_probe(
             self.config,

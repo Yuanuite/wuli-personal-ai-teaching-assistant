@@ -1,6 +1,7 @@
 import importlib.util
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts" / "difficulty_assessment.py"
@@ -118,7 +119,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
         self.assertTrue(difficulty.current(assessment, self.problem, self.standard_path))
         changed_path = {
             **self.standard_path,
-            "condition_checks": [*self.standard_path["condition_checks"], "补充边界条件"],
+            "condition_checks": [*cast(list, self.standard_path["condition_checks"]), "补充边界条件"],
         }
         self.assertFalse(difficulty.current(assessment, self.problem, changed_path))
         self.assertFalse(difficulty.current(assessment, self.problem + "补充题设", self.standard_path))

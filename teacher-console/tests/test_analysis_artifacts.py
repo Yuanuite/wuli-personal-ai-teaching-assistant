@@ -261,6 +261,7 @@ class AnalysisArtifactsTest(unittest.TestCase):
             self.entry,
             fingerprint=fingerprint,
         )
+        assert loaded is not None
         self.assertEqual(loaded["metadata"]["title"], "机械能守恒与方向判断")
 
         (self.entry / "problem.md").write_text("题干已经变化。" * 10, encoding="utf-8")

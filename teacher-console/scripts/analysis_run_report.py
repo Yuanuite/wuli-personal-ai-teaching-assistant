@@ -35,7 +35,7 @@ import re
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
@@ -1682,8 +1682,9 @@ def build_report(job: dict, entry_dir: Path, library: Path, *, job_id: str | Non
         "terminal": terminal,
         "redactions": list(REDACTED_CATEGORIES),
     }
-    report["verification_summary"]["exit_code"] = evaluate_exit(report, count_problems)
-    report["verification_summary"]["exit_reason"] = _exit_reason(report, count_problems)
+    vs = cast(dict[str, Any], report["verification_summary"])
+    vs["exit_code"] = evaluate_exit(report, count_problems)
+    vs["exit_reason"] = _exit_reason(report, count_problems)
     return report
 
 

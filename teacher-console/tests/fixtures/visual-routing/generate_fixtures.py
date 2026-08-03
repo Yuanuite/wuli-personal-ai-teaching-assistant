@@ -44,7 +44,9 @@ def _draw_blurred() -> Image.Image:
     for y in range(image.size[1]):
         for x in range(image.size[0]):
             shift = random.randint(-60, 60)
-            r, g, b = image.getpixel((x, y))
+            pixel = image.getpixel((x, y))
+            r, g, b = int(pixel[0]), int(pixel[1]), int(pixel[2])
+            assert noise_pixels is not None
             noise_pixels[x, y] = (
                 max(0, min(255, r + shift)),
                 max(0, min(255, g + shift)),

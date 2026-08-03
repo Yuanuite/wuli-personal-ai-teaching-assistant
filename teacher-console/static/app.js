@@ -1431,7 +1431,18 @@ async function selectEntry(id) {
   $("entry-view").classList.remove("hidden");
   $("entry-id").textContent = state.current.id;
   $("entry-title").textContent = state.current.title;
-  $("state-badge").textContent = STATE_LABELS[state.current.state] || state.current.state;
+  // Work-tree A4: the badge says which successful attempt produced the answer
+  // currently shown, so a stale version is visible even without an active job.
+  let badgeText = STATE_LABELS[state.current.state] || state.current.state;
+  const answerVersion = state.current?.analysis_request?.current_answer_version;
+  const approveButton = $("approve-answer");
+  if (state.current.state === "needs-answer-review" && answerVersion && answerVersion.is_latest_attempt === false) {
+    if (answerVersion.generated_at) badgeText += ` · 来自 ${answerVersion.generated_at}`;
+    if (approveButton) approveButton.title = `当前答案来自上一成功版本（${answerVersion.generated_at || "未知时间"}，Job ${answerVersion.source_job_id || "?"}），本次重生成未替换答案`;
+  } else if (approveButton) {
+    approveButton.title = "";
+  }
+  $("state-badge").textContent = badgeText;
   $("problem-editor").value = state.current.problem;
   $("source-status").textContent = state.current.source_review.status === "passed" ? "已通过" : "等待教师确认";
   renderAgentMessage();
@@ -2155,6 +2166,31 @@ function renderTimeoutSummary(job) {
   }
 }
 
+// Work-tree A4: a failed regeneration keeps the previous successful answer
+// canonical. The panel and the lifecycle badge must state which version the
+// teacher is looking at so an old answer is never approved as the new attempt.
+function answerVersionText(job) {
+  const version = job?.result?.current_answer_version || state.current?.analysis_request?.current_answer_version;
+  if (!version || version.is_latest_attempt !== false) return "";
+  const generatedAt = version.generated_at || "未知时间";
+  const source = version.source_job_id || "上一次成功任务";
+  const failureType = version.latest_attempt?.failure_type || "failed";
+  return `当前展示的是上一成功版本（${generatedAt}，Job ${source}），本次重生成（${failureType}）未替换答案。请勿据此批准本次结果。`;
+}
+
+function renderAnswerVersionNote(job) {
+  const target = $("answer-version-note");
+  if (!target) return;
+  const text = job ? answerVersionText(job) : "";
+  if (text) {
+    target.textContent = text;
+    target.classList.remove("hidden");
+  } else {
+    target.classList.add("hidden");
+    target.textContent = "";
+  }
+}
+
 function jobApiUrl(job) {
   const supplied = String(job?.url || "");
   if (/^\/api\/jobs\/[A-Za-z0-9._~-]+(?:\?.*)?$/.test(supplied)) return supplied;
@@ -2208,8 +2244,10 @@ function renderActiveJob() {
   if (status === "failed") {
     $("active-job-detail").textContent = jobFailureReason(job);
     renderTimeoutSummary(job);
+    renderAnswerVersionNote(job);
   } else {
     renderTimeoutSummary(null);
+    renderAnswerVersionNote(null);
     const providerValue = job.provider || job.agent || selectedAgentLabel();
     const provider = typeof providerValue === "object"
       ? (providerValue.name || providerValue.selected || "本地 Agent")

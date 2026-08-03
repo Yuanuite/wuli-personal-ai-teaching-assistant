@@ -198,7 +198,7 @@ def analyze(
         failures_value = item.get("failure_types")
         failures: dict[str, Any] = failures_value if isinstance(failures_value, dict) else {}
         count = max(1, int(item.get("count", 0)))
-        dominant_failure = str(max(failures, key=failures.get)) if failures else ""
+        dominant_failure = str(max(failures, key=lambda k: failures[k])) if failures else ""
         if count >= 5 and isinstance(run_p90, (int, float)) and run_p90 > 60:
             recommendations.append({
                 "code": f"scheduler.latency-review.{kind}",

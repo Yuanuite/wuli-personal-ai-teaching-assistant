@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
@@ -152,7 +153,7 @@ class SolutionVerificationTest(unittest.TestCase):
             **payload,
             "claim_audits": [
                 {
-                    **payload["claim_audits"][0],
+                    **cast(dict, payload["claim_audits"])[0],
                     "decisive_checks": [],
                 }
             ],

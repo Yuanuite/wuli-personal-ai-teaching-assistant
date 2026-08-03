@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
@@ -157,7 +158,7 @@ class IphoClosedBookEvalTest(unittest.TestCase):
             ],
         }
         self.assertEqual(module.grade_payload_errors(payload, question), [])
-        payload["grades"][1]["awarded_points"] = 0.6
+        cast(list, payload["grades"])[1]["awarded_points"] = 0.6
         self.assertTrue(
             any(
                 "partial-credit must be strictly partial" in error

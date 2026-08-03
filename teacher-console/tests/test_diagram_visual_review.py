@@ -1,8 +1,10 @@
+import email
 import json
 import os
 import sys
 import tempfile
 import unittest
+from typing import cast
 from urllib.error import HTTPError, URLError
 
 # Ensure teacher-console directory is on sys.path
@@ -109,7 +111,7 @@ class TestDiagramVisualReview(unittest.TestCase):
 
     def test_review_reports_http_404_as_failed(self):
         def fake_urlopen(req, timeout=None):
-            raise HTTPError(req.full_url, 404, "Not Found", {}, None)
+            raise HTTPError(req.full_url, 404, "Not Found", email.message.Message(), None)
 
         result = run_diagram_visual_review(
             self.config,

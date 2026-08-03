@@ -4,6 +4,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -436,7 +437,7 @@ class KnowledgeStoreTest(unittest.TestCase):
         self.assertIn("轨迹衔接", additions)
 
     def test_query_runs_independent_routes_and_exposes_rrf_contributions(self):
-        fixtures = (
+        fixtures: list[tuple[str, dict[str, Any], str, str]] = (
             (
                 "cross-route-match",
                 {"knowledge_points": ["回旋半径判据"]},
