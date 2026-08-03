@@ -252,7 +252,7 @@ def analyze(
     blockers = []
     if not weekly_ready:
         blockers.append(
-            f"只读周报还需 {max(0, 20 - retrieved_completed)} 个已完成 RAG 任务、{max(0, 10 - teacher_closed)} 个教师闭环。"
+            f"只读周报还需 {max(0, 20 - retrieved_completed)} 个已完成 RAG 任务、{max(0, 10 - teacher_closed)} 个教师闭环。"  # noqa: E501
         )
     if not reliability_ready:
         blockers.append(
@@ -331,7 +331,7 @@ def record_report(library: Path, report: dict[str, Any]) -> dict[str, Any]:
     readiness = report.get("readiness", {})
     if not (readiness.get("weekly_report_ready") or readiness.get("reliability_observation_ready")):
         raise ValueError(
-            "--record requires either 20 completed RAG tasks + 10 teacher closures, or 5 terminal Agent attempts with a structured failure"
+            "--record requires either 20 completed RAG tasks + 10 teacher closures, or 5 terminal Agent attempts with a structured failure"  # noqa: E501
         )
     fingerprint = report.get("observation_window", {}).get("input_fingerprint")
     if fingerprint and any(
@@ -392,10 +392,10 @@ def print_markdown(report: dict[str, Any]) -> None:
     print(f"- policy_change_ready: {readiness['policy_change_ready']}")
     print(f"- auto_apply_ready: {readiness['auto_apply_ready']}")
     print(
-        f"- RAG completed / teacher closed: {counts['retrieved_agent_completed']} / {counts['retrieved_teacher_closed']}"
+        f"- RAG completed / teacher closed: {counts['retrieved_agent_completed']} / {counts['retrieved_teacher_closed']}"  # noqa: E501
     )
     print(
-        f"- Agent terminal / structured failures: {counts['agent_terminal_attempts']} / {counts['agent_structured_failures']}"
+        f"- Agent terminal / structured failures: {counts['agent_terminal_attempts']} / {counts['agent_structured_failures']}"  # noqa: E501
     )
     print(f"- retrieval approved cases: {counts['retrieval_approved_cases']}")
     print()

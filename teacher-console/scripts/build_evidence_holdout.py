@@ -127,7 +127,7 @@ def cases() -> list[dict[str, Any]]:
             facets=["指出右手定则误用", "先按正电荷使用左手定则", "负电荷方向反向"],
             conflicts=["速度与磁场平行而仍声称存在非零洛伦兹力"],
             sufficient=True,
-            rationale="题面中的错误是待诊断对象，不是证据冲突；该证据能明确纠错并给出正确规则，应以 condition_warning 用途采纳。",
+            rationale="题面中的错误是待诊断对象，不是证据冲突；该证据能明确纠错并给出正确规则，应以 condition_warning 用途采纳。",  # noqa: E501
         ),
         proposed_case(
             "holdout-radial-boundary-valid",

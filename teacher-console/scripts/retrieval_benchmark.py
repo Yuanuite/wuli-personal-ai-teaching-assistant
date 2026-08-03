@@ -459,7 +459,7 @@ def run_benchmark(
             "Draft cases are exploratory and cannot trigger retrieval-policy changes.",
             "Backend enhancement requires at least 30 teacher-approved cases.",
             "The approved fixed set must cover knowledge point, problem type, error type, and teacher phrasing.",
-            "A policy change additionally requires an independent approved holdout batch with at least 12 cases covering all categories.",
+            "A policy change additionally requires an independent approved holdout batch with at least 12 cases covering all categories.",  # noqa: E501
             "Legacy cases without evaluation_split are calibration cases and cannot satisfy the holdout gate.",
             "The benchmark calls no model and changes no retrieval policy.",
         ],
@@ -504,7 +504,7 @@ def print_markdown(report: dict[str, Any]) -> None:
     )
     print(f"- upgrade_recommended: {report['upgrade_recommended']}")
     print(
-        f"- Recall@5: {report['overall']['recall'].get('@5', 0.0)}; MRR: {report['overall']['mrr']}; empty_rate: {report['overall']['empty_rate']}"
+        f"- Recall@5: {report['overall']['recall'].get('@5', 0.0)}; MRR: {report['overall']['mrr']}; empty_rate: {report['overall']['empty_rate']}"  # noqa: E501
     )
     print(
         f"- evidence relevant preservation: "
@@ -524,7 +524,7 @@ def print_markdown(report: dict[str, Any]) -> None:
     print("|---|---:|---:|---:|---:|---:|")
     for category, metrics in report["by_category"].items():
         print(
-            f"| {category} | {metrics['count']} | {metrics['hit_rate'].get('@5', 0.0)} | {metrics['recall'].get('@5', 0.0)} | {metrics['mrr']} | {metrics['empty_rate']} |"
+            f"| {category} | {metrics['count']} | {metrics['hit_rate'].get('@5', 0.0)} | {metrics['recall'].get('@5', 0.0)} | {metrics['mrr']} | {metrics['empty_rate']} |"  # noqa: E501
         )
     if report["missed_case_ids_at_5"]:
         print()

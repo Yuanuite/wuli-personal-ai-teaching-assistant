@@ -15,7 +15,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
             "title": "交替电场与磁场中的粒子运动",
             "knowledge_points": ["电场", "磁场", "圆周运动", "动能定理"],
         }
-        self.problem = """（1）求位置；（2）求做功；（3）求哪些时刻被捕获。交替电场、磁场和多区域分段运动，需分析周期、轨迹与临界条件。"""
+        self.problem = """（1）求位置；（2）求做功；（3）求哪些时刻被捕获。交替电场、磁场和多区域分段运动，需分析周期、轨迹与临界条件。"""  # noqa: E501
         self.standard_path = {
             "schema_version": 1,
             "source": "wuli.analysis.v2",

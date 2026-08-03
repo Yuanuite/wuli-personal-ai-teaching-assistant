@@ -423,7 +423,7 @@ class ValidateAnswerCandidateTest(unittest.TestCase):
     def test_teacher_solution_mismatch(self):
         kb.write_text(
             self.staging / "teacher-solution.md",
-            "# 教师版\n\n## 答案速览\n不同版本\n\n## 详细解答\n不同。\n\n## 易错点\n不同。\n\n![图](assets/explanatory.svg)",
+            "# 教师版\n\n## 答案速览\n不同版本\n\n## 详细解答\n不同。\n\n## 易错点\n不同。\n\n![图](assets/explanatory.svg)",  # noqa: E501
         )
         errors = teacher_console_server.validate_answer_candidate(self.staging, [])
         self.assertIn("solution.md must be identical to teacher-solution.md", errors)

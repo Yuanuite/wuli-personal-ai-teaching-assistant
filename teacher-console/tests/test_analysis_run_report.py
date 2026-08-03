@@ -123,7 +123,7 @@ def _failed_job() -> dict:
         "started_at": "2026-08-02T20:38:00.373363+08:00",
         "completed_at": "2026-08-02T20:39:01.478770+08:00",
         "failure_type": "candidate_no_change",
-        "error": "选定的 Agent provider 在修改文件前失败；为避免重复消耗推理预算，任务已安全停止。\n失败类型：candidate_no_change\nprovider：openai-compatible",
+        "error": "选定的 Agent provider 在修改文件前失败；为避免重复消耗推理预算，任务已安全停止。\n失败类型：candidate_no_change\nprovider：openai-compatible",  # noqa: E501
         "result": {
             "schema_version": 1,
             "entry_id": ENTRY_ID,

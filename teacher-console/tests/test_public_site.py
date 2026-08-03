@@ -44,7 +44,7 @@ class PublicSiteTest(unittest.TestCase):
             },
         )
         (self.entry / "problem.md").write_text(
-            f"# 带电粒子在磁场中的运动\n\n题目编号：`{self.entry_id}`\n\n![原始题图](assets/original.png)\n\n求粒子的运动半径。\n",
+            f"# 带电粒子在磁场中的运动\n\n题目编号：`{self.entry_id}`\n\n![原始题图](assets/original.png)\n\n求粒子的运动半径。\n",  # noqa: E501
             encoding="utf-8",
         )
         (self.entry / "student-solution.md").write_text(
@@ -332,7 +332,7 @@ class PublicSiteTest(unittest.TestCase):
             encoding="utf-8",
         )
         (question_dir / "content.md").write_text(
-            "# 带电粒子题\n\n![公开题图](assets/question-1.webp)\n\n## 详细解答\n\n由 $qvB=mv^2/r$ 得半径。\n\n![示意图](assets/asset-1.svg)\n",
+            "# 带电粒子题\n\n![公开题图](assets/question-1.webp)\n\n## 详细解答\n\n由 $qvB=mv^2/r$ 得半径。\n\n![示意图](assets/asset-1.svg)\n",  # noqa: E501
             encoding="utf-8",
         )
         with mock.patch.object(

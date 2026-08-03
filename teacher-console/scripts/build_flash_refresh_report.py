@@ -156,14 +156,44 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
         f"<td><code>{html.escape(', '.join(row['reason_codes']))}</code></td></tr>"
         for row in rows
     )
-    html_text = f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>新版 Flash 最小门禁盲测</title>
-<style>body{{margin:0;background:#f4f6fb;color:#172033;font:15px/1.6 system-ui,-apple-system,"PingFang SC",sans-serif}}main{{max-width:1050px;margin:auto;padding:40px 24px}}header{{padding:30px;border-radius:22px;background:linear-gradient(125deg,#17265f,#4969df);color:#fff}}h1{{margin:0}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}}.metric,.card{{background:#fff;border:1px solid #e1e6f1;border-radius:16px;padding:18px}}.metric b{{display:block;font-size:26px}}table{{width:100%;border-collapse:collapse}}th,td{{padding:9px;border-bottom:1px solid #e6e9f2;text-align:left}}.bad{{color:#b42318;font-weight:700}}@media(max-width:750px){{.grid{{grid-template-columns:repeat(2,1fr)}}.scroll{{overflow:auto}}}}</style></head>
-<body><main><header><h1>CPhO 2021 · 新版 Flash 最小门禁盲测</h1><p>全年 8 题 · 直连 API · 冻结后标准答案自动审核</p></header>
-<section class="grid"><div class="metric"><b>{first_success}/8</b><span>一次结构成功</span></div><div class="metric"><b>{recovered_success}/8</b><span>重试后有候选</span></div><div class="metric"><b>{first_success}/8</b><span>一次 ≤90s</span></div><div class="metric"><b>0/8</b><span>严格整题正确</span></div></section>
+    html_text = (
+        f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">"""
+        f"""<title>新版 Flash 最小门禁盲测</title>
+<style>
+body{{margin:0;background:#f4f6fb;color:#172033;"""
+        f"""font:15px/1.6 system-ui,-apple-system,"PingFang SC",sans-serif}}
+main{{max-width:1050px;margin:auto;padding:40px 24px}}
+header{{padding:30px;border-radius:22px;"""
+        f"""background:linear-gradient(125deg,#17265f,#4969df);color:#fff}}
+h1{{margin:0}}
+.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}}
+.metric,.card{{background:#fff;"""
+        f"""border:1px solid #e1e6f1;border-radius:16px;padding:18px}}
+.metric b{{display:block;font-size:26px}}
+table{{width:100%;border-collapse:collapse}}
+th,td{{padding:9px;"""
+        f"""border-bottom:1px solid #e6e9f2;text-align:left}}
+.bad{{color:#b42318;font-weight:700}}
+@media(max-width:750px){{"""
+        f""".grid{{grid-template-columns:repeat(2,1fr)}}.scroll{{overflow:auto}}}}
+</style></head>
+<body><main><header><h1>CPhO 2021 · 新版 Flash 最小门禁盲测</h1>
+<p>全年 8 题 · 直连 API · 冻结后标准答案自动审核</p></header>"""
+        f"""
+<section class="grid">
+<div class="metric"><b>{first_success}/8</b><span>一次结构成功</span></div>
+<div class="metric"><b>{recovered_success}/8</b><span>重试后有候选</span></div>
+<div class="metric"><b>{first_success}/8</b><span>一次 ≤90s</span></div>
+<div class="metric"><b>0/8</b><span>严格整题正确</span></div>
+</section>"""
+        f"""
 <section class="card"><p>最小核心契约恢复了速度，但没有恢复物理正确率。当前不能切为无人值守生产默认。</p></section>
-<section class="card scroll"><table><thead><tr><th>题</th><th>首轮结构</th><th>耗时(s)</th><th>重试恢复</th><th>整题</th><th>原因码</th></tr></thead><tbody>{table_rows}</tbody></table></section>
+<section class="card scroll"><table><thead><tr>"""
+        f"""<th>题</th><th>首轮结构</th><th>耗时(s)</th><th>重试恢复</th><th>整题</th><th>原因码</th>"""
+        f"""</tr></thead><tbody>{table_rows}</tbody></table></section>
 </main></body></html>"""
+    )
     output.with_suffix(".html").write_text(html_text, encoding="utf-8")
     telemetry_path = output.with_suffix(".json")
     telemetry_path.write_text(

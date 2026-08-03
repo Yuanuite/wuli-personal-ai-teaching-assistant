@@ -154,7 +154,7 @@ _OPERATOR_PROBES = {
     "symmetry": "Test whether an assumed symmetry holds and what changes when it is broken.",
     "analogy-transfer": "Transfer a structurally similar reviewed model, then audit every changed condition.",
     "hidden-degree-of-freedom": "Search for an omitted branch, sign, direction, phase, or independent state variable.",
-    "alternative-decomposition": "Split the process at a different physical event and rebuild only the affected interfaces.",
+    "alternative-decomposition": "Split the process at a different physical event and rebuild only the affected interfaces.",  # noqa: E501
 }
 _CONFLICT_OPERATOR_PREFERENCES = {
     "order": {"event-reordering", "edge-case", "counterexample", "hidden-degree-of-freedom"},

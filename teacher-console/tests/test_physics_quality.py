@@ -79,7 +79,7 @@ FIXTURE_B_TARGETS = [
         "final_answer": "\\omega = (q^2 \\mu_0 \\Omega r2^2) / (2 m r1^2 + q^2 \\mu_0 r2^2)",
         "key_relations": [
             "系统角动量守恒：初始总角动量为 0。",
-            "由 L_mech + L_field = 0 解出 \\omega = - (q^2 \\mu_0 \\Omega r2^2) / (2 m r1^2 + q^2 \\mu_0 r2^2)，负号表示反向，但题设同向，故取绝对值。",
+            "由 L_mech + L_field = 0 解出 \\omega = - (q^2 \\mu_0 \\Omega r2^2) / (2 m r1^2 + q^2 \\mu_0 r2^2)，负号表示反向，但题设同向，故取绝对值。",  # noqa: E501
         ],
     }
 ]

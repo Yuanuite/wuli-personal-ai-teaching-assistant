@@ -486,7 +486,7 @@ def _write_score_report(experiment: Path, summary: dict[str, Any]) -> None:
         "",
         "## Per-question time and usage",
         "",
-        "| Question | Score | Valid solve | Solve token usage | Answer chars | Failed harness overhead | Independent grading | Grading tokens |",
+        "| Question | Score | Valid solve | Solve token usage | Answer chars | Failed harness overhead | Independent grading | Grading tokens |",  # noqa: E501
         "|---|---:|---:|---|---:|---:|---:|---:|",
     ]
     for question in summary["questions"]:

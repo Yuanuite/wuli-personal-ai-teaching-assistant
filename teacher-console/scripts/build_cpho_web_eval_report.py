@@ -287,7 +287,7 @@ def markdown(data: dict, gold_hash: str) -> str:
         "1. 已消除的瓶颈：Claude Code 大型 structured-output 生成、约 32K 冗长输出、失败后重复 W2。",
         "2. 当前首要瓶颈：Flash 求解可靠性；错误集中在过程可行性、碰撞递推、稳定性、场分布、约束动力学等核心关系。",
         "3. 当前次要瓶颈：verifier/adjudicator 只验证内部一致性，无法可靠发现共同的物理模型错误。",
-        "4. 下一轮应先强化可判定的物理不变量与逐目标复算，再恢复完整但紧凑的教学推导；通过隐藏集后才重测 100% 正确率目标。",
+        "4. 下一轮应先强化可判定的物理不变量与逐目标复算，再恢复完整但紧凑的教学推导；通过隐藏集后才重测 100% 正确率目标。",  # noqa: E501
         "",
         "## 忠实性与防泄漏",
         "",
@@ -318,29 +318,57 @@ def html_report(data: dict) -> str:
         f"<td><code>{html.escape(', '.join(row['reason_codes']))}</code></td></tr>"
         for row in data["questions"]
     )
-    return f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>CPhO 2021 W3 直接 API 盲测</title>
+    return (
+        f"""<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">"""
+        f"""<title>CPhO 2021 W3 直接 API 盲测</title>
 <style>
 :root{{--ink:#172033;--muted:#65708a;--paper:#f4f6fb;--card:#fff;--blue:#3659d9;--bad:#b42318;--ok:#087a55}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--paper);color:var(--ink);font:15px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}}
-main{{max-width:1100px;margin:auto;padding:42px 24px 70px}}header{{background:linear-gradient(125deg,#17265f,#4969df);color:white;border-radius:24px;padding:34px}}
-h1{{margin:0 0 8px;font-size:32px}}header p{{margin:0;opacity:.86}}.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}}
-.metric,.card{{background:var(--card);border:1px solid #e1e6f1;border-radius:18px;padding:20px}}.metric b{{display:block;font-size:27px}}.metric span{{color:var(--muted)}}
-.card{{margin:16px 0}}h2{{margin:0 0 12px}}table{{width:100%;border-collapse:collapse;font-size:13px}}th,td{{padding:10px 8px;border-bottom:1px solid #e6e9f2;text-align:left}}
-.bad{{color:var(--bad);font-weight:700}}.ok{{color:var(--ok);font-weight:700}}code{{font-size:12px}}.callout{{border-left:5px solid var(--bad);background:#fff3f1;padding:14px 16px;border-radius:10px}}
+*{{box-sizing:border-box}}
+body{{margin:0;background:var(--paper);color:var(--ink);"""
+        f"""font:15px/1.65 system-ui,-apple-system,"PingFang SC",sans-serif}}
+main{{max-width:1100px;margin:auto;padding:42px 24px 70px}}
+header{{background:linear-gradient(125deg,#17265f,#4969df);"""
+        f"""color:white;border-radius:24px;padding:34px}}
+h1{{margin:0 0 8px;font-size:32px}}
+header p{{margin:0;opacity:.86}}
+.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}}
+.metric,.card{{background:var(--card);"""
+        f"""border:1px solid #e1e6f1;border-radius:18px;padding:20px}}
+.metric b{{display:block;font-size:27px}}
+.metric span{{color:var(--muted)}}
+.card{{margin:16px 0}}h2{{margin:0 0 12px}}
+table{{width:100%;border-collapse:collapse;font-size:13px}}
+th,td{{padding:10px 8px;"""
+        f"""border-bottom:1px solid #e6e9f2;text-align:left}}
+.bad{{color:var(--bad);font-weight:700}}
+.ok{{color:var(--ok);font-weight:700}}
+code{{font-size:12px}}
+.callout{{border-left:5px solid var(--bad);"""
+        f"""background:#fff3f1;padding:14px 16px;border-radius:10px}}
 @media(max-width:800px){{.grid{{grid-template-columns:repeat(2,1fr)}}.scroll{{overflow:auto}}}}
 </style></head><body><main>
-<header><h1>CPhO 2021 · W3 直接 API 盲测</h1><p>全年 8 题 · Flash · 候选冻结后由标准答案自动审核 · 无用户参与</p></header>
+<header><h1>CPhO 2021 · W3 直接 API 盲测</h1>
+<p>全年 8 题 · Flash · 候选冻结后由标准答案自动审核 · 无用户参与</p></header>"""
+        f"""
 <section class="grid">
 <div class="metric"><b>{s["structural_success_count"]} / 8</b><span>结构成功</span></div>
 <div class="metric"><b>{s["sla_pass_count"]} / 8</b><span>冷启动 ≤90s</span></div>
 <div class="metric"><b>{s["final_answer_correct_count"]} / 8</b><span>整题正确</span></div>
 <div class="metric"><b>{s["teaching_approved_count"]} / 8</b><span>教学批准</span></div>
-</section>
-<section class="card"><h2>判定</h2><div class="callout">结构问题已经解决，但内容质量未恢复。直接 API 消除了 Claude Code 的协议瓶颈；当前阻断是 Flash 的物理推导与验证门禁。</div></section>
-<section class="card"><h2>逐题结果</h2><div class="scroll"><table><thead><tr><th>题</th><th>冷启动等价(s)</th><th>SLA</th><th>结构</th><th>整题</th><th>教学</th><th>原因码</th></tr></thead><tbody>{rows}</tbody></table></div></section>
-<section class="card"><h2>说明</h2><p>完整方法、遥测口径、防泄漏声明与来源见同包 <code>report.md</code>。报告不含候选或官方答案正文。</p></section>
+</section>"""
+        f"""
+<section class="card"><h2>判定</h2><div class="callout">"""
+        f"""结构问题已经解决，但内容质量未恢复。直接 API 消除了 Claude Code 的协议瓶颈；"""
+        f"""当前阻断是 Flash 的物理推导与验证门禁。</div></section>
+<section class="card"><h2>逐题结果</h2><div class="scroll"><table><thead><tr>"""
+        f"""<th>题</th><th>冷启动等价(s)</th><th>SLA</th><th>结构</th><th>整题</th><th>教学</th><th>原因码</th>"""
+        f"""</tr></thead><tbody>{rows}</tbody></table></div></section>
+<section class="card"><h2>说明</h2><p>"""
+        f"""完整方法、遥测口径、防泄漏声明与来源见同包 <code>report.md</code>。报告不含候选或官方答案正文。"""
+        f"""</p></section>
 <footer>生成于 {html.escape(data["generated_at"])}</footer></main></body></html>"""
+    )
 
 
 def build(gold: Path, destination: Path) -> Path:

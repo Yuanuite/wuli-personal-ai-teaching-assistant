@@ -268,7 +268,7 @@ def markdown(report: dict[str, Any]) -> str:
     lines.extend([
         "## 建议",
         "",
-        "继续保持 shadow-only。下一步只需要对触发明细做人工标注：`useful` / `false-positive` / `already-covered`，攒够样本后再决定是否进入软提示层。",
+        "继续保持 shadow-only。下一步只需要对触发明细做人工标注：`useful` / `false-positive` / `already-covered`，攒够样本后再决定是否进入软提示层。",  # noqa: E501
         "",
     ])
     return "\n".join(lines)

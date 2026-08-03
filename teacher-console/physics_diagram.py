@@ -629,7 +629,7 @@ def build_obligations(visual_facts: dict[str, Any], problem_text: str) -> dict[s
     result = {
         "schema": "wuli.diagram-obligations.v1",
         "max_panels": 3,
-        "layout_policy": "Use exactly these view slots; merge spatial projection into motion and never add a fourth panel.",
+        "layout_policy": "Use exactly these view slots; merge spatial projection into motion and never add a fourth panel.",  # noqa: E501
         "signals": {
             "particle_motion": particle_motion,
             "periodic_field": periodic,
@@ -672,7 +672,7 @@ def _topology_errors(scene: dict[str, Any], facts: dict[str, Any]) -> list[str]:
         upper, lower = plates[match.group(1)], plates[match.group(2)]
         if float(upper.get("y", 0)) >= float(lower.get("y", 0)):
             errors.append(
-                f"source topology requires upper plate {match.group(1)} above lower plate {match.group(2)} in SVG coordinates"
+                f"source topology requires upper plate {match.group(1)} above lower plate {match.group(2)} in SVG coordinates"  # noqa: E501
             )
     return errors
 
@@ -981,20 +981,20 @@ def render_svg(scene: dict[str, Any]) -> str:
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img">',
         f"<title>{html.escape(scene['title'])}</title>",
-        '<defs><marker id="physics-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#334155"/></marker><marker id="trajectory-arrow-p1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#dc2626"/></marker><marker id="trajectory-arrow-p2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c3aed"/></marker><pattern id="field-cross" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M10,10 L20,20 M20,10 L10,20" stroke="#64748b" stroke-width="1.2"/></pattern><pattern id="field-dot" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="1.8" fill="#64748b"/></pattern></defs>',
+        '<defs><marker id="physics-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#334155"/></marker><marker id="trajectory-arrow-p1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#dc2626"/></marker><marker id="trajectory-arrow-p2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c3aed"/></marker><pattern id="field-cross" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M10,10 L20,20 M20,10 L10,20" stroke="#64748b" stroke-width="1.2"/></pattern><pattern id="field-dot" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="1.8" fill="#64748b"/></pattern></defs>',  # noqa: E501
         '<rect width="960" height="560" fill="#ffffff"/>',
-        f'<text x="480" y="28" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#0f172a">{html.escape(scene["title"])}</text>',
+        f'<text x="480" y="28" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#0f172a">{html.escape(scene["title"])}</text>',  # noqa: E501
     ]
     for raw_panel in scene["panels"]:
         panel = panels[raw_panel["id"]]
         x, y = panel["x"] * width / 100, panel["y"] * height / 100
         w, h = panel["width"] * width / 100, panel["height"] * height / 100
         parts.append(
-            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>'
+            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>'  # noqa: E501
         )
         if panel["title"]:
             parts.append(
-                f'<text x="{x + 12:.1f}" y="{y + 22:.1f}" font-family="sans-serif" font-size="15" font-weight="700" fill="#334155">{html.escape(panel["title"])}</text>'
+                f'<text x="{x + 12:.1f}" y="{y + 22:.1f}" font-family="sans-serif" font-size="15" font-weight="700" fill="#334155">{html.escape(panel["title"])}</text>'  # noqa: E501
             )
     for item in scene["regions"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
@@ -1013,12 +1013,12 @@ def render_svg(scene: dict[str, Any]) -> str:
         else:
             fill, stroke = "#f1f5f9", "#64748b"
         parts.append(
-            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" fill-opacity="0.72" stroke="{stroke}" stroke-width="1.5" stroke-dasharray="6 4"/>'
+            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" fill-opacity="0.72" stroke="{stroke}" stroke-width="1.5" stroke-dasharray="6 4"/>'  # noqa: E501
         )
         if item["label"]:
             label_x, label_y = _place_label(item["label"], x + 7, y + 18, occupied_labels, width, height)
             parts.append(
-                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["label"])}</text>'
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["label"])}</text>'  # noqa: E501
             )
     for item in scene["paths"]:
         points = [panel_xy(item["panel_id"], point["x"], point["y"]) for point in item["points"]]
@@ -1037,12 +1037,12 @@ def render_svg(scene: dict[str, Any]) -> str:
             x1, y1 = points[0]
             x2, y2 = points[1]
             parts.append(
-                f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+                f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'  # noqa: E501
             )
         elif geometry == "polyline":
             serialized = " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
             parts.append(
-                f'<polyline points="{serialized}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+                f'<polyline points="{serialized}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'  # noqa: E501
             )
         elif geometry == "smooth":
             commands = [f"M {points[0][0]:.1f} {points[0][1]:.1f}"]
@@ -1053,12 +1053,12 @@ def render_svg(scene: dict[str, Any]) -> str:
                 commands.append(f"Q {control[0]:.1f} {control[1]:.1f} {midpoint[0]:.1f} {midpoint[1]:.1f}")
             commands.append(f"T {points[-1][0]:.1f} {points[-1][1]:.1f}")
             parts.append(
-                f'<path d="{" ".join(commands)}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+                f'<path d="{" ".join(commands)}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'  # noqa: E501
             )
         elif geometry == "circular-arc":
             d = _circular_arc_path(points)
             parts.append(
-                f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+                f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'  # noqa: E501
             )
         else:
             raise ValueError(f"unsupported path geometry: {geometry}")
@@ -1066,7 +1066,7 @@ def render_svg(scene: dict[str, Any]) -> str:
             x, y = points[len(points) // 2]
             label_x, label_y = _place_label(item["label"], x + 6, y - 7, occupied_labels, width, height)
             parts.append(
-                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="{color}">{html.escape(item["label"])}</text>'
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="{color}">{html.escape(item["label"])}</text>'  # noqa: E501
             )
     for item in scene["objects"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
@@ -1083,7 +1083,7 @@ def render_svg(scene: dict[str, Any]) -> str:
                 else "#0f172a"
             )
             parts.append(
-                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="#ffffff" stroke="{stroke}" stroke-width="2"/>'
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="#ffffff" stroke="{stroke}" stroke-width="2"/>'  # noqa: E501
             )
         elif item["kind"] == "plate":
             parts.append(
@@ -1091,11 +1091,11 @@ def render_svg(scene: dict[str, Any]) -> str:
             )
         elif item["kind"] == "boundary":
             parts.append(
-                f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x + w:.1f}" y2="{y + h:.1f}" stroke="#475569" stroke-width="2.5"/>'
+                f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x + w:.1f}" y2="{y + h:.1f}" stroke="#475569" stroke-width="2.5"/>'  # noqa: E501
             )
         else:
             parts.append(
-                f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>'
+                f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>'  # noqa: E501
             )
         has_sign = any(sign in item["label"] for sign in ("+", "−", "-", "正", "负"))
         polarity = (
@@ -1107,13 +1107,13 @@ def render_svg(scene: dict[str, Any]) -> str:
                 label, cx, cy - max(7, h / 2 + 5), occupied_labels, width, height, anchor="middle"
             )
             parts.append(
-                f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">{html.escape(label)}</text>'
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">{html.escape(label)}</text>'  # noqa: E501
             )
     for item in scene["annotations"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
         label_x, label_y = _place_label(item["text"], x, y, occupied_labels, width, height)
         parts.append(
-            f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["text"])}</text>'
+            f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["text"])}</text>'  # noqa: E501
         )
     parts.append("</svg>")
     svg = "\n".join(parts) + "\n"

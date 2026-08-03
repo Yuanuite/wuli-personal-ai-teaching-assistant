@@ -150,7 +150,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"- 影子 Claim：{shadow['claim_count']}；证书：{shadow['certificate_count']}",
         f"- 已验证 Claim 比例：{shadow['verified_claim_rate'] if shadow['verified_claim_rate'] is not None else 'N/A'}",
         f"- 关键 Claim 证书覆盖均值："
-        f"{shadow['mean_critical_certificate_coverage'] if shadow['mean_critical_certificate_coverage'] is not None else 'N/A'}",
+        f"{shadow['mean_critical_certificate_coverage'] if shadow['mean_critical_certificate_coverage'] is not None else 'N/A'}",  # noqa: E501
         f"- 重复任务率：{shadow['repeated_task_rate'] if shadow['repeated_task_rate'] is not None else 'N/A'}",
         f"- 回跳 precision / recall：{loop['backjump_precision']} / {loop['backjump_recall']}",
         f"- 未验证场景率 / 硬冲突率：{shadow['non_verified_rate']} / {shadow['hard_unresolved_rate']}",

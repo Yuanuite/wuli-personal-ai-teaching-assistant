@@ -236,7 +236,7 @@ def _check_internal_recheck_conflict(target: dict[str, Any]) -> list[dict[str, s
                 {
                     "code": "internal-recheck-conflict",
                     "target_id": str(target.get("id", "")),
-                    "detail": "复核/验证 relation gives an unconditionally negative expression while the final answer is positive",
+                    "detail": "复核/验证 relation gives an unconditionally negative expression while the final answer is positive",  # noqa: E501
                 }
             ]
     return []

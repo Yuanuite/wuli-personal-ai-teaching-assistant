@@ -893,7 +893,7 @@ def physics_diagram_task(
         "diagram.scene",
         (
             "根据已复核题干、MiMo 视觉事实和刚生成的答案，规划一张忠实的高中物理示意图。"
-            "只返回强类型场景配方；从 component_catalog 选择并组合语义组件，不要输出 SVG，不要输出流程图，不要修改答案。"
+            "只返回强类型场景配方；从 component_catalog 选择并组合语义组件，不要输出 SVG，不要输出流程图，不要修改答案。"  # noqa: E501
             "必须逐项满足 diagram-obligations.json，并严格使用其中给定的视图槽位；"
             "空间投影必须合并到 motion，禁止自行增加第四面板。"
             + (

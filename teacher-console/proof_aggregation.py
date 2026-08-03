@@ -40,7 +40,7 @@ def aggregate_proof(
     generator_identities: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """Always expose complete final candidates; add VERIFIED only when earned."""
-    trace_id = f"aggregate-{claim_ledger.stable_fingerprint('proof-aggregate-input-v1', {'targets': sorted(expected_target_ids)})[:16]}"
+    trace_id = f"aggregate-{claim_ledger.stable_fingerprint('proof-aggregate-input-v1', {'targets': sorted(expected_target_ids)})[:16]}"  # noqa: E501
     with TraceContext(trace_id, log=logger) as ctx:
         ctx.info(
             "stage=aggregate_proof status=started claim_count=%d certificate_count=%d target_count=%d",
