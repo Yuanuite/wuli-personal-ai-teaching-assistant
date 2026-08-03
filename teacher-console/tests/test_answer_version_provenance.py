@@ -59,6 +59,12 @@ class LatestSuccessfulAnalysisEventTest(unittest.TestCase):
         event = server.latest_successful_analysis_event(self.entry, exclude_event_id="ev-current")
         self.assertEqual(event.get("event_id"), "ev-previous")
 
+    def test_archive_normalized_status_counts_as_successful(self):
+        # candidate_archive.append_event normalizes "completed" to "succeeded".
+        _write_event(self.entry, task_type="analysis.generate", status="succeeded", event_id="ev-normalized")
+        event = server.latest_successful_analysis_event(self.entry)
+        self.assertEqual(event.get("event_id"), "ev-normalized")
+
     def test_missing_archive_returns_empty_dict(self):
         self.assertEqual(server.latest_successful_analysis_event(self.entry), {})
 

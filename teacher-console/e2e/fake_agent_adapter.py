@@ -243,10 +243,10 @@ def core_solve_payload(task: dict, problem: str) -> dict | None:
         or ("[gate-reject-second-attempt]" in problem and calls >= 1)
     )
     if gate_reject:
-        # $Z_q$ is never defined in any E2E problem, so the deterministic
-        # physics quality gate must reject this payload with symbol-undefined.
-        final_answer = "到达底端的速度为 $v=\\sqrt{2gh}+Z_q$"
-        derivation = ["由机械能守恒列式，但结果引入了题面未定义的符号"]
+        # ``v2`` is a subscripted token never defined in any E2E problem,
+        # so the deterministic physics gate must reject it with symbol-undefined.
+        final_answer = "到达底端的速度为 $v=\\sqrt{2gh}+v2$"
+        derivation = ["由机械能守恒列式求解"]
     cross_ref = "[cross-target-ref]" in problem and len(brief["targets"]) >= 2
     first_id = brief["targets"][0]["id"] if brief["targets"] else ""
 

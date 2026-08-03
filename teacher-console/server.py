@@ -467,7 +467,11 @@ def latest_successful_analysis_event(entry: Path, *, exclude_event_id: str = "")
     for event in reversed(events):
         if not isinstance(event, dict):
             continue
-        if event.get("task_type") != "analysis.generate" or event.get("status") != "completed":
+        if event.get("task_type") != "analysis.generate":
+            continue
+        # Archive events normalize ``completed`` to ``succeeded``; keep both
+        # for replayed fixtures written with the raw status.
+        if event.get("status") not in {"completed", "succeeded"}:
             continue
         if exclude_event_id and str(event.get("event_id", "")) == exclude_event_id:
             continue
