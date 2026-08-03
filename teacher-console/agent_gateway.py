@@ -1242,7 +1242,7 @@ class AgentGateway:
             routing_tier,
         )
         model_config = task.get("model_config") if isinstance(task.get("model_config"), dict) else {}
-        model_metadata = {
+        model_metadata: dict[str, Any] = {
             key: str(model_config.get(source, "")).strip()
             for key, source in (("model_id", "id"), ("model_display_name", "display_name"))
             if str(model_config.get(source, "")).strip()
@@ -1504,7 +1504,7 @@ class AgentGateway:
                 if canonical_changed:
                     succeeded = False
                     unauthorized.extend(f"canonical:{name}" for name in canonical_changed)
-                attempt: dict[str, Any] = {
+                attempt = {
                     "provider": provider.name,
                     "status": "completed" if succeeded else "failed",
                     "returncode": completed.returncode,
