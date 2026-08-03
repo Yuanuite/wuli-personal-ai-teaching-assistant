@@ -31,9 +31,11 @@ REWORK_TASKS = {
 
 
 def teaching_batch(event: dict[str, Any]) -> str:
-    request = event.get("request") if isinstance(event.get("request"), dict) else {}
-    if request.get("batch_id"):
-        return str(request["batch_id"])
+    request_value = event.get("request")
+    request: dict[str, Any] = request_value if isinstance(request_value, dict) else {}
+    batch_id = request.get("batch_id")
+    if batch_id:
+        return str(batch_id)
     entry_id = str(event.get("entry_id", ""))
     prefix = entry_id[:8]
     return prefix if len(prefix) == 8 and prefix.isdigit() else "unknown"
@@ -71,7 +73,7 @@ def cohort(value: dict[str, Any]) -> str:
 
 
 def load_jobs(directory: Path) -> list[dict[str, Any]]:
-    records = []
+    records: list[dict[str, Any]] = []
     if not directory.exists():
         return records
     for path in sorted(directory.glob("*.json")):
@@ -101,7 +103,7 @@ def operational_summary(jobs: list[dict[str, Any]]) -> dict[str, Any]:
     for (task_type, group), items in sorted(grouped.items()):
         runtimes = [_seconds(item.get("started_at"), item.get("completed_at")) for item in items]
         runtimes = [value for value in runtimes if value is not None]
-        usage_values = []
+        usage_values: list[float] = []
         for item in items:
             outcome = item.get("outcome") if isinstance(item.get("outcome"), dict) else {}
             usage = outcome.get("usage") if isinstance(outcome.get("usage"), dict) else {}

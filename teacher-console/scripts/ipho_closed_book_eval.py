@@ -219,7 +219,7 @@ def payload_errors(payload: dict[str, Any], question: dict[str, Any]) -> list[st
 
 
 def aggregate_usage(attempts: list[dict[str, Any]]) -> dict[str, Any]:
-    totals: dict[str, int] = {}
+    totals: dict[str, Any] = {}
     reported_attempts = 0
     for attempt in attempts:
         usage = attempt.get("token_usage")
@@ -265,7 +265,7 @@ def solve_run_records(experiment: Path, question_id: str) -> list[dict[str, Any]
 
 
 def token_totals(records: list[dict[str, Any]]) -> dict[str, Any]:
-    totals: dict[str, int] = {}
+    totals: dict[str, Any] = {}
     unavailable = 0
     for record in records:
         usage = record.get("token_usage")
@@ -733,8 +733,8 @@ def grade_payload_errors(payload: dict[str, Any], question: dict[str, Any]) -> l
             continue
         maximum = expected_points[index]
         try:
-            declared = float(grade.get("max_points"))
-            awarded = float(grade.get("awarded_points"))
+            declared = float(grade.get("max_points", 0))
+            awarded = float(grade.get("awarded_points", 0))
         except (TypeError, ValueError):
             errors.append(f"{actual_ids[index]}: points are not numeric")
             continue

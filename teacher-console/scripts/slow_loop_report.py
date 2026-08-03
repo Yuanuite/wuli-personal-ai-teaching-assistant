@@ -197,7 +197,7 @@ def analyze(
         run_p90 = item.get("run", {}).get("p90_seconds") if isinstance(item.get("run"), dict) else None
         failures = item.get("failure_types", {}) if isinstance(item.get("failure_types"), dict) else {}
         count = max(1, int(item.get("count", 0)))
-        dominant_failure = max(failures, key=failures.get) if failures else ""
+        dominant_failure = str(max(failures, key=failures.get)) if failures else ""
         if count >= 5 and isinstance(run_p90, (int, float)) and run_p90 > 60:
             recommendations.append({
                 "code": f"scheduler.latency-review.{kind}",

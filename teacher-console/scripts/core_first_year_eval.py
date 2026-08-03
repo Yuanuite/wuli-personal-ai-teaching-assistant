@@ -365,6 +365,7 @@ def main() -> int:
         )
         print(json.dumps(structural, ensure_ascii=False))
         return 0
+    return 0
 
 
 if __name__ == "__main__":
