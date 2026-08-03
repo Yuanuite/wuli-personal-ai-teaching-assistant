@@ -101,9 +101,7 @@ def _semantic_certificate(
         "verdict": "pass",
         "normalized_result": "pass",
         "decisive_checks": ["isolated recomputation"],
-        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(
-            claim, []
-        ),
+        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(claim, []),
         "verifier_identity": {
             "model_id": model_id,
             "provider": provider,
@@ -188,27 +186,20 @@ def run_fault_case(case: dict[str, Any]) -> dict[str, Any]:
             first["exit_state"]["speed"] = "2v0"
         else:
             raise ValueError(f"unknown interface mutation: {case['mutation']}")
-        interface_report = cognitive_loop.check_stage_interfaces(
-            [first, second], [_transition()]
-        )
+        interface_report = cognitive_loop.check_stage_interfaces([first, second], [_transition()])
         observed = interface_report["status"]
         false_promotion = observed == "pass"
         detail = {
             "interface_issue_count": len(interface_report["issues"]),
-            "interface_issue_codes": sorted({
-                item["code"] for item in interface_report["issues"]
-            }),
+            "interface_issue_codes": sorted({item["code"] for item in interface_report["issues"]}),
         }
     elif case_id == "F10-two-agents-same-error":
         claim = _claim(kind="numerical", check_spec=case["check_spec"])
         certificates = [claim_validation.verify_arithmetic_claim(claim, [])]
         certificates.extend(
-            _semantic_certificate(claim, model_id=f"agent-{index}")
-            for index in range(int(case["semantic_passes"]))
+            _semantic_certificate(claim, model_id=f"agent-{index}") for index in range(int(case["semantic_passes"]))
         )
-        decision = claim_validation.apply_certificate_decision(
-            claim, [], certificates, risk="critical"
-        )
+        decision = claim_validation.apply_certificate_decision(claim, [], certificates, risk="critical")
         observed = decision["claim"]["status"]
         false_promotion = observed == "verified"
         detail = {
@@ -217,12 +208,8 @@ def run_fault_case(case: dict[str, Any]) -> dict[str, Any]:
         }
     elif case_id == "F11-repeated-hypothesis":
         challenge, hypothesis, claims = _hypothesis_fixture()
-        first = cognitive_loop.add_hypothesis_to_pool(
-            hypothesis, challenge, claims, []
-        )
-        repeated = cognitive_loop.add_hypothesis_to_pool(
-            hypothesis, challenge, claims, first["pool"]
-        )
+        first = cognitive_loop.add_hypothesis_to_pool(hypothesis, challenge, claims, [])
+        repeated = cognitive_loop.add_hypothesis_to_pool(hypothesis, challenge, claims, first["pool"])
         observed = repeated["decision"]
         false_promotion = len(repeated["pool"]) != 1
         detail = {
@@ -247,19 +234,11 @@ def run_fault_case(case: dict[str, Any]) -> dict[str, Any]:
         )
         actual = set(result["affected_claim_ids"])
         expected_affected = set(case["expected_affected_claim_ids"])
-        precision = (
-            len(actual & expected_affected) / len(actual) if actual else 0.0
-        )
-        recall = (
-            len(actual & expected_affected) / len(expected_affected)
-            if expected_affected
-            else 0.0
-        )
+        precision = len(actual & expected_affected) / len(actual) if actual else 0.0
+        recall = len(actual & expected_affected) / len(expected_affected) if expected_affected else 0.0
         isolated = (
-            result["affected_claim_ids"]
-            == case["expected_affected_claim_ids"]
-            and result["preserved_claim_ids"]
-            == case["expected_preserved_claim_ids"]
+            result["affected_claim_ids"] == case["expected_affected_claim_ids"]
+            and result["preserved_claim_ids"] == case["expected_preserved_claim_ids"]
         )
         observed = "isolated" if isolated else "collateral"
         false_promotion = not isolated
@@ -270,12 +249,8 @@ def run_fault_case(case: dict[str, Any]) -> dict[str, Any]:
             "preserved_claim_ids": result["preserved_claim_ids"],
         }
     elif case_id == "F13-generator-self-verification":
-        claim = _claim(
-            kind="model", check_spec={"type": "semantic-required"}
-        )
-        certificate = _semantic_certificate(
-            claim, model_id="solver", provider="same-runtime"
-        )
+        claim = _claim(kind="model", check_spec={"type": "semantic-required"})
+        certificate = _semantic_certificate(claim, model_id="solver", provider="same-runtime")
         decision = claim_validation.apply_certificate_decision(
             claim,
             [],
@@ -288,9 +263,7 @@ def run_fault_case(case: dict[str, Any]) -> dict[str, Any]:
         observed = decision["claim"]["status"]
         false_promotion = observed == "verified"
         detail = {
-            "self_certificate_count": decision["assessment"][
-                "self_certificate_count"
-            ],
+            "self_certificate_count": decision["assessment"]["self_certificate_count"],
         }
     elif case_id == "F14-hard-fuse-false-promotion":
         control = cognitive_loop.initial_loop_control()

@@ -13,7 +13,6 @@ import sys
 from copy import deepcopy
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
@@ -21,13 +20,8 @@ if str(CONSOLE) not in sys.path:
 
 import evidence_evaluation  # noqa: E402
 
-
-SOURCE_DATASET_FINGERPRINT = (
-    "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e"
-)
-SOURCE_OVERLAY_FINGERPRINT = (
-    "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869"
-)
+SOURCE_DATASET_FINGERPRINT = "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e"
+SOURCE_OVERLAY_FINGERPRINT = "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869"
 AFFECTED_CASE = "fresh2-relative-endpoint-valid"
 CORRECTIVE_WARNING = "求得的垂直时刻不在区间内却不检查端点"
 
@@ -43,15 +37,10 @@ def build(source_payload: dict, overlay_payload: dict) -> dict:
         raise ValueError("source overlay fingerprint drifted; refuse repair replay")
     if overlay["review_status"] != "teacher_approved":
         raise ValueError("source overlay must be teacher approved")
-    if source.get("evidence_snapshot_fingerprint") != (
-        overlay["overlay_fingerprint"]
-    ):
+    if source.get("evidence_snapshot_fingerprint") != (overlay["overlay_fingerprint"]):
         raise ValueError("source holdout and overlay fingerprints do not match")
 
-    by_id = {
-        item["gold_case"]["case_id"]: item
-        for item in source["cases"]
-    }
+    by_id = {item["gold_case"]["case_id"]: item for item in source["cases"]}
     if AFFECTED_CASE not in by_id:
         raise ValueError("source holdout is missing the affected case")
     item = deepcopy(by_id[AFFECTED_CASE])
@@ -60,15 +49,9 @@ def build(source_payload: dict, overlay_payload: dict) -> dict:
     if CORRECTIVE_WARNING not in need["forbidden_conflicts"]:
         raise ValueError("affected warning classification drifted")
     need["forbidden_conflicts"] = [
-        conflict
-        for conflict in need["forbidden_conflicts"]
-        if conflict != CORRECTIVE_WARNING
+        conflict for conflict in need["forbidden_conflicts"] if conflict != CORRECTIVE_WARNING
     ]
-    need["diagnostic_targets"] = list(
-        dict.fromkeys(
-            [*need.get("diagnostic_targets", []), CORRECTIVE_WARNING]
-        )
-    )
+    need["diagnostic_targets"] = list(dict.fromkeys([*need.get("diagnostic_targets", []), CORRECTIVE_WARNING]))
     gold["evaluation_split"] = "calibration"
     gold["batch_id"] = ""
     gold["teacher_rationale"] = (
@@ -76,20 +59,18 @@ def build(source_payload: dict, overlay_payload: dict) -> dict:
         "因此归入 diagnostic_targets。证据仍须完整覆盖时间区间、垂直时刻和区间端点。"
     )
 
-    return evidence_evaluation.normalize_gold_dataset(
-        {
-            "schema": "wuli.evidence-gold-dataset.v1",
-            "dataset_id": "wuli-evidence-mvp-g2-warning-scope-replay",
-            "dataset_version": "2026-07-31-repair-v1",
-            "review_status": "draft",
-            "label_origin": "post_holdout_v2_repair_replay",
-            "source_scope": source["source_scope"],
-            "reviewer": "",
-            "reviewed_at": "",
-            "evidence_snapshot_fingerprint": overlay["overlay_fingerprint"],
-            "cases": [item],
-        }
-    )
+    return evidence_evaluation.normalize_gold_dataset({
+        "schema": "wuli.evidence-gold-dataset.v1",
+        "dataset_id": "wuli-evidence-mvp-g2-warning-scope-replay",
+        "dataset_version": "2026-07-31-repair-v1",
+        "review_status": "draft",
+        "label_origin": "post_holdout_v2_repair_replay",
+        "source_scope": source["source_scope"],
+        "reviewer": "",
+        "reviewed_at": "",
+        "evidence_snapshot_fingerprint": overlay["overlay_fingerprint"],
+        "cases": [item],
+    })
 
 
 def main() -> int:

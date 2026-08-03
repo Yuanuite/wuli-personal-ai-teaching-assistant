@@ -8,7 +8,6 @@ import json
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
@@ -34,16 +33,11 @@ def main() -> int:
     approved_overlay = None
     if args.evidence_overlay:
         overlay = json.loads(args.evidence_overlay.read_text(encoding="utf-8"))
-        approved, approved_review, approved_overlay = (
-            evidence_evaluation.apply_gold_review_with_overlay(
-                dataset, review, overlay
-            )
+        approved, approved_review, approved_overlay = evidence_evaluation.apply_gold_review_with_overlay(
+            dataset, review, overlay
         )
     elif dataset.get("evidence_snapshot_fingerprint"):
-        parser.error(
-            "dataset declares an evidence snapshot; "
-            "--evidence-overlay and --overlay-output are required"
-        )
+        parser.error("dataset declares an evidence snapshot; --evidence-overlay and --overlay-output are required")
     else:
         approved = evidence_evaluation.apply_gold_review(dataset, review)
 
@@ -73,16 +67,8 @@ def main() -> int:
                 "dataset_fingerprint": approved["dataset_fingerprint"],
                 "reviewer": approved["reviewer"],
                 "output": str(args.output.resolve()),
-                "review_output": (
-                    str(args.review_output.resolve())
-                    if args.review_output
-                    else None
-                ),
-                "overlay_output": (
-                    str(args.overlay_output.resolve())
-                    if args.overlay_output
-                    else None
-                ),
+                "review_output": (str(args.review_output.resolve()) if args.review_output else None),
+                "overlay_output": (str(args.overlay_output.resolve()) if args.overlay_output else None),
             },
             ensure_ascii=False,
         )

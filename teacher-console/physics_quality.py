@@ -43,10 +43,24 @@ _RECHECK_MARKERS = ("复核", "验证", "检验", "检查")
 _SYMBOL_TOKEN = re.compile(r"([A-Za-zα-ωΑ-Ωε][0-9]|[α-ωΑ-Ωε][A-Za-z]?[0-9])")
 
 _GREEK_COMMANDS = {
-    "varepsilon": "ε", "epsilon": "ε", "mu": "μ", "omega": "ω", "Omega": "Ω",
-    "pi": "π", "theta": "θ", "lambda": "λ", "phi": "φ", "Delta": "Δ",
-    "alpha": "α", "beta": "β", "gamma": "γ", "Gamma": "Γ", "sigma": "σ",
-    "tau": "τ", "rho": "ρ", "Phi": "Φ",
+    "varepsilon": "ε",
+    "epsilon": "ε",
+    "mu": "μ",
+    "omega": "ω",
+    "Omega": "Ω",
+    "pi": "π",
+    "theta": "θ",
+    "lambda": "λ",
+    "phi": "φ",
+    "Delta": "Δ",
+    "alpha": "α",
+    "beta": "β",
+    "gamma": "γ",
+    "Gamma": "Γ",
+    "sigma": "σ",
+    "tau": "τ",
+    "rho": "ρ",
+    "Phi": "Φ",
 }
 
 
@@ -139,7 +153,11 @@ def _check_symbol_defined(target: dict[str, Any], problem_text: str) -> list[dic
     definitions = problem_text + "\n" + "\n".join(target.get("key_relations", []))
     undefined = _undefined_symbols(str(target.get("final_answer", "")), definitions)
     return [
-        {"code": "symbol-undefined", "target_id": str(target.get("id", "")), "detail": f"symbol {token} is used but never defined"}
+        {
+            "code": "symbol-undefined",
+            "target_id": str(target.get("id", "")),
+            "detail": f"symbol {token} is used but never defined",
+        }
         for token in undefined
     ]
 
@@ -154,9 +172,7 @@ def _check_derivation_answer_mismatch(target: dict[str, Any]) -> list[dict[str, 
     for relation in relations:
         # Only log expressions inside an energy/work statement count: a plain
         # geometric log elsewhere is a different quantity, not a conflict.
-        if re.search(r"\\?(?:ln|log)\b", relation) and any(
-            marker in relation for marker in _ENERGY_MARKERS
-        ):
+        if re.search(r"\\?(?:ln|log)\b", relation) and any(marker in relation for marker in _ENERGY_MARKERS):
             log_pairs |= _log_expression_pairs(relation)
     for pair in final_pairs:
         if pair in log_pairs:
@@ -249,9 +265,7 @@ def physics_quality_report(
         reason_codes.extend(_check_internal_recheck_conflict(target))
 
     status = "fail" if reason_codes else "pass"
-    digest = hashlib.sha256(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
+    digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     return {
         "schema_version": 1,
         "contract": PHYSICS_QUALITY_CONTRACT,

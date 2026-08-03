@@ -17,65 +17,73 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
         return None
     context_root = Path(task["entry_dir"]) / ".agent-context"
     scenario = (
-        "conflict" if "[claim-conflict]" in problem
-        else "insufficient" if "[claim-insufficient]" in problem or "[claim-fuse]" in problem
+        "conflict"
+        if "[claim-conflict]" in problem
+        else "insufficient"
+        if "[claim-insufficient]" in problem or "[claim-fuse]" in problem
         else "normal"
     )
     blueprint = {
         "status": "completed",
         "message": "fake W3 blueprint",
-        "question_targets": [{
-            "id": "q1",
-            "prompt": (
-                # A4.5 (w3-w3r work-tree): the W3R brief projection requires
-                # final answers of enumerate_all targets to declare
-                # complete=true, which the legacy-projection proof package does
-                # not carry. The [w3r-ready] marker switches the deterministic
-                # fixture to a single-value target so the W3R shadow render can
-                # complete; every pre-existing scenario (no marker) keeps the
-                # original enumerate_all prompt byte-for-byte.
-                "求粒子进入磁场时的速度大小"
-                if "[w3r-ready]" in problem
-                else "求全部可能结果并核对首次事件"
-            ),
-            "answer_type": "value",
-        }],
-        "physical_stages": [{
-            "id": "p1",
-            "label": "单阶段运动",
-            "entry_conditions": ["t=0"],
-            "exit_conditions": ["到达目标事件"],
-            "state_carried": ["速度"],
-        }],
+        "question_targets": [
+            {
+                "id": "q1",
+                "prompt": (
+                    # A4.5 (w3-w3r work-tree): the W3R brief projection requires
+                    # final answers of enumerate_all targets to declare
+                    # complete=true, which the legacy-projection proof package does
+                    # not carry. The [w3r-ready] marker switches the deterministic
+                    # fixture to a single-value target so the W3R shadow render can
+                    # complete; every pre-existing scenario (no marker) keeps the
+                    # original enumerate_all prompt byte-for-byte.
+                    "求粒子进入磁场时的速度大小" if "[w3r-ready]" in problem else "求全部可能结果并核对首次事件"
+                ),
+                "answer_type": "value",
+            }
+        ],
+        "physical_stages": [
+            {
+                "id": "p1",
+                "label": "单阶段运动",
+                "entry_conditions": ["t=0"],
+                "exit_conditions": ["到达目标事件"],
+                "state_carried": ["速度"],
+            }
+        ],
         "stage_transitions": [],
-        "reasoning_steps": [{
-            "id": "r1",
-            "operation": "建立运动关系并枚举首次事件",
-            "depends_on": [],
-            "target_ids": ["q1"],
-            "decisive_relations": ["2×3=6"],
-        }],
+        "reasoning_steps": [
+            {
+                "id": "r1",
+                "operation": "建立运动关系并枚举首次事件",
+                "depends_on": [],
+                "target_ids": ["q1"],
+                "decisive_relations": ["2×3=6"],
+            }
+        ],
         "stage_step_links": [{"stage_id": "p1", "step_id": "r1"}],
-        "retrieval_needs": [{
-            "id": "n1",
-            "purpose": "核对首次事件的高中方法",
-            "query": "首次事件 枚举 边界条件",
-            "priority": 3,
-            "target_ids": ["q1"],
-            "stage_ids": ["p1"],
-        }],
-        "verification_obligations": [{
-            "id": "v1",
-            "target_id": "q1",
-            "check": "核对所有允许分支中的首次事件",
-            "risk": "medium",
-        }],
+        "retrieval_needs": [
+            {
+                "id": "n1",
+                "purpose": "核对首次事件的高中方法",
+                "query": "首次事件 枚举 边界条件",
+                "priority": 3,
+                "target_ids": ["q1"],
+                "stage_ids": ["p1"],
+            }
+        ],
+        "verification_obligations": [
+            {
+                "id": "v1",
+                "target_id": "q1",
+                "check": "核对所有允许分支中的首次事件",
+                "risk": "medium",
+            }
+        ],
     }
     solver_blueprint = blueprint
     try:
-        candidate = json.loads(
-            (context_root / "w3-blueprint.json").read_text(encoding="utf-8")
-        )
+        candidate = json.loads((context_root / "w3-blueprint.json").read_text(encoding="utf-8"))
         if isinstance(candidate, dict):
             solver_blueprint = candidate
     except (OSError, json.JSONDecodeError):
@@ -88,27 +96,33 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
     solution = {
         "status": "completed",
         "message": "fake W3 solution",
-        "targets": [{
-            "id": "q1",
-            "final_answer": "6",
-            "supporting_relations": ["2×3=6"],
-            "conditions": ["允许经过边界后再次返回"],
-            "covered_obligation_ids": solver_obligation_ids,
-        }],
-        "stage_results": [{
-            "stage_id": "p1",
-            "result": "枚举允许事件后由 2×3=6 得到结论。",
-        }],
-        "stage_interfaces": [{
-            "stage_id": "p1",
-            "coordinate_frame": "ground",
-            "time_origin": "t=0",
-            "directions": {"x": "positive along motion"},
-            "entry_state": {"speed": "initial speed"},
-            "exit_state": {"speed": "speed at target event"},
-            "required_entry_keys": ["speed"],
-            "carried_state_keys": [],
-        }],
+        "targets": [
+            {
+                "id": "q1",
+                "final_answer": "6",
+                "supporting_relations": ["2×3=6"],
+                "conditions": ["允许经过边界后再次返回"],
+                "covered_obligation_ids": solver_obligation_ids,
+            }
+        ],
+        "stage_results": [
+            {
+                "stage_id": "p1",
+                "result": "枚举允许事件后由 2×3=6 得到结论。",
+            }
+        ],
+        "stage_interfaces": [
+            {
+                "stage_id": "p1",
+                "coordinate_frame": "ground",
+                "time_origin": "t=0",
+                "directions": {"x": "positive along motion"},
+                "entry_state": {"speed": "initial speed"},
+                "exit_state": {"speed": "speed at target event"},
+                "required_entry_keys": ["speed"],
+                "carried_state_keys": [],
+            }
+        ],
         "stage_transitions": [],
         "option_verdicts": [],
         "blueprint_audit": {
@@ -124,37 +138,34 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
         return solution
     if stage == "verifier":
         target_verdict = (
-            "conflict" if scenario == "conflict"
-            else "insufficient" if scenario == "insufficient"
-            else "pass"
+            "conflict" if scenario == "conflict" else "insufficient" if scenario == "insufficient" else "pass"
         )
         return {
             "status": "completed",
             "message": "fake target audit",
-            "target_audits": [{
-                "target_id": "q1",
-                "verdict": target_verdict,
-                "recomputed_result": "6" if target_verdict == "pass" else "待定",
-                "decisive_checks": (
-                    ["独立复算 2×3=6"] if target_verdict == "pass" else []
-                ),
-                "issues": (
-                    [] if target_verdict == "pass"
-                    else [f"injected target {target_verdict}"]
-                ),
-            }],
+            "target_audits": [
+                {
+                    "target_id": "q1",
+                    "verdict": target_verdict,
+                    "recomputed_result": "6" if target_verdict == "pass" else "待定",
+                    "decisive_checks": (["独立复算 2×3=6"] if target_verdict == "pass" else []),
+                    "issues": ([] if target_verdict == "pass" else [f"injected target {target_verdict}"]),
+                }
+            ],
         }
     if stage == "adjudicator":
         return {
             "status": "completed",
             "message": "fake adjudication",
-            "target_decisions": [{
-                "target_id": "q1",
-                "selected_result": "6",
-                "decision": "recomputed",
-                "decisive_relation": "2×3=6",
-                "reason": "独立关系与题设一致",
-            }],
+            "target_decisions": [
+                {
+                    "target_id": "q1",
+                    "selected_result": "6",
+                    "decision": "recomputed",
+                    "decisive_relation": "2×3=6",
+                    "reason": "独立关系与题设一致",
+                }
+            ],
         }
     if stage == "claim-verifier":
         view_path = context_root / "w3-verification_view.json"
@@ -184,11 +195,10 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
                         if verdict == "conflict"
                         else "source facts do not determine the boundary branch"
                     ),
-                    "decisive_checks": (
-                        ["independently checked 2×3=6"] if verdict == "pass" else []
-                    ),
+                    "decisive_checks": (["independently checked 2×3=6"] if verdict == "pass" else []),
                     "issues": (
-                        [] if verdict == "pass"
+                        []
+                        if verdict == "pass"
                         else ["injected semantic conflict"]
                         if verdict == "conflict"
                         else ["injected insufficient evidence"]
@@ -203,11 +213,7 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
 def core_solve_payload(task: dict, problem: str) -> dict | None:
     if task.get("output_contract", {}).get("name") != "wuli.core-solve.v1":
         return None
-    brief = json.loads(
-        (Path(task["entry_dir"]) / ".agent-context" / "target-brief.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    brief = json.loads((Path(task["entry_dir"]) / ".agent-context" / "target-brief.json").read_text(encoding="utf-8"))
     charged = "带电粒子" in problem
     final_answer = "临界磁感应强度为 $B^*=3mv_0/(qd)$" if charged else "物体的加速度为 $a=F/m$"
     derivation = (
@@ -339,11 +345,7 @@ def main() -> int:
         return 0
     stage_payload = w3_stage_payload(task, problem)
     if stage_payload is not None:
-        stage_payload["model"] = (
-            "fake-claim-verifier"
-            if task.get("w3_stage") == "claim-verifier"
-            else "fake-w3-solver"
-        )
+        stage_payload["model"] = "fake-claim-verifier" if task.get("w3_stage") == "claim-verifier" else "fake-w3-solver"
         print(json.dumps(stage_payload, ensure_ascii=False))
         return 0
     core_payload = core_solve_payload(task, problem)
@@ -382,16 +384,63 @@ def main() -> int:
     if task["kind"] == "diagram.scene":
         facts = json.loads((entry / "visual-facts.json").read_text(encoding="utf-8"))
         fact_ids = [item["id"] for item in facts.get("diagram_facts", [])]
-        print(json.dumps({
-            "status": "completed", "message": "fake typed physics scene", "title": "物理过程示意图",
-            "panels": [{"id": "p1", "title": "场区与轨迹"}],
-            "regions": [{"id": "r1", "panel_id": "p1", "kind": "magnetic", "x": 8, "y": 12, "width": 84, "height": 72, "label": "场区", "fact_ids": fact_ids, "direction": "into-page"}],
-            "objects": [{"id": "o1", "panel_id": "p1", "kind": "particle", "x": 15, "y": 55, "width": 4, "height": 6, "label": "粒子", "fact_ids": [], "polarity": "positive"}],
-            "paths": [{"id": "t1", "panel_id": "p1", "kind": "trajectory", "geometry": "smooth", "points": [{"x": 18, "y": 58}, {"x": 45, "y": 38}, {"x": 78, "y": 25}], "label": "运动轨迹", "direction": "right", "fact_ids": []}],
-            "annotations": [], "omissions": [],
-            "model": "fake-e2e", "model_tier": "standard", "requested_tier": task.get("routing_tier", "auto"),
-            "usage": {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120},
-        }, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "status": "completed",
+                    "message": "fake typed physics scene",
+                    "title": "物理过程示意图",
+                    "panels": [{"id": "p1", "title": "场区与轨迹"}],
+                    "regions": [
+                        {
+                            "id": "r1",
+                            "panel_id": "p1",
+                            "kind": "magnetic",
+                            "x": 8,
+                            "y": 12,
+                            "width": 84,
+                            "height": 72,
+                            "label": "场区",
+                            "fact_ids": fact_ids,
+                            "direction": "into-page",
+                        }
+                    ],
+                    "objects": [
+                        {
+                            "id": "o1",
+                            "panel_id": "p1",
+                            "kind": "particle",
+                            "x": 15,
+                            "y": 55,
+                            "width": 4,
+                            "height": 6,
+                            "label": "粒子",
+                            "fact_ids": [],
+                            "polarity": "positive",
+                        }
+                    ],
+                    "paths": [
+                        {
+                            "id": "t1",
+                            "panel_id": "p1",
+                            "kind": "trajectory",
+                            "geometry": "smooth",
+                            "points": [{"x": 18, "y": 58}, {"x": 45, "y": 38}, {"x": 78, "y": 25}],
+                            "label": "运动轨迹",
+                            "direction": "right",
+                            "fact_ids": [],
+                        }
+                    ],
+                    "annotations": [],
+                    "omissions": [],
+                    "model": "fake-e2e",
+                    "model_tier": "standard",
+                    "requested_tier": task.get("routing_tier", "auto"),
+                    "usage": {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120},
+                },
+                ensure_ascii=False,
+            )
+        )
         return 0
 
     record = json.loads((entry / "record.json").read_text(encoding="utf-8"))
@@ -468,8 +517,7 @@ def main() -> int:
                     "message": "已生成结构化分层解析",
                     "student_solution": student_solution,
                     "teacher_audit": (
-                        "教师复核时应确认研究对象、正方向和边界条件保持一致，"
-                        "并逐步检查公式、量纲与最终结论。"
+                        "教师复核时应确认研究对象、正方向和边界条件保持一致，并逐步检查公式、量纲与最终结论。"
                     ),
                     "method_check": {
                         "selected_path": (
@@ -506,9 +554,7 @@ def main() -> int:
                             else ["实际物体转换为受力模型"]
                         ),
                         "condition_checks": (
-                            ["核对相切临界条件", "核对洛伦兹力方向"]
-                            if charged_particle
-                            else ["核对合力与加速度方向"]
+                            ["核对相切临界条件", "核对洛伦兹力方向"] if charged_particle else ["核对合力与加速度方向"]
                         ),
                         "type_distance": (
                             {

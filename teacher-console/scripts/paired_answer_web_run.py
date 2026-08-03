@@ -156,9 +156,7 @@ def configure_server(library: Path, workspace: Path) -> None:
     teacher_server.PUBLIC_SITE = workspace / "student-site"
     teacher_server.MODEL_REGISTRY_PATH = library / "config" / "model-registry.json"
     model_registry.LIBRARY = library
-    teacher_server.AGENT_GATEWAY = AgentGateway(
-        environment_resolver=lambda: resolved_environment(library)
-    )
+    teacher_server.AGENT_GATEWAY = AgentGateway(environment_resolver=lambda: resolved_environment(library))
     teacher_server._JOB_MANAGER = AgentJobManager(
         library / ".cache" / "agent-jobs",
         max_workers=1,
@@ -167,11 +165,7 @@ def configure_server(library: Path, workspace: Path) -> None:
 
 def fixed_evidence_snapshot(entry: Path, evidence_mode: str) -> dict[str, Any]:
     """Build the exact evidence payload that the isolated web click will receive."""
-    selection_policy = (
-        "evidence-set-v2"
-        if evidence_mode == "candidate"
-        else "baseline"
-    )
+    selection_policy = "evidence-set-v2" if evidence_mode == "candidate" else "baseline"
     snapshot = teacher_server.agent_evidence_payload(
         entry,
         "analysis.generate",
@@ -215,9 +209,7 @@ def fixed_evidence_snapshot(entry: Path, evidence_mode: str) -> dict[str, Any]:
         "context_budget": budget,
     }
     for _ in range(2):
-        disabled["context_budget"]["serialized_chars"] = len(
-            json.dumps(disabled, ensure_ascii=False)
-        )
+        disabled["context_budget"]["serialized_chars"] = len(json.dumps(disabled, ensure_ascii=False))
     return disabled
 
 
@@ -253,12 +245,15 @@ def run_case(
         configure_server(library, workspace)
         entry = library / "entries" / entry_id
         evidence_snapshot = fixed_evidence_snapshot(entry, evidence_mode)
-        evidence_text = json.dumps(
-            evidence_snapshot,
-            ensure_ascii=False,
-            indent=2,
-            sort_keys=True,
-        ) + "\n"
+        evidence_text = (
+            json.dumps(
+                evidence_snapshot,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
         evidence_digest = hashlib.sha256(evidence_text.encode("utf-8")).hexdigest()
         (artifact_dir / f"{artifact_prefix}.evidence.json").write_text(
             evidence_text,
@@ -323,9 +318,7 @@ def run_case(
             "evidence_mode": evidence_mode,
             "evidence_snapshot_sha256": evidence_digest,
             "source": "teacher-console-browser-click",
-            "status": "completed"
-            if completed.returncode == 0 and baseline.is_file()
-            else "failed",
+            "status": "completed" if completed.returncode == 0 and baseline.is_file() else "failed",
             "driver_returncode": completed.returncode,
             "model_id": request.get("model_id"),
             "model_display_name": request.get("model_display_name"),
@@ -405,11 +398,7 @@ def main() -> int:
     selected = args.entries or manifest_ids
     selected = [entry_id for entry_id in selected if entry_id in manifest_ids]
     if args.only_with_direct:
-        selected = [
-            entry_id
-            for entry_id in selected
-            if (experiment / "artifacts" / entry_id / "direct.md").is_file()
-        ]
+        selected = [entry_id for entry_id in selected if (experiment / "artifacts" / entry_id / "direct.md").is_file()]
     if args.max_cases > 0:
         selected = selected[: args.max_cases]
     results = []

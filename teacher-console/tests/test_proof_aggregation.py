@@ -17,11 +17,13 @@ def claim(claim_id, kind, depends_on=None, obligation_ids=None):
         "numerical": {
             "type": "arithmetic",
             "variables": {},
-            "relations": [{
-                "left": "2 * 3",
-                "operator": "==",
-                "right": "6",
-            }],
+            "relations": [
+                {
+                    "left": "2 * 3",
+                    "operator": "==",
+                    "right": "6",
+                }
+            ],
         },
         "final": {"type": "aggregation"},
     }[kind]
@@ -61,18 +63,14 @@ def fixture():
         "verdict": "pass",
         "normalized_result": "source S1",
         "decisive_checks": ["exact approved source statement"],
-        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(
-            premise, []
-        ),
+        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(premise, []),
         "verifier_identity": {
             "model_id": "source-review",
             "provider": "local",
             "context_isolated": True,
         },
     }
-    numerical_certificate = claim_validation.verify_arithmetic_claim(
-        numerical, [premise]
-    )
+    numerical_certificate = claim_validation.verify_arithmetic_claim(numerical, [premise])
     final_certificate = {
         "claim_id": "C2",
         "claim_version": 1,
@@ -81,9 +79,7 @@ def fixture():
         "verdict": "pass",
         "normalized_result": "all dependencies verified",
         "decisive_checks": ["C1 is verified and covers V1"],
-        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(
-            final, [numerical]
-        ),
+        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(final, [numerical]),
         "verifier_identity": {
             "model_id": "proof-aggregation-v1",
             "provider": "local",
@@ -150,11 +146,7 @@ class ProofAggregationTest(unittest.TestCase):
         claims[0]["depends_on"] = []
         certificates = certificates[1:]
         certificates[0] = claim_validation.verify_arithmetic_claim(claims[0], [])
-        certificates[1]["input_fingerprint"] = (
-            claim_ledger.claim_verification_input_fingerprint(
-                claims[1], [claims[0]]
-            )
-        )
+        certificates[1]["input_fingerprint"] = claim_ledger.claim_verification_input_fingerprint(claims[1], [claims[0]])
         report = proof_aggregation.aggregate_proof(
             claims,
             certificates,

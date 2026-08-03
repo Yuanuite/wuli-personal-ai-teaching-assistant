@@ -63,9 +63,15 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
 
     def test_failed_scene_revision_uses_bounded_patch_contract(self):
         candidate = {
-            "status": "completed", "message": "candidate", "title": "候选图",
-            "panels": [], "regions": [], "objects": [], "paths": [],
-            "annotations": [], "omissions": [],
+            "status": "completed",
+            "message": "candidate",
+            "title": "候选图",
+            "panels": [],
+            "regions": [],
+            "objects": [],
+            "paths": [],
+            "annotations": [],
+            "omissions": [],
         }
         diagnostics = {
             "schema": "wuli.physics-diagram-diagnostics.v1",
@@ -80,18 +86,19 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
             model_config={"id": "deepseek-v4-flash-api", "provider": "openai-compatible"},
         )
         self.assertEqual(task["kind"], "diagram.scene")
-        self.assertEqual(
-            task["output_contract"]["name"], "wuli.physics-diagram-scene-patch.v1"
-        )
+        self.assertEqual(task["output_contract"]["name"], "wuli.physics-diagram-scene-patch.v1")
         self.assertIn("不得重新生成整张场景", task["prompt"])
         self.assertIn("teacher-solution.md", task["input_paths"])
         self.assertIn("solution.md", task["input_paths"])
         self.assertNotIn("student-solution.md", task["structured_context_paths"])
-        self.assertEqual(task["structured_context_paths"], [
-            ".agent-context/rejected-physics-diagram-scene.json",
-            ".agent-context/physics-diagram-diagnostics.json",
-            ".agent-context/diagram-obligations.json",
-        ])
+        self.assertEqual(
+            task["structured_context_paths"],
+            [
+                ".agent-context/rejected-physics-diagram-scene.json",
+                ".agent-context/physics-diagram-diagnostics.json",
+                ".agent-context/diagram-obligations.json",
+            ],
+        )
         self.assertEqual(
             task["context_payloads"][".agent-context/rejected-physics-diagram-scene.json"],
             candidate,
@@ -99,9 +106,15 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
 
     def test_diagram_orchestrator_runs_at_most_one_patch_retry(self):
         candidate = {
-            "status": "completed", "message": "candidate", "title": "候选图",
-            "panels": [], "regions": [], "objects": [], "paths": [],
-            "annotations": [], "omissions": [],
+            "status": "completed",
+            "message": "candidate",
+            "title": "候选图",
+            "panels": [],
+            "regions": [],
+            "objects": [],
+            "paths": [],
+            "annotations": [],
+            "omissions": [],
         }
         report = {
             "schema": "wuli.physics-diagram-diagnostics.v1",
@@ -111,11 +124,15 @@ class MimoDeepseekCollaborationTests(unittest.TestCase):
         }
         initial = {
             "status": "failed",
-            "attempts": [{"materialization": {
-                "status": "rejected",
-                "rejected_candidate": candidate,
-                "diagnostic_report": report,
-            }}],
+            "attempts": [
+                {
+                    "materialization": {
+                        "status": "rejected",
+                        "rejected_candidate": candidate,
+                        "diagnostic_report": report,
+                    }
+                }
+            ],
         }
         recovered = {"status": "completed", "attempts": [{"status": "completed"}]}
         with mock.patch.object(server, "run_agent_gateway", side_effect=[initial, recovered]) as run:

@@ -9,23 +9,22 @@ if str(CONSOLE) not in sys.path:
 
 import w3_pipeline
 
-
 BLUEPRINT = {
     "status": "completed",
     "question_targets": [{"id": "q1", "prompt": "第一次返回", "answer_type": "value"}],
     "physical_stages": [{"id": "p1"}],
-    "verification_obligations": [
-        {"id": "v1", "target_id": "q1", "check": "第一次事件", "risk": "critical"}
-    ],
+    "verification_obligations": [{"id": "v1", "target_id": "q1", "check": "第一次事件", "risk": "critical"}],
 }
 SOLUTION = {
     "status": "completed",
-    "targets": [{
-        "id": "q1",
-        "prompt": "第一次返回",
-        "final_answer": "t",
-        "supporting_relations": ["t=T/2"],
-    }],
+    "targets": [
+        {
+            "id": "q1",
+            "prompt": "第一次返回",
+            "final_answer": "t",
+            "supporting_relations": ["t=T/2"],
+        }
+    ],
     "stage_results": [{"stage_id": "p1", "result": "由周期关系得到目标结论。"}],
     "blueprint_audit": {"status": "followed"},
 }
@@ -81,11 +80,7 @@ class W3PipelineTest(unittest.TestCase):
                         "verification_obligations": [],
                     },
                 )
-                obligation = next(
-                    item
-                    for item in result["verification_obligations"]
-                    if item["id"].endswith(suffix)
-                )
+                obligation = next(item for item in result["verification_obligations"] if item["id"].endswith(suffix))
                 self.assertEqual(
                     obligation["id"],
                     f"{w3_pipeline.SOURCE_DOMAIN_OBLIGATION_PREFIX}Q1_{suffix}",
@@ -99,12 +94,14 @@ class W3PipelineTest(unittest.TestCase):
     def test_source_domain_guard_does_not_duplicate_existing_coverage(self):
         blueprint = {
             "question_targets": [{"id": "Q1", "prompt": "求首次返回时间"}],
-            "verification_obligations": [{
-                "id": "V1",
-                "target_id": "Q1",
-                "check": "排除更早事件并证明首次返回",
-                "risk": "critical",
-            }],
+            "verification_obligations": [
+                {
+                    "id": "V1",
+                    "target_id": "Q1",
+                    "check": "排除更早事件并证明首次返回",
+                    "risk": "critical",
+                }
+            ],
         }
         result = w3_pipeline.augment_mandatory_physics_obligations(
             "粒子第一次返回，求首次返回时间。",
@@ -136,9 +133,7 @@ class W3PipelineTest(unittest.TestCase):
             **arguments,
             claim_evidence_shadow_enabled=True,
         )
-        self.assertEqual(
-            enabled["claim_evidence_shadow"]["status"], "enabled-not-run"
-        )
+        self.assertEqual(enabled["claim_evidence_shadow"]["status"], "enabled-not-run")
         without_marker = dict(enabled)
         without_marker.pop("claim_evidence_shadow")
         self.assertEqual(without_marker, legacy)
@@ -146,43 +141,49 @@ class W3PipelineTest(unittest.TestCase):
     def test_enabled_claim_evidence_runs_isolated_claim_verifier(self):
         blueprint = {
             "status": "completed",
-            "question_targets": [
-                {"id": "q1", "prompt": "求结果", "answer_type": "value"}
-            ],
+            "question_targets": [{"id": "q1", "prompt": "求结果", "answer_type": "value"}],
             "physical_stages": [{"id": "p1"}],
             "reasoning_steps": [],
             "stage_step_links": [],
-            "verification_obligations": [{
-                "id": "v1",
-                "target_id": "q1",
-                "check": "核对结果",
-                "risk": "medium",
-            }],
+            "verification_obligations": [
+                {
+                    "id": "v1",
+                    "target_id": "q1",
+                    "check": "核对结果",
+                    "risk": "medium",
+                }
+            ],
         }
         solver = {
             "status": "completed",
             "message": "ok",
-            "targets": [{
-                "id": "q1",
-                "final_answer": "6",
-                "supporting_relations": ["2×3=6"],
-                "conditions": [],
-                "covered_obligation_ids": ["v1"],
-            }],
-            "stage_results": [{
-                "stage_id": "p1",
-                "result": "单阶段复算完成。",
-            }],
-            "stage_interfaces": [{
-                "stage_id": "p1",
-                "coordinate_frame": "ground",
-                "time_origin": "t=0",
-                "directions": {"x": "positive along motion"},
-                "entry_state": {"speed": "initial speed"},
-                "exit_state": {"speed": "speed at target event"},
-                "required_entry_keys": ["speed"],
-                "carried_state_keys": [],
-            }],
+            "targets": [
+                {
+                    "id": "q1",
+                    "final_answer": "6",
+                    "supporting_relations": ["2×3=6"],
+                    "conditions": [],
+                    "covered_obligation_ids": ["v1"],
+                }
+            ],
+            "stage_results": [
+                {
+                    "stage_id": "p1",
+                    "result": "单阶段复算完成。",
+                }
+            ],
+            "stage_interfaces": [
+                {
+                    "stage_id": "p1",
+                    "coordinate_frame": "ground",
+                    "time_origin": "t=0",
+                    "directions": {"x": "positive along motion"},
+                    "entry_state": {"speed": "initial speed"},
+                    "exit_state": {"speed": "speed at target event"},
+                    "required_entry_keys": ["speed"],
+                    "carried_state_keys": [],
+                }
+            ],
             "stage_transitions": [],
             "option_verdicts": [],
             "blueprint_audit": {
@@ -204,16 +205,15 @@ class W3PipelineTest(unittest.TestCase):
             if name == "decompose":
                 return blueprint
             if name == "solver-a":
-                obligation_ids = [
-                    item["id"]
-                    for item in context["blueprint"]["verification_obligations"]
-                ]
+                obligation_ids = [item["id"] for item in context["blueprint"]["verification_obligations"]]
                 return {
                     **solver,
-                    "targets": [{
-                        **solver["targets"][0],
-                        "covered_obligation_ids": obligation_ids,
-                    }],
+                    "targets": [
+                        {
+                            **solver["targets"][0],
+                            "covered_obligation_ids": obligation_ids,
+                        }
+                    ],
                     "blueprint_audit": {
                         **solver["blueprint_audit"],
                         "covered_obligation_ids": obligation_ids,
@@ -222,13 +222,15 @@ class W3PipelineTest(unittest.TestCase):
             if name == "verifier":
                 return {
                     "status": "completed",
-                    "target_audits": [{
-                        "target_id": "q1",
-                        "verdict": "pass",
-                        "recomputed_result": "6",
-                        "decisive_checks": ["2×3=6"],
-                        "issues": [],
-                    }],
+                    "target_audits": [
+                        {
+                            "target_id": "q1",
+                            "verdict": "pass",
+                            "recomputed_result": "6",
+                            "decisive_checks": ["2×3=6"],
+                            "issues": [],
+                        }
+                    ],
                 }
             if name == "claim-verifier":
                 audits = []
@@ -281,19 +283,10 @@ class W3PipelineTest(unittest.TestCase):
         teacher_view = w3_pipeline.claim_evidence_teacher_snapshot(result)
         self.assertEqual(teacher_view["status"], "completed")
         self.assertEqual(teacher_view["aggregation_status"], "VERIFIED")
-        self.assertEqual(
-            teacher_view["final_answers"][0]["statement"], "6"
-        )
-        self.assertEqual(
-            len(teacher_view["claims"]), evidence["metrics"]["claim_count"]
-        )
+        self.assertEqual(teacher_view["final_answers"][0]["statement"], "6")
+        self.assertEqual(len(teacher_view["claims"]), evidence["metrics"]["claim_count"])
         self.assertTrue(teacher_view["certificates"])
-        self.assertFalse(
-            any(
-                item["type"] == "stage-interface"
-                for item in teacher_view["unresolved_obligations"]
-            )
-        )
+        self.assertFalse(any(item["type"] == "stage-interface" for item in teacher_view["unresolved_obligations"]))
         encoded = str(teacher_view)
         self.assertNotIn("_runtime_identity", encoded)
         self.assertNotIn("input_fingerprint", encoded)
@@ -302,31 +295,31 @@ class W3PipelineTest(unittest.TestCase):
     def test_claim_batches_can_run_two_at_a_time_without_reordering_results(self):
         blueprint = {
             "status": "completed",
-            "question_targets": [
-                {"id": "q1", "prompt": "求结果", "answer_type": "value"}
-            ],
+            "question_targets": [{"id": "q1", "prompt": "求结果", "answer_type": "value"}],
             "physical_stages": [],
             "reasoning_steps": [],
             "stage_step_links": [],
-            "verification_obligations": [{
-                "id": "v1",
-                "target_id": "q1",
-                "check": "核对结果",
-                "risk": "critical",
-            }],
+            "verification_obligations": [
+                {
+                    "id": "v1",
+                    "target_id": "q1",
+                    "check": "核对结果",
+                    "risk": "critical",
+                }
+            ],
         }
         solver = {
             "status": "completed",
             "message": "ok",
-            "targets": [{
-                "id": "q1",
-                "final_answer": "45",
-                "supporting_relations": [
-                    f"r{index}={index}" for index in range(1, 10)
-                ],
-                "conditions": [],
-                "covered_obligation_ids": ["v1"],
-            }],
+            "targets": [
+                {
+                    "id": "q1",
+                    "final_answer": "45",
+                    "supporting_relations": [f"r{index}={index}" for index in range(1, 10)],
+                    "conditions": [],
+                    "covered_obligation_ids": ["v1"],
+                }
+            ],
             "stage_results": [],
             "stage_interfaces": [],
             "stage_transitions": [],
@@ -410,29 +403,31 @@ class W3PipelineTest(unittest.TestCase):
     def test_default_obligation_suggestions_are_shadow_only(self):
         blueprint = {
             "status": "completed",
-            "question_targets": [
-                {"id": "q1", "prompt": "求粒子进入区域的时刻", "answer_type": "time"}
-            ],
+            "question_targets": [{"id": "q1", "prompt": "求粒子进入区域的时刻", "answer_type": "time"}],
             "physical_stages": [{"id": "p1"}],
             "reasoning_steps": [],
             "stage_step_links": [],
-            "verification_obligations": [{
-                "id": "v1",
-                "target_id": "q1",
-                "check": "复算进入时刻",
-                "risk": "medium",
-            }],
+            "verification_obligations": [
+                {
+                    "id": "v1",
+                    "target_id": "q1",
+                    "check": "复算进入时刻",
+                    "risk": "medium",
+                }
+            ],
         }
         solver = {
             "status": "completed",
             "message": "ok",
-            "targets": [{
-                "id": "q1",
-                "final_answer": "t=T",
-                "supporting_relations": ["t=T"],
-                "conditions": [],
-                "covered_obligation_ids": ["v1"],
-            }],
+            "targets": [
+                {
+                    "id": "q1",
+                    "final_answer": "t=T",
+                    "supporting_relations": ["t=T"],
+                    "conditions": [],
+                    "covered_obligation_ids": ["v1"],
+                }
+            ],
             "stage_results": [],
             "option_verdicts": [],
             "blueprint_audit": {
@@ -447,9 +442,7 @@ class W3PipelineTest(unittest.TestCase):
             if name == "decompose":
                 return blueprint
             if name == "solver-a":
-                self.assertNotIn(
-                    "default_obligation_suggestions", context["blueprint"]
-                )
+                self.assertNotIn("default_obligation_suggestions", context["blueprint"])
                 return solver
             raise AssertionError(name)
 
@@ -498,13 +491,15 @@ class W3PipelineTest(unittest.TestCase):
             if name == "verifier":
                 return {
                     "status": "completed",
-                    "target_audits": [{
-                        "target_id": "q1",
-                        "verdict": "conflict",
-                        "recomputed_result": "2t",
-                        "decisive_checks": ["检查首次事件"],
-                        "issues": ["事件序号不一致"],
-                    }],
+                    "target_audits": [
+                        {
+                            "target_id": "q1",
+                            "verdict": "conflict",
+                            "recomputed_result": "2t",
+                            "decisive_checks": ["检查首次事件"],
+                            "issues": ["事件序号不一致"],
+                        }
+                    ],
                 }
             if name == "solver-b":
                 return {
@@ -518,9 +513,7 @@ class W3PipelineTest(unittest.TestCase):
         result = w3_pipeline.run_shadow(
             "粒子先进入磁场，随后第一次返回边界，求时间。",
             stage_runner=runner,
-            evidence_builder=lambda blueprint: {
-                "status": "ready", "evidence_set": {"status": "selected"}
-            },
+            evidence_builder=lambda blueprint: {"status": "ready", "evidence_set": {"status": "selected"}},
         )
         self.assertEqual(
             [name for name, _ in calls],
@@ -538,43 +531,49 @@ class W3PipelineTest(unittest.TestCase):
         self.assertNotIn("solver", str(snapshot).lower())
 
     def test_acceptance_requires_independent_holdout(self):
-        cases = [{
-            "review_status": "approved",
-            "evaluation_split": "holdout",
-            "target_count": 3,
-            "correct_target_count": 3,
-            "w2_correct_target_count": 2,
-            "agent_call_count": 4,
-            "teacher_focus_count": 1,
-        }] * 5
+        cases = [
+            {
+                "review_status": "approved",
+                "evaluation_split": "holdout",
+                "target_count": 3,
+                "correct_target_count": 3,
+                "w2_correct_target_count": 2,
+                "agent_call_count": 4,
+                "teacher_focus_count": 1,
+            }
+        ] * 5
         metrics = w3_pipeline.acceptance_metrics(cases)
         self.assertTrue(metrics["gates"]["production_eligible"])
 
     def test_accuracy_regression_blocks_production(self):
-        cases = [{
-            "review_status": "approved",
-            "evaluation_split": "holdout",
-            "target_count": 3,
-            "correct_target_count": 2,
-            "w2_correct_target_count": 3,
-            "agent_call_count": 4,
-            "teacher_focus_count": 1,
-        }] * 5
+        cases = [
+            {
+                "review_status": "approved",
+                "evaluation_split": "holdout",
+                "target_count": 3,
+                "correct_target_count": 2,
+                "w2_correct_target_count": 3,
+                "agent_call_count": 4,
+                "teacher_focus_count": 1,
+            }
+        ] * 5
         metrics = w3_pipeline.acceptance_metrics(cases)
         self.assertFalse(metrics["gates"]["accuracy_non_regression"])
 
     def test_post_shadow_reference_revision_requires_fresh_holdout(self):
-        cases = [{
-            "review_status": "approved",
-            "evaluation_split": "holdout",
-            "target_count": 3,
-            "correct_target_count": 3,
-            "w2_correct_target_count": 3,
-            "validated_supplement_target_count": 1,
-            "reference_revised_after_shadow": True,
-            "agent_call_count": 4,
-            "teacher_focus_count": 1,
-        }] * 5
+        cases = [
+            {
+                "review_status": "approved",
+                "evaluation_split": "holdout",
+                "target_count": 3,
+                "correct_target_count": 3,
+                "w2_correct_target_count": 3,
+                "validated_supplement_target_count": 1,
+                "reference_revised_after_shadow": True,
+                "agent_call_count": 4,
+                "teacher_focus_count": 1,
+            }
+        ] * 5
         metrics = w3_pipeline.acceptance_metrics(cases)
         self.assertTrue(metrics["gates"]["accuracy_non_regression"])
         self.assertFalse(metrics["gates"]["independent_holdout_intact"])
@@ -582,15 +581,17 @@ class W3PipelineTest(unittest.TestCase):
         self.assertFalse(metrics["gates"]["production_eligible"])
 
     def test_replay_cases_are_reported_but_never_count_as_holdout(self):
-        cases = [{
-            "review_status": "approved",
-            "evaluation_split": "replay",
-            "target_count": 3,
-            "correct_target_count": 3,
-            "w2_correct_target_count": 3,
-            "agent_call_count": 4,
-            "teacher_focus_count": 1,
-        }] * 5
+        cases = [
+            {
+                "review_status": "approved",
+                "evaluation_split": "replay",
+                "target_count": 3,
+                "correct_target_count": 3,
+                "w2_correct_target_count": 3,
+                "agent_call_count": 4,
+                "teacher_focus_count": 1,
+            }
+        ] * 5
         metrics = w3_pipeline.acceptance_metrics(cases)
         self.assertEqual(metrics["replay"]["target_count"], 15)
         self.assertEqual(metrics["replay"]["target_accuracy"], 1.0)
@@ -622,18 +623,14 @@ class W3PipelineTest(unittest.TestCase):
     def test_renderer_outputs_one_answer_with_required_student_sections(self):
         blueprint = {
             "reasoning_steps": [{"operation": "列半径关系"}],
-            "verification_obligations": [
-                {"id": "v1", "target_id": "q1", "risk": "high", "check": "核对首次事件"}
-            ],
+            "verification_obligations": [{"id": "v1", "target_id": "q1", "risk": "high", "check": "核对首次事件"}],
         }
         solver = {
             "status": "completed",
             "targets": [{"id": "q1", "final_answer": "A"}],
             "stage_results": [{"stage_id": "p1", "result": "由 qvB=mv²/R 得 A。"}],
         }
-        rendered = w3_pipeline.render_recommended_student_solution(
-            blueprint, solver, None
-        )
+        rendered = w3_pipeline.render_recommended_student_solution(blueprint, solver, None)
         for heading in ("答案速览", "一眼识别", "详细解答", "易错点", "30 秒自测"):
             self.assertIn(heading, rendered)
         self.assertIn("最短主线", rendered)
@@ -644,68 +641,71 @@ class W3PipelineTest(unittest.TestCase):
                 {"operation": "二次微分绳长约束并消去速度平方项"},
                 {"operation": "建立牛顿第二定律"},
             ],
-            "verification_obligations": [{
-                "id": "v1",
-                "target_id": "q1",
-                "risk": "critical",
-                "check": (
-                    "确认二次微分中的速度平方项只因释放瞬间初速度为零而消失，"
-                    "不能把所得加速度关系误当作全过程恒成立的常比例关系。"
-                ),
-            }, {
-                "id": "v2",
-                "target_id": "q1",
-                "risk": "high",
-                "check": "检查正方向约定与绳长微分符号一致。",
-            }],
+            "verification_obligations": [
+                {
+                    "id": "v1",
+                    "target_id": "q1",
+                    "risk": "critical",
+                    "check": (
+                        "确认二次微分中的速度平方项只因释放瞬间初速度为零而消失，"
+                        "不能把所得加速度关系误当作全过程恒成立的常比例关系。"
+                    ),
+                },
+                {
+                    "id": "v2",
+                    "target_id": "q1",
+                    "risk": "high",
+                    "check": "检查正方向约定与绳长微分符号一致。",
+                },
+            ],
         }
         solver = {
             "status": "completed",
             "targets": [{"id": "q1", "final_answer": "a_R=a_L cosθ"}],
-            "stage_results": [{
-                "stage_id": "p1",
-                "result": "由释放瞬间的几何关系得到 a_R=a_L cosθ。",
-            }],
+            "stage_results": [
+                {
+                    "stage_id": "p1",
+                    "result": "由释放瞬间的几何关系得到 a_R=a_L cosθ。",
+                }
+            ],
         }
-        rendered = w3_pipeline.render_recommended_student_solution(
-            blueprint, solver, None
-        )
+        rendered = w3_pipeline.render_recommended_student_solution(blueprint, solver, None)
         self.assertIn("s=at²/2", rendered)
         self.assertNotIn("微分", rendered)
 
     def test_renderer_uses_pressure_graph_area_instead_of_integration(self):
         blueprint = {
-            "reasoning_steps": [{
-                "operation": "分别积分得到水侧和油侧对右板的水平压力合力",
-            }],
-            "verification_obligations": [{
-                "id": "v1",
-                "target_id": "q1",
-                "risk": "high",
-                "check": "核对大气压在两侧压力差或表压积分中正确抵消。",
-            }],
+            "reasoning_steps": [
+                {
+                    "operation": "分别积分得到水侧和油侧对右板的水平压力合力",
+                }
+            ],
+            "verification_obligations": [
+                {
+                    "id": "v1",
+                    "target_id": "q1",
+                    "risk": "high",
+                    "check": "核对大气压在两侧压力差或表压积分中正确抵消。",
+                }
+            ],
         }
         solver = {
             "status": "completed",
             "targets": [{"id": "q1", "final_answer": "F 向右"}],
-            "stage_results": [{
-                "stage_id": "p1",
-                "result": "线性压强图面积给出合力。",
-            }],
+            "stage_results": [
+                {
+                    "stage_id": "p1",
+                    "result": "线性压强图面积给出合力。",
+                }
+            ],
         }
-        rendered = w3_pipeline.render_recommended_student_solution(
-            blueprint, solver, None
-        )
+        rendered = w3_pipeline.render_recommended_student_solution(blueprint, solver, None)
         self.assertIn("三角形压强-深度图", rendered)
         self.assertNotIn("积分", rendered)
 
     def test_answer_signature_ignores_common_symbol_spelling(self):
         self.assertTrue(w3_pipeline.answers_equivalent("2v₀/(3π)", "2 v0 / (3\\pi)"))
-        self.assertTrue(
-            w3_pipeline.answers_equivalent(
-                "t首次相遇=3πm/(qB)", "t首次相遇=3τ=3πm/(qB)"
-            )
-        )
+        self.assertTrue(w3_pipeline.answers_equivalent("t首次相遇=3πm/(qB)", "t首次相遇=3τ=3πm/(qB)"))
 
     def test_optional_blind_solver_failure_keeps_primary_result_with_focus(self):
         def runner(name, _context):
@@ -716,13 +716,15 @@ class W3PipelineTest(unittest.TestCase):
             if name == "verifier":
                 return {
                     "status": "completed",
-                    "target_audits": [{
-                        "target_id": "q1",
-                        "verdict": "pass",
-                        "recomputed_result": "t",
-                        "decisive_checks": ["独立复算"],
-                        "issues": [],
-                    }],
+                    "target_audits": [
+                        {
+                            "target_id": "q1",
+                            "verdict": "pass",
+                            "recomputed_result": "t",
+                            "decisive_checks": ["独立复算"],
+                            "issues": [],
+                        }
+                    ],
                 }
             if name == "solver-b":
                 raise ValueError("missing target")
@@ -731,9 +733,7 @@ class W3PipelineTest(unittest.TestCase):
         result = w3_pipeline.run_shadow(
             "粒子随后第一次返回边界，求时间。",
             stage_runner=runner,
-            evidence_builder=lambda _blueprint: {
-                "status": "ready", "evidence_set": {"selection_status": "selected"}
-            },
+            evidence_builder=lambda _blueprint: {"status": "ready", "evidence_set": {"selection_status": "selected"}},
         )
         self.assertEqual(result["solver_a"]["status"], "completed")
         self.assertEqual(result["solver_b"]["status"], "failed")

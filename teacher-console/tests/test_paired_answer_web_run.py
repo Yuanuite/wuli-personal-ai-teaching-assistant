@@ -43,9 +43,7 @@ class PairedAnswerWebRunTest(unittest.TestCase):
                 "成功候选",
             )
             self.assertEqual(
-                json.loads(
-                    (artifacts / "web-candidate.meta.json").read_text(encoding="utf-8")
-                )["status"],
+                json.loads((artifacts / "web-candidate.meta.json").read_text(encoding="utf-8"))["status"],
                 "completed",
             )
 
@@ -128,21 +126,27 @@ class PairedAnswerWebRunTest(unittest.TestCase):
             entry.mkdir(parents=True)
             (entry / "problem.md").write_text("# 题目\n测试", encoding="utf-8")
             (entry / "student-solution.md").write_text("教师稿", encoding="utf-8")
-            (entry / "record.json").write_text(json.dumps({
-                "id": "entry-1",
-                "status": "ready",
-                "answer_status": "approved",
-                "source": {"stored_files": []},
-                "answer_review": {"status": "passed"},
-            }), encoding="utf-8")
+            (entry / "record.json").write_text(
+                json.dumps({
+                    "id": "entry-1",
+                    "status": "ready",
+                    "answer_status": "approved",
+                    "source": {"stored_files": []},
+                    "answer_review": {"status": "passed"},
+                }),
+                encoding="utf-8",
+            )
             baseline = entry / ".agent-baseline"
             baseline.mkdir()
             (baseline / "student-solution.md").write_text("旧基线", encoding="utf-8")
             (entry / "analysis-request.json").write_text("{}", encoding="utf-8")
             (source / "config").mkdir()
-            (source / "config.json").write_text(json.dumps({
-                "privacy": {"allow_remote_agent": True},
-            }), encoding="utf-8")
+            (source / "config.json").write_text(
+                json.dumps({
+                    "privacy": {"allow_remote_agent": True},
+                }),
+                encoding="utf-8",
+            )
             (source / "config" / "model-registry.json").write_text(
                 json.dumps({"schema_version": 1, "models": [], "defaults": {}}),
                 encoding="utf-8",

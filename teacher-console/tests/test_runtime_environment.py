@@ -96,9 +96,7 @@ class RuntimeEnvironmentTest(unittest.TestCase):
             environ={"PATH": "/safe/bin"},
             which=lambda _name: None,
             run=lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, "codex 1.0", ""),
-            environment_resolver=lambda: runtime_environment.resolved_environment(
-                self.library, {"PATH": "/safe/bin"}
-            ),
+            environment_resolver=lambda: runtime_environment.resolved_environment(self.library, {"PATH": "/safe/bin"}),
         )
         self.assertEqual(gateway.providers()[0].command, (str(first),))
         runtime_environment.save_runtime_settings(
@@ -191,9 +189,7 @@ class RuntimeEnvironmentTest(unittest.TestCase):
         )
         self.assertNotEqual(before["route_config_digest"], after["route_config_digest"])
         self.assertNotEqual(before["analysis_route"], after["analysis_route"])
-        self.assertTrue(
-            runtime_environment.runtime_identity_is_stale(after, before)
-        )
+        self.assertTrue(runtime_environment.runtime_identity_is_stale(after, before))
 
     def test_runtime_identity_is_stale_ignores_started_at_only(self):
         current = {

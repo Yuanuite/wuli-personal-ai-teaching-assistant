@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 CONSOLE_ROOT = Path(__file__).resolve().parents[1]
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
@@ -93,14 +92,12 @@ class CoreAnalysisTest(unittest.TestCase):
         self.assertEqual(config["mode"], "core-first")
 
     def test_legacy_rollback_is_explicit(self):
-        config, errors = core_analysis.normalize_routing_config(
-            {
-                "schema_version": 1,
-                "policy_version": "wuli-core-first-routing-v1",
-                "mode": "legacy-adaptive",
-                "max_latency_seconds": 90,
-            }
-        )
+        config, errors = core_analysis.normalize_routing_config({
+            "schema_version": 1,
+            "policy_version": "wuli-core-first-routing-v1",
+            "mode": "legacy-adaptive",
+            "max_latency_seconds": 90,
+        })
         self.assertEqual(errors, [])
         self.assertEqual(config["mode"], "legacy-adaptive")
 

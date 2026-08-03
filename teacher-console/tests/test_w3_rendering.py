@@ -12,16 +12,12 @@ import w3_rendering  # noqa: E402
 import w3r_contract  # noqa: E402
 
 FIXTURE = CONSOLE / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
-CONDITION_FIXTURE = (
-    CONSOLE / "tests" / "fixtures" / "w3r" / "verified-condition-matrix.json"
-)
+CONDITION_FIXTURE = CONSOLE / "tests" / "fixtures" / "w3r" / "verified-condition-matrix.json"
 
 
 def brief():
     source = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    return w3r_contract.build_w3r_brief(
-        source["problem"], source["blueprint"], source["proof_package"]
-    )["brief"]
+    return w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])["brief"]
 
 
 class W3RenderingTest(unittest.TestCase):
@@ -39,41 +35,29 @@ class W3RenderingTest(unittest.TestCase):
             set(result["render_gate_report"]["metrics"].values()),
             {0.0, 1.0},
         )
-        self.assertEqual(
-            result["render_gate_report"]["metrics"]["unsupported_claim_rate"], 0.0
-        )
+        self.assertEqual(result["render_gate_report"]["metrics"]["unsupported_claim_rate"], 0.0)
 
     def test_latex_is_rendered_and_balanced(self):
         result = w3_rendering.render_w3r(brief())
         self.assertIn(r"\frac{mv^2}{R}", result["student_solution_md"])
         self.assertEqual(result["student_solution_md"].count("$$") % 2, 0)
-        self.assertEqual(
-            result["render_gate_report"]["metrics"]["latex_validity"], 1.0
-        )
+        self.assertEqual(result["render_gate_report"]["metrics"]["latex_validity"], 1.0)
 
     def test_final_answer_drift_is_rejected_without_retry(self):
         value = brief()
         result = w3_rendering.render_w3r(value)
-        result["student_solution_md"] = result["student_solution_md"].replace(
-            r"t=\pi m/(qB)", r"t=2\pi m/(qB)"
-        )
+        result["student_solution_md"] = result["student_solution_md"].replace(r"t=\pi m/(qB)", r"t=2\pi m/(qB)")
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "reject")
-        self.assertTrue(any(
-            item["code"] == "final-answer-drift" for item in report["violations"]
-        ))
+        self.assertTrue(any(item["code"] == "final-answer-drift" for item in report["violations"]))
 
     def test_condition_omission_is_rejected(self):
         value = brief()
         result = w3_rendering.render_w3r(value)
-        result["student_solution_md"] = result["student_solution_md"].replace(
-            "向右为正", "方向约定已知"
-        )
+        result["student_solution_md"] = result["student_solution_md"].replace("向右为正", "方向约定已知")
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "reject")
-        self.assertTrue(any(
-            item["code"] == "condition-omitted" for item in report["violations"]
-        ))
+        self.assertTrue(any(item["code"] == "condition-omitted" for item in report["violations"]))
 
     def test_unknown_claim_in_span_is_rejected(self):
         value = brief()
@@ -81,16 +65,12 @@ class W3RenderingTest(unittest.TestCase):
         result["claim_span_map"][0]["claim_ids"] = ["invented-claim"]
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "reject")
-        self.assertTrue(any(
-            item["code"] == "unsupported-claim" for item in report["violations"]
-        ))
+        self.assertTrue(any(item["code"] == "unsupported-claim" for item in report["violations"]))
 
     def test_missing_section_is_retryable(self):
         value = brief()
         result = w3_rendering.render_w3r(value)
-        result["student_solution_md"] = result["student_solution_md"].replace(
-            "## 建模与符号", "## 符号"
-        )
+        result["student_solution_md"] = result["student_solution_md"].replace("## 建模与符号", "## 符号")
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "retryable")
 
@@ -102,9 +82,7 @@ class W3RenderingTest(unittest.TestCase):
             seen.append(w3r_contract.brief_fingerprint(frozen))
             result = w3_rendering.render_w3r(frozen, attempt=attempt)
             if attempt == 1:
-                result["student_solution_md"] = result["student_solution_md"].replace(
-                    "## 建模与符号", "## 符号"
-                )
+                result["student_solution_md"] = result["student_solution_md"].replace("## 建模与符号", "## 符号")
             return result
 
         result = w3_rendering.render_with_single_retry(value, renderer)
@@ -125,10 +103,7 @@ class W3RenderingTest(unittest.TestCase):
 
     def test_insufficient_steps_never_trigger_solver_fallback(self):
         value = brief()
-        value["proof_skeleton"] = [
-            item for item in value["proof_skeleton"]
-            if item["target_ids"] != ["q2"]
-        ]
+        value["proof_skeleton"] = [item for item in value["proof_skeleton"] if item["target_ids"] != ["q2"]]
         result = w3_rendering.render_w3r(value)
         self.assertEqual(result["status"], "needs_render_material")
         self.assertEqual(result["student_solution_md"], "")
@@ -141,9 +116,7 @@ class W3RenderingTest(unittest.TestCase):
 
     def test_physics_condition_matrix_is_retained_verbatim(self):
         source = json.loads(CONDITION_FIXTURE.read_text(encoding="utf-8"))
-        value = w3r_contract.build_w3r_brief(
-            source["problem"], source["blueprint"], source["proof_package"]
-        )["brief"]
+        value = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])["brief"]
         result = w3_rendering.render_w3r(value)
         for condition in (
             "不能外推为任意全过程关系",
@@ -154,9 +127,7 @@ class W3RenderingTest(unittest.TestCase):
             "当 s→0 时 v→0",
         ):
             self.assertIn(condition, result["student_solution_md"])
-        self.assertEqual(
-            result["render_gate_report"]["metrics"]["condition_retention"], 1.0
-        )
+        self.assertEqual(result["render_gate_report"]["metrics"]["condition_retention"], 1.0)
 
     def test_formula_without_brief_source_is_rejected(self):
         value = brief()
@@ -164,10 +135,7 @@ class W3RenderingTest(unittest.TestCase):
         result["student_solution_md"] += "\n$$E=mc^2$$\n"
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "reject")
-        self.assertTrue(any(
-            item["code"] == "formula-without-brief-source"
-            for item in report["violations"]
-        ))
+        self.assertTrue(any(item["code"] == "formula-without-brief-source" for item in report["violations"]))
 
     def test_span_fingerprint_must_point_to_rendered_text(self):
         value = brief()
@@ -175,10 +143,7 @@ class W3RenderingTest(unittest.TestCase):
         result["claim_span_map"][0]["text_fingerprint"] = "sha256:" + "0" * 64
         report = w3_rendering.render_gate(value, result)
         self.assertEqual(report["status"], "reject")
-        self.assertTrue(any(
-            item["code"] == "claim-span-text-mismatch"
-            for item in report["violations"]
-        ))
+        self.assertTrue(any(item["code"] == "claim-span-text-mismatch" for item in report["violations"]))
 
 
 if __name__ == "__main__":

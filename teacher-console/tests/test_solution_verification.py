@@ -7,7 +7,6 @@ sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import solution_verification  # noqa: E402
 
-
 FINGERPRINT = "d" * 64
 
 
@@ -36,14 +35,16 @@ class SolutionVerificationTest(unittest.TestCase):
     def test_verifier_evidence_view_removes_historical_answer_prose(self):
         view = solution_verification.verification_evidence_view({
             "status": "ready",
-            "references": [{
-                "reference": "similar-1",
-                "title": "历史题",
-                "methods": ["守恒"],
-                "matched_evidence": [{"snippet": "历史答案正文"}],
-                "secondary_conclusions": ["有条件结论"],
-                "retrieval_target_ids": ["q1"],
-            }],
+            "references": [
+                {
+                    "reference": "similar-1",
+                    "title": "历史题",
+                    "methods": ["守恒"],
+                    "matched_evidence": [{"snippet": "历史答案正文"}],
+                    "secondary_conclusions": ["有条件结论"],
+                    "retrieval_target_ids": ["q1"],
+                }
+            ],
         })
         serialized = str(view)
         self.assertNotIn("历史题", serialized)
@@ -108,58 +109,56 @@ class SolutionVerificationTest(unittest.TestCase):
         current = claim("C1", depends_on=["C0"])
         view = solution_verification.claim_verification_view(
             [{"claim": current, "dependencies": [upstream]}],
-            [{
-                "id": "S1",
-                "statement": "题干给出磁场均匀。",
-                "conditions": ["B 恒定"],
-                "historical_answer": "不应进入视图",
-                "local_path": "/private/answer.md",
-            }],
+            [
+                {
+                    "id": "S1",
+                    "statement": "题干给出磁场均匀。",
+                    "conditions": ["B 恒定"],
+                    "historical_answer": "不应进入视图",
+                    "local_path": "/private/answer.md",
+                }
+            ],
         )
         serialized = str(view)
         self.assertNotIn("build-C1", serialized)
         self.assertNotIn(FINGERPRINT, serialized)
         self.assertNotIn("historical_answer", serialized)
         self.assertNotIn("/private/answer.md", serialized)
-        self.assertEqual(
-            view["requests"][0]["dependencies"][0]["id"], "C0"
-        )
+        self.assertEqual(view["requests"][0]["dependencies"][0]["id"], "C0")
 
     def test_claim_audit_requires_exact_coverage_and_decisive_pass(self):
         payload = {
             "status": "completed",
             "message": "checked",
             "interface_audit": None,
-            "claim_audits": [{
-                "claim_id": "C1",
-                "claim_version": 1,
-                "verdict": "pass",
-                "normalized_result": "模型适用",
-                "decisive_checks": ["洛伦兹力始终与速度垂直"],
-                "issues": [],
-            }],
+            "claim_audits": [
+                {
+                    "claim_id": "C1",
+                    "claim_version": 1,
+                    "verdict": "pass",
+                    "normalized_result": "模型适用",
+                    "decisive_checks": ["洛伦兹力始终与速度垂直"],
+                    "issues": [],
+                }
+            ],
         }
-        normalized = solution_verification.normalize_claim_audit(
-            payload, {"C1": 1}
-        )
+        normalized = solution_verification.normalize_claim_audit(payload, {"C1": 1})
         self.assertEqual(normalized["claim_audits"][0]["verdict"], "pass")
 
         missing = {**payload, "claim_audits": []}
         with self.assertRaisesRegex(ValueError, "cover every request"):
-            solution_verification.normalize_claim_audit(
-                missing, {"C1": 1}
-            )
+            solution_verification.normalize_claim_audit(missing, {"C1": 1})
         no_check = {
             **payload,
-            "claim_audits": [{
-                **payload["claim_audits"][0],
-                "decisive_checks": [],
-            }],
+            "claim_audits": [
+                {
+                    **payload["claim_audits"][0],
+                    "decisive_checks": [],
+                }
+            ],
         }
         with self.assertRaisesRegex(ValueError, "decisive check"):
-            solution_verification.normalize_claim_audit(
-                no_check, {"C1": 1}
-            )
+            solution_verification.normalize_claim_audit(no_check, {"C1": 1})
 
     def test_runtime_not_agent_attaches_semantic_certificate_identity(self):
         current = claim()
@@ -173,14 +172,16 @@ class SolutionVerificationTest(unittest.TestCase):
                 "status": "completed",
                 "message": "checked",
                 "interface_audit": None,
-                "claim_audits": [{
-                    "claim_id": "C1",
-                    "claim_version": 1,
-                    "verdict": "pass",
-                    "normalized_result": "模型适用",
-                    "decisive_checks": ["独立重建受力模型"],
-                    "issues": [],
-                }],
+                "claim_audits": [
+                    {
+                        "claim_id": "C1",
+                        "claim_version": 1,
+                        "verdict": "pass",
+                        "normalized_result": "模型适用",
+                        "decisive_checks": ["独立重建受力模型"],
+                        "issues": [],
+                    }
+                ],
             },
             {"C1": 1},
         )

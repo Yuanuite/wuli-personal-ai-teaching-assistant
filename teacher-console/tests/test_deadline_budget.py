@@ -29,17 +29,13 @@ class DeadlineBudgetTest(unittest.TestCase):
         budget = build_deadline_budget(task_deadline=90)
         self.assertEqual(budget.task_deadline, 90)
         self.assertLessEqual(budget.attempt_deadline, budget.task_deadline)
-        self.assertLessEqual(
-            budget.http_soft_deadline + budget.cleanup_grace, budget.attempt_deadline
-        )
+        self.assertLessEqual(budget.http_soft_deadline + budget.cleanup_grace, budget.attempt_deadline)
         self.assertEqual(budget_is_valid(budget), [])
 
     def test_configured_attempt_clamps_inside_task(self):
         budget = build_deadline_budget(task_deadline=90, configured_attempt=30)
         self.assertEqual(budget.attempt_deadline, 30)
-        self.assertLessEqual(
-            budget.http_soft_deadline + budget.cleanup_grace, budget.attempt_deadline
-        )
+        self.assertLessEqual(budget.http_soft_deadline + budget.cleanup_grace, budget.attempt_deadline)
         self.assertEqual(budget_is_valid(budget), [])
 
     def test_configured_attempt_never_exceeds_task(self):

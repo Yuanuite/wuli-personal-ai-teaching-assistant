@@ -152,7 +152,9 @@ def main() -> int:
     if not binding_ok:
         print("[canary] FAILED: deadline budget ordering invariant violated", file=sys.stderr)
         return 1
-    print(f"[canary] OK: completed within ordered deadline budget (soft {budget.get('http_soft_deadline')}s)", flush=True)
+    print(
+        f"[canary] OK: completed within ordered deadline budget (soft {budget.get('http_soft_deadline')}s)", flush=True
+    )
     return 0
 
 

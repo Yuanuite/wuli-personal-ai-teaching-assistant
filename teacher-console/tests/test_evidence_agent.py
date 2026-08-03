@@ -6,52 +6,47 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 sys.path.insert(0, str(CONSOLE))
 
-from agent_gateway import AgentGateway  # noqa: E402
 import evidence_agent  # noqa: E402
 import evidence_contract  # noqa: E402
+from agent_gateway import AgentGateway  # noqa: E402
 
 
 def need(*, minimum_authority="B", criticality="required"):
-    return evidence_contract.normalize_retrieval_need(
-        {
-            "need_id": "N1",
-            "purpose": "applicability_check",
-            "question": "非弹性碰撞何时可以使用动量守恒？",
-            "required_facets": ["系统外力冲量", "动量守恒条件"],
-            "forbidden_conflicts": ["把机械能守恒当作必要条件"],
-            "minimum_authority": minimum_authority,
-            "criticality": criticality,
-            "target_ids": ["Q1"],
-            "stage_ids": ["P1"],
-            "obligation_ids": ["V1"],
-        }
-    )
+    return evidence_contract.normalize_retrieval_need({
+        "need_id": "N1",
+        "purpose": "applicability_check",
+        "question": "非弹性碰撞何时可以使用动量守恒？",
+        "required_facets": ["系统外力冲量", "动量守恒条件"],
+        "forbidden_conflicts": ["把机械能守恒当作必要条件"],
+        "minimum_authority": minimum_authority,
+        "criticality": criticality,
+        "target_ids": ["Q1"],
+        "stage_ids": ["P1"],
+        "obligation_ids": ["V1"],
+    })
 
 
 def unit(*, evidence_id="EU1", authority="B", source_kind="approved_solution"):
-    return evidence_contract.normalize_evidence_unit(
-        {
-            "evidence_id": evidence_id,
-            "unit_kind": "method_applicability",
-            "source_kind": source_kind,
-            "source_locator": {
-                "path": "student-error-library/entries/old/teacher-solution.md",
-                "section": "碰撞阶段",
-                "start_line": 4,
-                "end_line": 7,
-            },
-            "text": "碰撞时间极短且系统外力冲量可忽略时，系统动量守恒。",
-            "physics_facets": ["系统外力冲量", "动量守恒条件"],
-            "applicability": ["碰撞时间极短", "系统外力冲量可忽略"],
-            "exceptions": ["非弹性碰撞中机械能通常不守恒"],
-            "authority_level": authority,
-        }
-    )
+    return evidence_contract.normalize_evidence_unit({
+        "evidence_id": evidence_id,
+        "unit_kind": "method_applicability",
+        "source_kind": source_kind,
+        "source_locator": {
+            "path": "student-error-library/entries/old/teacher-solution.md",
+            "section": "碰撞阶段",
+            "start_line": 4,
+            "end_line": 7,
+        },
+        "text": "碰撞时间极短且系统外力冲量可忽略时，系统动量守恒。",
+        "physics_facets": ["系统外力冲量", "动量守恒条件"],
+        "applicability": ["碰撞时间极短", "系统外力冲量可忽略"],
+        "exceptions": ["非弹性碰撞中机械能通常不守恒"],
+        "authority_level": authority,
+    })
 
 
 def projection(*units):
@@ -69,32 +64,17 @@ def reflection(*, facets=None, conflicts=None, evidence_ids=None):
         "coverage": [
             {
                 "need_id": "N1",
-                "covered_facets": (
-                    ["系统外力冲量", "动量守恒条件"]
-                    if facets is None
-                    else facets
-                ),
+                "covered_facets": (["系统外力冲量", "动量守恒条件"] if facets is None else facets),
                 "evidence_bindings": [
                     {
                         "evidence_id": evidence_id,
-                        "covered_facets": (
-                            ["系统外力冲量", "动量守恒条件"]
-                            if facets is None
-                            else facets
-                        ),
+                        "covered_facets": (["系统外力冲量", "动量守恒条件"] if facets is None else facets),
                         "reason": "候选直接绑定这些 facet",
                     }
-                    for evidence_id in (
-                        ["EU1"] if evidence_ids is None else evidence_ids
-                    )
+                    for evidence_id in (["EU1"] if evidence_ids is None else evidence_ids)
                 ],
                 "hard_conflicts": (
-                    []
-                    if conflicts is None
-                    else [
-                        {"evidence_id": "EU1", "conflict": item}
-                        for item in conflicts
-                    ]
+                    [] if conflicts is None else [{"evidence_id": "EU1", "conflict": item} for item in conflicts]
                 ),
                 "condition_verdict": "compatible",
                 "forbidden_conflict_checks": [
@@ -118,9 +98,7 @@ class EvidenceAgentTest(unittest.TestCase):
         self.need = need()
         self.unit = unit()
         self.projection = projection(self.unit)
-        self.pool = evidence_agent.retrieve_single_route_candidates(
-            self.projection, [self.need]
-        )
+        self.pool = evidence_agent.retrieve_single_route_candidates(self.projection, [self.need])
 
     def build(self, semantic):
         return evidence_agent.build_evidence_agent_run(
@@ -133,9 +111,7 @@ class EvidenceAgentTest(unittest.TestCase):
         )
 
     def test_single_route_retrieval_is_deterministic_and_has_no_rrf(self):
-        second = evidence_agent.retrieve_single_route_candidates(
-            self.projection, [self.need]
-        )
+        second = evidence_agent.retrieve_single_route_candidates(self.projection, [self.need])
         self.assertEqual(self.pool, second)
         self.assertEqual(self.pool["route"], "single-route-bypass")
         self.assertEqual(self.pool["candidates"][0]["evidence_id"], "EU1")
@@ -159,9 +135,7 @@ class EvidenceAgentTest(unittest.TestCase):
         self.assertEqual(run["evidence_set"], [])
 
     def test_hard_conflict_rejects_candidate_from_evidence_set(self):
-        run = self.build(
-            reflection(conflicts=["候选把机械能守恒误写成动量守恒前提"])
-        )
+        run = self.build(reflection(conflicts=["候选把机械能守恒误写成动量守恒前提"]))
         self.assertEqual(run["status"], "insufficient")
         self.assertEqual(run["coverage"][0]["status"], "conflicted")
         self.assertEqual(run["coverage"][0]["evidence_ids"], [])
@@ -169,26 +143,18 @@ class EvidenceAgentTest(unittest.TestCase):
 
     def test_diagnostic_target_is_not_an_applicability_conflict(self):
         diagnostic_need = dict(self.need)
-        diagnostic_need.update(
-            {
-                "purpose": "false_friend_check",
-                "diagnostic_targets": ["中途改变角度正方向并直接相加"],
-            }
-        )
-        semantic = reflection(
-            conflicts=[
-                "当前待核对解答中途改变角度正方向并直接相加，正是证据要纠正的错误"
-            ]
-        )
+        diagnostic_need.update({
+            "purpose": "false_friend_check",
+            "diagnostic_targets": ["中途改变角度正方向并直接相加"],
+        })
+        semantic = reflection(conflicts=["当前待核对解答中途改变角度正方向并直接相加，正是证据要纠正的错误"])
         semantic["coverage"][0]["condition_verdict"] = "incompatible"
         run = evidence_agent.build_evidence_agent_run(
             problem="某解答中途改变角度正方向并直接相加，请核对。",
             blueprint=self.blueprint,
             retrieval_needs=[diagnostic_need],
             projection=self.projection,
-            candidate_pool=evidence_agent.retrieve_single_route_candidates(
-                self.projection, [diagnostic_need]
-            ),
+            candidate_pool=evidence_agent.retrieve_single_route_candidates(self.projection, [diagnostic_need]),
             reflection=semantic,
         )
         self.assertEqual(run["status"], "sufficient")
@@ -201,20 +167,12 @@ class EvidenceAgentTest(unittest.TestCase):
 
     def test_boundary_check_diagnostic_target_has_the_same_corrective_scope(self):
         diagnostic_need = dict(self.need)
-        diagnostic_need.update(
-            {
-                "purpose": "boundary_check",
-                "forbidden_conflicts": [],
-                "diagnostic_targets": [
-                    "求得的垂直时刻不在区间内却不检查端点"
-                ],
-            }
-        )
-        semantic = reflection(
-            conflicts=[
-                "求得的垂直时刻不在区间内却不检查端点"
-            ]
-        )
+        diagnostic_need.update({
+            "purpose": "boundary_check",
+            "forbidden_conflicts": [],
+            "diagnostic_targets": ["求得的垂直时刻不在区间内却不检查端点"],
+        })
+        semantic = reflection(conflicts=["求得的垂直时刻不在区间内却不检查端点"])
         semantic["coverage"][0]["condition_verdict"] = "incompatible"
         semantic["coverage"][0]["forbidden_conflict_checks"] = []
         run = evidence_agent.build_evidence_agent_run(
@@ -222,9 +180,7 @@ class EvidenceAgentTest(unittest.TestCase):
             blueprint=self.blueprint,
             retrieval_needs=[diagnostic_need],
             projection=self.projection,
-            candidate_pool=evidence_agent.retrieve_single_route_candidates(
-                self.projection, [diagnostic_need]
-            ),
+            candidate_pool=evidence_agent.retrieve_single_route_candidates(self.projection, [diagnostic_need]),
             reflection=semantic,
         )
         self.assertEqual(run["status"], "sufficient")
@@ -237,9 +193,7 @@ class EvidenceAgentTest(unittest.TestCase):
 
     def test_uncertain_true_forbidden_conflict_remains_fail_closed(self):
         semantic = reflection()
-        semantic["coverage"][0]["forbidden_conflict_checks"][0][
-            "verdict"
-        ] = "uncertain"
+        semantic["coverage"][0]["forbidden_conflict_checks"][0]["verdict"] = "uncertain"
         run = self.build(semantic)
         self.assertEqual(run["status"], "insufficient")
         self.assertEqual(run["coverage"][0]["status"], "conflicted")
@@ -250,9 +204,7 @@ class EvidenceAgentTest(unittest.TestCase):
 
     def test_authority_threshold_is_programmatic(self):
         weak_need = need(minimum_authority="A")
-        pool = evidence_agent.retrieve_single_route_candidates(
-            self.projection, [weak_need]
-        )
+        pool = evidence_agent.retrieve_single_route_candidates(self.projection, [weak_need])
         run = evidence_agent.build_evidence_agent_run(
             problem=self.problem,
             blueprint=self.blueprint,
@@ -284,9 +236,7 @@ class EvidenceAgentTest(unittest.TestCase):
 
     def test_projection_failure_returns_unavailable_without_model_output(self):
         unavailable = {"status": "unavailable", "reason": "knowledge-store-stale", "units": []}
-        pool = evidence_agent.retrieve_single_route_candidates(
-            unavailable, [self.need]
-        )
+        pool = evidence_agent.retrieve_single_route_candidates(unavailable, [self.need])
         run = evidence_agent.build_evidence_agent_run(
             problem=self.problem,
             blueprint=self.blueprint,
@@ -316,9 +266,7 @@ class EvidenceAgentTest(unittest.TestCase):
                 exclude_entry_id="current",
                 source_kinds=("curated_technique",),
             )
-        self.assertEqual(
-            [item["evidence_id"] for item in visible["units"]], ["EU1"]
-        )
+        self.assertEqual([item["evidence_id"] for item in visible["units"]], ["EU1"])
         self.assertEqual(visible["unit_count_before_source_filter"], 2)
 
     def test_evaluation_overlay_is_explicit_and_collision_checked(self):
@@ -367,9 +315,7 @@ class EvidenceAgentTest(unittest.TestCase):
             blueprint=self.blueprint,
             retrieval_needs=[optional],
             projection=self.projection,
-            candidate_pool=evidence_agent.retrieve_single_route_candidates(
-                self.projection, [optional]
-            ),
+            candidate_pool=evidence_agent.retrieve_single_route_candidates(self.projection, [optional]),
             reflection=None,
         )
         self.assertEqual(run["status"], "not_needed")
@@ -412,9 +358,7 @@ class EvidenceAgentTest(unittest.TestCase):
             )
             result = gateway.run(
                 task,
-                materializer=evidence_agent.reflection_materializer(
-                    [self.need], self.pool
-                ),
+                materializer=evidence_agent.reflection_materializer([self.need], self.pool),
             )
 
         self.assertEqual(result["status"], "completed")

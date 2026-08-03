@@ -2,7 +2,6 @@ import importlib.util
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts" / "difficulty_assessment.py"
 SPEC = importlib.util.spec_from_file_location("difficulty_assessment", SCRIPT)
@@ -12,7 +11,10 @@ SPEC.loader.exec_module(difficulty)
 
 class DifficultyAssessmentTest(unittest.TestCase):
     def setUp(self):
-        self.record = {"title": "交替电场与磁场中的粒子运动", "knowledge_points": ["电场", "磁场", "圆周运动", "动能定理"]}
+        self.record = {
+            "title": "交替电场与磁场中的粒子运动",
+            "knowledge_points": ["电场", "磁场", "圆周运动", "动能定理"],
+        }
         self.problem = """（1）求位置；（2）求做功；（3）求哪些时刻被捕获。交替电场、磁场和多区域分段运动，需分析周期、轨迹与临界条件。"""
         self.standard_path = {
             "schema_version": 1,
@@ -52,17 +54,27 @@ class DifficultyAssessmentTest(unittest.TestCase):
         self.assertGreaterEqual(assessment["score"], 0)
         self.assertLessEqual(assessment["score"], 100)
         self.assertTrue(assessment["summary"])
-        self.assertTrue(all(item["evidence"] and item["evidence"][0]["source"] and item["evidence"][0]["excerpt"] for item in assessment["dimensions"]))
+        self.assertTrue(
+            all(
+                item["evidence"] and item["evidence"][0]["source"] and item["evidence"][0]["excerpt"]
+                for item in assessment["dimensions"]
+            )
+        )
         self.assertEqual(assessment["auto_baseline"]["score"], assessment["score"])
 
     def test_teacher_edit_recomputes_total_and_validates_score_range(self):
         assessment = difficulty.auto_assess(self.record, self.problem, self.standard_path)
-        edited = difficulty.normalize_teacher_edit({
-            "generated_at": assessment["generated_at"], "summary": "教师校准后的难度总结。",
-            "teacher_note": "标准路径包含多阶段完备性核对。",
-            "auto_baseline": assessment["auto_baseline"],
-            "dimensions": [{**item, "score": 5.0} for item in assessment["dimensions"]],
-        }, self.problem, self.standard_path)
+        edited = difficulty.normalize_teacher_edit(
+            {
+                "generated_at": assessment["generated_at"],
+                "summary": "教师校准后的难度总结。",
+                "teacher_note": "标准路径包含多阶段完备性核对。",
+                "auto_baseline": assessment["auto_baseline"],
+                "dimensions": [{**item, "score": 5.0} for item in assessment["dimensions"]],
+            },
+            self.problem,
+            self.standard_path,
+        )
         self.assertEqual(edited["status"], "teacher-edited")
         self.assertEqual(edited["score"], 100)
         self.assertEqual(edited["auto_baseline"], assessment["auto_baseline"])
@@ -72,29 +84,41 @@ class DifficultyAssessmentTest(unittest.TestCase):
 
     def test_teacher_edit_accepts_fractional_tenths(self):
         assessment = difficulty.auto_assess(self.record, self.problem, self.standard_path)
-        edited = difficulty.normalize_teacher_edit({
-            "generated_at": assessment["generated_at"], "summary": "教师使用小数步长校准。",
-            "teacher_note": "课堂观察表明六维负担接近。",
-            "auto_baseline": assessment["auto_baseline"],
-            "dimensions": [{**item, "score": 3.7} for item in assessment["dimensions"]],
-        }, self.problem, self.standard_path)
+        edited = difficulty.normalize_teacher_edit(
+            {
+                "generated_at": assessment["generated_at"],
+                "summary": "教师使用小数步长校准。",
+                "teacher_note": "课堂观察表明六维负担接近。",
+                "auto_baseline": assessment["auto_baseline"],
+                "dimensions": [{**item, "score": 3.7} for item in assessment["dimensions"]],
+            },
+            self.problem,
+            self.standard_path,
+        )
         self.assertEqual(edited["score"], 74)
         self.assertTrue(all(item["score"] == 3.7 for item in edited["dimensions"]))
 
     def test_changed_teacher_scores_require_a_calibration_reason(self):
         assessment = difficulty.auto_assess(self.record, self.problem, self.standard_path)
         with self.assertRaisesRegex(ValueError, "教师校准依据"):
-            difficulty.normalize_teacher_edit({
-                "generated_at": assessment["generated_at"],
-                "summary": "教师校准后的难度总结。",
-                "auto_baseline": assessment["auto_baseline"],
-                "dimensions": [{**item, "score": 5.0} for item in assessment["dimensions"]],
-            }, self.problem, self.standard_path)
+            difficulty.normalize_teacher_edit(
+                {
+                    "generated_at": assessment["generated_at"],
+                    "summary": "教师校准后的难度总结。",
+                    "auto_baseline": assessment["auto_baseline"],
+                    "dimensions": [{**item, "score": 5.0} for item in assessment["dimensions"]],
+                },
+                self.problem,
+                self.standard_path,
+            )
 
     def test_digest_changes_only_with_problem_or_standard_path(self):
         assessment = difficulty.auto_assess(self.record, self.problem, self.standard_path)
         self.assertTrue(difficulty.current(assessment, self.problem, self.standard_path))
-        changed_path = {**self.standard_path, "condition_checks": [*self.standard_path["condition_checks"], "补充边界条件"]}
+        changed_path = {
+            **self.standard_path,
+            "condition_checks": [*self.standard_path["condition_checks"], "补充边界条件"],
+        }
         self.assertFalse(difficulty.current(assessment, self.problem, changed_path))
         self.assertFalse(difficulty.current(assessment, self.problem + "补充题设", self.standard_path))
 
@@ -133,9 +157,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
                     "depends_on": ["S1"],
                     "target_ids": ["T2"],
                     "decisive_relations": ["累计转角等于2π"],
-                    "knowledge_units": [
-                        {"id": "geometry_constraint", "relation_indexes": [0]}
-                    ],
+                    "knowledge_units": [{"id": "geometry_constraint", "relation_indexes": [0]}],
                 },
             ],
             "verification_obligations": [{"check": "枚举所有可能并核对首次返回"}],
@@ -150,7 +172,9 @@ class DifficultyAssessmentTest(unittest.TestCase):
         assessment = difficulty.auto_assess(self.record, self.problem, path)
         self.assertEqual(path["source"], "wuli.problem-decompose.v1")
         self.assertIsInstance(assessment["score"], int)
-        self.assertTrue(all(item["evidence"][0]["source"] == "standard_solution_path" for item in assessment["dimensions"]))
+        self.assertTrue(
+            all(item["evidence"][0]["source"] == "standard_solution_path" for item in assessment["dimensions"])
+        )
 
     def test_answer_step_granularity_does_not_raise_objective_difficulty(self):
         compact = {
@@ -250,10 +274,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
         self.assertEqual(distinct["type_distance"]["mode"], "standard_transfer")
 
     def test_fixed_anchor_registry_contains_teacher_calibrated_a_to_o(self):
-        scores = {
-            item["id"]: item["score"]
-            for item in difficulty.ANCHORS["anchors"]
-        }
+        scores = {item["id"]: item["score"] for item in difficulty.ANCHORS["anchors"]}
         self.assertEqual(
             scores,
             {
@@ -333,18 +354,19 @@ class DifficultyAssessmentTest(unittest.TestCase):
             "high_school_basis": ["近代物理"],
             "physical_stages": ["反应前", "反应后"],
             "reasoning_steps": ["建立完整守恒与实验约束"],
-            "reasoning_graph": [{
-                "id": "S1",
-                "operation": "建立完整守恒与实验约束",
-                "cognitive_operation": "reconstruct",
-                "depends_on": [],
-                "target_ids": ["T1"],
-                "decisive_relations": relations,
-                "knowledge_units": [
-                    {"id": unit_id, "relation_indexes": [index]}
-                    for index, unit_id in enumerate(unit_ids)
-                ],
-            }],
+            "reasoning_graph": [
+                {
+                    "id": "S1",
+                    "operation": "建立完整守恒与实验约束",
+                    "cognitive_operation": "reconstruct",
+                    "depends_on": [],
+                    "target_ids": ["T1"],
+                    "decisive_relations": relations,
+                    "knowledge_units": [
+                        {"id": unit_id, "relation_indexes": [index]} for index, unit_id in enumerate(unit_ids)
+                    ],
+                }
+            ],
             "decisive_relations": relations,
             "representation_transforms": [],
             "condition_checks": [],
@@ -357,9 +379,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
             "verification": {"status": "verified", "passed_target_ids": ["T1"]},
         }
         result = difficulty.auto_assess({}, "按标准答案分析该核反应。", path)
-        integration = next(
-            item for item in result["dimensions"] if item["id"] == "knowledge_integration"
-        )
+        integration = next(item for item in result["dimensions"] if item["id"] == "knowledge_integration")
         self.assertEqual(integration["score"], 4.8)
         self.assertEqual(result["knowledge_integration_trace"]["count"], 6)
         self.assertIn(
@@ -383,10 +403,12 @@ class DifficultyAssessmentTest(unittest.TestCase):
                     "depends_on": [],
                     "target_ids": ["T1"],
                     "decisive_relations": ["Σp_x 初=Σp_x 末"],
-                    "knowledge_units": [{
-                        "id": "linear_momentum_conservation",
-                        "relation_indexes": [0],
-                    }],
+                    "knowledge_units": [
+                        {
+                            "id": "linear_momentum_conservation",
+                            "relation_indexes": [0],
+                        }
+                    ],
                 },
                 {
                     "id": "S2",
@@ -395,10 +417,12 @@ class DifficultyAssessmentTest(unittest.TestCase):
                     "depends_on": [],
                     "target_ids": ["T1"],
                     "decisive_relations": ["Σp_y 初=Σp_y 末"],
-                    "knowledge_units": [{
-                        "id": "linear_momentum_conservation",
-                        "relation_indexes": [0],
-                    }],
+                    "knowledge_units": [
+                        {
+                            "id": "linear_momentum_conservation",
+                            "relation_indexes": [0],
+                        }
+                    ],
                 },
                 {
                     "id": "S3",
@@ -407,10 +431,12 @@ class DifficultyAssessmentTest(unittest.TestCase):
                     "depends_on": [],
                     "target_ids": ["T1"],
                     "decisive_relations": ["L初=L末"],
-                    "knowledge_units": [{
-                        "id": "angular_momentum_spin",
-                        "relation_indexes": [0],
-                    }],
+                    "knowledge_units": [
+                        {
+                            "id": "angular_momentum_spin",
+                            "relation_indexes": [0],
+                        }
+                    ],
                 },
                 {
                     "id": "S4",
@@ -438,21 +464,25 @@ class DifficultyAssessmentTest(unittest.TestCase):
             "question_targets": [{"id": "T1"}],
             "physical_stages": [{"label": "单一反应过程"}],
             "stage_transitions": [],
-            "reasoning_steps": [{
-                "id": "S1",
-                "operation": "尝试列出可能的守恒关系",
-                "depends_on": [],
-                "target_ids": ["T1"],
-                "decisive_relations": ["线动量守恒"],
-            }],
+            "reasoning_steps": [
+                {
+                    "id": "S1",
+                    "operation": "尝试列出可能的守恒关系",
+                    "depends_on": [],
+                    "target_ids": ["T1"],
+                    "decisive_relations": ["线动量守恒"],
+                }
+            ],
             "verification_obligations": [],
         }
         report = {
             "solver_a": {
-                "targets": [{
-                    "id": "T1",
-                    "supporting_relations": ["总角动量由轨道角动量与自旋合成"],
-                }]
+                "targets": [
+                    {
+                        "id": "T1",
+                        "supporting_relations": ["总角动量由轨道角动量与自旋合成"],
+                    }
+                ]
             }
         }
         path = difficulty.standard_path_from_blueprint(blueprint, report)
@@ -551,9 +581,7 @@ class DifficultyAssessmentTest(unittest.TestCase):
         self.assertEqual(process["count"], 2)
         self.assertEqual(process["level"], "标准串联")
         self.assertEqual(process["score"], 1.6)
-        conditions = difficulty._condition_profile(
-            ["方向与符号", "范围与边界", "首次性", "枚举完备性"]
-        )
+        conditions = difficulty._condition_profile(["方向与符号", "范围与边界", "首次性", "枚举完备性"])
         self.assertLessEqual(conditions["score"], 3.7)
 
     def test_process_composition_anchors_timing_sync_branch_and_nested_topology(self):
@@ -641,13 +669,15 @@ class DifficultyAssessmentTest(unittest.TestCase):
 
     def test_calculation_load_follows_necessary_chain_not_formula_line_count(self):
         direct = difficulty._calculation_profile(
-            [{
-                "id": "S1",
-                "operation": "代入求速度",
-                "depends_on": [],
-                "target_ids": ["T1"],
-                "decisive_relations": ["v=s/t"],
-            }],
+            [
+                {
+                    "id": "S1",
+                    "operation": "代入求速度",
+                    "depends_on": [],
+                    "target_ids": ["T1"],
+                    "decisive_relations": ["v=s/t"],
+                }
+            ],
             ["v=s/t"],
         )
         self.assertEqual(direct["base_score"], 0.8)
@@ -718,14 +748,10 @@ class DifficultyAssessmentTest(unittest.TestCase):
             **self.standard_path,
             "reasoning_steps": [item["operation"] for item in graph],
             "reasoning_graph": graph,
-            "decisive_relations": [
-                item["decisive_relations"][0] for item in graph
-            ],
+            "decisive_relations": [item["decisive_relations"][0] for item in graph],
         }
         result = difficulty.auto_assess({}, self.problem, path)
-        depth = next(
-            item for item in result["dimensions"] if item["id"] == "knowledge_depth"
-        )
+        depth = next(item for item in result["dimensions"] if item["id"] == "knowledge_depth")
         self.assertLess(depth["score"], 4.0)
         self.assertGreaterEqual(depth["score"], 3.0)
 

@@ -21,11 +21,17 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
         (self.entry / "problem.md").write_text("# 题目\nA. 甲\nB. 乙", encoding="utf-8")
         reference = "# 解析\n\n## 答案速览\nA 错；B 对。\n\n$$v=at$$\n"
         (self.entry / "student-solution.md").write_text(reference, encoding="utf-8")
-        (self.entry / "record.json").write_text(json.dumps({
-            "title": "测试题",
-            "answer_review": {"status": "passed"},
-            "difficulty_assessment": {"score": 48, "level": "中等"},
-        }, ensure_ascii=False), encoding="utf-8")
+        (self.entry / "record.json").write_text(
+            json.dumps(
+                {
+                    "title": "测试题",
+                    "answer_review": {"status": "passed"},
+                    "difficulty_assessment": {"score": 48, "level": "中等"},
+                },
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
         baseline = self.entry / ".agent-baseline"
         baseline.mkdir()
         (baseline / "student-solution.md").write_text(
@@ -48,29 +54,35 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
         imported = benchmark.evaluate(self.library, self.experiment)
         self.assertEqual(imported["readiness"]["missing_web_current"], 1)
         web_meta = self.experiment / "artifacts" / "entry-1" / "web-current.meta.json"
-        web_meta.write_text(json.dumps({
-            "schema_version": 1,
-            "entry_id": "entry-1",
-            "cohort": "web-current",
-            "source": "teacher-console-browser-click",
-            "status": "completed",
-            "evidence_mode": "current",
-            "evidence_context": {"status": "ready", "reference_count": 2},
-        }), encoding="utf-8")
+        web_meta.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "entry_id": "entry-1",
+                "cohort": "web-current",
+                "source": "teacher-console-browser-click",
+                "status": "completed",
+                "evidence_mode": "current",
+                "evidence_context": {"status": "ready", "reference_count": 2},
+            }),
+            encoding="utf-8",
+        )
         no_rag = self.experiment / "artifacts" / "entry-1" / "web-no-rag.md"
         no_rag.write_text("# 无 RAG\nA 错；B 对。\n\n$$v=at$$\n", encoding="utf-8")
-        no_rag.with_suffix(".meta.json").write_text(json.dumps({
-            "schema_version": 1,
-            "entry_id": "entry-1",
-            "cohort": "web-no-rag",
-            "source": "teacher-console-browser-click",
-            "status": "completed",
-            "evidence_mode": "disabled",
-            "evidence_context": {
-                "status": "disabled-for-benchmark",
-                "reference_count": 0,
-            },
-        }), encoding="utf-8")
+        no_rag.with_suffix(".meta.json").write_text(
+            json.dumps({
+                "schema_version": 1,
+                "entry_id": "entry-1",
+                "cohort": "web-no-rag",
+                "source": "teacher-console-browser-click",
+                "status": "completed",
+                "evidence_mode": "disabled",
+                "evidence_context": {
+                    "status": "disabled-for-benchmark",
+                    "reference_count": 0,
+                },
+            }),
+            encoding="utf-8",
+        )
         direct = self.experiment / "artifacts" / "entry-1" / "direct.md"
         direct.parent.mkdir(parents=True, exist_ok=True)
         direct.write_text(
@@ -107,11 +119,14 @@ class PairedAnswerBenchmarkTest(unittest.TestCase):
         artifact = self.experiment / "artifacts" / "entry-1"
         artifact.mkdir(parents=True, exist_ok=True)
         (artifact / "web.md").write_text("旧网页候选", encoding="utf-8")
-        (artifact / "web.meta.json").write_text(json.dumps({
-            "source": "teacher-console-browser-click",
-            "status": "completed",
-            "evidence_context": {"status": "ready", "reference_count": 0},
-        }), encoding="utf-8")
+        (artifact / "web.meta.json").write_text(
+            json.dumps({
+                "source": "teacher-console-browser-click",
+                "status": "completed",
+                "evidence_context": {"status": "ready", "reference_count": 0},
+            }),
+            encoding="utf-8",
+        )
 
         report = benchmark.evaluate(self.library, self.experiment)
 

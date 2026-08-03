@@ -8,23 +8,73 @@ import xml.etree.ElementTree as ET
 
 from visual_facts import normalize_payload
 
-
 SCHEMA = "wuli.svg-collaboration-provenance.v1"
 MAX_ELEMENTS = 2000
 ALLOWED_TAGS = {
-    "svg", "g", "defs", "marker", "rect", "circle", "ellipse", "line",
-    "polyline", "polygon", "path", "text", "tspan", "title", "pattern",
+    "svg",
+    "g",
+    "defs",
+    "marker",
+    "rect",
+    "circle",
+    "ellipse",
+    "line",
+    "polyline",
+    "polygon",
+    "path",
+    "text",
+    "tspan",
+    "title",
+    "pattern",
 }
 ALLOWED_ATTRS = {
-    "xmlns", "width", "height", "viewBox", "x", "y", "x1", "y1", "x2", "y2",
-    "cx", "cy", "r", "rx", "ry", "d", "points", "fill", "stroke",
-    "stroke-width", "opacity", "transform", "text-anchor", "dominant-baseline",
-    "font-size", "font-family", "font-weight", "id", "markerWidth",
-    "markerHeight", "refX", "refY", "orient", "marker-start", "marker-mid",
+    "xmlns",
+    "width",
+    "height",
+    "viewBox",
+    "x",
+    "y",
+    "x1",
+    "y1",
+    "x2",
+    "y2",
+    "cx",
+    "cy",
+    "r",
+    "rx",
+    "ry",
+    "d",
+    "points",
+    "fill",
+    "stroke",
+    "stroke-width",
+    "opacity",
+    "transform",
+    "text-anchor",
+    "dominant-baseline",
+    "font-size",
+    "font-family",
+    "font-weight",
+    "id",
+    "markerWidth",
+    "markerHeight",
+    "refX",
+    "refY",
+    "orient",
+    "marker-start",
+    "marker-mid",
     "marker-end",
-    "aria-label", "aria-labelledby", "role", "class", "baseline-shift",
-    "fill-opacity", "font-style", "patternUnits", "stroke-dasharray",
-    "stroke-linecap", "stroke-linejoin",
+    "aria-label",
+    "aria-labelledby",
+    "role",
+    "class",
+    "baseline-shift",
+    "fill-opacity",
+    "font-style",
+    "patternUnits",
+    "stroke-dasharray",
+    "stroke-linecap",
+    "stroke-linejoin",
 }
 
 
@@ -115,16 +165,18 @@ def validate_and_bind_svg(
     if normalized != visual_facts:
         raise ValueError("visual_facts are not canonical")
     if not isinstance(generation_trace, dict) or set(generation_trace) != {
-        "model_id", "provider", "generation_fingerprint",
+        "model_id",
+        "provider",
+        "generation_fingerprint",
     }:
         raise ValueError("invalid generation_trace fields")
     if not isinstance(expected_generation_identity, dict) or set(expected_generation_identity) != {
-        "model_id", "provider",
+        "model_id",
+        "provider",
     }:
         raise ValueError("invalid expected_generation_identity fields")
     if any(
-        not isinstance(expected_generation_identity[field], str)
-        or not expected_generation_identity[field].strip()
+        not isinstance(expected_generation_identity[field], str) or not expected_generation_identity[field].strip()
         for field in ("model_id", "provider")
     ):
         raise ValueError("generation identity values must be non-empty strings")

@@ -95,15 +95,11 @@ def normalize_scheduler_config(raw: dict | None) -> dict:
     adaptive = raw.get("adaptive_concurrency")
     if isinstance(adaptive, dict):
         base["adaptive_concurrency"]["enabled"] = adaptive.get("enabled") is not False
-        base["adaptive_concurrency"]["initial"] = _clean_positive_int(
-            adaptive.get("initial"), 1, maximum=4
-        )
+        base["adaptive_concurrency"]["initial"] = _clean_positive_int(adaptive.get("initial"), 1, maximum=4)
         base["adaptive_concurrency"]["first_success_limit"] = _clean_positive_int(
             adaptive.get("first_success_limit"), 2, maximum=4
         )
-        base["adaptive_concurrency"]["max_limit"] = _clean_positive_int(
-            adaptive.get("max_limit"), 4, maximum=16
-        )
+        base["adaptive_concurrency"]["max_limit"] = _clean_positive_int(adaptive.get("max_limit"), 4, maximum=16)
         base["adaptive_concurrency"]["successes_to_max"] = _clean_positive_int(
             adaptive.get("successes_to_max"), 2, maximum=16
         )
@@ -227,7 +223,8 @@ class AgentJobManager:
                 record.update({
                     key: value
                     for key, value in metadata.items()
-                    if key in {"routing_tier", "model_id", "concurrency_group", "provider", "batch_id", "route_snapshot"}
+                    if key
+                    in {"routing_tier", "model_id", "concurrency_group", "provider", "batch_id", "route_snapshot"}
                 })
             self.active_by_entry[entry_id] = job_id
             self.pending_callbacks[job_id] = callback
@@ -407,10 +404,7 @@ class AgentJobManager:
             state["mode"] = "serial_probe"
             state["degradation_count"] = int(state["degradation_count"]) + 1
             event = "structural_failure_degraded"
-        elif (
-            record.get("status") == "completed"
-            and int(adaptive.get("epoch", -1)) == int(state["epoch"])
-        ):
+        elif record.get("status") == "completed" and int(adaptive.get("epoch", -1)) == int(state["epoch"]):
             if before == 1:
                 state["limit"] = min(
                     int(self.adaptive_config["first_success_limit"]),

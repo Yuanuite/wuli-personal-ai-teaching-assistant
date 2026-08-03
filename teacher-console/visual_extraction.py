@@ -242,9 +242,7 @@ def extract_visual_facts(
     }
     missing_content = sorted(content_fields - parsed.keys())
     if missing_content:
-        raise VisualExtractionError(
-            f"Model output is missing fields: {', '.join(missing_content)}"
-        )
+        raise VisualExtractionError(f"Model output is missing fields: {', '.join(missing_content)}")
     selected = {
         "reviewed_text": parsed.get("reviewed_text", ""),
         "printed_facts": parsed.get("printed_facts", []),
@@ -256,13 +254,17 @@ def extract_visual_facts(
     # Validate types minimally
     if not isinstance(selected["reviewed_text"], str):
         raise VisualExtractionError("reviewed_text must be a string")
-    if not isinstance(selected["printed_facts"], list) or not all(isinstance(x, str) for x in selected["printed_facts"]):
+    if not isinstance(selected["printed_facts"], list) or not all(
+        isinstance(x, str) for x in selected["printed_facts"]
+    ):
         raise VisualExtractionError("printed_facts must be a list of strings")
     if not isinstance(selected["diagram_facts"], list):
         raise VisualExtractionError("diagram_facts must be a list")
     if not isinstance(selected["handwriting"], list) or not all(isinstance(x, str) for x in selected["handwriting"]):
         raise VisualExtractionError("handwriting must be a list of strings")
-    if not isinstance(selected["uncertainties"], list) or not all(isinstance(x, str) for x in selected["uncertainties"]):
+    if not isinstance(selected["uncertainties"], list) or not all(
+        isinstance(x, str) for x in selected["uncertainties"]
+    ):
         raise VisualExtractionError("uncertainties must be a list of strings")
 
     # Build raw A2 payload locally
@@ -343,8 +345,7 @@ def run_vision_probe(
         return _probe_failed(model_id, "probe image is missing")
 
     prompt = (
-        "你是视觉能力探针。请仅输出一个 JSON 对象：{\"ok\": true}。"
-        "如果图片无法读取或不是有效图像，输出 {\"ok\": false}。"
+        '你是视觉能力探针。请仅输出一个 JSON 对象：{"ok": true}。如果图片无法读取或不是有效图像，输出 {"ok": false}。'
     )
     try:
         image_data_urls = [_load_image_data_url(image)]

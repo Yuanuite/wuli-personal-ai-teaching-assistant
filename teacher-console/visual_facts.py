@@ -1,6 +1,6 @@
+import copy
 import hashlib
 import json
-import copy
 
 SCHEMA = "wuli.visual-facts.v1"
 GATE_SCHEMA = "wuli.visual-facts-gate-result.v1"
@@ -26,7 +26,7 @@ def _is_sha256_fingerprint(value):
         return False
     if not value.startswith("sha256:"):
         return False
-    hex_part = value[len("sha256:"):]
+    hex_part = value[len("sha256:") :]
     if len(hex_part) != 64:
         return False
     return all(character in "0123456789abcdef" for character in hex_part)
@@ -219,36 +219,28 @@ def evaluate_gate(
         reasons.append({
             "code": "source-mismatch",
             "fact_id": None,
-            "message": "source fingerprint does not match expected"
+            "message": "source fingerprint does not match expected",
         })
 
     if payload["reviewed_text"] == "":
-        reasons.append({
-            "code": "empty-reviewed-text",
-            "fact_id": None,
-            "message": "reviewed_text is empty"
-        })
+        reasons.append({"code": "empty-reviewed-text", "fact_id": None, "message": "reviewed_text is empty"})
 
     if len(payload["uncertainties"]) > 0:
-        reasons.append({
-            "code": "uncertainty-present",
-            "fact_id": None,
-            "message": "uncertainties list is non-empty"
-        })
+        reasons.append({"code": "uncertainty-present", "fact_id": None, "message": "uncertainties list is non-empty"})
 
     for fact in payload["diagram_facts"]:
         if fact["confidence"] < minimum_fact_confidence:
             reasons.append({
                 "code": "low-confidence",
                 "fact_id": fact["id"],
-                "message": f"confidence {fact['confidence']} below threshold {minimum_fact_confidence}"
+                "message": f"confidence {fact['confidence']} below threshold {minimum_fact_confidence}",
             })
 
     if runtime_model_identity != expected_runtime_model_identity:
         reasons.append({
             "code": "route-mismatch",
             "fact_id": None,
-            "message": "runtime model identity does not match expected"
+            "message": "runtime model identity does not match expected",
         })
 
     reasons.sort(key=lambda r: (r["code"], r["fact_id"] or ""))

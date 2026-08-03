@@ -13,7 +13,6 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
-
 RETRIEVAL_NEED_SCHEMA = "wuli.retrieval-need.v1"
 EVIDENCE_UNIT_SCHEMA = "wuli.evidence-unit.v1"
 EVIDENCE_USAGE_LEDGER_SCHEMA = "wuli.evidence-usage-ledger.v1"
@@ -164,15 +163,9 @@ def normalize_retrieval_need(payload: dict[str, Any]) -> dict[str, Any]:
             "retrieval_need.minimum_authority",
             AUTHORITY_LEVELS - {"N"},
         ),
-        "criticality": _enum(
-            raw.get("criticality"), "retrieval_need.criticality", CRITICALITIES
-        ),
-        "target_ids": _texts(
-            raw.get("target_ids"), "retrieval_need.target_ids", maximum_items=16
-        ),
-        "stage_ids": _texts(
-            raw.get("stage_ids"), "retrieval_need.stage_ids", maximum_items=16
-        ),
+        "criticality": _enum(raw.get("criticality"), "retrieval_need.criticality", CRITICALITIES),
+        "target_ids": _texts(raw.get("target_ids"), "retrieval_need.target_ids", maximum_items=16),
+        "stage_ids": _texts(raw.get("stage_ids"), "retrieval_need.stage_ids", maximum_items=16),
         "obligation_ids": _texts(
             raw.get("obligation_ids"),
             "retrieval_need.obligation_ids",
@@ -197,18 +190,14 @@ def _normalize_locator(payload: Any) -> dict[str, Any]:
     raw = _mapping(payload, "evidence_unit.source_locator")
     locator = {
         "path": _relative_path(raw.get("path"), "evidence_unit.source_locator.path"),
-        "section": _text(
-            raw.get("section"), "evidence_unit.source_locator.section", 500
-        ),
+        "section": _text(raw.get("section"), "evidence_unit.source_locator.section", 500),
     }
     start = raw.get("start_line")
     end = raw.get("end_line")
     if isinstance(start, bool) or not isinstance(start, int) or start < 1:
         raise ValueError("evidence_unit.source_locator.start_line must be positive")
     if isinstance(end, bool) or not isinstance(end, int) or end < start:
-        raise ValueError(
-            "evidence_unit.source_locator.end_line must not precede start_line"
-        )
+        raise ValueError("evidence_unit.source_locator.end_line must not precede start_line")
     locator["start_line"] = start
     locator["end_line"] = end
     return locator
@@ -246,15 +235,11 @@ def normalize_evidence_unit(payload: dict[str, Any]) -> dict[str, Any]:
         AUTHORITY_LEVELS,
     )
     if authority != SOURCE_AUTHORITIES[source_kind]:
-        raise ValueError(
-            "evidence_unit.authority_level does not match source_kind policy"
-        )
+        raise ValueError("evidence_unit.authority_level does not match source_kind policy")
     unit = {
         "schema": EVIDENCE_UNIT_SCHEMA,
         "evidence_id": _text(raw.get("evidence_id"), "evidence_unit.evidence_id", 120),
-        "unit_kind": _enum(
-            raw.get("unit_kind"), "evidence_unit.unit_kind", UNIT_KINDS
-        ),
+        "unit_kind": _enum(raw.get("unit_kind"), "evidence_unit.unit_kind", UNIT_KINDS),
         "source_kind": source_kind,
         "source_locator": _normalize_locator(raw.get("source_locator")),
         "text": _text(raw.get("text"), "evidence_unit.text", 12000),
@@ -281,9 +266,7 @@ def normalize_evidence_unit(payload: dict[str, Any]) -> dict[str, Any]:
     }
     expected_hash = evidence_unit_content_hash(unit)
     supplied_hash = raw.get("content_hash")
-    if supplied_hash is not None and _hash(
-        supplied_hash, "evidence_unit.content_hash"
-    ) != expected_hash:
+    if supplied_hash is not None and _hash(supplied_hash, "evidence_unit.content_hash") != expected_hash:
         raise ValueError("evidence_unit.content_hash does not match canonical content")
     unit["content_hash"] = expected_hash
     return unit
@@ -335,9 +318,7 @@ def normalize_usage_ledger(payload: dict[str, Any]) -> dict[str, Any]:
         if entry["usage"] == "navigation_only" and entry["influenced_claim_ids"]:
             raise ValueError("navigation_only evidence cannot influence a claim")
         if entry["influenced_claim_ids"] and not entry["verification_ids"]:
-            raise ValueError(
-                "claim-influencing evidence must bind current-problem verification"
-            )
+            raise ValueError("claim-influencing evidence must bind current-problem verification")
         entries.append(entry)
     return {"schema": EVIDENCE_USAGE_LEDGER_SCHEMA, "entries": entries}
 
@@ -345,9 +326,7 @@ def normalize_usage_ledger(payload: dict[str, Any]) -> dict[str, Any]:
 def _normalize_coverage(payload: Any, index: int) -> dict[str, Any]:
     raw = _mapping(payload, f"coverage[{index}]")
     status = _enum(raw.get("status"), f"coverage[{index}].status", NEED_STATUSES)
-    evidence_ids = _texts(
-        raw.get("evidence_ids"), f"coverage[{index}].evidence_ids", maximum_items=32
-    )
+    evidence_ids = _texts(raw.get("evidence_ids"), f"coverage[{index}].evidence_ids", maximum_items=32)
     covered = _texts(
         raw.get("covered_facets"),
         f"coverage[{index}].covered_facets",
@@ -365,9 +344,7 @@ def _normalize_coverage(payload: Any, index: int) -> dict[str, Any]:
         maximum_text=1000,
     )
     if status == "covered" and (not evidence_ids or missing or conflicts):
-        raise ValueError(
-            "covered need must bind evidence and have no missing facets or conflicts"
-        )
+        raise ValueError("covered need must bind evidence and have no missing facets or conflicts")
     if status == "conflicted" and not conflicts:
         raise ValueError("conflicted need must describe a hard conflict")
     return {
@@ -421,15 +398,12 @@ def normalize_evidence_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
         if set(row["evidence_ids"]) - set(unit_by_id):
             raise ValueError("coverage references unknown evidence")
         required_facets = set(need_by_id[row["need_id"]]["required_facets"])
-        if row["status"] == "covered" and not required_facets.issubset(
-            set(row["covered_facets"])
-        ):
+        if row["status"] == "covered" and not required_facets.issubset(set(row["covered_facets"])):
             raise ValueError("covered need must cover every required facet")
         if row["status"] == "covered":
             minimum = need_by_id[row["need_id"]]["minimum_authority"]
             if any(
-                AUTHORITY_RANK[unit_by_id[evidence_id]["authority_level"]]
-                < AUTHORITY_RANK[minimum]
+                AUTHORITY_RANK[unit_by_id[evidence_id]["authority_level"]] < AUTHORITY_RANK[minimum]
                 for evidence_id in row["evidence_ids"]
             ):
                 raise ValueError("covered need binds evidence below minimum authority")
@@ -440,17 +414,9 @@ def normalize_evidence_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
         if set(entry["need_ids"]) - set(need_by_id):
             raise ValueError("usage ledger references unknown retrieval need")
 
-    required_rows = [
-        coverage_by_id[item["need_id"]]
-        for item in needs
-        if item["criticality"] == "required"
-    ]
-    all_required_covered = bool(required_rows) and all(
-        item["status"] == "covered" for item in required_rows
-    )
-    has_required_gap = any(
-        item["status"] in {"missing", "conflicted"} for item in required_rows
-    )
+    required_rows = [coverage_by_id[item["need_id"]] for item in needs if item["criticality"] == "required"]
+    all_required_covered = bool(required_rows) and all(item["status"] == "covered" for item in required_rows)
+    has_required_gap = any(item["status"] in {"missing", "conflicted"} for item in required_rows)
     if status == "sufficient" and not all_required_covered:
         raise ValueError("sufficient requires every required need to be covered")
     if status == "insufficient" and not has_required_gap:
@@ -462,13 +428,9 @@ def normalize_evidence_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
 
     insufficient = raw.get("insufficient_evidence")
     if status in {"insufficient", "unavailable"}:
-        insufficient = _text(
-            insufficient, "evidence_agent_run.insufficient_evidence", 2000
-        )
+        insufficient = _text(insufficient, "evidence_agent_run.insufficient_evidence", 2000)
     elif insufficient not in {None, ""}:
-        raise ValueError(
-            "insufficient_evidence is only allowed for insufficient or unavailable"
-        )
+        raise ValueError("insufficient_evidence is only allowed for insufficient or unavailable")
     else:
         insufficient = None
 
@@ -476,49 +438,39 @@ def normalize_evidence_agent_run(payload: dict[str, Any]) -> dict[str, Any]:
     for index, item_raw in enumerate(trace_raw):
         item = _mapping(item_raw, f"retrieval_trace[{index}]")
         round_number = item.get("round")
-        if (
-            isinstance(round_number, bool)
-            or not isinstance(round_number, int)
-            or round_number not in {1, 2}
-        ):
+        if isinstance(round_number, bool) or not isinstance(round_number, int) or round_number not in {1, 2}:
             raise ValueError("retrieval trace round must be 1 or 2")
-        trace.append(
-            {
-                "round": round_number,
-                "query_ids": _texts(
-                    item.get("query_ids"),
-                    f"retrieval_trace[{index}].query_ids",
-                    maximum_items=16,
-                ),
-                "candidate_evidence_ids": _texts(
-                    item.get("candidate_evidence_ids"),
-                    f"retrieval_trace[{index}].candidate_evidence_ids",
-                    maximum_items=128,
-                ),
-                "newly_covered_need_ids": _texts(
-                    item.get("newly_covered_need_ids"),
-                    f"retrieval_trace[{index}].newly_covered_need_ids",
-                    maximum_items=16,
-                ),
-                "stop_reason": _text(
-                    item.get("stop_reason"),
-                    f"retrieval_trace[{index}].stop_reason",
-                    500,
-                ),
-            }
-        )
+        trace.append({
+            "round": round_number,
+            "query_ids": _texts(
+                item.get("query_ids"),
+                f"retrieval_trace[{index}].query_ids",
+                maximum_items=16,
+            ),
+            "candidate_evidence_ids": _texts(
+                item.get("candidate_evidence_ids"),
+                f"retrieval_trace[{index}].candidate_evidence_ids",
+                maximum_items=128,
+            ),
+            "newly_covered_need_ids": _texts(
+                item.get("newly_covered_need_ids"),
+                f"retrieval_trace[{index}].newly_covered_need_ids",
+                maximum_items=16,
+            ),
+            "stop_reason": _text(
+                item.get("stop_reason"),
+                f"retrieval_trace[{index}].stop_reason",
+                500,
+            ),
+        })
     if len(trace) > 2:
         raise ValueError("evidence_agent_run supports at most two retrieval rounds")
-    if [item["round"] for item in trace] != sorted(
-        {item["round"] for item in trace}
-    ):
+    if [item["round"] for item in trace] != sorted({item["round"] for item in trace}):
         raise ValueError("retrieval trace rounds must be unique and ordered")
 
     run = {
         "schema": EVIDENCE_AGENT_RUN_SCHEMA,
-        "task_fingerprint": _hash(
-            raw.get("task_fingerprint"), "evidence_agent_run.task_fingerprint"
-        ),
+        "task_fingerprint": _hash(raw.get("task_fingerprint"), "evidence_agent_run.task_fingerprint"),
         "question_snapshot_hash": _hash(
             raw.get("question_snapshot_hash"),
             "evidence_agent_run.question_snapshot_hash",
@@ -572,15 +524,9 @@ def evidence_build_task_fingerprint(
     return stable_fingerprint(
         "evidence-build-task-v1",
         {
-            "question_snapshot_hash": _hash(
-                question_snapshot_hash, "question_snapshot_hash"
-            ),
-            "blueprint_fingerprint": _hash(
-                blueprint_fingerprint, "blueprint_fingerprint"
-            ),
-            "knowledge_store_fingerprint": _hash(
-                knowledge_store_fingerprint, "knowledge_store_fingerprint"
-            ),
+            "question_snapshot_hash": _hash(question_snapshot_hash, "question_snapshot_hash"),
+            "blueprint_fingerprint": _hash(blueprint_fingerprint, "blueprint_fingerprint"),
+            "knowledge_store_fingerprint": _hash(knowledge_store_fingerprint, "knowledge_store_fingerprint"),
             "retrieval_needs": needs,
             "fusion_policy": policy,
         },

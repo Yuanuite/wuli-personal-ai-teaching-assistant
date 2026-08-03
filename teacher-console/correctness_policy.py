@@ -128,10 +128,7 @@ def claim_evidence_shadow_enabled(environ: Mapping[str, str] | None = None) -> b
         return True
     if normalized in _FALSE_VALUES:
         return False
-    raise ValueError(
-        f"{CLAIM_EVIDENCE_SHADOW_ENV} must be one of "
-        f"{sorted(_TRUE_VALUES | _FALSE_VALUES)}"
-    )
+    raise ValueError(f"{CLAIM_EVIDENCE_SHADOW_ENV} must be one of {sorted(_TRUE_VALUES | _FALSE_VALUES)}")
 
 
 def claim_verify_concurrency(environ: Mapping[str, str] | None = None) -> int:
@@ -147,14 +144,10 @@ def claim_verify_concurrency(environ: Mapping[str, str] | None = None) -> int:
         value = int(raw.strip())
     except ValueError as exc:
         raise ValueError(
-            f"{CLAIM_VERIFY_CONCURRENCY_ENV} must be an integer from 1 to "
-            f"{MAX_CLAIM_VERIFY_CONCURRENCY}"
+            f"{CLAIM_VERIFY_CONCURRENCY_ENV} must be an integer from 1 to {MAX_CLAIM_VERIFY_CONCURRENCY}"
         ) from exc
     if not 1 <= value <= MAX_CLAIM_VERIFY_CONCURRENCY:
-        raise ValueError(
-            f"{CLAIM_VERIFY_CONCURRENCY_ENV} must be an integer from 1 to "
-            f"{MAX_CLAIM_VERIFY_CONCURRENCY}"
-        )
+        raise ValueError(f"{CLAIM_VERIFY_CONCURRENCY_ENV} must be an integer from 1 to {MAX_CLAIM_VERIFY_CONCURRENCY}")
     return value
 
 
@@ -199,11 +192,7 @@ def policy_snapshot() -> dict[str, Any]:
         "claim_kinds": list(CLAIM_KINDS),
         "claim_statuses": list(CLAIM_STATUSES),
         "certificate_requirements": {
-            kind: {
-                key: list(value)
-                for key, value in CERTIFICATE_REQUIREMENTS[kind].items()
-            }
-            for kind in CLAIM_KINDS
+            kind: {key: list(value) for key, value in CERTIFICATE_REQUIREMENTS[kind].items()} for kind in CLAIM_KINDS
         },
         "shadow_env": CLAIM_EVIDENCE_SHADOW_ENV,
         "shadow_default": DEFAULT_CLAIM_EVIDENCE_SHADOW,

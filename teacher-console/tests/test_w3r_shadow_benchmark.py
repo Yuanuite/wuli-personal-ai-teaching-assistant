@@ -13,9 +13,7 @@ import w3r_contract  # noqa: E402
 import w3r_shadow_benchmark  # noqa: E402
 
 FIXTURE = CONSOLE / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
-CONDITION_FIXTURE = (
-    CONSOLE / "tests" / "fixtures" / "w3r" / "verified-condition-matrix.json"
-)
+CONDITION_FIXTURE = CONSOLE / "tests" / "fixtures" / "w3r" / "verified-condition-matrix.json"
 
 
 class W3RShadowBenchmarkTest(unittest.TestCase):
@@ -23,20 +21,14 @@ class W3RShadowBenchmarkTest(unittest.TestCase):
         cases = []
         for path in (FIXTURE, CONDITION_FIXTURE):
             payload = json.loads(path.read_text(encoding="utf-8"))
-            built = w3r_contract.build_w3r_brief(
-                payload["problem"], payload["blueprint"], payload["proof_package"]
-            )
+            built = w3r_contract.build_w3r_brief(payload["problem"], payload["blueprint"], payload["proof_package"])
             cases.append((path.stem, built["brief"]))
         return cases
 
     def test_same_brief_pair_passes_all_hard_shadow_gates(self):
         payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
-        built = w3r_contract.build_w3r_brief(
-            payload["problem"], payload["blueprint"], payload["proof_package"]
-        )
-        report = w3r_shadow_benchmark.benchmark([
-            ("verified-multi-target", built["brief"])
-        ])
+        built = w3r_contract.build_w3r_brief(payload["problem"], payload["blueprint"], payload["proof_package"])
+        report = w3r_shadow_benchmark.benchmark([("verified-multi-target", built["brief"])])
         self.assertTrue(report["gates"]["shadow_candidate_eligible"])
         self.assertFalse(report["gates"]["production_default_eligible"])
         self.assertTrue(report["cases"][0]["paired_input_identical"])
@@ -44,9 +36,7 @@ class W3RShadowBenchmarkTest(unittest.TestCase):
 
     def test_markdown_report_exposes_each_fidelity_metric(self):
         payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
-        built = w3r_contract.build_w3r_brief(
-            payload["problem"], payload["blueprint"], payload["proof_package"]
-        )
+        built = w3r_contract.build_w3r_brief(payload["problem"], payload["blueprint"], payload["proof_package"])
         report = w3r_shadow_benchmark.benchmark([("case", built["brief"])])
         text = w3r_shadow_benchmark.markdown_report(report)
         for heading in ("Final", "Claim", "Condition", "Target", "LaTeX", "Unsupported"):
@@ -70,9 +60,7 @@ class W3RShadowBenchmarkTest(unittest.TestCase):
 
     def test_incomplete_teacher_review_fails_closed(self):
         packet, key = w3r_shadow_benchmark.build_blind_packet(self.cases())
-        score = w3r_shadow_benchmark.score_blind_reviews(
-            packet, key, {"cases": []}
-        )
+        score = w3r_shadow_benchmark.score_blind_reviews(packet, key, {"cases": []})
         self.assertEqual(score["status"], "incomplete")
         self.assertTrue(score["errors"])
 
@@ -86,9 +74,7 @@ class W3RShadowBenchmarkTest(unittest.TestCase):
                 "case_id": case["case_id"],
                 "approved": True,
                 "preferred_version": identity["candidate_label"],
-                "target_fidelity": {
-                    target_id: True for target_id in case["target_ids"]
-                },
+                "target_fidelity": {target_id: True for target_id in case["target_ids"]},
                 "conditions_checked": True,
                 "claim_spans_checked": True,
                 "edit_required_versions": [identity["baseline_label"]],

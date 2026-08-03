@@ -145,9 +145,7 @@ def build_agent_request_outcome(
     if not isinstance(guard, dict):
         guard = {}
 
-    providers = tuple(
-        dict.fromkeys(str(item.get("provider", "")).strip() for item in attempts if item.get("provider"))
-    )
+    providers = tuple(dict.fromkeys(str(item.get("provider", "")).strip() for item in attempts if item.get("provider")))
     provider_seconds = round(
         sum(
             float(item.get("duration_seconds", 0))

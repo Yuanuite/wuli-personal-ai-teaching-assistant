@@ -44,9 +44,7 @@ PROFILES: dict[str, dict[str, Any]] = {
 def normalize_profile(value: Any) -> str:
     profile = str(value or DEFAULT_PROFILE).strip().lower()
     if profile not in PROFILES:
-        raise ValueError(
-            "method_profile must be high_school_standard or olympiad_official"
-        )
+        raise ValueError("method_profile must be high_school_standard or olympiad_official")
     return profile
 
 

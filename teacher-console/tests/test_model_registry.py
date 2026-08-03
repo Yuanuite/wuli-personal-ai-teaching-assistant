@@ -116,9 +116,7 @@ class ModelRegistryTest(unittest.TestCase):
         )
         self.assertEqual(model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep")
         self.assertEqual(
-            model_registry.resolve_model_id_for_task(
-                "claim.verify", "auto", "auto"
-            ),
+            model_registry.resolve_model_id_for_task("claim.verify", "auto", "auto"),
             "claim-model",
         )
 
@@ -139,14 +137,16 @@ class ModelRegistryTest(unittest.TestCase):
         model_registry.save_model_registry_settings({
             "schema_version": 1,
             "defaults": {"analysis.generate": "claude-analysis"},
-            "models": [{
-                "id": "claude-analysis",
-                "display_name": "Claude Analysis",
-                "provider": "claude",
-                "model": "claude-analysis",
-                "timeout_seconds": "900",
-                "capabilities": ["analysis.generate"],
-            }],
+            "models": [
+                {
+                    "id": "claude-analysis",
+                    "display_name": "Claude Analysis",
+                    "provider": "claude",
+                    "model": "claude-analysis",
+                    "timeout_seconds": "900",
+                    "capabilities": ["analysis.generate"],
+                }
+            ],
         })
         model_registry.update_model_probe_result(
             "claude-analysis", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
@@ -158,16 +158,18 @@ class ModelRegistryTest(unittest.TestCase):
         model_registry.save_model_registry_settings({
             "schema_version": 1,
             "defaults": {"analysis.generate": "deepseek-agent"},
-            "models": [{
-                "id": "deepseek-agent",
-                "display_name": "DeepSeek via Claude Code",
-                "provider": "claude",
-                "base_url": "http://127.0.0.1:9001",
-                "model": "deepseek-agent-model",
-                "api_key": "local-agent-token",
-                "api_key_env": "TEACHER_CONSOLE_AGENT_API_KEY",
-                "capabilities": ["analysis.generate"],
-            }],
+            "models": [
+                {
+                    "id": "deepseek-agent",
+                    "display_name": "DeepSeek via Claude Code",
+                    "provider": "claude",
+                    "base_url": "http://127.0.0.1:9001",
+                    "model": "deepseek-agent-model",
+                    "api_key": "local-agent-token",
+                    "api_key_env": "TEACHER_CONSOLE_AGENT_API_KEY",
+                    "capabilities": ["analysis.generate"],
+                }
+            ],
         })
         model_registry.update_model_probe_result(
             "deepseek-agent", {"live_probe": {"status": "passed", "provider": "claude", "reason": ""}}
@@ -298,9 +300,7 @@ class ModelRegistryTest(unittest.TestCase):
             model_registry.model_config_for_trait("vision", model_id="analysis-model")
 
     def test_explicit_vision_model_is_accepted_with_trait_config(self):
-        self.assertEqual(
-            model_registry.resolve_model_id_for_trait("vision", "auto", "vision-model"), "vision-model"
-        )
+        self.assertEqual(model_registry.resolve_model_id_for_trait("vision", "auto", "vision-model"), "vision-model")
         config = model_registry.model_config_for_trait("vision", model_id="vision-model")
         self.assertEqual(config["model"], "vision-model")
         self.assertTrue(config["traits"]["vision"])
@@ -329,9 +329,7 @@ class ModelRegistryTest(unittest.TestCase):
         self.assertEqual(entry["vision_probe"]["status"], "passed")
         config = model_registry.model_config_for_trait("vision", model_id="vision-model")
         self.assertEqual(config["model"], "vision-model")
-        self.assertEqual(
-            model_registry.model_config_for_trait("vision", routing_tier="auto")["model"], "vision-model"
-        )
+        self.assertEqual(model_registry.model_config_for_trait("vision", routing_tier="auto")["model"], "vision-model")
 
     def test_vision_probe_untested_does_not_block_but_reports_honestly(self):
         public = model_registry.model_registry_public()["models"]
@@ -392,16 +390,12 @@ class ModelRegistryTest(unittest.TestCase):
 
     def test_explicit_model_id_bypasses_qualification_as_experimental(self):
         # Explicit selection is allowed as an experimental custom choice.
-        self.assertEqual(
-            model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep"
-        )
+        self.assertEqual(model_registry.resolve_model_id_for_task("analysis.generate", "auto", "deep"), "deep")
 
     def test_public_entry_exposes_qualification_record(self):
         public = model_registry.model_registry_public()["models"]
         entry = next(item for item in public if item["id"] == "analysis-model")
-        self.assertEqual(
-            entry["analysis_qualification"]["schema"], "wuli.analysis-qualification.v1"
-        )
+        self.assertEqual(entry["analysis_qualification"]["schema"], "wuli.analysis-qualification.v1")
 
     def test_record_qualification_rejects_bad_counts(self):
         with self.assertRaises(ValueError):

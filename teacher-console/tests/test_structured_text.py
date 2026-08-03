@@ -4,7 +4,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 CONSOLE_ROOT = Path(__file__).resolve().parents[1]
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
@@ -24,7 +23,4 @@ class StructuredTextTest(unittest.TestCase):
         for control in ("\x00", "\x11", "\x12", "\x1e", "\x7f"):
             with self.subTest(code=ord(control)):
                 with self.assertRaisesRegex(ValueError, "unsupported control"):
-                    structured_text.reject_unsupported_controls(
-                        f"正确{control}结论", "field"
-                    )
-
+                    structured_text.reject_unsupported_controls(f"正确{control}结论", "field")

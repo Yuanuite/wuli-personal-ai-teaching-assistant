@@ -59,11 +59,7 @@ def _route(verifier_kind: str, check_type: str) -> dict[str, Any]:
 def _base_routes(claim: dict[str, Any]) -> list[dict[str, Any]]:
     kind = claim["kind"]
     check_spec = claim["check_spec"]
-    requested_type = (
-        str(check_spec.get("type", "")).strip().lower()
-        if isinstance(check_spec, dict)
-        else ""
-    )
+    requested_type = str(check_spec.get("type", "")).strip().lower() if isinstance(check_spec, dict) else ""
     if requested_type == "semantic-required":
         requested_type = "semantic"
     if requested_type and requested_type not in correctness_policy.CHECK_TYPES:
@@ -92,9 +88,7 @@ def _base_routes(claim: dict[str, Any]) -> list[dict[str, Any]]:
     if preferred not in requirement["check_types"]:
         # A structurally valid check may still be insufficient for this Claim
         # kind.  Reject it instead of silently verifying under a weaker policy.
-        raise ValueError(
-            f"{preferred} is not an accepted check type for claim kind {kind}"
-        )
+        raise ValueError(f"{preferred} is not an accepted check type for claim kind {kind}")
     routes: list[dict[str, Any]] = []
     if preferred in _DETERMINISTIC_CHECK_TYPES:
         routes.append(_route("deterministic", preferred))
@@ -115,11 +109,13 @@ def route_claim_verification(
     risk_level = str(risk).strip().lower()
     if risk_level not in RISK_LEVELS:
         raise ValueError(f"unknown claim risk: {risk!r}")
-    groups = [{
-        "id": "base",
-        "one_of": _base_routes(normalized),
-        "distinct_verifier_required": False,
-    }]
+    groups = [
+        {
+            "id": "base",
+            "one_of": _base_routes(normalized),
+            "distinct_verifier_required": False,
+        }
+    ]
     if risk_level in {"high", "critical"} and normalized["kind"] != "premise":
         groups.append({
             "id": "independent-confirmation",
@@ -149,9 +145,7 @@ def certificate_matches_route(
         return False
     if normalized["check_type"] != route.get("check_type"):
         return False
-    if route.get("context_isolated") and not normalized["verifier_identity"][
-        "context_isolated"
-    ]:
+    if route.get("context_isolated") and not normalized["verifier_identity"]["context_isolated"]:
         return False
     return True
 
@@ -209,18 +203,14 @@ def safe_evaluate_arithmetic(
         if isinstance(node, ast.Expression):
             return evaluate(node.body)
         if isinstance(node, ast.Constant):
-            if isinstance(node.value, bool) or not isinstance(
-                node.value, (int, float)
-            ):
+            if isinstance(node.value, bool) or not isinstance(node.value, (int, float)):
                 raise ValueError("arithmetic constants must be real numbers")
             return _fraction(node.value, "arithmetic constant")
         if isinstance(node, ast.Name):
             if node.id not in normalized_variables:
                 raise ValueError(f"arithmetic variable is unbound: {node.id}")
             return normalized_variables[node.id]
-        if isinstance(node, ast.UnaryOp) and isinstance(
-            node.op, (ast.UAdd, ast.USub)
-        ):
+        if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
             value = evaluate(node.operand)
             return value if isinstance(node.op, ast.UAdd) else -value
         if isinstance(node, ast.BinOp):
@@ -231,16 +221,14 @@ def safe_evaluate_arithmetic(
                     raise ValueError("arithmetic exponent must be an integer from -12 to 12")
                 if left == 0 and right.numerator < 0:
                     raise ValueError("division by zero")
-                return _bounded_fraction(left ** right.numerator)
+                return _bounded_fraction(left**right.numerator)
             operation = _BINARY_OPERATORS.get(type(node.op))
             if operation is None:
                 raise ValueError("arithmetic operator is not allowed")
             if isinstance(node.op, ast.Div) and right == 0:
                 raise ValueError("division by zero")
             return _bounded_fraction(operation(left, right))
-        raise ValueError(
-            f"arithmetic syntax is not allowed: {type(node).__name__}"
-        )
+        raise ValueError(f"arithmetic syntax is not allowed: {type(node).__name__}")
 
     return _bounded_fraction(evaluate(tree))
 
@@ -268,17 +256,13 @@ def verify_arithmetic_claim(
 ) -> dict[str, Any]:
     """Return a normalized deterministic certificate for one arithmetic spec."""
     normalized = claim_ledger.normalize_claim(claim, agent_submission=False)
-    input_fingerprint = claim_ledger.claim_verification_input_fingerprint(
-        normalized, dependency_claims
-    )
+    input_fingerprint = claim_ledger.claim_verification_input_fingerprint(normalized, dependency_claims)
     spec = normalized["check_spec"]
     if not isinstance(spec, dict) or spec.get("type") != "arithmetic":
         raise ValueError("arithmetic verifier requires check_spec.type=arithmetic")
     unknown_spec_fields = set(spec) - {"type", "variables", "relations"}
     if unknown_spec_fields:
-        raise ValueError(
-            f"arithmetic check_spec has unknown fields: {sorted(unknown_spec_fields)}"
-        )
+        raise ValueError(f"arithmetic check_spec has unknown fields: {sorted(unknown_spec_fields)}")
     variables = spec.get("variables", {})
     relations = spec.get("relations")
     if not isinstance(relations, list) or not relations or len(relations) > 12:
@@ -298,12 +282,8 @@ def verify_arithmetic_claim(
             relation = str(relation_spec["operator"]).strip()
             if relation not in {"==", "!=", "<", "<=", ">", ">="}:
                 raise ValueError("arithmetic relation operator is invalid")
-            left = safe_evaluate_arithmetic(
-                str(relation_spec["left"]), variables
-            )
-            right = safe_evaluate_arithmetic(
-                str(relation_spec["right"]), variables
-            )
+            left = safe_evaluate_arithmetic(str(relation_spec["left"]), variables)
+            right = safe_evaluate_arithmetic(str(relation_spec["right"]), variables)
             tolerance = _fraction(
                 relation_spec.get("absolute_tolerance", "0"),
                 "absolute_tolerance",
@@ -319,9 +299,7 @@ def verify_arithmetic_claim(
                 "tolerance": str(tolerance),
                 "passed": passed,
             })
-            decisive_checks.append(
-                f"check {index + 1}: {left} {relation} {right} -> {passed}"
-            )
+            decisive_checks.append(f"check {index + 1}: {left} {relation} {right} -> {passed}")
             if not passed:
                 verdict = "conflict"
     except ValueError as exc:
@@ -377,9 +355,7 @@ def _combine_dimensions(
 ) -> dict[str, Fraction]:
     result = dict(left)
     for base in _DIMENSION_BASES:
-        exponent = result.get(base, Fraction(0)) + sign * right.get(
-            base, Fraction(0)
-        )
+        exponent = result.get(base, Fraction(0)) + sign * right.get(base, Fraction(0))
         if abs(exponent) > 32:
             raise ValueError("dimension exponent exceeds safety limit")
         if exponent:
@@ -434,35 +410,21 @@ def evaluate_dimension(
         return result
     if operation_name == "div" and set(expression) == {"op", "left", "right"}:
         return _combine_dimensions(
-            evaluate_dimension(
-                expression["left"], raw_symbols, _depth=_depth + 1
-            ),
-            evaluate_dimension(
-                expression["right"], raw_symbols, _depth=_depth + 1
-            ),
+            evaluate_dimension(expression["left"], raw_symbols, _depth=_depth + 1),
+            evaluate_dimension(expression["right"], raw_symbols, _depth=_depth + 1),
             -1,
         )
     if operation_name == "pow" and set(expression) == {"op", "base", "exponent"}:
         exponent = _fraction(expression["exponent"], "dimension exponent")
         if abs(exponent) > 12:
             raise ValueError("dimension exponent exceeds safety limit")
-        base = evaluate_dimension(
-            expression["base"], raw_symbols, _depth=_depth + 1
-        )
-        return {
-            key: value * exponent
-            for key, value in base.items()
-            if value * exponent
-        }
+        base = evaluate_dimension(expression["base"], raw_symbols, _depth=_depth + 1)
+        return {key: value * exponent for key, value in base.items() if value * exponent}
     raise ValueError("dimension expression shape or operation is unsupported")
 
 
 def _serialized_dimension(value: dict[str, Fraction]) -> dict[str, str]:
-    return {
-        base: str(value[base])
-        for base in _DIMENSION_BASES
-        if base in value
-    }
+    return {base: str(value[base]) for base in _DIMENSION_BASES if base in value}
 
 
 def verify_dimension_claim(
@@ -470,9 +432,7 @@ def verify_dimension_claim(
     dependency_claims: list[dict[str, Any]],
 ) -> dict[str, Any]:
     normalized = claim_ledger.normalize_claim(claim, agent_submission=False)
-    input_fingerprint = claim_ledger.claim_verification_input_fingerprint(
-        normalized, dependency_claims
-    )
+    input_fingerprint = claim_ledger.claim_verification_input_fingerprint(normalized, dependency_claims)
     spec = normalized["check_spec"]
     if not isinstance(spec, dict) or spec.get("type") != "dimension":
         raise ValueError("dimension verifier requires check_spec.type=dimension")
@@ -506,8 +466,7 @@ def verify_dimension_claim(
                 "passed": passed,
             })
             decisive_checks.append(
-                f"{label}: {_serialized_dimension(left)} == "
-                f"{_serialized_dimension(right)} -> {passed}"
+                f"{label}: {_serialized_dimension(left)} == {_serialized_dimension(right)} -> {passed}"
             )
             if not passed:
                 verdict = "conflict"
@@ -570,9 +529,7 @@ def _normalize_interval(raw: Any, field: str) -> dict[str, Any]:
     required = {"lower", "upper", "lower_closed", "upper_closed"}
     if set(raw) - (required | {"label"}) or not required.issubset(raw):
         raise ValueError(f"{field} fields are invalid")
-    if not isinstance(raw["lower_closed"], bool) or not isinstance(
-        raw["upper_closed"], bool
-    ):
+    if not isinstance(raw["lower_closed"], bool) or not isinstance(raw["upper_closed"], bool):
         raise ValueError(f"{field} closure flags must be boolean")
     lower = _endpoint(raw["lower"], "lower")
     upper = _endpoint(raw["upper"], "upper")
@@ -581,10 +538,7 @@ def _normalize_interval(raw: Any, field: str) -> dict[str, Any]:
     if upper[0] > 0 and raw["upper_closed"]:
         raise ValueError(f"{field} cannot close positive infinity")
     comparison = _compare_endpoints(lower, upper)
-    if comparison > 0 or (
-        comparison == 0
-        and not (raw["lower_closed"] and raw["upper_closed"])
-    ):
+    if comparison > 0 or (comparison == 0 and not (raw["lower_closed"] and raw["upper_closed"])):
         raise ValueError(f"{field} is empty or reversed")
     return {
         "lower": lower,
@@ -602,10 +556,7 @@ def _interval_report(spec: dict[str, Any]) -> tuple[str, list[dict[str, Any]], l
     raw_segments = spec.get("segments")
     if not isinstance(raw_segments, list) or not raw_segments or len(raw_segments) > 24:
         raise ValueError("interval segments must contain 1-24 items")
-    segments = [
-        _normalize_interval(item, f"interval segment {index + 1}")
-        for index, item in enumerate(raw_segments)
-    ]
+    segments = [_normalize_interval(item, f"interval segment {index + 1}") for index, item in enumerate(raw_segments)]
     segments.sort(
         key=lambda item: (
             item["lower"][0],
@@ -617,16 +568,10 @@ def _interval_report(spec: dict[str, Any]) -> tuple[str, list[dict[str, Any]], l
     checks: list[dict[str, Any]] = []
 
     first = segments[0]
-    if (
-        _compare_endpoints(first["lower"], domain["lower"]) != 0
-        or first["lower_closed"] != domain["lower_closed"]
-    ):
+    if _compare_endpoints(first["lower"], domain["lower"]) != 0 or first["lower_closed"] != domain["lower_closed"]:
         issues.append("segments do not start at the exact domain boundary")
     last = segments[-1]
-    if (
-        _compare_endpoints(last["upper"], domain["upper"]) != 0
-        or last["upper_closed"] != domain["upper_closed"]
-    ):
+    if _compare_endpoints(last["upper"], domain["upper"]) != 0 or last["upper_closed"] != domain["upper_closed"]:
         issues.append("segments do not end at the exact domain boundary")
 
     for segment in segments:
@@ -647,19 +592,12 @@ def _interval_report(spec: dict[str, Any]) -> tuple[str, list[dict[str, Any]], l
             issues.append(f"gap between {previous['label']} and {current['label']}")
         elif comparison > 0:
             outcome = "overlap"
-            issues.append(
-                f"overlap between {previous['label']} and {current['label']}"
-            )
+            issues.append(f"overlap between {previous['label']} and {current['label']}")
         else:
-            ownership = int(previous["upper_closed"]) + int(
-                current["lower_closed"]
-            )
+            ownership = int(previous["upper_closed"]) + int(current["lower_closed"])
             outcome = {0: "gap", 1: "exact", 2: "overlap"}[ownership]
             if outcome != "exact":
-                issues.append(
-                    f"{outcome} at shared boundary of "
-                    f"{previous['label']} and {current['label']}"
-                )
+                issues.append(f"{outcome} at shared boundary of {previous['label']} and {current['label']}")
         checks.append({"boundary": boundary, "outcome": outcome})
     return ("conflict" if issues else "pass"), checks, issues
 
@@ -688,9 +626,7 @@ def _deterministic_certificate(
             separators=(",", ":"),
         ),
         "decisive_checks": decisive_checks,
-        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(
-            normalized, dependency_claims
-        ),
+        "input_fingerprint": claim_ledger.claim_verification_input_fingerprint(normalized, dependency_claims),
         "verifier_identity": {
             "model_id": verifier_id,
             "provider": "local",
@@ -709,9 +645,7 @@ def verify_interval_claim(
         raise ValueError("interval verifier requires check_spec.type=interval")
     try:
         verdict, checks, issues = _interval_report(spec)
-        decisive = [
-            f"{item['boundary']} -> {item['outcome']}" for item in checks
-        ]
+        decisive = [f"{item['boundary']} -> {item['outcome']}" for item in checks]
         if verdict == "pass" and not decisive:
             decisive = ["single segment exactly matches the declared domain"]
         result: Any = {"checks": checks, "issues": issues}
@@ -802,15 +736,9 @@ def _event_order_report(
                 return False
         return True
 
-    eligible = [
-        event
-        for event in normalized_events
-        if event["admissible"] and in_bounds(event["time"])
-    ]
+    eligible = [event for event in normalized_events if event["admissible"] and in_bounds(event["time"])]
     if not eligible:
-        return "conflict", {"eligible_event_ids": []}, [
-            "no admissible event remains inside the declared time bounds"
-        ]
+        return "conflict", {"eligible_event_ids": []}, ["no admissible event remains inside the declared time bounds"]
     if selection == "first":
         extreme = min(event["time"] for event in eligible)
         expected = {event["id"] for event in eligible if event["time"] == extreme}
@@ -826,14 +754,10 @@ def _event_order_report(
     if selection == "unique" and len(eligible) != 1:
         issues.append(f"unique selection has {len(eligible)} admissible events")
     if actual != expected:
-        issues.append(
-            f"selected events {sorted(actual)} do not match expected {sorted(expected)}"
-        )
+        issues.append(f"selected events {sorted(actual)} do not match expected {sorted(expected)}")
     report = {
         "selection": selection,
-        "eligible_events": [
-            {"id": item["id"], "time": str(item["time"])} for item in eligible
-        ],
+        "eligible_events": [{"id": item["id"], "time": str(item["time"])} for item in eligible],
         "selected_event_ids": sorted(actual),
         "expected_event_ids": sorted(expected),
     }
@@ -847,9 +771,7 @@ def verify_event_order_claim(
     normalized = claim_ledger.normalize_claim(claim, agent_submission=False)
     spec = normalized["check_spec"]
     if not isinstance(spec, dict) or spec.get("type") != "event-order":
-        raise ValueError(
-            "event-order verifier requires check_spec.type=event-order"
-        )
+        raise ValueError("event-order verifier requires check_spec.type=event-order")
     try:
         verdict, report, issues = _event_order_report(spec)
         decisive = [
@@ -907,10 +829,7 @@ def _select_group_certificates(
             index
             for index, certificate in enumerate(certificates)
             if certificate["verdict"] == "pass"
-            and any(
-                certificate_matches_route(certificate, route)
-                for route in group["one_of"]
-            )
+            and any(certificate_matches_route(certificate, route) for route in group["one_of"])
         ])
 
     def search(
@@ -948,29 +867,16 @@ def assess_claim_certificates(
     generator_identity: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     """Determine trust eligibility without mutating the Claim."""
-    normalized_claim = claim_ledger.normalize_claim(
-        claim, agent_submission=False
-    )
-    normalized_dependencies = [
-        claim_ledger.normalize_claim(item, agent_submission=False)
-        for item in dependency_claims
-    ]
-    expected_fingerprint = claim_ledger.claim_verification_input_fingerprint(
-        normalized_claim, normalized_dependencies
-    )
+    normalized_claim = claim_ledger.normalize_claim(claim, agent_submission=False)
+    normalized_dependencies = [claim_ledger.normalize_claim(item, agent_submission=False) for item in dependency_claims]
+    expected_fingerprint = claim_ledger.claim_verification_input_fingerprint(normalized_claim, normalized_dependencies)
     route = route_claim_verification(normalized_claim, risk=risk)
-    all_certificates = [
-        claim_ledger.normalize_certificate(item) for item in certificates
-    ]
+    all_certificates = [claim_ledger.normalize_certificate(item) for item in certificates]
 
     stale: list[dict[str, Any]] = []
     self_verified: list[dict[str, Any]] = []
     eligible_certificates: list[dict[str, Any]] = []
-    accepted_routes = [
-        item
-        for group in route["required_groups"]
-        for item in group["one_of"]
-    ]
+    accepted_routes = [item for group in route["required_groups"] for item in group["one_of"]]
     for certificate in all_certificates:
         if certificate["claim_id"] != normalized_claim["id"]:
             continue
@@ -980,10 +886,7 @@ def assess_claim_certificates(
         ):
             stale.append(certificate)
             continue
-        if not any(
-            certificate_matches_route(certificate, item)
-            for item in accepted_routes
-        ):
+        if not any(certificate_matches_route(certificate, item) for item in accepted_routes):
             continue
         if _generator_matches(certificate, generator_identity):
             self_verified.append(certificate)
@@ -991,37 +894,21 @@ def assess_claim_certificates(
                 continue
         eligible_certificates.append(certificate)
 
-    conflicts = [
-        item for item in eligible_certificates if item["verdict"] == "conflict"
-    ]
-    incomplete = [
-        item
-        for item in eligible_certificates
-        if item["verdict"] in {"insufficient", "unsupported"}
-    ]
-    unverified_dependencies = [
-        item["id"]
-        for item in normalized_dependencies
-        if item["status"] != "verified"
-    ]
-    selection = _select_group_certificates(
-        route["required_groups"], eligible_certificates
-    )
+    conflicts = [item for item in eligible_certificates if item["verdict"] == "conflict"]
+    incomplete = [item for item in eligible_certificates if item["verdict"] in {"insufficient", "unsupported"}]
+    unverified_dependencies = [item["id"] for item in normalized_dependencies if item["status"] != "verified"]
+    selection = _select_group_certificates(route["required_groups"], eligible_certificates)
     issues: list[str] = []
     if stale:
         issues.append(f"{len(stale)} stale certificate(s) ignored")
     if self_verified:
         issues.append(f"{len(self_verified)} generator self-certificate(s) rejected")
     if unverified_dependencies:
-        issues.append(
-            f"dependencies are not verified: {sorted(unverified_dependencies)}"
-        )
+        issues.append(f"dependencies are not verified: {sorted(unverified_dependencies)}")
     if conflicts:
         issues.append(f"{len(conflicts)} accepted-route conflict(s)")
     if incomplete:
-        issues.append(
-            f"{len(incomplete)} accepted-route insufficient/unsupported result(s)"
-        )
+        issues.append(f"{len(incomplete)} accepted-route insufficient/unsupported result(s)")
     if selection is None:
         issues.append("required certificate groups are incomplete")
 
@@ -1069,16 +956,12 @@ def apply_certificate_decision(
     target_status = normalized["status"]
     if assessment["decision"] == "verified":
         if target_status == "candidate":
-            target_status = correctness_policy.require_claim_status_transition(
-                target_status, "verified"
-            )
+            target_status = correctness_policy.require_claim_status_transition(target_status, "verified")
         elif target_status != "verified":
             raise ValueError("non-candidate disputed Claim cannot be re-verified in place")
     elif assessment["decision"] == "disputed":
         if target_status in {"candidate", "verified"}:
-            target_status = correctness_policy.require_claim_status_transition(
-                target_status, "disputed"
-            )
+            target_status = correctness_policy.require_claim_status_transition(target_status, "disputed")
     # Provisional means keep the current status; lack of evidence is never
     # rewritten into evidence and can be satisfied by later certificates.
     return {
@@ -1092,9 +975,7 @@ def _bridge_claim_ids(claims: dict[str, dict[str, Any]]) -> set[str]:
     for claim_id, claim in claims.items():
         claim_stages = set(claim["stage_ids"])
         dependency_stages = {
-            stage_id
-            for dependency_id in claim["depends_on"]
-            for stage_id in claims[dependency_id]["stage_ids"]
+            stage_id for dependency_id in claim["depends_on"] for stage_id in claims[dependency_id]["stage_ids"]
         }
         if claim_stages and dependency_stages and claim_stages != dependency_stages:
             bridges.add(claim_id)
@@ -1125,9 +1006,7 @@ def evaluate_claim_graph_evidence(
 
     for claim_id in graph_report["topological_order"]:
         current = original[claim_id]
-        dependencies = [
-            trusted[dependency_id] for dependency_id in current["depends_on"]
-        ]
+        dependencies = [trusted[dependency_id] for dependency_id in current["depends_on"]]
         assessment = assess_claim_certificates(
             current,
             dependencies,
@@ -1145,24 +1024,12 @@ def evaluate_claim_graph_evidence(
         assessments[claim_id] = assessment
 
     critical_ids = {
-        claim_id
-        for claim_id, claim in trusted.items()
-        if claim["kind"] in {"final", "boundary"}
+        claim_id for claim_id, claim in trusted.items() if claim["kind"] in {"final", "boundary"}
     } | bridge_ids
-    verified_ids = {
-        claim_id
-        for claim_id, claim in trusted.items()
-        if claim["status"] == "verified"
-    }
-    disputed_ids = {
-        claim_id
-        for claim_id, claim in trusted.items()
-        if claim["status"] == "disputed"
-    }
+    verified_ids = {claim_id for claim_id, claim in trusted.items() if claim["status"] == "verified"}
+    disputed_ids = {claim_id for claim_id, claim in trusted.items() if claim["status"] == "disputed"}
     verified_critical = critical_ids & verified_ids
-    critical_coverage = (
-        len(verified_critical) / len(critical_ids) if critical_ids else 0.0
-    )
+    critical_coverage = len(verified_critical) / len(critical_ids) if critical_ids else 0.0
     all_claims_verified = len(verified_ids) == len(trusted)
     if disputed_ids:
         result_status = "UNRESOLVED"
@@ -1176,9 +1043,7 @@ def evaluate_claim_graph_evidence(
         "result_status": result_status,
         "graph": graph_report,
         "claims": [trusted[claim_id] for claim_id in graph_report["topological_order"]],
-        "assessments": [
-            assessments[claim_id] for claim_id in graph_report["topological_order"]
-        ],
+        "assessments": [assessments[claim_id] for claim_id in graph_report["topological_order"]],
         "verified_claim_ids": sorted(verified_ids),
         "disputed_claim_ids": sorted(disputed_ids),
         "critical_claim_ids": sorted(critical_ids),

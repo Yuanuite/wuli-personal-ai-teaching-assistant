@@ -294,13 +294,9 @@ def normalize_solution(
         raise ValueError("solution status must be completed or unsupported")
 
     target_ids = {str(item.get("id", "")) for item in blueprint.get("question_targets", [])}
-    obligation_ids = {
-        str(item.get("id", "")) for item in blueprint.get("verification_obligations", [])
-    }
+    obligation_ids = {str(item.get("id", "")) for item in blueprint.get("verification_obligations", [])}
     stage_ids = {str(item.get("id", "")) for item in blueprint.get("physical_stages", [])}
-    ordered_stage_ids = [
-        str(item.get("id", "")) for item in blueprint.get("physical_stages", [])
-    ]
+    ordered_stage_ids = [str(item.get("id", "")) for item in blueprint.get("physical_stages", [])]
     step_to_stage = {
         str(item.get("step_id", "")): str(item.get("stage_id", ""))
         for item in blueprint.get("stage_step_links", [])
@@ -313,12 +309,8 @@ def normalize_solution(
         target_id = _clean_text(raw.get("id"), "targets.id", 40)
         if target_id not in target_ids or target_id in seen_targets:
             raise ValueError("solution target is unknown or duplicated")
-        relations = _clean_list(
-            raw.get("supporting_relations"), "targets.supporting_relations", allow_empty=False
-        )
-        covered = _clean_list(
-            raw.get("covered_obligation_ids"), "targets.covered_obligation_ids"
-        )
+        relations = _clean_list(raw.get("supporting_relations"), "targets.supporting_relations", allow_empty=False)
+        covered = _clean_list(raw.get("covered_obligation_ids"), "targets.covered_obligation_ids")
         if not set(covered).issubset(obligation_ids):
             raise ValueError("solution covers an unknown verification obligation")
         if any(item.startswith("MFC_") for item in covered):
@@ -397,27 +389,19 @@ def normalize_solution(
     ]
 
     stage_interfaces = [
-        cognitive_loop.normalize_stage_interface(item)
-        for item in (payload.get("stage_interfaces") or [])
+        cognitive_loop.normalize_stage_interface(item) for item in (payload.get("stage_interfaces") or [])
     ]
     interface_ids = [item["stage_id"] for item in stage_interfaces]
-    if require_stage_interfaces and (
-        len(interface_ids) != len(set(interface_ids)) or set(interface_ids) != stage_ids
-    ):
+    if require_stage_interfaces and (len(interface_ids) != len(set(interface_ids)) or set(interface_ids) != stage_ids):
         raise ValueError("solution stage_interfaces must cover every physical stage exactly once")
 
     stage_transitions = [
-        cognitive_loop.normalize_stage_transition(item)
-        for item in (payload.get("stage_transitions") or [])
+        cognitive_loop.normalize_stage_transition(item) for item in (payload.get("stage_transitions") or [])
     ]
     expected_pairs = list(zip(ordered_stage_ids, ordered_stage_ids[1:]))
-    actual_pairs = [
-        (item["from_stage"], item["to_stage"]) for item in stage_transitions
-    ]
+    actual_pairs = [(item["from_stage"], item["to_stage"]) for item in stage_transitions]
     if require_stage_interfaces and actual_pairs != expected_pairs:
-        raise ValueError(
-            "solution stage_transitions must connect each adjacent physical stage in order"
-        )
+        raise ValueError("solution stage_transitions must connect each adjacent physical stage in order")
 
     option_verdicts = []
     seen_options: set[str] = set()
@@ -440,9 +424,7 @@ def normalize_solution(
     if audit_status not in {"followed", "revised-equivalent"}:
         raise ValueError("blueprint audit status is invalid")
     audit_targets = set(_clean_list(audit.get("covered_target_ids"), "covered_target_ids"))
-    audit_obligations = set(
-        _clean_list(audit.get("covered_obligation_ids"), "covered_obligation_ids")
-    )
+    audit_obligations = set(_clean_list(audit.get("covered_obligation_ids"), "covered_obligation_ids"))
     if audit_targets != target_ids or audit_obligations != obligation_ids:
         raise ValueError("blueprint audit must cover every target and obligation")
     if covered_obligations != obligation_ids:
@@ -476,9 +458,7 @@ def project_claim_ledger(
     snapshot_version: int = 1,
 ) -> dict[str, Any]:
     """Compatibility projection from the current solution contract."""
-    normalized = normalize_solution(
-        payload, blueprint, require_stage_interfaces=False
-    )
+    normalized = normalize_solution(payload, blueprint, require_stage_interfaces=False)
     if normalized.get("status") != "completed":
         raise ValueError("unsupported solution cannot be projected to a claim ledger")
     return claim_ledger.project_legacy_solution(
@@ -489,9 +469,7 @@ def project_claim_ledger(
     )
 
 
-def normalize_adjudication(
-    payload: dict[str, Any], expected_target_ids: set[str]
-) -> dict[str, Any]:
+def normalize_adjudication(payload: dict[str, Any], expected_target_ids: set[str]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("adjudication output must be an object")
     status = str(payload.get("status", "")).strip().lower()
@@ -512,13 +490,9 @@ def normalize_adjudication(
         seen.add(target_id)
         decisions.append({
             "target_id": target_id,
-            "selected_result": _clean_text(
-                raw.get("selected_result"), "target_decisions.selected_result"
-            ),
+            "selected_result": _clean_text(raw.get("selected_result"), "target_decisions.selected_result"),
             "decision": decision,
-            "decisive_relation": _clean_text(
-                raw.get("decisive_relation"), "target_decisions.decisive_relation"
-            ),
+            "decisive_relation": _clean_text(raw.get("decisive_relation"), "target_decisions.decisive_relation"),
             "reason": _clean_text(raw.get("reason"), "target_decisions.reason"),
         })
     if seen != expected_target_ids:
@@ -547,13 +521,8 @@ def normalize_adjudication_with_verified_equivalence(
         }
         if not expected_target_ids.issubset(passed):
             raise
-        targets = {
-            str(item.get("id", "")): item for item in solver_a.get("targets", [])
-        }
-        audits = {
-            str(item.get("target_id", "")): item
-            for item in (verifier or {}).get("target_audits", [])
-        }
+        targets = {str(item.get("id", "")): item for item in solver_a.get("targets", [])}
+        audits = {str(item.get("target_id", "")): item for item in (verifier or {}).get("target_audits", [])}
         if not expected_target_ids.issubset(targets):
             raise
         return {

@@ -42,9 +42,7 @@ def _shadow_scenarios(summary: dict[str, Any] | None) -> list[dict[str, Any]]:
     for raw in scenarios:
         if not isinstance(raw, dict) or not required.issubset(raw):
             missing = sorted(required - set(raw if isinstance(raw, dict) else {}))
-            raise ValueError(
-                f"claim-evidence shadow scenario is incomplete: {missing}"
-            )
+            raise ValueError(f"claim-evidence shadow scenario is incomplete: {missing}")
         normalized.append(dict(raw))
     return normalized
 
@@ -60,48 +58,22 @@ def build_report(
     detected = sum(item["detected"] for item in outcomes)
     false_promotions = sum(item["false_promotion"] for item in outcomes)
     category_counts = Counter(item["category"] for item in outcomes)
-    category_detected = Counter(
-        item["category"] for item in outcomes if item["detected"]
-    )
+    category_detected = Counter(item["category"] for item in outcomes if item["detected"])
     backjump = next(
-        (
-            item["detail"]
-            for item in outcomes
-            if item["category"] == "backjump"
-        ),
+        (item["detail"] for item in outcomes if item["category"] == "backjump"),
         {},
     )
-    hypothesis_attempts = sum(
-        int(item["detail"].get("hypothesis_attempt_count", 0))
-        for item in outcomes
-    )
-    duplicate_hypotheses = sum(
-        int(item["detail"].get("duplicate_hypothesis_count", 0))
-        for item in outcomes
-    )
+    hypothesis_attempts = sum(int(item["detail"].get("hypothesis_attempt_count", 0)) for item in outcomes)
+    duplicate_hypotheses = sum(int(item["detail"].get("duplicate_hypothesis_count", 0)) for item in outcomes)
 
     shadow_claims = sum(int(item["claim_count"]) for item in scenarios)
-    shadow_verified = sum(
-        int(item["verified_claim_count"]) for item in scenarios
-    )
-    repeated_tasks = sum(
-        int(item["repeated_task_count"]) for item in scenarios
-    )
-    transitions = sum(
-        int(item["loop_transition_count"]) for item in scenarios
-    )
-    hard_unresolved = sum(
-        item["aggregation_status"] == "UNRESOLVED" for item in scenarios
-    )
-    non_verified = sum(
-        item["aggregation_status"] != "VERIFIED" for item in scenarios
-    )
-    canonical_mutations = sum(
-        not bool(item["canonical_unchanged"]) for item in scenarios
-    )
-    critical_coverages = [
-        float(item["critical_certificate_coverage"]) for item in scenarios
-    ]
+    shadow_verified = sum(int(item["verified_claim_count"]) for item in scenarios)
+    repeated_tasks = sum(int(item["repeated_task_count"]) for item in scenarios)
+    transitions = sum(int(item["loop_transition_count"]) for item in scenarios)
+    hard_unresolved = sum(item["aggregation_status"] == "UNRESOLVED" for item in scenarios)
+    non_verified = sum(item["aggregation_status"] != "VERIFIED" for item in scenarios)
+    canonical_mutations = sum(not bool(item["canonical_unchanged"]) for item in scenarios)
+    critical_coverages = [float(item["critical_certificate_coverage"]) for item in scenarios]
 
     fault_metrics = {
         "case_count": len(outcomes),
@@ -112,9 +84,7 @@ def build_report(
             category: {
                 "case_count": count,
                 "detected_count": category_detected[category],
-                "detection_rate": _ratio(
-                    category_detected[category], count
-                ),
+                "detection_rate": _ratio(category_detected[category], count),
             }
             for category, count in sorted(category_counts.items())
         },
@@ -122,19 +92,13 @@ def build_report(
     shadow_metrics = {
         "scenario_count": len(scenarios),
         "claim_count": shadow_claims,
-        "certificate_count": sum(
-            int(item["certificate_count"]) for item in scenarios
-        ),
+        "certificate_count": sum(int(item["certificate_count"]) for item in scenarios),
         "verified_claim_rate": _ratio(shadow_verified, shadow_claims),
         "mean_critical_certificate_coverage": (
-            round(sum(critical_coverages) / len(critical_coverages), 6)
-            if critical_coverages
-            else None
+            round(sum(critical_coverages) / len(critical_coverages), 6) if critical_coverages else None
         ),
         "repeated_task_count": repeated_tasks,
-        "repeated_task_rate": _ratio(
-            repeated_tasks, transitions + repeated_tasks
-        ),
+        "repeated_task_rate": _ratio(repeated_tasks, transitions + repeated_tasks),
         "non_verified_rate": _ratio(non_verified, len(scenarios)),
         "hard_unresolved_rate": _ratio(hard_unresolved, len(scenarios)),
         "canonical_mutation_count": canonical_mutations,
@@ -143,23 +107,14 @@ def build_report(
         "backjump_precision": backjump.get("backjump_precision"),
         "backjump_recall": backjump.get("backjump_recall"),
         "duplicate_hypothesis_count": duplicate_hypotheses,
-        "duplicate_hypothesis_rate": _ratio(
-            duplicate_hypotheses, hypothesis_attempts
-        ),
+        "duplicate_hypothesis_rate": _ratio(duplicate_hypotheses, hypothesis_attempts),
     }
     gates = {
         "zero_false_promotion": false_promotions == 0,
         "all_declared_faults_detected": detected == len(outcomes),
-        "backjump_exact": (
-            backjump.get("backjump_precision") == 1.0
-            and backjump.get("backjump_recall") == 1.0
-        ),
-        "no_repeated_shadow_task": (
-            bool(scenarios) and repeated_tasks == 0
-        ),
-        "shadow_canonical_unchanged": (
-            bool(scenarios) and canonical_mutations == 0
-        ),
+        "backjump_exact": (backjump.get("backjump_precision") == 1.0 and backjump.get("backjump_recall") == 1.0),
+        "no_repeated_shadow_task": (bool(scenarios) and repeated_tasks == 0),
+        "shadow_canonical_unchanged": (bool(scenarios) and canonical_mutations == 0),
         "production_authorized": False,
     }
     return {
@@ -190,21 +145,15 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         f"- 生成时间：`{report['generated_at']}`",
         f"- 评测范围：`{report['evaluation_scope']}`",
-        f"- 故障发现：{fault['detected_count']}/{fault['case_count']} "
-        f"（{fault['detection_rate']:.1%}）",
+        f"- 故障发现：{fault['detected_count']}/{fault['case_count']} （{fault['detection_rate']:.1%}）",
         f"- 错误晋升：{fault['false_promotion_count']}",
-        f"- 影子 Claim：{shadow['claim_count']}；证书："
-        f"{shadow['certificate_count']}",
-        f"- 已验证 Claim 比例："
-        f"{shadow['verified_claim_rate'] if shadow['verified_claim_rate'] is not None else 'N/A'}",
+        f"- 影子 Claim：{shadow['claim_count']}；证书：{shadow['certificate_count']}",
+        f"- 已验证 Claim 比例：{shadow['verified_claim_rate'] if shadow['verified_claim_rate'] is not None else 'N/A'}",
         f"- 关键 Claim 证书覆盖均值："
         f"{shadow['mean_critical_certificate_coverage'] if shadow['mean_critical_certificate_coverage'] is not None else 'N/A'}",
-        f"- 重复任务率："
-        f"{shadow['repeated_task_rate'] if shadow['repeated_task_rate'] is not None else 'N/A'}",
-        f"- 回跳 precision / recall：{loop['backjump_precision']} / "
-        f"{loop['backjump_recall']}",
-        f"- 未验证场景率 / 硬冲突率：{shadow['non_verified_rate']} / "
-        f"{shadow['hard_unresolved_rate']}",
+        f"- 重复任务率：{shadow['repeated_task_rate'] if shadow['repeated_task_rate'] is not None else 'N/A'}",
+        f"- 回跳 precision / recall：{loop['backjump_precision']} / {loop['backjump_recall']}",
+        f"- 未验证场景率 / 硬冲突率：{shadow['non_verified_rate']} / {shadow['hard_unresolved_rate']}",
         "",
         "## 故障分类",
         "",
@@ -212,10 +161,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "|---|---:|---:|---:|",
     ]
     for category, item in fault["by_category"].items():
-        lines.append(
-            f"| {category} | {item['detected_count']} | "
-            f"{item['case_count']} | {item['detection_rate']:.1%} |"
-        )
+        lines.append(f"| {category} | {item['detected_count']} | {item['case_count']} | {item['detection_rate']:.1%} |")
     lines.extend([
         "",
         "## 门禁",

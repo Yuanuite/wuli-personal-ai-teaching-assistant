@@ -65,8 +65,18 @@ CLEAR_FACTS = {
         "the question asks for the speed at t=3 s",
     ],
     "diagram_facts": [
-        {"id": "body", "kind": "object", "statement": "a rectangle labelled m on a horizontal line", "confidence": 0.99},
-        {"id": "force", "kind": "arrow", "statement": "a horizontal arrow labelled F pointing right from the body", "confidence": 0.99},
+        {
+            "id": "body",
+            "kind": "object",
+            "statement": "a rectangle labelled m on a horizontal line",
+            "confidence": 0.99,
+        },
+        {
+            "id": "force",
+            "kind": "arrow",
+            "statement": "a horizontal arrow labelled F pointing right from the body",
+            "confidence": 0.99,
+        },
         {"id": "surface", "kind": "boundary", "statement": "a horizontal line under the body", "confidence": 0.99},
     ],
     "handwriting": [],

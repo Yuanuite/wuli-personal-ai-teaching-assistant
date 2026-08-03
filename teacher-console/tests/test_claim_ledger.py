@@ -8,7 +8,6 @@ sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import claim_ledger  # noqa: E402
 
-
 FINGERPRINT = "a" * 64
 
 
@@ -192,10 +191,7 @@ class ClaimLedgerContractTest(unittest.TestCase):
 
     def test_claim_fingerprint_is_stable_and_tracks_semantic_changes(self):
         original = valid_claim()
-        reordered = {
-            key: copy.deepcopy(original[key])
-            for key in reversed(list(original))
-        }
+        reordered = {key: copy.deepcopy(original[key]) for key in reversed(list(original))}
         reordered["status"] = "disputed"
         self.assertEqual(
             claim_ledger.claim_fingerprint(original),
@@ -228,12 +224,8 @@ class ClaimLedgerContractTest(unittest.TestCase):
         version_two = copy.deepcopy(upstream)
         version_two["version"] = 2
         version_two["statement"] = "粒子在 t=0 从原点进入区域。"
-        first = claim_ledger.claim_verification_input_fingerprint(
-            valid_claim(), [upstream]
-        )
-        second = claim_ledger.claim_verification_input_fingerprint(
-            valid_claim(), [version_two]
-        )
+        first = claim_ledger.claim_verification_input_fingerprint(valid_claim(), [upstream])
+        second = claim_ledger.claim_verification_input_fingerprint(valid_claim(), [version_two])
         self.assertNotEqual(first, second)
 
     def test_task_fingerprint_ignores_identity_but_includes_seed(self):
@@ -257,13 +249,9 @@ class ClaimLedgerContractTest(unittest.TestCase):
         candidate = copy.deepcopy(previous)
         candidate["version"] = 2
         candidate["statement"] = "第一次进入区域的最早正时刻为 t1。"
-        normalized = claim_ledger.require_next_claim_version(
-            candidate, [previous]
-        )
+        normalized = claim_ledger.require_next_claim_version(candidate, [previous])
         self.assertEqual(normalized["version"], 2)
-        self.assertEqual(
-            claim_ledger.next_claim_version("C17", [previous, candidate]), 3
-        )
+        self.assertEqual(claim_ledger.next_claim_version("C17", [previous, candidate]), 3)
 
         gap = copy.deepcopy(candidate)
         gap["version"] = 4
@@ -282,9 +270,7 @@ class ClaimLedgerContractTest(unittest.TestCase):
             expected_obligation_ids={"V1", "V2"},
         )
         self.assertEqual(report["status"], "valid")
-        self.assertEqual(
-            report["topological_order"], ["C1", "C2", "C3", "C4", "C5", "C6"]
-        )
+        self.assertEqual(report["topological_order"], ["C1", "C2", "C3", "C4", "C5", "C6"])
         self.assertTrue(all(report["target_coverage"].values()))
         self.assertTrue(all(report["obligation_coverage"].values()))
 
@@ -332,14 +318,10 @@ class ClaimLedgerContractTest(unittest.TestCase):
             ["C3", "C4"],
         )
         self.assertEqual(
-            claim_ledger.dependency_impact_cone(
-                graph, {"C2"}, include_changed=True
-            ),
+            claim_ledger.dependency_impact_cone(graph, {"C2"}, include_changed=True),
             ["C2", "C3", "C4"],
         )
-        self.assertNotIn(
-            "C6", claim_ledger.dependency_impact_cone(graph, {"C2"})
-        )
+        self.assertNotIn("C6", claim_ledger.dependency_impact_cone(graph, {"C2"}))
 
     def test_superseded_history_is_excluded_from_active_graph(self):
         old = graph_claim("C2", "derived", version=1, status="superseded")

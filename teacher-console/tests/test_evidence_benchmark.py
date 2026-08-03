@@ -1,10 +1,9 @@
-import json
 import importlib.util
+import json
 import sys
 import unittest
 from copy import deepcopy
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
@@ -13,104 +12,22 @@ sys.path.insert(0, str(CONSOLE))
 import evidence_benchmark  # noqa: E402
 import evidence_evaluation  # noqa: E402
 
+FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "calibration-curated-v1.json"
+APPROVED_DATASET = ROOT / "student-error-library" / "evals" / "evidence-gold-calibration.json"
+FULL_PAIRED_REPORT = ROOT / "docs" / "reports" / "evidence-agent-mvp-d-paired-v1.json"
+HOLDOUT_PAIRED_REPORT = ROOT / "docs" / "reports" / "evidence-agent-mvp-e-holdout-paired-v1.json"
+HOLDOUT_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "holdout-curated-v1.json"
+CURRENT_HOLDOUT_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "holdout-curated-v3.json"
+REPAIR_REPLAY_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "repair-replay-v1.json"
+FRESH_V2_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "fresh-holdout-v2-v2.json"
+FRESH_V2_OVERLAY = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "fresh-holdout-v2-evidence-overlay.json"
+FRESH_V3_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "fresh-holdout-v3.json"
+FRESH_V3_OVERLAY = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "fresh-holdout-v3-evidence-overlay.json"
+FRESH_V3_PREFLIGHT = ROOT / "docs" / "reports" / "evidence-agent-mvp-h-third-fresh-holdout-preflight-v1.json"
 
-FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "calibration-curated-v1.json"
-)
-APPROVED_DATASET = (
-    ROOT
-    / "student-error-library"
-    / "evals"
-    / "evidence-gold-calibration.json"
-)
-FULL_PAIRED_REPORT = (
-    ROOT
-    / "docs"
-    / "reports"
-    / "evidence-agent-mvp-d-paired-v1.json"
-)
-HOLDOUT_PAIRED_REPORT = (
-    ROOT
-    / "docs"
-    / "reports"
-    / "evidence-agent-mvp-e-holdout-paired-v1.json"
-)
-HOLDOUT_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "holdout-curated-v1.json"
-)
-CURRENT_HOLDOUT_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "holdout-curated-v3.json"
-)
-REPAIR_REPLAY_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "repair-replay-v1.json"
-)
-FRESH_V2_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "fresh-holdout-v2-v2.json"
-)
-FRESH_V2_OVERLAY = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "fresh-holdout-v2-evidence-overlay.json"
-)
-FRESH_V3_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "fresh-holdout-v3.json"
-)
-FRESH_V3_OVERLAY = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "fresh-holdout-v3-evidence-overlay.json"
-)
-FRESH_V3_PREFLIGHT = (
-    ROOT
-    / "docs"
-    / "reports"
-    / "evidence-agent-mvp-h-third-fresh-holdout-preflight-v1.json"
-)
-
-WARNING_SCOPE_REPLAY_SCRIPT = (
-    CONSOLE / "scripts" / "build_evidence_warning_scope_replay.py"
-)
-WARNING_SCOPE_REPLAY_FIXTURE = (
-    CONSOLE
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "warning-scope-repair-replay-v1.json"
-)
-WARNING_SCOPE_REPLAY_REPORT = (
-    ROOT
-    / "docs"
-    / "reports"
-    / "evidence-agent-mvp-g2-warning-scope-repair-replay-v1.json"
-)
+WARNING_SCOPE_REPLAY_SCRIPT = CONSOLE / "scripts" / "build_evidence_warning_scope_replay.py"
+WARNING_SCOPE_REPLAY_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent" / "warning-scope-repair-replay-v1.json"
+WARNING_SCOPE_REPLAY_REPORT = ROOT / "docs" / "reports" / "evidence-agent-mvp-g2-warning-scope-repair-replay-v1.json"
 
 
 class EvidenceBenchmarkTest(unittest.TestCase):
@@ -136,9 +53,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
                 "queries": [
                     {
                         "need_id": "N1",
-                        "candidate_evidence_ids": [
-                            "EU-277d79cd61babffd9055b89c"
-                        ],
+                        "candidate_evidence_ids": ["EU-277d79cd61babffd9055b89c"],
                     }
                 ]
             },
@@ -157,27 +72,21 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             required = gold["required_evidence_ids"]
             forbidden = gold["forbidden_evidence_ids"]
             baseline_selected = [*required, *forbidden]
-            baseline.append(
-                {
-                    "case_id": gold["case_id"],
-                    "status": "sufficient",
-                    "candidate_evidence_ids": baseline_selected,
-                    "selected_evidence_ids": baseline_selected,
-                    "traceable_evidence_ids": baseline_selected,
-                }
-            )
-            agent.append(
-                {
-                    "case_id": gold["case_id"],
-                    "status": gold["expected_status"],
-                    "candidate_evidence_ids": baseline_selected,
-                    "selected_evidence_ids": required,
-                    "traceable_evidence_ids": required,
-                }
-            )
-        report = evidence_evaluation.paired_gold_report(
-            self.dataset, baseline, agent
-        )
+            baseline.append({
+                "case_id": gold["case_id"],
+                "status": "sufficient",
+                "candidate_evidence_ids": baseline_selected,
+                "selected_evidence_ids": baseline_selected,
+                "traceable_evidence_ids": baseline_selected,
+            })
+            agent.append({
+                "case_id": gold["case_id"],
+                "status": gold["expected_status"],
+                "candidate_evidence_ids": baseline_selected,
+                "selected_evidence_ids": required,
+                "traceable_evidence_ids": required,
+            })
+        report = evidence_evaluation.paired_gold_report(self.dataset, baseline, agent)
         self.assertEqual(
             report["evidence_agent"]["metrics"]["false_friend_admission_count"],
             0,
@@ -194,9 +103,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             "dataset_fingerprint": self.normalized["dataset_fingerprint"],
             "reviewer": "物理教师",
             "reviewed_at": "2026-07-30T12:00:00+08:00",
-            "status": (
-                "approved" if decision == "approved" else "changes_requested"
-            ),
+            "status": ("approved" if decision == "approved" else "changes_requested"),
             "decisions": [
                 {
                     "case_id": item["gold_case"]["case_id"],
@@ -208,9 +115,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         }
 
     def test_browser_review_promotes_only_complete_matching_approval(self):
-        approved = evidence_evaluation.apply_gold_review(
-            self.dataset, self.review()
-        )
+        approved = evidence_evaluation.apply_gold_review(self.dataset, self.review())
         self.assertEqual(approved["review_status"], "teacher_approved")
         self.assertEqual(approved["label_origin"], "teacher_reviewed")
         self.assertEqual(approved["reviewer"], "物理教师")
@@ -237,14 +142,10 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         missing_note = deepcopy(changes)
         missing_note["decisions"][0]["note"] = ""
         with self.assertRaisesRegex(ValueError, "requires a note"):
-            evidence_evaluation.normalize_gold_review(
-                missing_note, self.dataset
-            )
+            evidence_evaluation.normalize_gold_review(missing_note, self.dataset)
 
     def test_saved_teacher_approval_and_live_paired_report_keep_holdout_gate_closed(self):
-        approved = evidence_evaluation.normalize_gold_dataset(
-            json.loads(APPROVED_DATASET.read_text(encoding="utf-8"))
-        )
+        approved = evidence_evaluation.normalize_gold_dataset(json.loads(APPROVED_DATASET.read_text(encoding="utf-8")))
         report = json.loads(FULL_PAIRED_REPORT.read_text(encoding="utf-8"))
         paired = report["paired"]
 
@@ -259,18 +160,12 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             paired["dataset"]["dataset_fingerprint"],
             approved["dataset_fingerprint"],
         )
+        self.assertEqual(paired["evidence_agent"]["metrics"]["evidence_precision"], 1.0)
         self.assertEqual(
-            paired["evidence_agent"]["metrics"]["evidence_precision"], 1.0
-        )
-        self.assertEqual(
-            paired["evidence_agent"]["metrics"][
-                "false_friend_admission_count"
-            ],
+            paired["evidence_agent"]["metrics"]["false_friend_admission_count"],
             0,
         )
-        self.assertEqual(
-            paired["evidence_agent"]["metrics"]["status_accuracy"], 1.0
-        )
+        self.assertEqual(paired["evidence_agent"]["metrics"]["status_accuracy"], 1.0)
         self.assertTrue(paired["gates"]["dataset_teacher_approved"])
         self.assertFalse(paired["gates"]["independent_holdout_present"])
         self.assertFalse(paired["gates"]["eligible_for_production"])
@@ -304,19 +199,14 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         self.assertEqual(holdout["label_origin"], "agent_proposed_holdout")
         self.assertFalse(calibration_ids & holdout_ids)
         self.assertEqual(
-            {
-                item["gold_case"]["evaluation_split"]
-                for item in holdout["cases"]
-            },
+            {item["gold_case"]["evaluation_split"] for item in holdout["cases"]},
             {"holdout"},
         )
         self.assertEqual(
             {item["gold_case"]["batch_id"] for item in holdout["cases"]},
             {"evidence-holdout-2026-07-30-a"},
         )
-        statuses = [
-            item["gold_case"]["expected_status"] for item in holdout["cases"]
-        ]
+        statuses = [item["gold_case"]["expected_status"] for item in holdout["cases"]]
         self.assertEqual(statuses.count("sufficient"), 11)
         self.assertEqual(statuses.count("insufficient"), 9)
 
@@ -324,10 +214,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         holdout = evidence_evaluation.normalize_gold_dataset(
             json.loads(CURRENT_HOLDOUT_FIXTURE.read_text(encoding="utf-8"))
         )
-        cases = {
-            item["gold_case"]["case_id"]: item["gold_case"]
-            for item in holdout["cases"]
-        }
+        cases = {item["gold_case"]["case_id"]: item["gold_case"] for item in holdout["cases"]}
         for case_id in (
             "holdout-lorentz-right-hand-conflict",
             "holdout-angle-ledger-sign-conflict",
@@ -346,15 +233,11 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         )
 
     def test_saved_independent_holdout_failure_cannot_open_production_gate(self):
-        report = json.loads(
-            HOLDOUT_PAIRED_REPORT.read_text(encoding="utf-8")
-        )
+        report = json.loads(HOLDOUT_PAIRED_REPORT.read_text(encoding="utf-8"))
         paired = report["paired"]
         metrics = paired["evidence_agent"]["metrics"]
         self.assertEqual(paired["dataset"]["case_count"], 20)
-        self.assertEqual(
-            paired["dataset"]["review_status"], "teacher_approved"
-        )
+        self.assertEqual(paired["dataset"]["review_status"], "teacher_approved")
         self.assertTrue(paired["gates"]["independent_holdout_present"])
         self.assertEqual(metrics["candidate_required_recall"], 1.0)
         self.assertEqual(metrics["evidence_precision"], 1.0)
@@ -379,9 +262,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             },
         )
         provider_failures = [
-            item
-            for item in report["executions"]
-            if item["gateway"] and item["gateway"]["status"] == "failed"
+            item for item in report["executions"] if item["gateway"] and item["gateway"]["status"] == "failed"
         ]
         self.assertEqual(len(provider_failures), 1)
         self.assertEqual(
@@ -394,15 +275,10 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             json.loads(REPAIR_REPLAY_FIXTURE.read_text(encoding="utf-8"))
         )
         self.assertEqual(replay["review_status"], "draft")
-        self.assertEqual(
-            replay["label_origin"], "post_holdout_repair_replay"
-        )
+        self.assertEqual(replay["label_origin"], "post_holdout_repair_replay")
         self.assertEqual(len(replay["cases"]), 3)
         self.assertEqual(
-            {
-                item["gold_case"]["evaluation_split"]
-                for item in replay["cases"]
-            },
+            {item["gold_case"]["evaluation_split"] for item in replay["cases"]},
             {"calibration"},
         )
         self.assertEqual(
@@ -411,15 +287,15 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         )
 
     def test_second_fresh_holdout_uses_only_isolated_new_evidence(self):
-        fresh = evidence_evaluation.normalize_gold_dataset(
-            json.loads(FRESH_V2_FIXTURE.read_text(encoding="utf-8"))
-        )
+        fresh = evidence_evaluation.normalize_gold_dataset(json.loads(FRESH_V2_FIXTURE.read_text(encoding="utf-8")))
         overlay = json.loads(FRESH_V2_OVERLAY.read_text(encoding="utf-8"))
         revealed_ids = set()
-        for path in (APPROVED_DATASET, ROOT / "student-error-library/evals/evidence-gold-holdout.json", REPAIR_REPLAY_FIXTURE):
-            prior = evidence_evaluation.normalize_gold_dataset(
-                json.loads(path.read_text(encoding="utf-8"))
-            )
+        for path in (
+            APPROVED_DATASET,
+            ROOT / "student-error-library/evals/evidence-gold-holdout.json",
+            REPAIR_REPLAY_FIXTURE,
+        ):
+            prior = evidence_evaluation.normalize_gold_dataset(json.loads(path.read_text(encoding="utf-8")))
             for item in prior["cases"]:
                 for field in (
                     "required_evidence_ids",
@@ -440,9 +316,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         overlay_ids = {item["evidence_id"] for item in overlay["units"]}
         self.assertEqual(len(fresh["cases"]), 21)
         self.assertEqual(fresh["review_status"], "draft")
-        self.assertEqual(
-            fresh["label_origin"], "agent_proposed_fresh_holdout_v2"
-        )
+        self.assertEqual(fresh["label_origin"], "agent_proposed_fresh_holdout_v2")
         self.assertFalse(revealed_ids & fresh_ids)
         self.assertEqual(fresh_ids, overlay_ids)
         self.assertEqual(
@@ -450,29 +324,21 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             overlay["overlay_fingerprint"],
         )
         self.assertEqual(
-            {
-                item["gold_case"]["evaluation_split"]
-                for item in fresh["cases"]
-            },
+            {item["gold_case"]["evaluation_split"] for item in fresh["cases"]},
             {"holdout"},
         )
         self.assertEqual(
             {item["gold_case"]["batch_id"] for item in fresh["cases"]},
             {"evidence-holdout-2026-07-30-b"},
         )
-        cases = {
-            item["gold_case"]["case_id"]: item["gold_case"]
-            for item in fresh["cases"]
-        }
+        cases = {item["gold_case"]["case_id"]: item["gold_case"] for item in fresh["cases"]}
         for case_id in (
             "fresh2-interference-frequency-conflict",
             "fresh2-photo-below-threshold-conflict",
         ):
             gold = cases[case_id]
             self.assertEqual(gold["expected_status"], "sufficient")
-            self.assertEqual(
-                gold["retrieval_need"]["purpose"], "false_friend_check"
-            )
+            self.assertEqual(gold["retrieval_need"]["purpose"], "false_friend_check")
             self.assertTrue(gold["retrieval_need"]["diagnostic_targets"])
             self.assertTrue(gold["required_evidence_ids"])
             self.assertFalse(gold["forbidden_evidence_ids"])
@@ -513,16 +379,10 @@ class EvidenceBenchmarkTest(unittest.TestCase):
                 for item in normalized["cases"]
             ],
         }
-        approved, receipt, approved_overlay = (
-            evidence_evaluation.apply_gold_review_with_overlay(
-                fresh, review, overlay
-            )
-        )
+        approved, receipt, approved_overlay = evidence_evaluation.apply_gold_review_with_overlay(fresh, review, overlay)
         self.assertEqual(approved["review_status"], "teacher_approved")
         self.assertEqual(receipt["status"], "approved")
-        self.assertEqual(
-            approved_overlay["review_status"], "teacher_approved"
-        )
+        self.assertEqual(approved_overlay["review_status"], "teacher_approved")
         self.assertEqual(
             approved["evidence_snapshot_fingerprint"],
             approved_overlay["overlay_fingerprint"],
@@ -531,9 +391,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         wrong_overlay = deepcopy(overlay)
         wrong_overlay["overlay_id"] = "wrong-overlay"
         with self.assertRaisesRegex(ValueError, "id does not match"):
-            evidence_evaluation.apply_gold_review_with_overlay(
-                fresh, review, wrong_overlay
-            )
+            evidence_evaluation.apply_gold_review_with_overlay(fresh, review, wrong_overlay)
 
     def test_warning_scope_replay_is_calibration_only_and_fingerprint_bound(self):
         spec = importlib.util.spec_from_file_location(
@@ -544,12 +402,10 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         assert spec.loader is not None
         spec.loader.exec_module(module)
         source = json.loads(
-            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json")
-            .read_text(encoding="utf-8")
+            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json").read_text(encoding="utf-8")
         )
         overlay = json.loads(
-            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2-overlay.json")
-            .read_text(encoding="utf-8")
+            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2-overlay.json").read_text(encoding="utf-8")
         )
         replay = module.build(source, overlay)
         gold = replay["cases"][0]["gold_case"]
@@ -573,14 +429,10 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         replay = evidence_evaluation.normalize_gold_dataset(
             json.loads(WARNING_SCOPE_REPLAY_FIXTURE.read_text(encoding="utf-8"))
         )
-        report = json.loads(
-            WARNING_SCOPE_REPLAY_REPORT.read_text(encoding="utf-8")
-        )
+        report = json.loads(WARNING_SCOPE_REPLAY_REPORT.read_text(encoding="utf-8"))
         paired = report["paired"]
         self.assertEqual(replay["review_status"], "draft")
-        self.assertEqual(
-            replay["label_origin"], "post_holdout_v2_repair_replay"
-        )
+        self.assertEqual(replay["label_origin"], "post_holdout_v2_repair_replay")
         self.assertEqual(
             paired["dataset"]["dataset_fingerprint"],
             replay["dataset_fingerprint"],
@@ -589,26 +441,18 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             paired["evidence_agent"]["metrics"]["gold_evidence_retention"],
             1.0,
         )
-        self.assertEqual(
-            paired["evidence_agent"]["metrics"]["evidence_precision"], 1.0
-        )
-        self.assertEqual(
-            paired["evidence_agent"]["metrics"]["status_accuracy"], 1.0
-        )
+        self.assertEqual(paired["evidence_agent"]["metrics"]["evidence_precision"], 1.0)
+        self.assertEqual(paired["evidence_agent"]["metrics"]["status_accuracy"], 1.0)
         self.assertFalse(paired["gates"]["dataset_teacher_approved"])
         self.assertFalse(paired["gates"]["independent_holdout_present"])
         self.assertFalse(paired["gates"]["eligible_for_production"])
 
     def test_third_fresh_holdout_is_unrevealed_isolated_and_preflight_only(self):
-        fresh = evidence_evaluation.normalize_gold_dataset(
-            json.loads(FRESH_V3_FIXTURE.read_text(encoding="utf-8"))
-        )
+        fresh = evidence_evaluation.normalize_gold_dataset(json.loads(FRESH_V3_FIXTURE.read_text(encoding="utf-8")))
         overlay = evidence_evaluation.normalize_evidence_overlay(
             json.loads(FRESH_V3_OVERLAY.read_text(encoding="utf-8"))
         )
-        preflight = json.loads(
-            FRESH_V3_PREFLIGHT.read_text(encoding="utf-8")
-        )
+        preflight = json.loads(FRESH_V3_PREFLIGHT.read_text(encoding="utf-8"))
         revealed_ids = set()
         for path in (
             APPROVED_DATASET,
@@ -617,9 +461,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json",
             WARNING_SCOPE_REPLAY_FIXTURE,
         ):
-            prior = evidence_evaluation.normalize_gold_dataset(
-                json.loads(path.read_text(encoding="utf-8"))
-            )
+            prior = evidence_evaluation.normalize_gold_dataset(json.loads(path.read_text(encoding="utf-8")))
             for item in prior["cases"]:
                 for field in (
                     "required_evidence_ids",
@@ -641,9 +483,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         self.assertEqual(len(fresh["cases"]), 21)
         self.assertEqual(len(overlay["units"]), 7)
         self.assertEqual(fresh["review_status"], "draft")
-        self.assertEqual(
-            fresh["label_origin"], "agent_proposed_fresh_holdout_v3"
-        )
+        self.assertEqual(fresh["label_origin"], "agent_proposed_fresh_holdout_v3")
         self.assertFalse(revealed_ids & fresh_ids)
         self.assertEqual(fresh_ids, overlay_ids)
         self.assertEqual(
@@ -661,13 +501,9 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         self.assertEqual(preflight["status"], "passed")
         self.assertEqual(preflight["case_count"], 21)
         self.assertEqual(preflight["revealed_evidence_overlap"], [])
-        self.assertEqual(
-            preflight["required_or_forbidden_target_top5_rate"], 1.0
-        )
+        self.assertEqual(preflight["required_or_forbidden_target_top5_rate"], 1.0)
         self.assertFalse(preflight["live_provider_run"])
-        self.assertTrue(
-            all(item["target_in_top5"] for item in preflight["cases"])
-        )
+        self.assertTrue(all(item["target_in_top5"] for item in preflight["cases"]))
 
 
 if __name__ == "__main__":

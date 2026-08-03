@@ -8,14 +8,13 @@ import json
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
     sys.path.insert(0, str(CONSOLE))
 
-from agent_gateway import AgentGateway  # noqa: E402
 import evidence_agent  # noqa: E402
+from agent_gateway import AgentGateway  # noqa: E402
 
 
 def _json(path: Path):
@@ -23,9 +22,7 @@ def _json(path: Path):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description="Execute one single-route-bypass evidence.build shadow run."
-    )
+    parser = argparse.ArgumentParser(description="Execute one single-route-bypass evidence.build shadow run.")
     parser.add_argument("--library", type=Path, required=True)
     parser.add_argument("--entry-id", required=True)
     parser.add_argument("--blueprint", type=Path, required=True)
@@ -49,11 +46,7 @@ def main() -> int:
     if not problem_path.is_file():
         parser.error(f"missing approved problem: {problem_path}")
     needs_payload = _json(args.needs)
-    needs = (
-        needs_payload.get("items", [])
-        if isinstance(needs_payload, dict)
-        else needs_payload
-    )
+    needs = needs_payload.get("items", []) if isinstance(needs_payload, dict) else needs_payload
     if not isinstance(needs, list):
         parser.error("--needs must contain an array or an object with items")
 

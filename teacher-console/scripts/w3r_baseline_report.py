@@ -32,9 +32,7 @@ def build_report(manifest_path: Path, *, root: Path = PROJECT_ROOT) -> dict[str,
             "kind": item["kind"],
             "source": item["source"],
             "source_digest": _sha256(data),
-            "answer_signature": _sha256(
-                re.sub(r"\s+", "", text).encode("utf-8")
-            ),
+            "answer_signature": _sha256(re.sub(r"\s+", "", text).encode("utf-8")),
             "character_count": len(text),
             "sections": headings,
             "latex_inline_delimiter_count": text.count("$") - 2 * text.count("$$"),

@@ -97,9 +97,11 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
     capabilities = [str(item) for item in raw.get("capabilities", []) if str(item).strip()]
     base_url = str(raw.get("base_url", "")).strip()
     remote = bool(raw.get("remote", False))
-    if provider in {"openai-compatible", "claude"} and base_url and (
-        urlparse(base_url).hostname or ""
-    ).lower() not in {"127.0.0.1", "localhost", "::1"}:
+    if (
+        provider in {"openai-compatible", "claude"}
+        and base_url
+        and (urlparse(base_url).hostname or "").lower() not in {"127.0.0.1", "localhost", "::1"}
+    ):
         remote = True
     api_key_env = str(raw.get("api_key_env", "")).strip()
     if not api_key_env:
@@ -124,9 +126,7 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
     if kind != "gateway.probe" and raw.get("enabled") is not False and not probe["passed"]:
         errors.append("model has not passed connection test")
     traits_raw = raw.get("traits") if isinstance(raw.get("traits"), dict) else {}
-    traits = {
-        key: bool(traits_raw.get(key)) for key in TRAIT_KEYS
-    }
+    traits = {key: bool(traits_raw.get(key)) for key in TRAIT_KEYS}
     raw_probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
     vision_probe = raw_probe.get("vision") if isinstance(raw_probe.get("vision"), dict) else {}
     return {
@@ -160,9 +160,7 @@ def _public_model_entry(raw: dict, *, kind: str = "") -> dict[str, Any]:
             "checked_at": str(vision_probe.get("checked_at", "")).strip(),
         },
         "analysis_qualification": (
-            raw.get("analysis_qualification")
-            if isinstance(raw.get("analysis_qualification"), dict)
-            else None
+            raw.get("analysis_qualification") if isinstance(raw.get("analysis_qualification"), dict) else None
         ),
     }
 
@@ -239,7 +237,8 @@ def save_model_registry_settings(data: dict) -> dict:
         "defaults": {
             str(key).strip(): normalize_model_id(value)
             for key, value in defaults.items()
-            if str(key).strip() in {
+            if str(key).strip()
+            in {
                 "economy",
                 "expert",
                 "vision",
@@ -545,9 +544,7 @@ def _require_analysis_qualification(model_id: str) -> None:
     registry = kb.load_json(_registry_path(), {"models": []})
     status, reason = _qualification_status(registry, model_id)
     if status != "qualified":
-        raise ValueError(
-            f"模型 {model_id} 未通过 analysis.generate 任务级资格验证（{reason}）"
-        )
+        raise ValueError(f"模型 {model_id} 未通过 analysis.generate 任务级资格验证（{reason}）")
 
 
 def analysis_qualification_public(model_id: str) -> dict:

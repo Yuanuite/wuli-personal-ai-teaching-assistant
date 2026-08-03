@@ -10,8 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-import teaching_method_policy
 import diagram_plugins
+import teaching_method_policy
 
 ANALYSIS_CONTRACT = "wuli.analysis.v2"
 EXPLANATION_PATH = "assets/explanatory.svg"
@@ -313,13 +313,8 @@ def physics_model_consistency_errors(staging: Path, student: str) -> list[str]:
     expected = _option_verdicts("；".join(str(item) for item in quick_answers))
     actual = _option_verdicts(student[:2000])
     if expected and all(label in actual for label in expected) and actual != expected:
-        differences = [
-            label for label, verdict in expected.items() if actual.get(label) is not verdict
-        ]
-        return [
-            "student_solution contradicts physics-model option verdicts: "
-            + ", ".join(differences)
-        ]
+        differences = [label for label, verdict in expected.items() if actual.get(label) is not verdict]
+        return ["student_solution contradicts physics-model option verdicts: " + ", ".join(differences)]
     return []
 
 
@@ -342,9 +337,7 @@ def normalize_payload(payload: dict[str, Any]) -> dict[str, Any]:
     method_errors = student_method_errors(student)
     if method_errors:
         raise ValueError("; ".join(method_errors))
-    audit = _repair_latex_fragments(
-        _clean_text(payload.get("teacher_audit"), field="teacher_audit", minimum=30)
-    )
+    audit = _repair_latex_fragments(_clean_text(payload.get("teacher_audit"), field="teacher_audit", minimum=30))
 
     raw_method_check = payload.get("method_check")
     if not isinstance(raw_method_check, dict):
@@ -514,9 +507,7 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
         **normalized["method_check"],
     }
 
-    student = _insert_explanation_reference(
-        _ensure_heading(normalized["student_solution"], "# 解析（学生版）")
-    )
+    student = _insert_explanation_reference(_ensure_heading(normalized["student_solution"], "# 解析（学生版）"))
     consistency_errors = physics_model_consistency_errors(staging, student)
     if consistency_errors:
         raise ValueError("; ".join(consistency_errors))
@@ -536,9 +527,7 @@ def materialize(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
         temporary = target.with_name(f".{target.name}.analysis-materialize")
         temporary.write_text(content, encoding="utf-8")
         temporary.replace(target)
-    digest = hashlib.sha256(
-        json.dumps(normalized, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
+    digest = hashlib.sha256(json.dumps(normalized, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     return {
         "contract": ANALYSIS_CONTRACT,
         "payload_digest": digest,

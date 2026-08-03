@@ -11,14 +11,12 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
     sys.path.insert(0, str(CONSOLE))
 
 import evidence_evaluation  # noqa: E402
-
 
 PURPOSE_LABELS = {
     "method_candidate": "method_candidate（方法候选）",
@@ -35,24 +33,22 @@ def review_cases(dataset: dict[str, Any]) -> list[dict[str, Any]]:
     for item in dataset["cases"]:
         gold = item["gold_case"]
         need = gold["retrieval_need"]
-        result.append(
-            {
-                "id": gold["case_id"],
-                "title": gold["case_id"],
-                "problem": item["problem"],
-                "purpose": PURPOSE_LABELS.get(need["purpose"], need["purpose"]),
-                "question": need["question"],
-                "facets": need["required_facets"],
-                "conflicts": need["forbidden_conflicts"],
-                "diagnostics": need.get("diagnostic_targets", []),
-                "authority": need["minimum_authority"],
-                "expected": gold["expected_status"],
-                "required": gold["required_evidence_ids"],
-                "acceptable": gold["acceptable_evidence_ids"],
-                "forbidden": gold["forbidden_evidence_ids"],
-                "rationale": gold["teacher_rationale"],
-            }
-        )
+        result.append({
+            "id": gold["case_id"],
+            "title": gold["case_id"],
+            "problem": item["problem"],
+            "purpose": PURPOSE_LABELS.get(need["purpose"], need["purpose"]),
+            "question": need["question"],
+            "facets": need["required_facets"],
+            "conflicts": need["forbidden_conflicts"],
+            "diagnostics": need.get("diagnostic_targets", []),
+            "authority": need["minimum_authority"],
+            "expected": gold["expected_status"],
+            "required": gold["required_evidence_ids"],
+            "acceptable": gold["acceptable_evidence_ids"],
+            "forbidden": gold["forbidden_evidence_ids"],
+            "rationale": gold["teacher_rationale"],
+        })
     return result
 
 
@@ -77,16 +73,13 @@ def evidence_texts(
     for evidence_id, text, applicability_json, exceptions_json in rows:
         applicability = "；".join(json.loads(applicability_json))
         exceptions = "；".join(json.loads(exceptions_json))
-        result[evidence_id] = (
-            f"{text} 适用：{applicability}。例外：{exceptions}。"
-        )
+        result[evidence_id] = f"{text} 适用：{applicability}。例外：{exceptions}。"
     for item in overlay_units or []:
         evidence_id = str(item.get("evidence_id") or "")
         if evidence_id not in evidence_ids:
             continue
         result[evidence_id] = (
-            f"{item['text']} 适用：{'；'.join(item['applicability'])}。"
-            f"例外：{'；'.join(item['exceptions'])}。"
+            f"{item['text']} 适用：{'；'.join(item['applicability'])}。例外：{'；'.join(item['exceptions'])}。"
         )
     missing = evidence_ids - set(result)
     if missing:
@@ -122,13 +115,9 @@ def render(
     prior_review_path: Path | None = None,
     evidence_overlay_path: Path | None = None,
 ) -> None:
-    dataset = evidence_evaluation.normalize_gold_dataset(
-        json.loads(dataset_path.read_text(encoding="utf-8"))
-    )
+    dataset = evidence_evaluation.normalize_gold_dataset(json.loads(dataset_path.read_text(encoding="utf-8")))
     count = len(dataset["cases"])
-    splits = {
-        item["gold_case"]["evaluation_split"] for item in dataset["cases"]
-    }
+    splits = {item["gold_case"]["evaluation_split"] for item in dataset["cases"]}
     split = next(iter(splits)) if len(splits) == 1 else "mixed"
     kind = "Fresh Holdout" if split == "holdout" else "Calibration"
     kind_lower = "holdout" if split == "holdout" else "calibration"
@@ -136,8 +125,7 @@ def render(
         f"这 {count} 条是 fresh holdout 候选，在教师批准前不是真值。"
         "全部同意只会生成审核记录；批准后只允许运行影子评测，不会自动接入生产 W3。"
         if split == "holdout"
-        else f"这 {count} 条是 calibration，不是独立 holdout。"
-        "全部同意只会生成审核记录，仍不会自动接入生产 W3。"
+        else f"这 {count} 条是 calibration，不是独立 holdout。全部同意只会生成审核记录，仍不会自动接入生产 W3。"
     )
     cases = review_cases(dataset)
     initial_decisions: dict[str, dict[str, str]] = {}
@@ -151,32 +139,22 @@ def render(
             prior_dataset,
         )
         old_cases = {
-            item["gold_case"]["case_id"]: json.dumps(
-                item, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            )
+            item["gold_case"]["case_id"]: json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
             for item in prior_dataset["cases"]
         }
         new_cases = {
-            item["gold_case"]["case_id"]: json.dumps(
-                item, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-            )
+            item["gold_case"]["case_id"]: json.dumps(item, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
             for item in dataset["cases"]
         }
         for decision in prior_review["decisions"]:
             case_id = decision["case_id"]
-            if (
-                decision["decision"] == "approved"
-                and old_cases.get(case_id) == new_cases.get(case_id)
-            ):
+            if decision["decision"] == "approved" and old_cases.get(case_id) == new_cases.get(case_id):
                 initial_decisions[case_id] = {
                     "decision": "approved",
                     "note": "从上一版逐条审核结转；本条内容未变化。",
                 }
         carried_count = len(initial_decisions)
-        warning += (
-            f" 已结转 {carried_count} 条内容未变化的同意决定；"
-            f"只需复核其余 {count - carried_count} 条。"
-        )
+        warning += f" 已结转 {carried_count} 条内容未变化的同意决定；只需复核其余 {count - carried_count} 条。"
     used_ids = {
         evidence_id
         for item in cases
@@ -240,7 +218,7 @@ def render(
         f"Evidence {kind_lower} 有退回修改项。",
     )
     html = re.sub(
-        r'确认同意全部 \d+ 条 calibration\?',
+        r"确认同意全部 \d+ 条 calibration\?",
         f"确认同意全部 {count} 条 {kind_lower}？",
         html,
     )
@@ -261,14 +239,12 @@ def render(
     )
     html = html.replace(
         "    let decisions = {};\n"
-        "    try { decisions = JSON.parse(localStorage.getItem(STORAGE_KEY) || \"{}\"); }"
+        '    try { decisions = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }'
         " catch (_) { decisions = {}; }",
-        "    const INITIAL_DECISIONS = "
-        + json.dumps(initial_decisions, ensure_ascii=False, indent=6)
-        + ";\n"
+        "    const INITIAL_DECISIONS = " + json.dumps(initial_decisions, ensure_ascii=False, indent=6) + ";\n"
         "    let decisions = { ...INITIAL_DECISIONS };\n"
         "    try { decisions = { ...INITIAL_DECISIONS, "
-        "                    ...JSON.parse(localStorage.getItem(STORAGE_KEY) || \"{}\") }; }"
+        '                    ...JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") }; }'
         " catch (_) { decisions = { ...INITIAL_DECISIONS }; }",
     )
     output.parent.mkdir(parents=True, exist_ok=True)

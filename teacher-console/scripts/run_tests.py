@@ -59,22 +59,16 @@ _SKIPPED_RE = re.compile(r"\b(?:skipped|SKIPPED)\b")
 
 def _env_for(python: str) -> dict[str, str]:
     env = dict(os.environ)
-    env["PYTHONPATH"] = os.pathsep.join(
-        [str(CONSOLE), str(SKILL_SCRIPTS), env.get("PYTHONPATH", "")]
-    )
+    env["PYTHONPATH"] = os.pathsep.join([str(CONSOLE), str(SKILL_SCRIPTS), env.get("PYTHONPATH", "")])
     return env
 
 
 def _check_runtime(python: str) -> list[str]:
     """Quick environment detection so a wrong interpreter fails fast."""
     problems: list[str] = []
-    probe = subprocess.run(
-        [python, "-c", "import PIL, http.server"], capture_output=True, text=True
-    )
+    probe = subprocess.run([python, "-c", "import PIL, http.server"], capture_output=True, text=True)
     if probe.returncode != 0:
-        problems.append(
-            f"interpreter {python!r} lacks required deps (Pillow): {probe.stderr.strip()[:200]}"
-        )
+        problems.append(f"interpreter {python!r} lacks required deps (Pillow): {probe.stderr.strip()[:200]}")
     return problems
 
 
@@ -166,7 +160,10 @@ def main() -> int:
     if failures:
         print(f"失败 {len(failures)}/{len(targets)}: " + ", ".join(f"{n}({r})" for n, r in failures))
         return 1
-    print(f"全部通过 {len(targets)}/{len(targets)}" + (f"，排除项 {len(excluded_reports)} 单独报告" if excluded_reports else ""))
+    print(
+        f"全部通过 {len(targets)}/{len(targets)}"
+        + (f"，排除项 {len(excluded_reports)} 单独报告" if excluded_reports else "")
+    )
     return 0
 
 

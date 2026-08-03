@@ -18,9 +18,7 @@ import correctness_replay  # noqa: E402
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--library", type=Path, default=CONSOLE.parent / "student-error-library"
-    )
+    parser.add_argument("--library", type=Path, default=CONSOLE.parent / "student-error-library")
     parser.add_argument("--experiment", type=Path, required=True)
     parser.add_argument(
         "--faults",
@@ -40,11 +38,7 @@ def main() -> int:
         print(correctness_replay.render_markdown(report), end="")
     else:
         print(json.dumps(report, ensure_ascii=False, indent=2))
-    return 0 if all(
-        value
-        for key, value in report["gates"].items()
-        if key != "production_authorized"
-    ) else 2
+    return 0 if all(value for key, value in report["gates"].items() if key != "production_authorized") else 2
 
 
 if __name__ == "__main__":

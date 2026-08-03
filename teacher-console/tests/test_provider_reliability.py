@@ -34,7 +34,9 @@ ADAPTER = CONSOLE / "providers" / "openai_compatible_agent_adapter.py"
 def _ok_response() -> bytes:
     payload = {
         "model": "mock",
-        "choices": [{"finish_reason": "stop", "message": {"content": '{"status":"completed","message":"ok","files":{}}'}}],
+        "choices": [
+            {"finish_reason": "stop", "message": {"content": '{"status":"completed","message":"ok","files":{}}'}}
+        ],
         "usage": {"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
     }
     return json.dumps(payload).encode("utf-8")
@@ -70,7 +72,9 @@ def _serve(handler_cls) -> tuple[ThreadingHTTPServer, str]:
     return server, f"http://127.0.0.1:{server.server_port}/v1"
 
 
-def _run_adapter(base_url: str, *, task_extra: dict | None = None, env_extra: dict | None = None) -> subprocess.CompletedProcess:
+def _run_adapter(
+    base_url: str, *, task_extra: dict | None = None, env_extra: dict | None = None
+) -> subprocess.CompletedProcess:
     task = {
         "schema_version": 1,
         "id": "test",
@@ -138,9 +142,7 @@ class StageProgressTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertLess(elapsed, 20, "must time out at the HTTP soft deadline, not hang")
         self.assertIn("WULI_AGENT_FAILURE_ENVELOPE:", result.stderr)
-        envelope_line = next(
-            line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line
-        )
+        envelope_line = next(line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line)
         envelope = json.loads(envelope_line.split("WULI_AGENT_FAILURE_ENVELOPE:", 1)[1])
         self.assertEqual(envelope["failure_type"], "provider_timeout")
         self.assertEqual(envelope["finish_reason"], "timeout")
@@ -174,9 +176,7 @@ class UrlerrorTimeoutSignatureTest(unittest.TestCase):
         # provider_execution_failed classification (no over-classification).
         result = _run_adapter("http://127.0.0.1:1/v1", env_extra={"TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS": "3"})
         self.assertNotEqual(result.returncode, 0)
-        envelope_line = next(
-            line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line
-        )
+        envelope_line = next(line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line)
         envelope = json.loads(envelope_line.split("WULI_AGENT_FAILURE_ENVELOPE:", 1)[1])
         self.assertEqual(envelope["failure_type"], "provider_execution_failed")
         self.assertEqual(envelope["timeout_layer"], "")

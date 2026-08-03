@@ -7,8 +7,8 @@ reasoning.  This module never calls a provider and never writes canonical files.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import re
 from typing import Any
 
@@ -213,9 +213,7 @@ def normalize_claim(
 
     source = _require_object(raw["source"], "claim.source")
     _require_exact_fields(source, _SOURCE_FIELDS, "claim.source")
-    policy_version = _clean_text(
-        source["policy_version"], "claim.source.policy_version", 80
-    )
+    policy_version = _clean_text(source["policy_version"], "claim.source.policy_version", 80)
     if policy_version != correctness_policy.CLAIM_LEDGER_POLICY_VERSION:
         raise ValueError("claim.source.policy_version does not match ledger policy")
 
@@ -224,22 +222,16 @@ def normalize_claim(
         "version": version,
         "kind": kind,
         "statement": _clean_text(raw["statement"], "claim.statement", 2_000),
-        "target_ids": _clean_id_list(
-            raw["target_ids"], "claim.target_ids", allow_empty=False
-        ),
+        "target_ids": _clean_id_list(raw["target_ids"], "claim.target_ids", allow_empty=False),
         "stage_ids": _clean_id_list(raw["stage_ids"], "claim.stage_ids"),
         "depends_on": depends_on,
         "conditions": _clean_text_list(raw["conditions"], "claim.conditions"),
-        "obligation_ids": _clean_id_list(
-            raw["obligation_ids"], "claim.obligation_ids"
-        ),
+        "obligation_ids": _clean_id_list(raw["obligation_ids"], "claim.obligation_ids"),
         "check_spec": _clean_json_object(raw["check_spec"], "claim.check_spec"),
         "status": status,
         "source": {
             "task_id": _clean_id(source["task_id"], "claim.source.task_id"),
-            "input_fingerprint": _clean_fingerprint(
-                source["input_fingerprint"], "claim.source.input_fingerprint"
-            ),
+            "input_fingerprint": _clean_fingerprint(source["input_fingerprint"], "claim.source.input_fingerprint"),
             "policy_version": policy_version,
         },
     }
@@ -248,9 +240,7 @@ def normalize_claim(
 def normalize_certificate(payload: dict[str, Any]) -> dict[str, Any]:
     raw = _require_object(payload, "certificate")
     _require_exact_fields(raw, _CERTIFICATE_FIELDS, "certificate")
-    verifier_kind = _clean_text(
-        raw["verifier_kind"], "certificate.verifier_kind", 32
-    ).lower()
+    verifier_kind = _clean_text(raw["verifier_kind"], "certificate.verifier_kind", 32).lower()
     if verifier_kind not in correctness_policy.CERTIFICATE_VERIFIER_KINDS:
         raise ValueError("certificate.verifier_kind is invalid")
     check_type = _clean_text(raw["check_type"], "certificate.check_type", 32).lower()
@@ -268,20 +258,14 @@ def normalize_certificate(payload: dict[str, Any]) -> dict[str, Any]:
     if verdict == "pass" and not checks:
         raise ValueError("pass certificate requires at least one decisive check")
 
-    identity = _require_object(
-        raw["verifier_identity"], "certificate.verifier_identity"
-    )
-    _require_exact_fields(
-        identity, _VERIFIER_IDENTITY_FIELDS, "certificate.verifier_identity"
-    )
+    identity = _require_object(raw["verifier_identity"], "certificate.verifier_identity")
+    _require_exact_fields(identity, _VERIFIER_IDENTITY_FIELDS, "certificate.verifier_identity")
     if not isinstance(identity["context_isolated"], bool):
         raise ValueError("certificate.verifier_identity.context_isolated must be boolean")
 
     return {
         "claim_id": _clean_id(raw["claim_id"], "certificate.claim_id"),
-        "claim_version": _clean_positive_int(
-            raw["claim_version"], "certificate.claim_version"
-        ),
+        "claim_version": _clean_positive_int(raw["claim_version"], "certificate.claim_version"),
         "verifier_kind": verifier_kind,
         "check_type": check_type,
         "verdict": verdict,
@@ -289,9 +273,7 @@ def normalize_certificate(payload: dict[str, Any]) -> dict[str, Any]:
             raw["normalized_result"], "certificate.normalized_result"
         ).strip()[:2_000],
         "decisive_checks": checks,
-        "input_fingerprint": _clean_fingerprint(
-            raw["input_fingerprint"], "certificate.input_fingerprint"
-        ),
+        "input_fingerprint": _clean_fingerprint(raw["input_fingerprint"], "certificate.input_fingerprint"),
         "verifier_identity": {
             "model_id": _clean_text(
                 identity["model_id"],
@@ -323,18 +305,10 @@ def normalize_atomic_task(payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "task_id": _clean_id(raw["task_id"], "task.task_id"),
         "action": action,
-        "target_ids": _clean_id_list(
-            raw["target_ids"], "task.target_ids", allow_empty=False
-        ),
-        "input_snapshot": _clean_positive_int(
-            raw["input_snapshot"], "task.input_snapshot"
-        ),
-        "input_fingerprint": _clean_fingerprint(
-            raw["input_fingerprint"], "task.input_fingerprint"
-        ),
-        "output_contract": _clean_text(
-            raw["output_contract"], "task.output_contract", 120
-        ),
+        "target_ids": _clean_id_list(raw["target_ids"], "task.target_ids", allow_empty=False),
+        "input_snapshot": _clean_positive_int(raw["input_snapshot"], "task.input_snapshot"),
+        "input_fingerprint": _clean_fingerprint(raw["input_fingerprint"], "task.input_fingerprint"),
+        "output_contract": _clean_text(raw["output_contract"], "task.output_contract", 120),
         "strategy": _clean_text(raw["strategy"], "task.strategy", 80),
         "random_seed": seed,
         "status": status,
@@ -347,9 +321,7 @@ def normalize_graph_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
     _require_exact_fields(raw, _SNAPSHOT_FIELDS, "snapshot")
     if raw["schema_version"] != 1:
         raise ValueError("snapshot.schema_version must be 1")
-    policy_version = _clean_text(
-        raw["policy_version"], "snapshot.policy_version", 80
-    )
+    policy_version = _clean_text(raw["policy_version"], "snapshot.policy_version", 80)
     if policy_version != correctness_policy.CLAIM_LEDGER_POLICY_VERSION:
         raise ValueError("snapshot.policy_version does not match ledger policy")
     if not isinstance(raw["claims"], list):
@@ -358,9 +330,7 @@ def normalize_graph_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("snapshot.certificates must be an array")
     if not isinstance(raw["tasks"], list):
         raise ValueError("snapshot.tasks must be an array")
-    claims = [
-        normalize_claim(item, agent_submission=False) for item in raw["claims"]
-    ]
+    claims = [normalize_claim(item, agent_submission=False) for item in raw["claims"]]
     certificates = [normalize_certificate(item) for item in raw["certificates"]]
     tasks = [normalize_atomic_task(item) for item in raw["tasks"]]
     claim_keys = [(item["id"], item["version"]) for item in claims]
@@ -378,13 +348,9 @@ def normalize_graph_snapshot(payload: dict[str, Any]) -> dict[str, Any]:
     )
     return {
         "schema_version": 1,
-        "snapshot_version": _clean_positive_int(
-            raw["snapshot_version"], "snapshot.snapshot_version"
-        ),
+        "snapshot_version": _clean_positive_int(raw["snapshot_version"], "snapshot.snapshot_version"),
         "policy_version": policy_version,
-        "input_fingerprint": _clean_fingerprint(
-            raw["input_fingerprint"], "snapshot.input_fingerprint"
-        ),
+        "input_fingerprint": _clean_fingerprint(raw["input_fingerprint"], "snapshot.input_fingerprint"),
         "claims": claims,
         "certificates": certificates,
         "tasks": tasks,
@@ -449,9 +415,7 @@ def claim_verification_input_fingerprint(
 ) -> str:
     """Bind a verifier to the current claim and exact upstream Claim versions."""
     normalized_claim = normalize_claim(claim, agent_submission=False)
-    normalized_dependencies = [
-        normalize_claim(item, agent_submission=False) for item in dependency_claims
-    ]
+    normalized_dependencies = [normalize_claim(item, agent_submission=False) for item in dependency_claims]
     expected_ids = set(normalized_claim["depends_on"])
     actual_ids = [item["id"] for item in normalized_dependencies]
     if len(actual_ids) != len(set(actual_ids)):
@@ -511,14 +475,11 @@ def require_next_claim_version(
     normalized = normalize_claim(candidate)
     expected_version = next_claim_version(normalized["id"], existing_claims)
     if normalized["version"] != expected_version:
-        raise ValueError(
-            f"claim.version must be {expected_version} for {normalized['id']}"
-        )
+        raise ValueError(f"claim.version must be {expected_version} for {normalized['id']}")
     prior_versions = [
         normalize_claim(item, agent_submission=False)
         for item in existing_claims
-        if isinstance(item, dict)
-        and str(item.get("id", "")).strip() == normalized["id"]
+        if isinstance(item, dict) and str(item.get("id", "")).strip() == normalized["id"]
     ]
     if prior_versions:
         latest = max(prior_versions, key=lambda item: item["version"])
@@ -544,9 +505,7 @@ def active_claims(claims: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             superseded_count += 1
             continue
         if claim["id"] in resolved:
-            raise ValueError(
-                f"claim {claim['id']} has multiple non-superseded versions"
-            )
+            raise ValueError(f"claim {claim['id']} has multiple non-superseded versions")
         resolved[claim["id"]] = claim
     if superseded_count:
         logger.info(
@@ -565,15 +524,11 @@ def topological_claim_ids(claims: list[dict[str, Any]]) -> list[str]:
     for claim_id, claim in resolved.items():
         for dependency_id in claim["depends_on"]:
             if dependency_id not in resolved:
-                raise ValueError(
-                    f"claim {claim_id} has dangling dependency {dependency_id}"
-                )
+                raise ValueError(f"claim {claim_id} has dangling dependency {dependency_id}")
             indegree[claim_id] += 1
             downstream[dependency_id].add(claim_id)
 
-    ready = sorted(
-        claim_id for claim_id, degree in indegree.items() if degree == 0
-    )
+    ready = sorted(claim_id for claim_id, degree in indegree.items() if degree == 0)
     order: list[str] = []
     while ready:
         claim_id = ready.pop(0)
@@ -584,9 +539,7 @@ def topological_claim_ids(claims: list[dict[str, Any]]) -> list[str]:
                 ready.append(child_id)
                 ready.sort()
     if len(order) != len(resolved):
-        cyclic = sorted(
-            claim_id for claim_id, degree in indegree.items() if degree > 0
-        )
+        cyclic = sorted(claim_id for claim_id, degree in indegree.items() if degree > 0)
         raise ValueError(f"claim dependency graph contains a cycle: {cyclic}")
     return order
 
@@ -614,36 +567,24 @@ def validate_claim_graph(
 
     unknown_targets = observed_target_ids - expected_target_ids
     if unknown_targets:
-        raise ValueError(
-            f"claims reference unknown targets: {sorted(unknown_targets)}"
-        )
+        raise ValueError(f"claims reference unknown targets: {sorted(unknown_targets)}")
     missing_final_targets = expected_target_ids - final_target_ids
     if missing_final_targets:
-        raise ValueError(
-            f"final claims do not cover targets: {sorted(missing_final_targets)}"
-        )
+        raise ValueError(f"final claims do not cover targets: {sorted(missing_final_targets)}")
     unknown_obligations = observed_obligation_ids - expected_obligation_ids
     if unknown_obligations:
-        raise ValueError(
-            f"claims reference unknown obligations: {sorted(unknown_obligations)}"
-        )
+        raise ValueError(f"claims reference unknown obligations: {sorted(unknown_obligations)}")
     missing_obligations = expected_obligation_ids - observed_obligation_ids
     if missing_obligations:
-        raise ValueError(
-            f"claims do not cover obligations: {sorted(missing_obligations)}"
-        )
+        raise ValueError(f"claims do not cover obligations: {sorted(missing_obligations)}")
 
     return {
         "status": "valid",
         "active_claim_count": len(resolved),
         "topological_order": order,
-        "target_coverage": {
-            target_id: target_id in final_target_ids
-            for target_id in sorted(expected_target_ids)
-        },
+        "target_coverage": {target_id: target_id in final_target_ids for target_id in sorted(expected_target_ids)},
         "obligation_coverage": {
-            obligation_id: obligation_id in observed_obligation_ids
-            for obligation_id in sorted(expected_obligation_ids)
+            obligation_id: obligation_id in observed_obligation_ids for obligation_id in sorted(expected_obligation_ids)
         },
     }
 
@@ -663,9 +604,7 @@ def dependency_impact_cone(
     for claim_id, claim in resolved.items():
         for dependency_id in claim["depends_on"]:
             if dependency_id not in resolved:
-                raise ValueError(
-                    f"claim {claim_id} has dangling dependency {dependency_id}"
-                )
+                raise ValueError(f"claim {claim_id} has dangling dependency {dependency_id}")
             downstream[dependency_id].add(claim_id)
 
     affected = set(changed_claim_ids) if include_changed else set()
@@ -689,9 +628,7 @@ def dependency_impact_cone(
 
 
 def _legacy_projection_id(role: str, source_id: str, index: int = 0) -> str:
-    digest = hashlib.sha256(
-        f"{role}\0{source_id}\0{index}".encode("utf-8")
-    ).hexdigest()[:12]
+    digest = hashlib.sha256(f"{role}\0{source_id}\0{index}".encode()).hexdigest()[:12]
     return f"L-{role}-{digest}"
 
 
@@ -713,8 +650,7 @@ def project_legacy_solution(
         raise ValueError("blueprint must be an object")
     fingerprint = _clean_fingerprint(input_fingerprint, "input_fingerprint")
     target_ids = {
-        _clean_id(item.get("id"), "blueprint.question_targets.id")
-        for item in blueprint.get("question_targets", [])
+        _clean_id(item.get("id"), "blueprint.question_targets.id") for item in blueprint.get("question_targets", [])
     }
     obligation_ids = {
         _clean_id(item.get("id"), "blueprint.verification_obligations.id")
@@ -725,8 +661,7 @@ def project_legacy_solution(
 
     step_targets = {
         str(item.get("id", "")).strip(): {
-            _clean_id(target_id, "blueprint.reasoning_steps.target_ids")
-            for target_id in item.get("target_ids", [])
+            _clean_id(target_id, "blueprint.reasoning_steps.target_ids") for target_id in item.get("target_ids", [])
         }
         for item in blueprint.get("reasoning_steps", [])
         if isinstance(item, dict)
@@ -737,18 +672,12 @@ def project_legacy_solution(
             continue
         stage_id = str(link.get("stage_id", "")).strip()
         step_id = str(link.get("step_id", "")).strip()
-        stage_targets.setdefault(stage_id, set()).update(
-            step_targets.get(step_id, set())
-        )
+        stage_targets.setdefault(stage_id, set()).update(step_targets.get(step_id, set()))
 
     claims: list[dict[str, Any]] = []
-    stage_claim_ids_by_target: dict[str, list[str]] = {
-        target_id: [] for target_id in target_ids
-    }
+    stage_claim_ids_by_target: dict[str, list[str]] = {target_id: [] for target_id in target_ids}
     for stage_result in solution.get("stage_results", []):
-        stage_id = _clean_id(
-            stage_result.get("stage_id"), "solution.stage_results.stage_id"
-        )
+        stage_id = _clean_id(stage_result.get("stage_id"), "solution.stage_results.stage_id")
         mapped_targets = sorted(stage_targets.get(stage_id, set()))
         if not mapped_targets:
             # Older blueprints may not contain enough linkage to make this
@@ -828,9 +757,7 @@ def project_legacy_solution(
             "id": _legacy_projection_id("F", target_id),
             "version": 1,
             "kind": "final",
-            "statement": _clean_text(
-                target.get("final_answer"), "solution.targets.final_answer", 2_000
-            ),
+            "statement": _clean_text(target.get("final_answer"), "solution.targets.final_answer", 2_000),
             "target_ids": [target_id],
             "stage_ids": [],
             "depends_on": relation_claim_ids,

@@ -115,26 +115,32 @@ def configure_w3_test_models(library: Path) -> None:
         ],
     })
     for model_id in ("e2e-claude-solver", "e2e-claude-verifier"):
-        model_registry.update_model_probe_result(model_id, {
-            "live_probe": {
-                "status": "passed",
-                "provider": "claude",
-                "reason": "deterministic E2E test double",
+        model_registry.update_model_probe_result(
+            model_id,
+            {
+                "live_probe": {
+                    "status": "passed",
+                    "provider": "claude",
+                    "reason": "deterministic E2E test double",
+                },
             },
-        })
+        )
     # Task-level qualification (A2.2): the solver is the analysis.generate
     # default and must carry a current qualification record.
-    model_registry.record_analysis_qualification("e2e-claude-solver", {
-        "provider": "claude",
-        "sample_set_version": "e2e-fixture-v1",
-        "sample_count": 3,
-        "structural_success_count": 3,
-        "gate_success_count": 3,
-        "p50_latency_ms": 4000,
-        "p95_latency_ms": 12000,
-        "usage": {"completion_tokens": 5000},
-        "conclusion": "qualified",
-    })
+    model_registry.record_analysis_qualification(
+        "e2e-claude-solver",
+        {
+            "provider": "claude",
+            "sample_set_version": "e2e-fixture-v1",
+            "sample_count": 3,
+            "structural_success_count": 3,
+            "gate_success_count": 3,
+            "p50_latency_ms": 4000,
+            "p95_latency_ms": 12000,
+            "usage": {"completion_tokens": 5000},
+            "conclusion": "qualified",
+        },
+    )
 
 
 def configure_truncation_test_model(library: Path, base_url: str) -> None:
@@ -152,10 +158,7 @@ def configure_truncation_test_model(library: Path, base_url: str) -> None:
     settings = model_registry.model_registry_settings()
     settings.setdefault("defaults", {})
     models = settings.setdefault("models", [])
-    if not any(
-        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-truncated"
-        for item in models
-    ):
+    if not any(isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-truncated" for item in models):
         models.append({
             "id": "e2e-mock-truncated",
             "display_name": "E2E 截断 Mock",
@@ -168,13 +171,16 @@ def configure_truncation_test_model(library: Path, base_url: str) -> None:
             "model_tier": "standard",
         })
     model_registry.save_model_registry_settings(settings)
-    model_registry.update_model_probe_result("e2e-mock-truncated", {
-        "live_probe": {
-            "status": "passed",
-            "provider": "openai-compatible",
-            "reason": "deterministic E2E truncation mock endpoint",
+    model_registry.update_model_probe_result(
+        "e2e-mock-truncated",
+        {
+            "live_probe": {
+                "status": "passed",
+                "provider": "openai-compatible",
+                "reason": "deterministic E2E truncation mock endpoint",
+            },
         },
-    })
+    )
 
 
 def configure_slow_test_model(library: Path, base_url: str) -> None:
@@ -196,10 +202,7 @@ def configure_slow_test_model(library: Path, base_url: str) -> None:
     defaults = settings.setdefault("defaults", {})
     defaults["analysis.generate"] = "e2e-mock-slow"
     models = settings.setdefault("models", [])
-    if not any(
-        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow"
-        for item in models
-    ):
+    if not any(isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow" for item in models):
         models.append({
             "id": "e2e-mock-slow",
             "display_name": "E2E 挂起 Mock",
@@ -212,24 +215,30 @@ def configure_slow_test_model(library: Path, base_url: str) -> None:
             "model_tier": "standard",
         })
     model_registry.save_model_registry_settings(settings)
-    model_registry.update_model_probe_result("e2e-mock-slow", {
-        "live_probe": {
-            "status": "passed",
-            "provider": "openai-compatible",
-            "reason": "deterministic E2E slow mock endpoint",
+    model_registry.update_model_probe_result(
+        "e2e-mock-slow",
+        {
+            "live_probe": {
+                "status": "passed",
+                "provider": "openai-compatible",
+                "reason": "deterministic E2E slow mock endpoint",
+            },
         },
-    })
-    model_registry.record_analysis_qualification("e2e-mock-slow", {
-        "provider": "openai-compatible",
-        "sample_set_version": "e2e-fixture-v1",
-        "sample_count": 3,
-        "structural_success_count": 3,
-        "gate_success_count": 3,
-        "p50_latency_ms": 4000,
-        "p95_latency_ms": 12000,
-        "usage": {"completion_tokens": 5000},
-        "conclusion": "qualified",
-    })
+    )
+    model_registry.record_analysis_qualification(
+        "e2e-mock-slow",
+        {
+            "provider": "openai-compatible",
+            "sample_set_version": "e2e-fixture-v1",
+            "sample_count": 3,
+            "structural_success_count": 3,
+            "gate_success_count": 3,
+            "p50_latency_ms": 4000,
+            "p95_latency_ms": 12000,
+            "usage": {"completion_tokens": 5000},
+            "conclusion": "qualified",
+        },
+    )
 
 
 def configure_slow_explicit_test_model(library: Path, base_url: str) -> None:
@@ -252,10 +261,7 @@ def configure_slow_explicit_test_model(library: Path, base_url: str) -> None:
     registry = kb.load_json(registry_path, {"schema_version": 1, "defaults": {}, "models": []})
     registry.setdefault("defaults", {})
     registry.setdefault("models", [])
-    if not any(
-        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow"
-        for item in registry["models"]
-    ):
+    if not any(isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow" for item in registry["models"]):
         registry["models"].append({
             "id": "e2e-mock-slow",
             "display_name": "E2E 挂起 Mock（显式选择）",
@@ -268,26 +274,32 @@ def configure_slow_explicit_test_model(library: Path, base_url: str) -> None:
             "model_tier": "standard",
         })
     kb.write_json(registry_path, registry)
-    model_registry.update_model_probe_result("e2e-mock-slow", {
-        "live_probe": {
-            "status": "passed",
-            "provider": "openai-compatible",
-            "reason": "deterministic E2E slow mock endpoint",
+    model_registry.update_model_probe_result(
+        "e2e-mock-slow",
+        {
+            "live_probe": {
+                "status": "passed",
+                "provider": "openai-compatible",
+                "reason": "deterministic E2E slow mock endpoint",
+            },
         },
-    })
+    )
     # The model is only ever selected explicitly, but keeping a qualification
     # record makes the registry state identical to configure_slow_test_model.
-    model_registry.record_analysis_qualification("e2e-mock-slow", {
-        "provider": "openai-compatible",
-        "sample_set_version": "e2e-fixture-v1",
-        "sample_count": 3,
-        "structural_success_count": 3,
-        "gate_success_count": 3,
-        "p50_latency_ms": 4000,
-        "p95_latency_ms": 12000,
-        "usage": {"completion_tokens": 5000},
-        "conclusion": "qualified",
-    })
+    model_registry.record_analysis_qualification(
+        "e2e-mock-slow",
+        {
+            "provider": "openai-compatible",
+            "sample_set_version": "e2e-fixture-v1",
+            "sample_count": 3,
+            "structural_success_count": 3,
+            "gate_success_count": 3,
+            "p50_latency_ms": 4000,
+            "p95_latency_ms": 12000,
+            "usage": {"completion_tokens": 5000},
+            "conclusion": "qualified",
+        },
+    )
 
 
 def configure_hang_test_model(library: Path) -> None:
@@ -312,10 +324,7 @@ def configure_hang_test_model(library: Path) -> None:
     registry = kb.load_json(registry_path, {"schema_version": 1, "defaults": {}, "models": []})
     registry.setdefault("defaults", {})
     registry.setdefault("models", [])
-    if not any(
-        isinstance(item, dict) and str(item.get("id", "")) == "e2e-hang-solver"
-        for item in registry["models"]
-    ):
+    if not any(isinstance(item, dict) and str(item.get("id", "")) == "e2e-hang-solver" for item in registry["models"]):
         registry["models"].append({
             "id": "e2e-hang-solver",
             "display_name": "E2E 挂起求解器",
@@ -325,13 +334,16 @@ def configure_hang_test_model(library: Path) -> None:
             "model_tier": "standard",
         })
     kb.write_json(registry_path, registry)
-    model_registry.update_model_probe_result("e2e-hang-solver", {
-        "live_probe": {
-            "status": "passed",
-            "provider": "claude",
-            "reason": "deterministic E2E hang double",
+    model_registry.update_model_probe_result(
+        "e2e-hang-solver",
+        {
+            "live_probe": {
+                "status": "passed",
+                "provider": "claude",
+                "reason": "deterministic E2E hang double",
+            },
         },
-    })
+    )
 
 
 def configure_visual_test_models(library: Path, base_url: str) -> None:
@@ -349,10 +361,7 @@ def configure_visual_test_models(library: Path, base_url: str) -> None:
     defaults = settings.setdefault("defaults", {})
     defaults["vision"] = "e2e-mock-vision"
     models = settings.setdefault("models", [])
-    if not any(
-        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-vision"
-        for item in models
-    ):
+    if not any(isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-vision" for item in models):
         models.append({
             "id": "e2e-mock-vision",
             "display_name": "E2E 受控视觉 Mock",
@@ -366,18 +375,24 @@ def configure_visual_test_models(library: Path, base_url: str) -> None:
             "model_tier": "expert",
         })
     model_registry.save_model_registry_settings(settings)
-    model_registry.update_model_probe_result("e2e-mock-vision", {
-        "live_probe": {
-            "status": "passed",
-            "provider": "openai-compatible",
-            "reason": "deterministic E2E mock vision endpoint",
+    model_registry.update_model_probe_result(
+        "e2e-mock-vision",
+        {
+            "live_probe": {
+                "status": "passed",
+                "provider": "openai-compatible",
+                "reason": "deterministic E2E mock vision endpoint",
+            },
         },
-    })
-    model_registry.record_vision_probe("e2e-mock-vision", {
-        "status": "passed",
-        "schema": "wuli.vision-probe.v1",
-        "reason": "synthetic image probe passed against mock endpoint",
-    })
+    )
+    model_registry.record_vision_probe(
+        "e2e-mock-vision",
+        {
+            "status": "passed",
+            "schema": "wuli.vision-probe.v1",
+            "reason": "synthetic image probe passed against mock endpoint",
+        },
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -498,18 +513,14 @@ def main() -> int:
             # report stale immediately.
             from runtime_environment import runtime_identity
 
-            teacher_server.SERVER_RUNTIME_IDENTITY_SNAPSHOT = runtime_identity(
-                project_root=ROOT, library=library
-            )
+            teacher_server.SERVER_RUNTIME_IDENTITY_SNAPSHOT = runtime_identity(project_root=ROOT, library=library)
 
             agent_environment = dict(os.environ)
             agent_environment.update({
                 "TEACHER_CONSOLE_AGENT_PROVIDER": "adapter",
                 "TEACHER_CONSOLE_AGENT_ADAPTER_COMMAND": shlex.join([sys.executable, str(adapter)]),
             })
-            teacher_server.AGENT_GATEWAY = E2EAgentGateway(
-                environ=agent_environment
-            )
+            teacher_server.AGENT_GATEWAY = E2EAgentGateway(environ=agent_environment)
             teacher_server._JOB_MANAGER = AgentJobManager(library / ".cache" / "agent-jobs", max_workers=1)
 
             httpd = ThreadingHTTPServer(("127.0.0.1", 0), teacher_server.Handler)
@@ -528,9 +539,7 @@ def main() -> int:
                 "E2E_FIXTURE_IMAGE": str(fixture),
                 # Synthetic clear image used by the analysis-run scenarios
                 # (web upload path with ocr=none).
-                "E2E_ANALYSIS_FIXTURE": str(
-                    CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png"
-                ),
+                "E2E_ANALYSIS_FIXTURE": str(CONSOLE / "tests" / "fixtures" / "visual-routing" / "clear-question.png"),
             })
             if visual_mode:
                 child_environment.update({

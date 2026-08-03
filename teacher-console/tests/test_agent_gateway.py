@@ -19,9 +19,7 @@ sys.path.insert(0, str(SCRIPTS))
 from agent_gateway import AgentGateway, classify_agent_failure  # noqa: E402
 from agent_jobs import AgentJobManager  # noqa: E402
 
-SERVER_SPEC = importlib.util.spec_from_file_location(
-    "teacher_console_server_gateway_test", CONSOLE / "server.py"
-)
+SERVER_SPEC = importlib.util.spec_from_file_location("teacher_console_server_gateway_test", CONSOLE / "server.py")
 teacher_server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(teacher_server)
 
@@ -156,9 +154,7 @@ class AgentGatewayTest(unittest.TestCase):
             called = True
             return subprocess.CompletedProcess([], 0, stdout="", stderr="")
 
-        result = AgentGateway(environ={}, which=self.which, run=runner).run(
-            self.task(denied_paths=["solution.md"])
-        )
+        result = AgentGateway(environ={}, which=self.which, run=runner).run(self.task(denied_paths=["solution.md"]))
         self.assertEqual(result["status"], "failed")
         self.assertEqual(result["failure_type"], "task_contract_invalid")
         self.assertEqual(result["attempts"], [])
@@ -422,7 +418,7 @@ class AgentGatewayTest(unittest.TestCase):
                     },
                     "required": ["status", "message", "answer"],
                 },
-            }
+            },
         )
         gateway = AgentGateway(
             environ={"TEACHER_CONSOLE_AGENT_PROVIDER": "claude"},
@@ -449,12 +445,10 @@ class AgentGatewayTest(unittest.TestCase):
         )
         decoded = AgentGateway._decode_structured_payload(
             provider,
-            json.dumps(
-                {
-                    "result": "```json\n{\"status\":\"completed\",\"message\":\"ok\"}\n```",
-                    "usage": {"input_tokens": 4, "output_tokens": 2},
-                }
-            ),
+            json.dumps({
+                "result": '```json\n{"status":"completed","message":"ok"}\n```',
+                "usage": {"input_tokens": 4, "output_tokens": 2},
+            }),
         )
         self.assertEqual(decoded["status"], "completed")
         self.assertEqual(decoded["usage"]["output_tokens"], 2)
@@ -469,8 +463,8 @@ class AgentGatewayTest(unittest.TestCase):
             if item.name == "claude"
         )
         for result in (
-            "Here is the result:\n```json\n{\"status\":\"completed\"}\n```",
-            "```json\n{\"status\":\"completed\"}\n```\n```json\n{\"status\":\"completed\"}\n```",
+            'Here is the result:\n```json\n{"status":"completed"}\n```',
+            '```json\n{"status":"completed"}\n```\n```json\n{"status":"completed"}\n```',
         ):
             with self.subTest(result=result):
                 with self.assertRaises((ValueError, json.JSONDecodeError)):
@@ -511,9 +505,7 @@ class AgentGatewayTest(unittest.TestCase):
         def runner(command, cwd=None, input=None, **_kwargs):
             child_task = json.loads(input)
             self.assertNotIn("context_payloads", child_task)
-            self.assertEqual(
-                child_task["request_complexity"]["evidence_truncated"], False
-            )
+            self.assertEqual(child_task["request_complexity"]["evidence_truncated"], False)
             evidence_path = Path(cwd, ".agent-context", "knowledge-evidence.json")
             self.assertEqual(json.loads(evidence_path.read_text(encoding="utf-8"))["references"][0]["title"], "相似题")
             return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
@@ -570,7 +562,7 @@ class AgentGatewayTest(unittest.TestCase):
                     "model": "picked-model",
                     "api_key": "picked-key",
                     "model_tier": "custom",
-                }
+                },
             )
         )
         self.assertEqual(result["status"], "completed")
@@ -659,7 +651,7 @@ class AgentGatewayTest(unittest.TestCase):
                     "base_url": "https://api.example.test",
                     "model": "deepseek-agent-model",
                     "api_key": "selected-token",
-                }
+                },
             )
         )
         self.assertEqual(result["status"], "completed")
@@ -1361,10 +1353,7 @@ class AgentJobManagerTest(unittest.TestCase):
         manager.shutdown(wait=True)
 
         self.assertEqual(manager._adaptive_states[group]["limit"], 4)
-        events = [
-            manager.get(job["job"]["id"]).get("scheduler_event", {}).get("event")
-            for job in (first, second)
-        ]
+        events = [manager.get(job["job"]["id"]).get("scheduler_event", {}).get("event") for job in (first, second)]
         self.assertIn("consecutive_successes_ramped", events)
 
 

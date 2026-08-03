@@ -98,9 +98,9 @@ class FailureEnvelopeTest(unittest.TestCase):
         self.assertIsNone(_parse_failure_envelope(None))
 
     def test_envelope_never_contains_reasoning_body_or_keys(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            import io
+        with tempfile.TemporaryDirectory() as _:
             import contextlib
+            import io
 
             err = io.StringIO()
             exc = _AdapterFailure(
@@ -149,55 +149,39 @@ class BudgetPolicyTest(unittest.TestCase):
         self.assertTrue(safe["request_complexity"]["evidence_truncated"])
         self.assertNotIn("private", json.dumps(safe, ensure_ascii=False))
         self.assertTrue(task_is_complex(safe))
-        options = request_options(
-            "http://127.0.0.1:1/v1", "m", {}, complex_task=task_is_complex(safe)
-        )
+        options = request_options("http://127.0.0.1:1/v1", "m", {}, complex_task=task_is_complex(safe))
         self.assertEqual(options["max_tokens"], MAX_OUTPUT_TOKENS_COMPLEX)
         self.assertEqual(options["thinking"], {"type": "disabled"})
 
     def test_complex_task_gets_wide_budget_and_thinking_disabled(self):
-        task = {
-            "context_payloads": {
-                ".agent-context/target-brief.json": {"targets": [{"id": "t1"}] * 6}
-            }
-        }
+        task = {"context_payloads": {".agent-context/target-brief.json": {"targets": [{"id": "t1"}] * 6}}}
         self.assertTrue(task_is_complex(task))
         options = request_options("http://127.0.0.1:1/v1", "m", complex_task=True)
         self.assertEqual(options["max_tokens"], MAX_OUTPUT_TOKENS_COMPLEX)
         self.assertEqual(options["thinking"], {"type": "disabled"})
 
     def test_complex_detection_via_truncated_evidence(self):
-        task = {
-            "context_payloads": {
-                ".agent-context/knowledge-evidence.json": {"truncated": True}
-            }
-        }
+        task = {"context_payloads": {".agent-context/knowledge-evidence.json": {"truncated": True}}}
         self.assertTrue(task_is_complex(task))
 
     def test_complex_detection_via_nested_context_budget(self):
-        task = {
-            "context_payloads": {
-                ".agent-context/knowledge-evidence.json": {
-                    "context_budget": {"truncated": True}
-                }
-            }
-        }
+        task = {"context_payloads": {".agent-context/knowledge-evidence.json": {"context_budget": {"truncated": True}}}}
         self.assertTrue(task_is_complex(task))
 
     def test_simple_task_keeps_env_budget_and_thinking(self):
         task = {"output_contract": {"schema": {"type": "object"}}}
         self.assertFalse(task_is_complex(task))
         options = request_options(
-            "http://127.0.0.1:1/v1", "m", {"TEACHER_CONSOLE_AGENT_API_MAX_OUTPUT_TOKENS": "4000"},
+            "http://127.0.0.1:1/v1",
+            "m",
+            {"TEACHER_CONSOLE_AGENT_API_MAX_OUTPUT_TOKENS": "4000"},
             complex_task=False,
         )
         self.assertEqual(options["max_tokens"], 4000)
         self.assertNotIn("thinking", options)
 
     def test_complex_raises_default_budget_to_30000(self):
-        options = request_options(
-            "http://127.0.0.1:1/v1", "m", {}, complex_task=True
-        )
+        options = request_options("http://127.0.0.1:1/v1", "m", {}, complex_task=True)
         self.assertEqual(options["max_tokens"], MAX_OUTPUT_TOKENS_COMPLEX)
         self.assertGreater(MAX_OUTPUT_TOKENS_COMPLEX, DEFAULT_MAX_OUTPUT_TOKENS)
 

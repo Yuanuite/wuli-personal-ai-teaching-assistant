@@ -220,10 +220,7 @@ def runtime_settings_public(
     active_proxy = resolved.get("HTTPS_PROXY") or resolved.get("https_proxy") or ""
     raw = kb.load_json(runtime_settings_path(library), {})
     probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
-    probe_passed = (
-        probe.get("status") == "passed"
-        and probe.get("config_digest") == _settings_digest(settings)
-    )
+    probe_passed = probe.get("status") == "passed" and probe.get("config_digest") == _settings_digest(settings)
     return {
         **settings,
         "path": str(runtime_settings_path(library)),

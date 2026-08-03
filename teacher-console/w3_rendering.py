@@ -30,18 +30,12 @@ def _section_id(kind: str, target_id: str, index: int | None = None) -> str:
 def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, Any]]]:
     answers = {item["target_id"]: item for item in brief["final_answers"]}
     steps_by_target = {
-        target["target_id"]: [
-            step
-            for step in brief["proof_skeleton"]
-            if target["target_id"] in step["target_ids"]
-        ]
+        target["target_id"]: [step for step in brief["proof_skeleton"] if target["target_id"] in step["target_ids"]]
         for target in brief["question_targets"]
     }
     obligations_by_target = {
         target["target_id"]: [
-            item
-            for item in brief["verification_obligations"]
-            if item["target_id"] == target["target_id"]
+            item for item in brief["verification_obligations"] if item["target_id"] == target["target_id"]
         ]
         for target in brief["question_targets"]
     }
@@ -63,9 +57,7 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
             ],
             "text_fingerprint": w3r_contract.stable_fingerprint(fragment),
         })
-    mainline = " → ".join(
-        step["statement"] for step in brief["proof_skeleton"][:3]
-    )
+    mainline = " → ".join(step["statement"] for step in brief["proof_skeleton"][:3])
     student.extend([
         "",
         "## 一眼识别",
@@ -76,9 +68,9 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
         "",
     ])
     if brief["allowed_symbols"]:
-        student.append("- 本解答沿用题干符号：" + "、".join(
-            f"${symbol}$" for symbol in brief["allowed_symbols"]
-        ) + "。")
+        student.append(
+            "- 本解答沿用题干符号：" + "、".join(f"${symbol}$" for symbol in brief["allowed_symbols"]) + "。"
+        )
     else:
         student.append("- 沿用题干与已验证证明中的符号约定，不另设新量。")
 
@@ -90,9 +82,7 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
         "",
     ])
     for index, step in enumerate(brief["proof_skeleton"], 1):
-        target_markers = " ".join(
-            f"【{target_id}】" for target_id in step["target_ids"]
-        )
+        target_markers = " ".join(f"【{target_id}】" for target_id in step["target_ids"])
         fragment_lines = [
             f"### 第 {index} 步",
             "",
@@ -119,11 +109,9 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
         target_id = target["target_id"]
         answer = answers[target_id]
         student.append(f"- **{target_id}**：{answer['text']}")
-        conditions = list(dict.fromkeys(
-            condition
-            for step in steps_by_target[target_id]
-            for condition in step["conditions"]
-        ))
+        conditions = list(
+            dict.fromkeys(condition for step in steps_by_target[target_id] for condition in step["conditions"])
+        )
         for condition in conditions:
             student.append(f"  - 适用条件：{condition}")
         if target["response_mode"] == "enumerate_all":
@@ -152,9 +140,7 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
         f"- Brief：`{w3r_contract.brief_fingerprint(brief)}`",
         "- 所有学生版决定性句子均由下列 verified Claim 支撑。",
     ]
-    claim_by_id = {
-        item["claim_id"]: item for item in brief["verified_claims"]
-    }
+    claim_by_id = {item["claim_id"]: item for item in brief["verified_claims"]}
     for claim_id in sorted(claim_by_id):
         item = claim_by_id[claim_id]
         teacher.append(
@@ -240,11 +226,7 @@ def render_gate(
     if len(student.splitlines()) > 2_000:
         violations.append({"code": "render-line-count-exceeded"})
         retryable_codes.add("render-line-count-exceeded")
-    profile = (
-        "olympiad_official"
-        if brief["method_scope"]["level"] == "olympiad_official"
-        else "high_school_standard"
-    )
+    profile = "olympiad_official" if brief["method_scope"]["level"] == "olympiad_official" else "high_school_standard"
     method_errors = teaching_method_policy.method_errors(student, profile)
     if method_errors:
         violations.append({
@@ -255,11 +237,9 @@ def render_gate(
     target_hits = 0
     final_hits = 0
     retained_conditions = 0
-    all_conditions = list(dict.fromkeys(
-        condition
-        for step in brief["proof_skeleton"]
-        for condition in step["conditions"]
-    ))
+    all_conditions = list(
+        dict.fromkeys(condition for step in brief["proof_skeleton"] for condition in step["conditions"])
+    )
     for target in brief["question_targets"]:
         if f"【{target['target_id']}】" in student:
             target_hits += 1
@@ -270,9 +250,7 @@ def render_gate(
             })
             retryable_codes.add("target-missing")
     for answer in brief["final_answers"]:
-        if answer["answer_signature"] and answer["answer_signature"] in (
-            w3r_contract.answer_signature(student)
-        ):
+        if answer["answer_signature"] and answer["answer_signature"] in (w3r_contract.answer_signature(student)):
             final_hits += 1
         else:
             violations.append({
@@ -292,21 +270,16 @@ def render_gate(
     violations.extend(latex_issues)
     retryable_codes.update(item["code"] for item in latex_issues)
     allowed_display_math = {
-        re.sub(r"\s+", "", item["formula_latex"])
-        for item in brief["proof_skeleton"]
-        if item["formula_latex"]
+        re.sub(r"\s+", "", item["formula_latex"]) for item in brief["proof_skeleton"] if item["formula_latex"]
     }
     rendered_display_math = {
-        re.sub(r"\s+", "", item.strip())
-        for item in re.findall(r"\$\$(.*?)\$\$", student, flags=re.DOTALL)
+        re.sub(r"\s+", "", item.strip()) for item in re.findall(r"\$\$(.*?)\$\$", student, flags=re.DOTALL)
     }
     unknown_formulas = rendered_display_math - allowed_display_math
     if unknown_formulas:
         violations.append({
             "code": "formula-without-brief-source",
-            "formula_fingerprints": sorted(
-                w3r_contract.stable_fingerprint(item) for item in unknown_formulas
-            ),
+            "formula_fingerprints": sorted(w3r_contract.stable_fingerprint(item) for item in unknown_formulas),
         })
     known_claims = {item["claim_id"] for item in brief["verified_claims"]}
     known_steps = {item["step_id"] for item in brief["proof_skeleton"]}
@@ -314,20 +287,14 @@ def render_gate(
     unknown_claims: set[str] = set()
     mapped_steps: set[str] = set()
     student_fingerprints = _contiguous_text_fingerprints(student)
-    teacher_fingerprints = _contiguous_text_fingerprints(
-        result["teacher_solution_md"]
-    )
+    teacher_fingerprints = _contiguous_text_fingerprints(result["teacher_solution_md"])
     for span in result["claim_span_map"]:
         mapped_claims.update(set(span["claim_ids"]) & known_claims)
         unknown_claims.update(set(span["claim_ids"]) - known_claims)
         mapped_steps.update(set(span["step_ids"]) & known_steps)
         if set(span["step_ids"]) - known_steps:
             violations.append({"code": "unknown-proof-step"})
-        document_fingerprints = (
-            student_fingerprints
-            if span["document"] == "student"
-            else teacher_fingerprints
-        )
+        document_fingerprints = student_fingerprints if span["document"] == "student" else teacher_fingerprints
         if span["text_fingerprint"] not in document_fingerprints:
             violations.append({
                 "code": "claim-span-text-mismatch",
@@ -338,14 +305,8 @@ def render_gate(
             "code": "unsupported-claim",
             "claim_ids": sorted(unknown_claims),
         })
-    decisive_claims = {
-        claim_id
-        for step in brief["proof_skeleton"]
-        for claim_id in step["claim_ids"]
-    } | {
-        claim_id
-        for answer in brief["final_answers"]
-        for claim_id in answer["claim_ids"]
+    decisive_claims = {claim_id for step in brief["proof_skeleton"] for claim_id in step["claim_ids"]} | {
+        claim_id for answer in brief["final_answers"] for claim_id in answer["claim_ids"]
     }
     missing_claims = decisive_claims - mapped_claims
     if missing_claims:
@@ -363,22 +324,14 @@ def render_gate(
         retryable_codes.add("proof-step-span-missing")
 
     metrics = {
-        "final_answer_fidelity": round(
-            final_hits / len(brief["final_answers"]), 4
-        ) if brief["final_answers"] else 0.0,
-        "claim_support_coverage": round(
-            len(decisive_claims & mapped_claims) / len(decisive_claims), 4
-        ) if decisive_claims else 0.0,
-        "condition_retention": round(
-            retained_conditions / len(all_conditions), 4
-        ) if all_conditions else 1.0,
-        "target_coverage": round(
-            target_hits / len(brief["question_targets"]), 4
-        ),
+        "final_answer_fidelity": round(final_hits / len(brief["final_answers"]), 4) if brief["final_answers"] else 0.0,
+        "claim_support_coverage": round(len(decisive_claims & mapped_claims) / len(decisive_claims), 4)
+        if decisive_claims
+        else 0.0,
+        "condition_retention": round(retained_conditions / len(all_conditions), 4) if all_conditions else 1.0,
+        "target_coverage": round(target_hits / len(brief["question_targets"]), 4),
         "latex_validity": 0.0 if latex_issues else 1.0,
-        "unsupported_claim_rate": round(
-            len(unknown_claims) / max(1, len(mapped_claims | unknown_claims)), 4
-        ),
+        "unsupported_claim_rate": round(len(unknown_claims) / max(1, len(mapped_claims | unknown_claims)), 4),
     }
     if not violations:
         status = "pass"

@@ -170,10 +170,7 @@ def parse_content(raw: str) -> dict:
             unexpected = exc.pos
             while unexpected < len(candidate) and candidate[unexpected].isspace():
                 unexpected += 1
-            if (
-                unexpected >= len(candidate)
-                or candidate[unexpected] in {",", ":", "]", "}", '"'}
-            ):
+            if unexpected >= len(candidate) or candidate[unexpected] in {",", ":", "]", "}", '"'}:
                 raise
             quote = exc.pos - 1
             while quote >= 0 and candidate[quote].isspace():
@@ -252,11 +249,7 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
     properties = schema.get("properties") if isinstance(schema, dict) else None
     if not isinstance(properties, dict):
         raise ValueError("compact W3 solution contract requires object properties")
-    missing = [
-        field
-        for field in (*SOLUTION_CORE_FIELDS, *SOLUTION_INTERFACE_FIELDS)
-        if field not in properties
-    ]
+    missing = [field for field in (*SOLUTION_CORE_FIELDS, *SOLUTION_INTERFACE_FIELDS) if field not in properties]
     if missing:
         raise ValueError(f"compact W3 solution contract is missing fields: {missing}")
 
@@ -265,10 +258,7 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
             return [tighten(item, path) for item in node]
         if not isinstance(node, dict):
             return node
-        result = {
-            key: tighten(value, (*path, str(key)))
-            for key, value in node.items()
-        }
+        result = {key: tighten(value, (*path, str(key))) for key, value in node.items()}
         raw_type = result.get("type")
         types = set(raw_type) if isinstance(raw_type, list) else {raw_type}
         if "string" in types and "enum" not in result:
@@ -285,16 +275,10 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
                 ),
                 "",
             )
-            result["maxLength"] = (
-                400 if field in {"final_answer", "result"} else 160
-            )
+            result["maxLength"] = 400 if field in {"final_answer", "result"} else 160
         if "array" in types:
             field = next(
-                (
-                    item
-                    for item in reversed(path)
-                    if item not in {"properties", "items"}
-                ),
+                (item for item in reversed(path) if item not in {"properties", "items"}),
                 "",
             )
             if field in {"supporting_relations", "conditions", "revisions"}:
@@ -307,10 +291,7 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
         schema_subset = {
             "type": "object",
             "additionalProperties": False,
-            "properties": {
-                field: deepcopy(properties[field])
-                for field in fields
-            },
+            "properties": {field: deepcopy(properties[field]) for field in fields},
             "required": list(fields),
         }
         return tighten(schema_subset)
@@ -339,20 +320,14 @@ def compact_solution_contracts(contract: dict) -> tuple[dict, dict] | None:
 
 
 def merge_compact_solution(core: dict, interfaces: dict) -> dict:
-    result = {
-        field: deepcopy(core.get(field))
-        for field in SOLUTION_CORE_FIELDS
-    }
+    result = {field: deepcopy(core.get(field)) for field in SOLUTION_CORE_FIELDS}
     if result.get("status") == "unsupported":
         result.update({
             "stage_interfaces": None,
             "stage_transitions": None,
         })
         return result
-    result.update({
-        field: deepcopy(interfaces.get(field))
-        for field in SOLUTION_INTERFACE_FIELDS
-    })
+    result.update({field: deepcopy(interfaces.get(field)) for field in SOLUTION_INTERFACE_FIELDS})
 
     def stable_state_key(raw: object) -> str:
         text = str(raw).strip().translate(SUBSCRIPT_TRANSLATION)
@@ -384,9 +359,7 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
         return list(dict.fromkeys(stable_state_key(item) for item in values))
 
     for interface in result.get("stage_interfaces") or []:
-        if not isinstance(interface, dict) or not isinstance(
-            interface.get("directions"), dict
-        ):
+        if not isinstance(interface, dict) or not isinstance(interface.get("directions"), dict):
             continue
         normalized_directions = {}
         for raw_key, value in interface["directions"].items():
@@ -411,9 +384,7 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
         for field in ("entry_state", "exit_state"):
             state = interface.get(field)
             if isinstance(state, dict):
-                interface[field] = {
-                    stable_state_key(key): value for key, value in state.items()
-                }
+                interface[field] = {stable_state_key(key): value for key, value in state.items()}
         for field in ("required_entry_keys", "carried_state_keys"):
             interface[field] = stable_state_list(interface.get(field))
     # The interface contract describes the same boundary in two complementary
@@ -431,12 +402,8 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
                 if not isinstance(item, dict):
                     continue
                 normalized = deepcopy(item)
-                normalized["from_key"] = stable_state_key(
-                    normalized.get("from_key")
-                )
-                normalized["to_key"] = stable_state_key(
-                    normalized.get("to_key")
-                )
+                normalized["from_key"] = stable_state_key(normalized.get("from_key"))
+                normalized["to_key"] = stable_state_key(normalized.get("to_key"))
                 if normalized["to_key"] in seen_targets:
                     continue
                 seen_targets.add(normalized["to_key"])
@@ -450,9 +417,7 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
         introduced = transition.get("introduced_entry_keys")
         if isinstance(introduced, list):
             transition["introduced_entry_keys"] = [
-                item
-                for item in stable_state_list(introduced)
-                if item not in mapped_keys
+                item for item in stable_state_list(introduced) if item not in mapped_keys
             ]
     interfaces_by_id = {
         str(item.get("stage_id", "")): item
@@ -478,45 +443,36 @@ def merge_compact_solution(core: dict, interfaces: dict) -> dict:
         target = interfaces_by_id[to_stage]
         source_state = source.get("exit_state", {})
         target_state = target.get("entry_state", {})
-        shared = [
-            key
-            for key, value in target_state.items()
-            if key in source_state and source_state[key] == value
-        ]
-        canonical_transitions.append(
-            {
-                "from_stage": from_stage,
-                "to_stage": to_stage,
-                "event": f"{from_stage} to {to_stage} stage boundary",
-                "state_mapping": [
-                    {
-                        "from_key": key,
-                        "to_key": key,
-                        "transform": None,
-                    }
-                    for key in shared
-                ],
-                "introduced_entry_keys": [
-                    key for key in target_state if key not in shared
-                ],
-                "coordinate_transform": (
-                    None
-                    if source.get("coordinate_frame")
-                    == target.get("coordinate_frame")
-                    else "re-express state in the next stage coordinate frame"
-                ),
-                "time_transform": (
-                    None
-                    if source.get("time_origin") == target.get("time_origin")
-                    else "reset the time origin at the next stage boundary"
-                ),
-                "direction_transform": (
-                    None
-                    if source.get("directions") == target.get("directions")
-                    else "re-express signed directions in the next stage frame"
-                ),
-            }
-        )
+        shared = [key for key, value in target_state.items() if key in source_state and source_state[key] == value]
+        canonical_transitions.append({
+            "from_stage": from_stage,
+            "to_stage": to_stage,
+            "event": f"{from_stage} to {to_stage} stage boundary",
+            "state_mapping": [
+                {
+                    "from_key": key,
+                    "to_key": key,
+                    "transform": None,
+                }
+                for key in shared
+            ],
+            "introduced_entry_keys": [key for key in target_state if key not in shared],
+            "coordinate_transform": (
+                None
+                if source.get("coordinate_frame") == target.get("coordinate_frame")
+                else "re-express state in the next stage coordinate frame"
+            ),
+            "time_transform": (
+                None
+                if source.get("time_origin") == target.get("time_origin")
+                else "reset the time origin at the next stage boundary"
+            ),
+            "direction_transform": (
+                None
+                if source.get("directions") == target.get("directions")
+                else "re-express signed directions in the next stage frame"
+            ),
+        })
     result["stage_transitions"] = canonical_transitions
     return result
 
@@ -540,11 +496,7 @@ def task_is_complex(task: dict) -> bool:
         if profile.get("evidence_truncated") is True:
             return True
         schema_chars = profile.get("contract_schema_chars")
-        if (
-            isinstance(schema_chars, int)
-            and not isinstance(schema_chars, bool)
-            and schema_chars > 4_000
-        ):
+        if isinstance(schema_chars, int) and not isinstance(schema_chars, bool) and schema_chars > 4_000:
             return True
     contract = task.get("output_contract")
     if isinstance(contract, dict):
@@ -564,14 +516,15 @@ def task_is_complex(task: dict) -> bool:
     if isinstance(evidence, dict):
         context_budget = evidence.get("context_budget")
         if evidence.get("truncated") is True or (
-            isinstance(context_budget, dict)
-            and context_budget.get("truncated") is True
+            isinstance(context_budget, dict) and context_budget.get("truncated") is True
         ):
             return True
     return False
 
 
-def request_options(base: str, model: str, environ: dict[str, str] | None = None, *, complex_task: bool = False) -> dict:
+def request_options(
+    base: str, model: str, environ: dict[str, str] | None = None, *, complex_task: bool = False
+) -> dict:
     env = os.environ if environ is None else environ
     try:
         max_tokens = int(
@@ -627,10 +580,7 @@ def call_chat_completion(
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "Follow the structured JSON contract exactly. "
-                        "The response must be valid JSON."
-                    ),
+                    "content": ("Follow the structured JSON contract exactly. The response must be valid JSON."),
                 },
                 {"role": "user", "content": instruction},
             ],
@@ -640,9 +590,7 @@ def call_chat_completion(
     headers = {"Content-Type": "application/json"}
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-    request = urllib.request.Request(
-        endpoint(base), data=body, headers=headers, method="POST"
-    )
+    request = urllib.request.Request(endpoint(base), data=body, headers=headers, method="POST")
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
@@ -657,11 +605,7 @@ def call_chat_completion(
     if choice.get("finish_reason") == "length":
         message = choice.get("message", {})
         content = message.get("content", "") if isinstance(message, dict) else ""
-        reasoning = (
-            message.get("reasoning_content", "")
-            if isinstance(message, dict)
-            else ""
-        )
+        reasoning = message.get("reasoning_content", "") if isinstance(message, dict) else ""
         usage = normalized_usage(payload)
         raise _AdapterFailure(
             "output_truncated",
@@ -741,7 +685,9 @@ def main() -> int:
     def record_stage(phase: str, started_at: float, payload: dict, request_count: int = 1) -> None:
         choice = (payload.get("choices") or [{}])[0] if isinstance(payload, dict) else {}
         usage_stage = normalized_usage(payload) if isinstance(payload, dict) else {}
-        remaining = round(max(0.0, task_deadline - (time.monotonic() - started_at_epoch)), 3) if task_deadline > 0 else None
+        remaining = (
+            round(max(0.0, task_deadline - (time.monotonic() - started_at_epoch)), 3) if task_deadline > 0 else None
+        )
         stage_progress.append({
             "phase": phase,
             "started_at": started_at,
@@ -774,9 +720,7 @@ def main() -> int:
                 core, core_payload = call_chat_completion(
                     base=base,
                     model=model,
-                    instruction=build_structured_instruction(
-                        task, core_contract, context
-                    ),
+                    instruction=build_structured_instruction(task, core_contract, context),
                     api_key=api_key,
                     timeout=timeout,
                     options=options,
@@ -802,9 +746,7 @@ def main() -> int:
                     interfaces, interface_payload = call_chat_completion(
                         base=base,
                         model=model,
-                        instruction=build_structured_instruction(
-                            task, interface_contract, interface_context
-                        ),
+                        instruction=build_structured_instruction(task, interface_contract, interface_context),
                         api_key=api_key,
                         timeout=timeout,
                         options=options,
@@ -820,9 +762,7 @@ def main() -> int:
                     ValueError,
                     json.JSONDecodeError,
                 ) as exc:
-                    raise ValueError(
-                        f"compact interface call failed: {exc}"
-                    ) from exc
+                    raise ValueError(f"compact interface call failed: {exc}") from exc
                 record_stage("compact-interface", interface_started, interface_payload)
                 add_usage(usage, interface_payload)
                 payload = interface_payload
@@ -840,9 +780,7 @@ def main() -> int:
         return 0
     except _AdapterFailure as exc:
         if not exc.request_preflight:
-            exc.request_preflight = dict(
-                result_preflight.get("request_preflight", {})
-            )
+            exc.request_preflight = dict(result_preflight.get("request_preflight", {}))
         if not exc.phase:
             exc.phase = "single"
         exc.stage_progress = list(stage_progress) or exc.stage_progress

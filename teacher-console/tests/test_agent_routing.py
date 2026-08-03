@@ -75,9 +75,7 @@ class AgentRoutingTest(unittest.TestCase):
         self.assertEqual(options["thinking"], {"type": "enabled"})
 
     def test_parse_content_repairs_only_unescaped_inner_quotes(self):
-        parsed = adapter.parse_content(
-            '{"status":"completed","message":"use "quoted" term","targets":[]}'
-        )
+        parsed = adapter.parse_content('{"status":"completed","message":"use "quoted" term","targets":[]}')
         self.assertEqual(parsed["message"], 'use "quoted" term')
         with self.assertRaises(ValueError):
             adapter.parse_content('{"status":"completed" "message":"missing comma"}')
@@ -162,7 +160,7 @@ class AgentRoutingTest(unittest.TestCase):
                         "exit_state": {"气柱高度": "50 cm"},
                         "required_entry_keys": ["气柱高度"],
                         "carried_state_keys": ["气柱高度"],
-                    }
+                    },
                 ],
                 "stage_transitions": [
                     {
@@ -184,12 +182,7 @@ class AgentRoutingTest(unittest.TestCase):
             len(merged["stage_interfaces"][0]["required_entry_keys"]),
             2,
         )
-        self.assertTrue(
-            all(
-                key.startswith("state_")
-                for key in merged["stage_interfaces"][0]["entry_state"]
-            )
-        )
+        self.assertTrue(all(key.startswith("state_") for key in merged["stage_interfaces"][0]["entry_state"]))
         self.assertEqual(merged["stage_transitions"][0]["from_stage"], "S1")
         self.assertEqual(merged["stage_transitions"][0]["to_stage"], "S2")
         self.assertEqual(len(merged["stage_transitions"][0]["state_mapping"]), 1)

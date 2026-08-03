@@ -8,14 +8,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import w3r_baseline_report  # noqa: E402
 
-MANIFEST = (
-    ROOT
-    / "teacher-console"
-    / "tests"
-    / "fixtures"
-    / "w3r"
-    / "baseline-manifest.json"
-)
+MANIFEST = ROOT / "teacher-console" / "tests" / "fixtures" / "w3r" / "baseline-manifest.json"
 
 
 class W3RBaselineReportTest(unittest.TestCase):
@@ -25,11 +18,12 @@ class W3RBaselineReportTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first["case_count"], 5)
         self.assertFalse(first["production_behavior_changed"])
-        self.assertTrue(all(
-            item["source_digest"].startswith("sha256:")
-            and item["answer_signature"].startswith("sha256:")
-            for item in first["cases"]
-        ))
+        self.assertTrue(
+            all(
+                item["source_digest"].startswith("sha256:") and item["answer_signature"].startswith("sha256:")
+                for item in first["cases"]
+            )
+        )
         self.assertEqual(
             sum(item["kind"] == "official-competition" for item in first["cases"]),
             3,

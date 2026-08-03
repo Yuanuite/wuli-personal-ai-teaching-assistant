@@ -16,7 +16,6 @@ import physics_diagram_assets
 import svg_collaboration
 from visual_facts import normalize_payload as normalize_visual_facts
 
-
 SCENE_SCHEMA = "wuli.physics-diagram-scene.v1"
 GATE_SCHEMA = "wuli.physics-diagram-gate-result.v1"
 SCENE_PATH = "physics-diagram-scene.json"
@@ -30,9 +29,7 @@ TRANSPORT_METADATA_FIELDS = {"model", "model_tier", "requested_tier", "usage"}
 
 REGION_KINDS = ("magnetic", "electric", "neutral")
 DIRECTIONS = ("none", "left", "right", "up", "down", "into-page", "out-of-page")
-OBJECT_KINDS = (
-    "particle", "plate", "point", "wire", "boundary", "capacitor", "detector", "source"
-)
+OBJECT_KINDS = ("particle", "plate", "point", "wire", "boundary", "capacitor", "detector", "source")
 POLARITIES = ("none", "positive", "negative")
 PATH_KINDS = ("trajectory", "field-line", "connector", "dimension", "axis")
 PATH_GEOMETRIES = ("line", "polyline", "smooth", "circular-arc")
@@ -62,13 +59,15 @@ def _string_array(max_items: int = 32) -> dict[str, Any]:
 
 def _box_properties(*, include_kind: tuple[str, ...]) -> dict[str, Any]:
     return {
-        "id": {"type": "string"}, "panel_id": {"type": "string"},
+        "id": {"type": "string"},
+        "panel_id": {"type": "string"},
         "kind": {"type": "string", "enum": list(include_kind)},
         "x": {"type": "number", "minimum": 0, "maximum": 100},
         "y": {"type": "number", "minimum": 0, "maximum": 100},
         "width": {"type": "number", "minimum": 0, "maximum": 100},
         "height": {"type": "number", "minimum": 0, "maximum": 100},
-        "label": {"type": "string"}, "fact_ids": _string_array(16),
+        "label": {"type": "string"},
+        "fact_ids": _string_array(16),
     }
 
 
@@ -80,62 +79,80 @@ SCENE_OUTPUT_SCHEMA: dict[str, Any] = {
         "message": {"type": "string"},
         "title": {"type": "string"},
         "panels": {
-            "type": "array", "maxItems": 3,
+            "type": "array",
+            "maxItems": 3,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {
-                    "id": {"type": "string"}, "title": {"type": "string"},
+                    "id": {"type": "string"},
+                    "title": {"type": "string"},
                 },
                 "required": ["id", "title"],
             },
         },
         "regions": {
-            "type": "array", "maxItems": 16,
+            "type": "array",
+            "maxItems": 16,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {**_box_properties(include_kind=REGION_KINDS), "direction": {"enum": list(DIRECTIONS)}},
                 "required": ["id", "panel_id", "kind", "x", "y", "width", "height", "label", "fact_ids", "direction"],
             },
         },
         "objects": {
-            "type": "array", "maxItems": 32,
+            "type": "array",
+            "maxItems": 32,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {**_box_properties(include_kind=OBJECT_KINDS), "polarity": {"enum": list(POLARITIES)}},
                 "required": ["id", "panel_id", "kind", "x", "y", "width", "height", "label", "fact_ids", "polarity"],
             },
         },
         "paths": {
-            "type": "array", "maxItems": 32,
+            "type": "array",
+            "maxItems": 32,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {
-                    "id": {"type": "string"}, "panel_id": {"type": "string"},
-                    "kind": {"enum": list(PATH_KINDS)}, "geometry": {"enum": list(PATH_GEOMETRIES)},
+                    "id": {"type": "string"},
+                    "panel_id": {"type": "string"},
+                    "kind": {"enum": list(PATH_KINDS)},
+                    "geometry": {"enum": list(PATH_GEOMETRIES)},
                     "points": {"type": "array", "items": POINT_SCHEMA, "maxItems": 32},
-                    "label": {"type": "string"}, "direction": {"enum": list(DIRECTIONS)},
+                    "label": {"type": "string"},
+                    "direction": {"enum": list(DIRECTIONS)},
                     "fact_ids": _string_array(16),
                 },
                 "required": ["id", "panel_id", "kind", "geometry", "points", "label", "direction", "fact_ids"],
             },
         },
         "annotations": {
-            "type": "array", "maxItems": 32,
+            "type": "array",
+            "maxItems": 32,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {
-                    "id": {"type": "string"}, "panel_id": {"type": "string"},
+                    "id": {"type": "string"},
+                    "panel_id": {"type": "string"},
                     "x": {"type": "number", "minimum": 0, "maximum": 100},
                     "y": {"type": "number", "minimum": 0, "maximum": 100},
-                    "text": {"type": "string"}, "fact_ids": _string_array(16),
+                    "text": {"type": "string"},
+                    "fact_ids": _string_array(16),
                 },
                 "required": ["id", "panel_id", "x", "y", "text", "fact_ids"],
             },
         },
         "omissions": {
-            "type": "array", "maxItems": 32,
+            "type": "array",
+            "maxItems": 32,
             "items": {
-                "type": "object", "additionalProperties": False,
+                "type": "object",
+                "additionalProperties": False,
                 "properties": {"fact_id": {"type": "string"}, "reason": {"type": "string"}},
                 "required": ["fact_id", "reason"],
             },
@@ -210,8 +227,9 @@ def patch_output_contract() -> dict[str, Any]:
     }
 
 
-def _diagnostic(code: str, message: str, *, path: str = "", expected: Any = None,
-                actual: Any = None, auto_repairable: bool = False) -> dict[str, Any]:
+def _diagnostic(
+    code: str, message: str, *, path: str = "", expected: Any = None, actual: Any = None, auto_repairable: bool = False
+) -> dict[str, Any]:
     return {
         "code": code,
         "path": path,
@@ -227,7 +245,10 @@ def _normalization_diagnostic(exc: ValueError, payload: dict[str, Any]) -> dict[
     if message == "completed scene requires 1..3 panels":
         panels = payload.get("panels")
         return _diagnostic(
-            "scene.panel-count", message, path="/panels", expected="1..3",
+            "scene.panel-count",
+            message,
+            path="/panels",
+            expected="1..3",
             actual=len(panels) if isinstance(panels, list) else type(panels).__name__,
             auto_repairable=False,
         )
@@ -237,21 +258,28 @@ def _normalization_diagnostic(exc: ValueError, payload: dict[str, Any]) -> dict[
     paths = payload.get("paths")
     points = (
         paths[path_index].get("points")
-        if isinstance(paths, list) and path_index is not None and path_index < len(paths)
+        if isinstance(paths, list)
+        and path_index is not None
+        and path_index < len(paths)
         and isinstance(paths[path_index], dict)
         else None
     )
     if ("geometry requires" in message or "requires 2..32 points" in message) and "points" in message:
         return _diagnostic(
-            "scene.path-point-count", message, path=point_path,
+            "scene.path-point-count",
+            message,
+            path=point_path,
             expected="geometry-specific point count",
             actual=len(points) if isinstance(points, list) else type(points).__name__,
             auto_repairable=False,
         )
     if "circular-arc points" in message:
         return _diagnostic(
-            "scene.circular-arc-degenerate", message, path=point_path,
-            expected="three distinct non-collinear points", actual=points,
+            "scene.circular-arc-degenerate",
+            message,
+            path=point_path,
+            expected="three distinct non-collinear points",
+            actual=points,
             auto_repairable=False,
         )
     return _diagnostic("scene.schema", message, auto_repairable=False)
@@ -273,14 +301,16 @@ def _semantic_diagnostics(gate: dict[str, Any]) -> list[dict[str, Any]]:
             path = "/fact_ids"
         else:
             path = ""
-        diagnostics.append(_diagnostic(
-            "scene.semantic-obligation",
-            message,
-            path=path,
-            expected="obligation satisfied",
-            actual="missing or conflicting scene evidence",
-            auto_repairable=False,
-        ))
+        diagnostics.append(
+            _diagnostic(
+                "scene.semantic-obligation",
+                message,
+                path=path,
+                expected="obligation satisfied",
+                actual="missing or conflicting scene evidence",
+                auto_repairable=False,
+            )
+        )
     return diagnostics
 
 
@@ -289,13 +319,15 @@ def _aggregate_preflight_diagnostics(payload: dict[str, Any]) -> list[dict[str, 
     diagnostics: list[dict[str, Any]] = []
     panels = payload.get("panels")
     if isinstance(panels, list) and payload.get("status") == "completed" and not 1 <= len(panels) <= 3:
-        diagnostics.append(_diagnostic(
-            "scene.panel-count",
-            "completed scene requires 1..3 panels",
-            path="/panels",
-            expected="1..3",
-            actual=len(panels),
-        ))
+        diagnostics.append(
+            _diagnostic(
+                "scene.panel-count",
+                "completed scene requires 1..3 panels",
+                path="/panels",
+                expected="1..3",
+                actual=len(panels),
+            )
+        )
     paths = payload.get("paths")
     if not isinstance(paths, list):
         return diagnostics
@@ -306,11 +338,15 @@ def _aggregate_preflight_diagnostics(payload: dict[str, Any]) -> list[dict[str, 
         points = item.get("points")
         path = f"/paths/{index}/points"
         if not isinstance(points, list):
-            diagnostics.append(_diagnostic(
-                "scene.path-point-count", f"paths[{index}] points must be a list",
-                path=path, expected="geometry-specific point list",
-                actual=type(points).__name__,
-            ))
+            diagnostics.append(
+                _diagnostic(
+                    "scene.path-point-count",
+                    f"paths[{index}] points must be a list",
+                    path=path,
+                    expected="geometry-specific point list",
+                    actual=type(points).__name__,
+                )
+            )
             continue
         required: str | None = None
         invalid_count = False
@@ -323,11 +359,15 @@ def _aggregate_preflight_diagnostics(payload: dict[str, Any]) -> list[dict[str, 
         elif geometry == "circular-arc":
             required, invalid_count = "exactly 3", len(points) != 3
         if invalid_count:
-            diagnostics.append(_diagnostic(
-                "scene.path-point-count",
-                f"paths[{index}] {geometry} geometry requires {required} points",
-                path=path, expected=required, actual=len(points),
-            ))
+            diagnostics.append(
+                _diagnostic(
+                    "scene.path-point-count",
+                    f"paths[{index}] {geometry} geometry requires {required} points",
+                    path=path,
+                    expected=required,
+                    actual=len(points),
+                )
+            )
             continue
         if geometry != "circular-arc" or len(points) != 3:
             continue
@@ -353,13 +393,15 @@ def _aggregate_preflight_diagnostics(payload: dict[str, Any]) -> list[dict[str, 
             (point_pairs[2][0] - point_pairs[0][0]) ** 2 + (point_pairs[2][1] - point_pairs[0][1]) ** 2,
         )
         if not distinct or max_squared_edge <= 1e-12 or cross / max_squared_edge <= 1e-4:
-            diagnostics.append(_diagnostic(
-                "scene.circular-arc-degenerate",
-                f"paths[{index}] circular-arc points are nearly collinear or degenerate",
-                path=path,
-                expected="three distinct non-collinear points",
-                actual=points,
-            ))
+            diagnostics.append(
+                _diagnostic(
+                    "scene.circular-arc-degenerate",
+                    f"paths[{index}] circular-arc points are nearly collinear or degenerate",
+                    path=path,
+                    expected="three distinct non-collinear points",
+                    actual=points,
+                )
+            )
     return diagnostics
 
 
@@ -402,7 +444,11 @@ def normalize_scene(raw: dict[str, Any]) -> dict[str, Any]:
     status = _text(raw["status"], "status")
     if status not in {"completed", "unsupported"}:
         raise ValueError("invalid scene status")
-    result: dict[str, Any] = {"schema": SCENE_SCHEMA, "status": status, "message": _text(raw["message"], "message", 500)}
+    result: dict[str, Any] = {
+        "schema": SCENE_SCHEMA,
+        "status": status,
+        "message": _text(raw["message"], "message", 500),
+    }
     result["title"] = _text(raw["title"], "title", 120)
     for field in ("panels", "regions", "objects", "paths", "annotations", "omissions"):
         if not isinstance(raw[field], list):
@@ -473,8 +519,10 @@ def normalize_scene(raw: dict[str, Any]) -> dict[str, Any]:
                     raise ValueError("invalid path geometry")
                 clean["geometry"] = geometry
                 clean["points"] = [
-                    {"x": _number(point.get("x") if isinstance(point, dict) else None, "point.x"),
-                     "y": _number(point.get("y") if isinstance(point, dict) else None, "point.y")}
+                    {
+                        "x": _number(point.get("x") if isinstance(point, dict) else None, "point.x"),
+                        "y": _number(point.get("y") if isinstance(point, dict) else None, "point.y"),
+                    }
                     for point in points
                 ]
                 if geometry == "line" and len(points) != 2:
@@ -538,24 +586,26 @@ def build_obligations(visual_facts: dict[str, Any], problem_text: str) -> dict[s
     text = problem_text + " " + facts.get("reviewed_text", "") + " " + " ".join(facts.get("printed_facts", []))
     has_b = "B" in text or "磁场" in text
     has_e = "E" in text or "电场" in text
-    periodic = (
-        any(token in text for token in ("周期", "交替", "每隔", "T_B", "T_E", "B(t)", "E(t)"))
-        and (has_b or has_e)
+    periodic = any(token in text for token in ("周期", "交替", "每隔", "T_B", "T_E", "B(t)", "E(t)")) and (
+        has_b or has_e
     )
     spatial = (
-        has_b and has_e
+        has_b
+        and has_e
         and ("同时" in text or "都" in text)
         and any(token in text for token in ("垂直纸面", "纸面向里", "纸面向外"))
     )
     particle_motion = "带电粒子" in text or ("粒子" in text and (has_b or has_e))
-    views: list[dict[str, Any]] = [{
-        "id": "motion",
-        "purpose": "运动与场区物理示意",
-        "required_content": [
-            *( ["trajectory", "field-region", "particle-or-key-point"] if particle_motion else []),
-            *( ["spatial-projection-label", "two-labeled-spatial-axes"] if spatial else []),
-        ],
-    }]
+    views: list[dict[str, Any]] = [
+        {
+            "id": "motion",
+            "purpose": "运动与场区物理示意",
+            "required_content": [
+                *(["trajectory", "field-region", "particle-or-key-point"] if particle_motion else []),
+                *(["spatial-projection-label", "two-labeled-spatial-axes"] if spatial else []),
+            ],
+        }
+    ]
     if periodic and has_b:
         views.append({
             "id": "b-time",
@@ -633,15 +683,16 @@ def _model_errors(scene: dict[str, Any], physics_model: dict[str, Any] | None) -
     raw_segments = physics_model.get("trajectory", {}).get("segments", [])
     segments = [item for item in raw_segments if isinstance(item, dict)] if isinstance(raw_segments, list) else []
     expected = {str(item.get("id", "")) for item in segments if str(item.get("id", "")).strip()}
-    actual = {
-        str(item.get("id", "")) for item in scene.get("paths", [])
-        if item.get("kind") == "trajectory"
-    }
+    actual = {str(item.get("id", "")) for item in scene.get("paths", []) if item.get("kind") == "trajectory"}
     errors: list[str] = []
     if expected and expected != actual:
         errors.append("physics-model trajectory segments are not materialized exactly")
     timeline = physics_model.get("event_model", {}).get("timeline", [])
-    event_ids = {str(item.get("id", "")) for item in timeline if isinstance(item, dict)} if isinstance(timeline, list) else set()
+    event_ids = (
+        {str(item.get("id", "")) for item in timeline if isinstance(item, dict)}
+        if isinstance(timeline, list)
+        else set()
+    )
     for segment in segments:
         if segment.get("start_event") not in event_ids or segment.get("end_event") not in event_ids:
             errors.append(f"physics-model segment {segment.get('id', '')} references an unknown event")
@@ -685,8 +736,7 @@ def semantic_gate(
         )
     required = {fact_id for fact_id, fact in fact_by_id.items() if fact["confidence"] >= 0.75}
     required_drawn = {
-        fact_id for fact_id, fact in fact_by_id.items()
-        if fact["confidence"] >= 0.75 and fact["kind"] != "label"
+        fact_id for fact_id, fact in fact_by_id.items() if fact["confidence"] >= 0.75 and fact["kind"] != "label"
     }
     unaccounted = sorted(required - bound - omitted)
     if unaccounted:
@@ -707,7 +757,9 @@ def semantic_gate(
         if not any(item.get("kind") == "trajectory" for item in scene.get("paths", [])):
             error_categories["topology-consistency"].append("charged-particle problem requires a trajectory")
         if not any(item.get("kind") in {"magnetic", "electric"} for item in scene.get("regions", [])):
-            error_categories["topology-consistency"].append("charged-particle problem requires an electric or magnetic region")
+            error_categories["topology-consistency"].append(
+                "charged-particle problem requires an electric or magnetic region"
+            )
         if not any(item.get("kind") in {"particle", "point"} for item in scene.get("objects", [])):
             error_categories["topology-consistency"].append("charged-particle problem requires a particle or key point")
 
@@ -736,7 +788,9 @@ def semantic_gate(
             warnings.append("periodic field problem benefits from at least two axis paths")
         required_wave_count = 2 if has_b_problem and has_e_problem else 1
         if field_wave_count < required_wave_count:
-            warnings.append(f"periodic field problem benefits from at least {required_wave_count} field-line wave path(s)")
+            warnings.append(
+                f"periodic field problem benefits from at least {required_wave_count} field-line wave path(s)"
+            )
         if has_b_problem and not any("B" in label or "磁场" in label for label in wave_labels):
             warnings.append("periodic field problem with B should show a B/磁场 wave label")
         if has_e_problem and not any("E" in label or "电场" in label for label in wave_labels):
@@ -745,9 +799,7 @@ def semantic_gate(
             warnings.append("periodic field problem should show a phase annotation or path label")
 
     if spatial_trigger:
-        spatial_axes = sum(
-            1 for label in axis_labels if any(token in label for token in ("x", "y", "z", "轴"))
-        )
+        spatial_axes = sum(1 for label in axis_labels if any(token in label for token in ("x", "y", "z", "轴")))
         if spatial_axes < 2:
             warnings.append("spatial projection benefits from at least two axis labels containing x/y/z/轴")
         if not any(token in scene_corpus_text for token in ("投影", "空间", "三维", "立体")):
@@ -821,10 +873,7 @@ def _circular_arc_path(points: list[tuple[float, float]]) -> str:
     else:
         sweep = 0
         large_arc = 1 if (math.tau - delta) > math.pi else 0
-    return (
-        f"M {x1:.1f} {y1:.1f} A {radius:.1f} {radius:.1f} "
-        f"0 {large_arc} {sweep} {x3:.1f} {y3:.1f}"
-    )
+    return f"M {x1:.1f} {y1:.1f} A {radius:.1f} {radius:.1f} 0 {large_arc} {sweep} {x3:.1f} {y3:.1f}"
 
 
 def _estimated_text_width(text: str, font_size: float = 13.0) -> float:
@@ -850,8 +899,15 @@ def _place_label(
     margin = 4.0
     padding = 4.0
     candidates = (
-        (0, 0), (0, -20), (0, 20), (16, -12), (-16, -12),
-        (16, 14), (-16, 14), (28, 0), (-28, 0),
+        (0, 0),
+        (0, -20),
+        (0, 20),
+        (16, -12),
+        (-16, -12),
+        (16, 14),
+        (-16, 14),
+        (28, 0),
+        (-28, 0),
     )
 
     def make_candidate(dx: float, dy: float) -> tuple[float, float, tuple[float, float, float, float]]:
@@ -894,10 +950,7 @@ def render_svg(scene: dict[str, Any]) -> str:
     gap = 2.0
     margin = 2.5
     available_width = 100 - 2 * margin - gap * (count - 1)
-    weights = [
-        2.0 if count == 3 and item["id"] == "motion" else 1.0
-        for item in scene["panels"]
-    ]
+    weights = [2.0 if count == 3 and item["id"] == "motion" else 1.0 for item in scene["panels"]]
     total_weight = sum(weights)
     panels: dict[str, dict[str, Any]] = {}
     cursor = margin
@@ -916,7 +969,9 @@ def render_svg(scene: dict[str, Any]) -> str:
         panel = panels[panel_id]
         local_x = 2 + 0.96 * x
         local_y = 8 + 0.90 * y
-        return (panel["x"] + panel["width"] * local_x / 100) * width / 100, (panel["y"] + panel["height"] * local_y / 100) * height / 100
+        return (panel["x"] + panel["width"] * local_x / 100) * width / 100, (
+            panel["y"] + panel["height"] * local_y / 100
+        ) * height / 100
 
     def panel_size(panel_id: str, w: float, h: float) -> tuple[float, float]:
         panel = panels[panel_id]
@@ -925,7 +980,7 @@ def render_svg(scene: dict[str, Any]) -> str:
     occupied_labels: list[tuple[float, float, float, float]] = []
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="560" viewBox="0 0 960 560" role="img">',
-        f'<title>{html.escape(scene["title"])}</title>',
+        f"<title>{html.escape(scene['title'])}</title>",
         '<defs><marker id="physics-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#334155"/></marker><marker id="trajectory-arrow-p1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#dc2626"/></marker><marker id="trajectory-arrow-p2" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7c3aed"/></marker><pattern id="field-cross" width="30" height="30" patternUnits="userSpaceOnUse"><path d="M10,10 L20,20 M20,10 L10,20" stroke="#64748b" stroke-width="1.2"/></pattern><pattern id="field-dot" width="30" height="30" patternUnits="userSpaceOnUse"><circle cx="15" cy="15" r="1.8" fill="#64748b"/></pattern></defs>',
         '<rect width="960" height="560" fill="#ffffff"/>',
         f'<text x="480" y="28" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#0f172a">{html.escape(scene["title"])}</text>',
@@ -934,23 +989,37 @@ def render_svg(scene: dict[str, Any]) -> str:
         panel = panels[raw_panel["id"]]
         x, y = panel["x"] * width / 100, panel["y"] * height / 100
         w, h = panel["width"] * width / 100, panel["height"] * height / 100
-        parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>')
+        parts.append(
+            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>'
+        )
         if panel["title"]:
-            parts.append(f'<text x="{x + 12:.1f}" y="{y + 22:.1f}" font-family="sans-serif" font-size="15" font-weight="700" fill="#334155">{html.escape(panel["title"])}</text>')
+            parts.append(
+                f'<text x="{x + 12:.1f}" y="{y + 22:.1f}" font-family="sans-serif" font-size="15" font-weight="700" fill="#334155">{html.escape(panel["title"])}</text>'
+            )
     for item in scene["regions"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
         w, h = panel_size(item["panel_id"], item["width"], item["height"])
         if item["kind"] == "magnetic":
-            fill = "url(#field-cross)" if item["direction"] == "into-page" else "url(#field-dot)" if item["direction"] == "out-of-page" else "#dbeafe"
+            fill = (
+                "url(#field-cross)"
+                if item["direction"] == "into-page"
+                else "url(#field-dot)"
+                if item["direction"] == "out-of-page"
+                else "#dbeafe"
+            )
             stroke = "#2563eb"
         elif item["kind"] == "electric":
             fill, stroke = "#fef3c7", "#d97706"
         else:
             fill, stroke = "#f1f5f9", "#64748b"
-        parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" fill-opacity="0.72" stroke="{stroke}" stroke-width="1.5" stroke-dasharray="6 4"/>')
+        parts.append(
+            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" fill="{fill}" fill-opacity="0.72" stroke="{stroke}" stroke-width="1.5" stroke-dasharray="6 4"/>'
+        )
         if item["label"]:
             label_x, label_y = _place_label(item["label"], x + 7, y + 18, occupied_labels, width, height)
-            parts.append(f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["label"])}</text>')
+            parts.append(
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["label"])}</text>'
+            )
     for item in scene["paths"]:
         points = [panel_xy(item["panel_id"], point["x"], point["y"]) for point in item["points"]]
         path_id = item["id"].lower()
@@ -967,10 +1036,14 @@ def render_svg(scene: dict[str, Any]) -> str:
         if geometry == "line":
             x1, y1 = points[0]
             x2, y2 = points[1]
-            parts.append(f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>')
+            parts.append(
+                f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+            )
         elif geometry == "polyline":
             serialized = " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
-            parts.append(f'<polyline points="{serialized}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>')
+            parts.append(
+                f'<polyline points="{serialized}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+            )
         elif geometry == "smooth":
             commands = [f"M {points[0][0]:.1f} {points[0][1]:.1f}"]
             for index in range(1, len(points) - 1):
@@ -979,16 +1052,22 @@ def render_svg(scene: dict[str, Any]) -> str:
                 midpoint = ((control[0] + following[0]) / 2, (control[1] + following[1]) / 2)
                 commands.append(f"Q {control[0]:.1f} {control[1]:.1f} {midpoint[0]:.1f} {midpoint[1]:.1f}")
             commands.append(f"T {points[-1][0]:.1f} {points[-1][1]:.1f}")
-            parts.append(f'<path d="{" ".join(commands)}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>')
+            parts.append(
+                f'<path d="{" ".join(commands)}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+            )
         elif geometry == "circular-arc":
             d = _circular_arc_path(points)
-            parts.append(f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>')
+            parts.append(
+                f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_width}" stroke-linecap="round" stroke-linejoin="round"{marker}{dash}/>'
+            )
         else:
             raise ValueError(f"unsupported path geometry: {geometry}")
         if item["label"]:
             x, y = points[len(points) // 2]
             label_x, label_y = _place_label(item["label"], x + 6, y - 7, occupied_labels, width, height)
-            parts.append(f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="{color}">{html.escape(item["label"])}</text>')
+            parts.append(
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="{color}">{html.escape(item["label"])}</text>'
+            )
     for item in scene["objects"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
         w, h = panel_size(item["panel_id"], item["width"], item["height"])
@@ -996,24 +1075,46 @@ def render_svg(scene: dict[str, Any]) -> str:
         if item["kind"] in {"particle", "point"}:
             is_model_aid = item["id"].startswith(("model-center-", "model-event-"))
             radius = max(2.7, min(w, h) / 2) if is_model_aid else max(4, min(w, h) / 2)
-            stroke = "#7c3aed" if item["id"].startswith("model-event-p2-") else "#dc2626" if item["id"].startswith("model-event-p1-") else "#0f172a"
-            parts.append(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="#ffffff" stroke="{stroke}" stroke-width="2"/>')
+            stroke = (
+                "#7c3aed"
+                if item["id"].startswith("model-event-p2-")
+                else "#dc2626"
+                if item["id"].startswith("model-event-p1-")
+                else "#0f172a"
+            )
+            parts.append(
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{radius:.1f}" fill="#ffffff" stroke="{stroke}" stroke-width="2"/>'
+            )
         elif item["kind"] == "plate":
-            parts.append(f'<line x1="{x:.1f}" y1="{cy:.1f}" x2="{x + w:.1f}" y2="{cy:.1f}" stroke="#0f172a" stroke-width="4"/>')
+            parts.append(
+                f'<line x1="{x:.1f}" y1="{cy:.1f}" x2="{x + w:.1f}" y2="{cy:.1f}" stroke="#0f172a" stroke-width="4"/>'
+            )
         elif item["kind"] == "boundary":
-            parts.append(f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x + w:.1f}" y2="{y + h:.1f}" stroke="#475569" stroke-width="2.5"/>')
+            parts.append(
+                f'<line x1="{x:.1f}" y1="{y:.1f}" x2="{x + w:.1f}" y2="{y + h:.1f}" stroke="#475569" stroke-width="2.5"/>'
+            )
         else:
-            parts.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>')
+            parts.append(
+                f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>'
+            )
         has_sign = any(sign in item["label"] for sign in ("+", "−", "-", "正", "负"))
-        polarity = "" if has_sign else "+" if item["polarity"] == "positive" else "−" if item["polarity"] == "negative" else ""
+        polarity = (
+            "" if has_sign else "+" if item["polarity"] == "positive" else "−" if item["polarity"] == "negative" else ""
+        )
         label = " ".join(part for part in (item["label"], polarity) if part)
         if label:
-            label_x, label_y = _place_label(label, cx, cy - max(7, h / 2 + 5), occupied_labels, width, height, anchor="middle")
-            parts.append(f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">{html.escape(label)}</text>')
+            label_x, label_y = _place_label(
+                label, cx, cy - max(7, h / 2 + 5), occupied_labels, width, height, anchor="middle"
+            )
+            parts.append(
+                f'<text x="{label_x:.1f}" y="{label_y:.1f}" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="700" fill="#0f172a">{html.escape(label)}</text>'
+            )
     for item in scene["annotations"]:
         x, y = panel_xy(item["panel_id"], item["x"], item["y"])
         label_x, label_y = _place_label(item["text"], x, y, occupied_labels, width, height)
-        parts.append(f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["text"])}</text>')
+        parts.append(
+            f'<text x="{label_x:.1f}" y="{label_y:.1f}" font-family="sans-serif" font-size="13" fill="#334155">{html.escape(item["text"])}</text>'
+        )
     parts.append("</svg>")
     svg = "\n".join(parts) + "\n"
     svg_collaboration.validate_svg_safety(svg)
@@ -1034,9 +1135,8 @@ def _write_rejection(
         "status": "failed",
         "candidate_fingerprint": _fingerprint(payload),
         "diagnostics": diagnostics,
-        "repairable": bool(diagnostics) and all(
-            item.get("code") in REPAIRABLE_DIAGNOSTIC_CODES for item in diagnostics
-        ),
+        "repairable": bool(diagnostics)
+        and all(item.get("code") in REPAIRABLE_DIAGNOSTIC_CODES for item in diagnostics),
     }
     artifacts = {
         REJECTED_SCENE_PATH: json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -1060,7 +1160,14 @@ def _pointer_parts(pointer: str) -> list[str]:
         raise ValueError("patch path must be an absolute JSON Pointer")
     parts = [part.replace("~1", "/").replace("~0", "~") for part in pointer[1:].split("/")]
     if not parts or parts[0] not in {
-        "title", "message", "panels", "regions", "objects", "paths", "annotations", "omissions"
+        "title",
+        "message",
+        "panels",
+        "regions",
+        "objects",
+        "paths",
+        "annotations",
+        "omissions",
     }:
         raise ValueError(f"patch path is outside the scene repair boundary: {pointer}")
     return parts
@@ -1068,7 +1175,9 @@ def _pointer_parts(pointer: str) -> list[str]:
 
 def apply_scene_patches(base_payload: dict[str, Any], patch_payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(patch_payload, dict) or set(patch_payload) - TRANSPORT_METADATA_FIELDS != {
-        "status", "message", "patches"
+        "status",
+        "message",
+        "patches",
     }:
         raise ValueError("scene patch fields mismatch")
     if patch_payload.get("status") != "completed":
@@ -1151,16 +1260,16 @@ def materialize(staging: Path, payload: dict[str, Any], *, model_config: dict[st
     except ValueError as exc:
         return _write_rejection(staging, candidate, [_normalization_diagnostic(exc, candidate)])
     if scene["status"] != "completed":
-        return _write_rejection(staging, candidate, [
-            _diagnostic("scene.unsupported", f"provider reported unsupported: {scene['message']}")
-        ])
+        return _write_rejection(
+            staging, candidate, [_diagnostic("scene.unsupported", f"provider reported unsupported: {scene['message']}")]
+        )
     scene, compilation = physics_diagram_assets.compile_model_scene(scene, physics_model)
     try:
         scene = normalize_scene({key: value for key, value in scene.items() if key != "schema"})
     except ValueError as exc:
-        return _write_rejection(staging, candidate, [
-            _diagnostic("scene.model-compilation", str(exc), auto_repairable=False)
-        ])
+        return _write_rejection(
+            staging, candidate, [_diagnostic("scene.model-compilation", str(exc), auto_repairable=False)]
+        )
     gate = semantic_gate(
         scene,
         facts,
@@ -1171,8 +1280,13 @@ def materialize(staging: Path, payload: dict[str, Any], *, model_config: dict[st
     if gate["status"] != "passed":
         return _write_rejection(staging, candidate, gate["diagnostics"])
     svg = render_svg(scene)
-    identity = {"model_id": str(model_config.get("id", "")).strip(), "provider": str(model_config.get("provider", "")).strip()}
-    provenance = svg_collaboration.validate_and_bind_svg(svg, facts, {**identity, "generation_fingerprint": gate["scene_fingerprint"]}, identity)
+    identity = {
+        "model_id": str(model_config.get("id", "")).strip(),
+        "provider": str(model_config.get("provider", "")).strip(),
+    }
+    provenance = svg_collaboration.validate_and_bind_svg(
+        svg, facts, {**identity, "generation_fingerprint": gate["scene_fingerprint"]}, identity
+    )
     artifacts = {
         SCENE_PATH: json.dumps(scene, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         GATE_PATH: json.dumps(gate, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -1183,7 +1297,16 @@ def materialize(staging: Path, payload: dict[str, Any], *, model_config: dict[st
         target = staging / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
-    return {"contract": SCENE_SCHEMA, "status": "completed", "payload_digest": gate["scene_fingerprint"], "gate": gate, "stages": [{"name": "physics-diagram-semantic-gate", "status": "completed"}, {"name": "physics-svg-materialization", "status": "completed"}]}
+    return {
+        "contract": SCENE_SCHEMA,
+        "status": "completed",
+        "payload_digest": gate["scene_fingerprint"],
+        "gate": gate,
+        "stages": [
+            {"name": "physics-diagram-semantic-gate", "status": "completed"},
+            {"name": "physics-svg-materialization", "status": "completed"},
+        ],
+    }
 
 
 def materialize_patch(
@@ -1196,9 +1319,9 @@ def materialize_patch(
     try:
         patched = apply_scene_patches(base_payload, patch_payload)
     except ValueError as exc:
-        return _write_rejection(staging, base_payload, [
-            _diagnostic("scene.patch-invalid", str(exc), auto_repairable=False)
-        ])
+        return _write_rejection(
+            staging, base_payload, [_diagnostic("scene.patch-invalid", str(exc), auto_repairable=False)]
+        )
     result = materialize(staging, patched, model_config=model_config)
     result["repair"] = {
         "mode": "bounded-json-patch",

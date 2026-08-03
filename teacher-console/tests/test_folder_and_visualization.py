@@ -372,7 +372,8 @@ class FolderAndVisualizationTest(unittest.TestCase):
         handler = object.__new__(teacher_console_server.Handler)
         handler.json_response = mock.MagicMock()
         with mock.patch.object(
-            teacher_console_server, "job_manager",
+            teacher_console_server,
+            "job_manager",
             return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
         ):
             handler.handle_entry_action(self.entry, "build-visualization", {})
@@ -387,11 +388,13 @@ class FolderAndVisualizationTest(unittest.TestCase):
         handler = object.__new__(teacher_console_server.Handler)
         handler.json_response = mock.MagicMock()
         with mock.patch.object(
-            teacher_console_server, "job_manager",
+            teacher_console_server,
+            "job_manager",
             return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
         ):
             handler.handle_entry_action(
-                self.entry, "publish-publication",
+                self.entry,
+                "publish-publication",
                 {"privacy_confirmed": True, "reviewer": "teacher"},
             )
         handler.json_response.assert_called_once()
@@ -408,11 +411,13 @@ class FolderAndVisualizationTest(unittest.TestCase):
         handler = object.__new__(teacher_console_server.Handler)
         handler.json_response = mock.MagicMock()
         with mock.patch.object(
-            teacher_console_server, "job_manager",
+            teacher_console_server,
+            "job_manager",
             return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
         ):
             handler.handle_entry_action(
-                self.entry, "publish-publication",
+                self.entry,
+                "publish-publication",
                 {"privacy_confirmed": True, "reviewer": "teacher"},
             )
         handler.json_response.assert_called_once()

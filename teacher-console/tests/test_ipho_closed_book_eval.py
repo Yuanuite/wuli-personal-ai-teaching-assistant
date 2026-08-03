@@ -179,9 +179,7 @@ class IphoClosedBookEvalTest(unittest.TestCase):
                 (experiment / "source" / "problems" / f"{question_id}-problem-en.txt").write_text(
                     "problem", encoding="utf-8"
                 )
-                (experiment / "source" / "figure-facts" / f"{question_id}.md").write_text(
-                    "figures", encoding="utf-8"
-                )
+                (experiment / "source" / "figure-facts" / f"{question_id}.md").write_text("figures", encoding="utf-8")
                 questions.append({
                     "id": question_id,
                     "problem_path": f"source/problems/{question_id}.pdf",
@@ -200,9 +198,7 @@ class IphoClosedBookEvalTest(unittest.TestCase):
                 },
                 "questions": questions,
             }
-            (experiment / "source-manifest.json").write_text(
-                json.dumps(manifest), encoding="utf-8"
-            )
+            (experiment / "source-manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
             result = module.validate_source(experiment)
             self.assertEqual(result["status"], "passed")
 
@@ -210,9 +206,7 @@ class IphoClosedBookEvalTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_name:
             experiment = Path(temp_name)
             (experiment / "results").mkdir(parents=True)
-            (experiment / "source-manifest.json").write_text(
-                json.dumps({"experiment_id": "test"}), encoding="utf-8"
-            )
+            (experiment / "source-manifest.json").write_text(json.dumps({"experiment_id": "test"}), encoding="utf-8")
             for question_id in module.QUESTION_IDS:
                 candidate = experiment / "work" / question_id / "candidate-answer.json"
                 candidate.parent.mkdir(parents=True)

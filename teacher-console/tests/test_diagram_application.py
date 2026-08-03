@@ -84,9 +84,7 @@ class DiagramApplicationTest(unittest.TestCase):
                 "source_fingerprint": "sha256:" + "a" * 64,
                 "reviewed_text": "reviewed",
                 "printed_facts": [],
-                "diagram_facts": [
-                    {"id": "d1", "kind": "object", "statement": "box", "confidence": 0.9}
-                ],
+                "diagram_facts": [{"id": "d1", "kind": "object", "statement": "box", "confidence": 0.9}],
                 "handwriting": [],
                 "uncertainties": [],
                 "model_identity": {"model_id": "mimo-v2.5-flash", "provider": "openai-compatible"},

@@ -36,18 +36,19 @@ def main() -> int:
             parser.error("; ".join(lock_errors))
         unknown = [entry_id for entry_id in args.entry_id if entry_id not in locked_targets]
         if unknown:
-            parser.error(
-                "entries are not part of the frozen holdout: " + ", ".join(unknown)
-            )
+            parser.error("entries are not part of the frozen holdout: " + ", ".join(unknown))
     handler = object.__new__(server.Handler)
     summaries = []
     failed = False
     for entry_id in args.entry_id:
         entry = server.safe_entry(entry_id)
-        result = handler.run_w3_shadow_analysis(entry, {
-            "routing_tier": args.routing_tier,
-            "model_id": args.model_id,
-        })
+        result = handler.run_w3_shadow_analysis(
+            entry,
+            {
+                "routing_tier": args.routing_tier,
+                "model_id": args.model_id,
+            },
+        )
         metrics = result.get("report", {}).get("metrics", {})
         summary = {
             "entry_id": entry_id,

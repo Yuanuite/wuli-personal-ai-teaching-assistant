@@ -6,7 +6,6 @@ from typing import Any
 
 import evidence_contract
 
-
 GOLD_CASE_SCHEMA = "wuli.evidence-gold-case.v1"
 PREDICTION_SCHEMA = "wuli.evidence-gold-prediction.v1"
 GOLD_DATASET_SCHEMA = "wuli.evidence-gold-dataset.v1"
@@ -56,12 +55,8 @@ def normalize_gold_case(payload: dict[str, Any]) -> dict[str, Any]:
 
     need = evidence_contract.normalize_retrieval_need(raw.get("retrieval_need"))
     required = _ids(raw.get("required_evidence_ids"), "gold_case.required_evidence_ids")
-    acceptable = _ids(
-        raw.get("acceptable_evidence_ids"), "gold_case.acceptable_evidence_ids"
-    )
-    forbidden = _ids(
-        raw.get("forbidden_evidence_ids"), "gold_case.forbidden_evidence_ids"
-    )
+    acceptable = _ids(raw.get("acceptable_evidence_ids"), "gold_case.acceptable_evidence_ids")
+    forbidden = _ids(raw.get("forbidden_evidence_ids"), "gold_case.forbidden_evidence_ids")
     if set(required) - set(acceptable):
         raise ValueError("required evidence must also be acceptable evidence")
     if set(acceptable) & set(forbidden):
@@ -84,9 +79,7 @@ def normalize_gold_case(payload: dict[str, Any]) -> dict[str, Any]:
         "acceptable_evidence_ids": acceptable,
         "forbidden_evidence_ids": forbidden,
         "expected_status": expected_status,
-        "teacher_rationale": _text(
-            raw.get("teacher_rationale"), "gold_case.teacher_rationale"
-        ),
+        "teacher_rationale": _text(raw.get("teacher_rationale"), "gold_case.teacher_rationale"),
         "evaluation_split": split,
         "batch_id": batch_id,
     }
@@ -99,15 +92,9 @@ def normalize_prediction(payload: dict[str, Any]) -> dict[str, Any]:
     status = str(raw.get("status") or "").strip()
     if status not in evidence_contract.RUN_STATUSES:
         raise ValueError("prediction.status is invalid")
-    selected = _ids(
-        raw.get("selected_evidence_ids"), "prediction.selected_evidence_ids"
-    )
-    candidates = _ids(
-        raw.get("candidate_evidence_ids"), "prediction.candidate_evidence_ids"
-    )
-    traceable = _ids(
-        raw.get("traceable_evidence_ids"), "prediction.traceable_evidence_ids"
-    )
+    selected = _ids(raw.get("selected_evidence_ids"), "prediction.selected_evidence_ids")
+    candidates = _ids(raw.get("candidate_evidence_ids"), "prediction.candidate_evidence_ids")
+    traceable = _ids(raw.get("traceable_evidence_ids"), "prediction.traceable_evidence_ids")
     if set(selected) - set(candidates):
         raise ValueError("selected evidence must come from the candidate pool")
     if set(traceable) - set(selected):
@@ -129,9 +116,7 @@ def gold_dataset_fingerprint(payload: dict[str, Any]) -> str:
         "cases": payload["cases"],
     }
     if "evidence_snapshot_fingerprint" in payload:
-        material["evidence_snapshot_fingerprint"] = payload[
-            "evidence_snapshot_fingerprint"
-        ]
+        material["evidence_snapshot_fingerprint"] = payload["evidence_snapshot_fingerprint"]
     return evidence_contract.stable_fingerprint(
         "evidence-gold-dataset-v1",
         material,
@@ -154,89 +139,70 @@ def normalize_gold_dataset(payload: dict[str, Any]) -> dict[str, Any]:
     for index, item_raw in enumerate(cases_raw):
         item = _mapping(item_raw, f"gold_dataset.cases[{index}]")
         problem = _text(item.get("problem"), f"gold_dataset.cases[{index}].problem", 12000)
-        blueprint = _mapping(
-            item.get("blueprint"), f"gold_dataset.cases[{index}].blueprint"
-        )
+        blueprint = _mapping(item.get("blueprint"), f"gold_dataset.cases[{index}].blueprint")
         gold_case = normalize_gold_case(item.get("gold_case"))
-        expected_hash = evidence_contract.stable_fingerprint(
-            "question-snapshot-v1", problem
-        )
+        expected_hash = evidence_contract.stable_fingerprint("question-snapshot-v1", problem)
         if gold_case["question_snapshot_hash"] != expected_hash:
-            raise ValueError(
-                f"gold_dataset.cases[{index}] question snapshot hash mismatch"
-            )
+            raise ValueError(f"gold_dataset.cases[{index}] question snapshot hash mismatch")
         if gold_case["case_id"] in case_ids:
             raise ValueError("gold dataset case ids must be unique")
         case_ids.add(gold_case["case_id"])
-        cases.append(
-            {
-                "problem": problem,
-                "blueprint": blueprint,
-                "gold_case": gold_case,
-            }
-        )
+        cases.append({
+            "problem": problem,
+            "blueprint": blueprint,
+            "gold_case": gold_case,
+        })
     dataset = {
         "schema": GOLD_DATASET_SCHEMA,
         "dataset_id": _text(raw.get("dataset_id"), "gold_dataset.dataset_id", 120),
-        "dataset_version": _text(
-            raw.get("dataset_version"), "gold_dataset.dataset_version", 80
-        ),
+        "dataset_version": _text(raw.get("dataset_version"), "gold_dataset.dataset_version", 80),
         "review_status": review_status,
-        "label_origin": _text(
-            raw.get("label_origin"), "gold_dataset.label_origin", 80
-        ),
+        "label_origin": _text(raw.get("label_origin"), "gold_dataset.label_origin", 80),
         "source_scope": _ids(raw.get("source_scope"), "gold_dataset.source_scope"),
         "reviewer": str(raw.get("reviewer") or "").strip()[:120],
         "reviewed_at": str(raw.get("reviewed_at") or "").strip()[:80],
         "cases": cases,
     }
     if "evidence_snapshot_fingerprint" in raw:
-        dataset["evidence_snapshot_fingerprint"] = (
-            evidence_contract.normalize_fingerprint(
-                raw.get("evidence_snapshot_fingerprint"),
-                "gold_dataset.evidence_snapshot_fingerprint",
-            )
+        dataset["evidence_snapshot_fingerprint"] = evidence_contract.normalize_fingerprint(
+            raw.get("evidence_snapshot_fingerprint"),
+            "gold_dataset.evidence_snapshot_fingerprint",
         )
-    if review_status == "teacher_approved" and (
-        not dataset["reviewer"] or not dataset["reviewed_at"]
-    ):
+    if review_status == "teacher_approved" and (not dataset["reviewer"] or not dataset["reviewed_at"]):
         raise ValueError("teacher-approved gold dataset requires reviewer and reviewed_at")
     expected_fingerprint = gold_dataset_fingerprint(dataset)
     supplied = raw.get("dataset_fingerprint")
-    if supplied and evidence_contract.normalize_fingerprint(
-        supplied, "gold_dataset.dataset_fingerprint"
-    ) != expected_fingerprint:
+    if (
+        supplied
+        and evidence_contract.normalize_fingerprint(supplied, "gold_dataset.dataset_fingerprint")
+        != expected_fingerprint
+    ):
         raise ValueError("gold_dataset.dataset_fingerprint mismatch")
     dataset["dataset_fingerprint"] = expected_fingerprint
     return dataset
 
 
-def normalize_gold_review(
-    payload: dict[str, Any], dataset: dict[str, Any]
-) -> dict[str, Any]:
+def normalize_gold_review(payload: dict[str, Any], dataset: dict[str, Any]) -> dict[str, Any]:
     raw = _mapping(payload, "gold_review")
     normalized_dataset = normalize_gold_dataset(dataset)
     if raw.get("schema") not in {None, GOLD_REVIEW_SCHEMA}:
         raise ValueError("gold_review.schema mismatch")
-    if evidence_contract.normalize_fingerprint(
-        raw.get("dataset_fingerprint"), "gold_review.dataset_fingerprint"
-    ) != normalized_dataset["dataset_fingerprint"]:
+    if (
+        evidence_contract.normalize_fingerprint(raw.get("dataset_fingerprint"), "gold_review.dataset_fingerprint")
+        != normalized_dataset["dataset_fingerprint"]
+    ):
         raise ValueError("gold review dataset fingerprint mismatch")
     reviewer = _text(raw.get("reviewer"), "gold_review.reviewer", 120)
     reviewed_at = _text(raw.get("reviewed_at"), "gold_review.reviewed_at", 80)
     decisions_raw = raw.get("decisions")
     if not isinstance(decisions_raw, list):
         raise ValueError("gold_review.decisions must be an array")
-    known_ids = {
-        item["gold_case"]["case_id"] for item in normalized_dataset["cases"]
-    }
+    known_ids = {item["gold_case"]["case_id"] for item in normalized_dataset["cases"]}
     decisions = []
     seen: set[str] = set()
     for index, item_raw in enumerate(decisions_raw):
         item = _mapping(item_raw, f"gold_review.decisions[{index}]")
-        case_id = _text(
-            item.get("case_id"), f"gold_review.decisions[{index}].case_id", 120
-        )
+        case_id = _text(item.get("case_id"), f"gold_review.decisions[{index}].case_id", 120)
         if case_id not in known_ids or case_id in seen:
             raise ValueError("gold review must decide each known case exactly once")
         decision = str(item.get("decision") or "").strip()
@@ -246,9 +212,7 @@ def normalize_gold_review(
         if decision == "changes_requested" and not note:
             raise ValueError("changes_requested decision requires a note")
         seen.add(case_id)
-        decisions.append(
-            {"case_id": case_id, "decision": decision, "note": note}
-        )
+        decisions.append({"case_id": case_id, "decision": decision, "note": note})
     if seen != known_ids:
         raise ValueError("gold review must decide each known case exactly once")
     all_approved = all(item["decision"] == "approved" for item in decisions)
@@ -267,9 +231,7 @@ def normalize_gold_review(
     }
 
 
-def apply_gold_review(
-    dataset: dict[str, Any], review: dict[str, Any]
-) -> dict[str, Any]:
+def apply_gold_review(dataset: dict[str, Any], review: dict[str, Any]) -> dict[str, Any]:
     normalized_dataset = normalize_gold_dataset(dataset)
     normalized_review = normalize_gold_review(review, normalized_dataset)
     if normalized_review["status"] != "approved":
@@ -295,31 +257,24 @@ def normalize_evidence_overlay(payload: dict[str, Any]) -> dict[str, Any]:
     units_raw = raw.get("units")
     if not isinstance(units_raw, list) or not units_raw:
         raise ValueError("evidence_overlay.units must be a non-empty array")
-    units = [
-        evidence_contract.normalize_evidence_unit(item)
-        for item in units_raw
-    ]
+    units = [evidence_contract.normalize_evidence_unit(item) for item in units_raw]
     evidence_ids = [item["evidence_id"] for item in units]
     if len(evidence_ids) != len(set(evidence_ids)):
         raise ValueError("evidence overlay ids must be unique")
     overlay = {
         "schema": EVIDENCE_OVERLAY_SCHEMA,
-        "overlay_id": _text(
-            raw.get("overlay_id"), "evidence_overlay.overlay_id", 120
-        ),
-        "overlay_fingerprint": evidence_contract.stable_fingerprint(
-            "evidence-overlay-v1", units
-        ),
+        "overlay_id": _text(raw.get("overlay_id"), "evidence_overlay.overlay_id", 120),
+        "overlay_fingerprint": evidence_contract.stable_fingerprint("evidence-overlay-v1", units),
         "review_status": review_status,
-        "source_scope": _ids(
-            raw.get("source_scope"), "evidence_overlay.source_scope"
-        ),
+        "source_scope": _ids(raw.get("source_scope"), "evidence_overlay.source_scope"),
         "units": units,
     }
     supplied = raw.get("overlay_fingerprint")
-    if supplied and evidence_contract.normalize_fingerprint(
-        supplied, "evidence_overlay.overlay_fingerprint"
-    ) != overlay["overlay_fingerprint"]:
+    if (
+        supplied
+        and evidence_contract.normalize_fingerprint(supplied, "evidence_overlay.overlay_fingerprint")
+        != overlay["overlay_fingerprint"]
+    ):
         raise ValueError("evidence_overlay.overlay_fingerprint mismatch")
     if {item["source_kind"] for item in units} - set(overlay["source_scope"]):
         raise ValueError("evidence overlay unit source_kind is outside source_scope")
@@ -337,17 +292,11 @@ def apply_gold_review_with_overlay(
     normalized_overlay = normalize_evidence_overlay(overlay)
     if normalized_dataset["dataset_id"] != normalized_overlay["overlay_id"]:
         raise ValueError("gold dataset id does not match evidence overlay id")
-    if normalized_dataset.get("evidence_snapshot_fingerprint") != (
-        normalized_overlay["overlay_fingerprint"]
-    ):
+    if normalized_dataset.get("evidence_snapshot_fingerprint") != (normalized_overlay["overlay_fingerprint"]):
         raise ValueError("gold dataset evidence snapshot fingerprint mismatch")
-    if set(normalized_overlay["source_scope"]) - set(
-        normalized_dataset["source_scope"]
-    ):
+    if set(normalized_overlay["source_scope"]) - set(normalized_dataset["source_scope"]):
         raise ValueError("evidence overlay source_scope is outside gold dataset")
-    approved_dataset = apply_gold_review(
-        normalized_dataset, normalized_review
-    )
+    approved_dataset = apply_gold_review(normalized_dataset, normalized_review)
     approved_overlay = {
         **normalized_overlay,
         "review_status": "teacher_approved",
@@ -373,32 +322,24 @@ def prediction_from_run(case_id: str, execution: dict[str, Any]) -> dict[str, An
         for item in run.get("evidence_set", [])
         if isinstance(item, dict) and item.get("evidence_id")
     ]
-    return normalize_prediction(
-        {
-            "case_id": case_id,
-            "status": run.get("status"),
-            "candidate_evidence_ids": list(dict.fromkeys(candidates)),
-            "selected_evidence_ids": selected,
-            "traceable_evidence_ids": selected,
-        }
-    )
+    return normalize_prediction({
+        "case_id": case_id,
+        "status": run.get("status"),
+        "candidate_evidence_ids": list(dict.fromkeys(candidates)),
+        "selected_evidence_ids": selected,
+        "traceable_evidence_ids": selected,
+    })
 
 
 def _ratio(numerator: int, denominator: int) -> float:
     return round(numerator / denominator, 4) if denominator else 1.0
 
 
-def score_gold_cases(
-    cases: list[dict[str, Any]], predictions: list[dict[str, Any]]
-) -> dict[str, Any]:
+def score_gold_cases(cases: list[dict[str, Any]], predictions: list[dict[str, Any]]) -> dict[str, Any]:
     normalized_cases = [normalize_gold_case(case) for case in cases]
-    normalized_predictions = [
-        normalize_prediction(prediction) for prediction in predictions
-    ]
+    normalized_predictions = [normalize_prediction(prediction) for prediction in predictions]
     case_by_id = {case["case_id"]: case for case in normalized_cases}
-    prediction_by_id = {
-        prediction["case_id"]: prediction for prediction in normalized_predictions
-    }
+    prediction_by_id = {prediction["case_id"]: prediction for prediction in normalized_predictions}
     if len(case_by_id) != len(normalized_cases):
         raise ValueError("gold case ids must be unique")
     if len(prediction_by_id) != len(normalized_predictions):
@@ -429,13 +370,11 @@ def score_gold_cases(
         forbidden = set(case["forbidden_evidence_ids"])
         counts["required_evidence_total"] += len(required)
         if prediction is None:
-            case_results.append(
-                {
-                    "case_id": case["case_id"],
-                    "status": "missing-prediction",
-                    "expected_status": case["expected_status"],
-                }
-            )
+            case_results.append({
+                "case_id": case["case_id"],
+                "status": "missing-prediction",
+                "expected_status": case["expected_status"],
+            })
             if case["expected_status"] == "sufficient":
                 counts["sufficient_case_total"] += 1
             continue
@@ -450,26 +389,20 @@ def score_gold_cases(
         counts["selected_forbidden_total"] += len(selected & forbidden)
         counts["candidate_forbidden_total"] += len(candidates & forbidden)
         counts["traceable_selected_total"] += len(selected & traceable)
-        counts["status_correct"] += int(
-            prediction["status"] == case["expected_status"]
-        )
+        counts["status_correct"] += int(prediction["status"] == case["expected_status"])
         required_covered = required.issubset(selected)
         if case["expected_status"] == "sufficient":
             counts["sufficient_case_total"] += 1
-            counts["sufficient_case_covered"] += int(
-                required_covered and prediction["status"] == "sufficient"
-            )
-        case_results.append(
-            {
-                "case_id": case["case_id"],
-                "status": "scored",
-                "expected_status": case["expected_status"],
-                "predicted_status": prediction["status"],
-                "missing_required_evidence_ids": sorted(required - selected),
-                "selected_forbidden_evidence_ids": sorted(selected & forbidden),
-                "untraceable_selected_evidence_ids": sorted(selected - traceable),
-            }
-        )
+            counts["sufficient_case_covered"] += int(required_covered and prediction["status"] == "sufficient")
+        case_results.append({
+            "case_id": case["case_id"],
+            "status": "scored",
+            "expected_status": case["expected_status"],
+            "predicted_status": prediction["status"],
+            "missing_required_evidence_ids": sorted(required - selected),
+            "selected_forbidden_evidence_ids": sorted(selected & forbidden),
+            "untraceable_selected_evidence_ids": sorted(selected - traceable),
+        })
 
     metrics = {
         "candidate_required_recall": _ratio(
@@ -490,9 +423,7 @@ def score_gold_cases(
             counts["traceable_selected_total"],
             counts["selected_evidence_total"],
         ),
-        "status_accuracy": _ratio(
-            counts["status_correct"], counts["case_count"]
-        ),
+        "status_accuracy": _ratio(counts["status_correct"], counts["case_count"]),
         "required_need_coverage": _ratio(
             counts["sufficient_case_covered"],
             counts["sufficient_case_total"],
@@ -534,22 +465,15 @@ def paired_gold_report(
         "status_accuracy",
         "required_need_coverage",
     )
-    deltas = {
-        key: round(agent["metrics"][key] - baseline["metrics"][key], 4)
-        for key in metric_names
-    }
-    splits = {
-        item["gold_case"]["evaluation_split"] for item in normalized["cases"]
-    }
+    deltas = {key: round(agent["metrics"][key] - baseline["metrics"][key], 4) for key in metric_names}
+    splits = {item["gold_case"]["evaluation_split"] for item in normalized["cases"]}
     gates = {
         "dataset_teacher_approved": normalized["review_status"] == "teacher_approved",
         "independent_holdout_present": "holdout" in splits,
         "candidate_recall_non_regression": deltas["candidate_required_recall"] >= 0,
         "gold_retention_non_regression": deltas["gold_evidence_retention"] >= 0,
         "status_accuracy_non_regression": deltas["status_accuracy"] >= 0,
-        "false_friend_zero_admission": (
-            agent["metrics"]["false_friend_admission_count"] == 0
-        ),
+        "false_friend_zero_admission": (agent["metrics"]["false_friend_admission_count"] == 0),
         "traceability_100": agent["metrics"]["traceability_rate"] == 1.0,
         "evidence_precision_100": agent["metrics"]["evidence_precision"] == 1.0,
     }

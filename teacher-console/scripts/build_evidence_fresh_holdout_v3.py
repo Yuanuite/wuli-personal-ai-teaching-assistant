@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
@@ -20,13 +19,9 @@ import evidence_agent  # noqa: E402
 import evidence_contract  # noqa: E402
 import evidence_evaluation  # noqa: E402
 
-
 BATCH_ID = "evidence-holdout-2026-07-31-c"
 DATASET_ID = "wuli-evidence-fresh-holdout-v3"
-OVERLAY_PATH = (
-    "teacher-console/tests/fixtures/evidence-agent/"
-    "fresh-holdout-v3-evidence-overlay.json"
-)
+OVERLAY_PATH = "teacher-console/tests/fixtures/evidence-agent/fresh-holdout-v3-evidence-overlay.json"
 PRIOR_DATASETS = (
     ROOT / "student-error-library/evals/evidence-gold-calibration.json",
     ROOT / "student-error-library/evals/evidence-gold-holdout.json",
@@ -37,9 +32,7 @@ PRIOR_DATASETS = (
 
 
 def _evidence_id(source_id: str) -> str:
-    digest = hashlib.sha256(
-        f"fresh-holdout-v3:{source_id}".encode("utf-8")
-    ).hexdigest()[:24]
+    digest = hashlib.sha256(f"fresh-holdout-v3:{source_id}".encode()).hexdigest()[:24]
     return f"EU-{digest}"
 
 
@@ -51,24 +44,22 @@ def evidence_unit(
     applicability: list[str],
     exceptions: list[str],
 ) -> dict[str, Any]:
-    return evidence_contract.normalize_evidence_unit(
-        {
-            "evidence_id": _evidence_id(source_id),
-            "unit_kind": "secondary_conclusion",
-            "source_kind": "curated_technique",
-            "source_locator": {
-                "path": OVERLAY_PATH,
-                "section": source_id,
-                "start_line": 1,
-                "end_line": 1,
-            },
-            "text": text,
-            "physics_facets": facets,
-            "applicability": applicability,
-            "exceptions": exceptions,
-            "authority_level": "A",
-        }
-    )
+    return evidence_contract.normalize_evidence_unit({
+        "evidence_id": _evidence_id(source_id),
+        "unit_kind": "secondary_conclusion",
+        "source_kind": "curated_technique",
+        "source_locator": {
+            "path": OVERLAY_PATH,
+            "section": source_id,
+            "start_line": 1,
+            "end_line": 1,
+        },
+        "text": text,
+        "physics_facets": facets,
+        "applicability": applicability,
+        "exceptions": exceptions,
+        "authority_level": "A",
+    })
 
 
 def units() -> list[dict[str, Any]]:
@@ -219,9 +210,7 @@ def proposed_case(
         "gold_case": {
             "schema": "wuli.evidence-gold-case.v1",
             "case_id": case_id,
-            "question_snapshot_hash": evidence_contract.stable_fingerprint(
-                "question-snapshot-v1", problem
-            ),
+            "question_snapshot_hash": evidence_contract.stable_fingerprint("question-snapshot-v1", problem),
             "retrieval_need": need,
             "required_evidence_ids": [evidence_id] if sufficient else [],
             "acceptable_evidence_ids": [evidence_id] if sufficient else [],
@@ -244,7 +233,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
     decay = unit_by_section["radioactive-half-life-statistical-law"]["evidence_id"]
     return [
         proposed_case(
-            "fresh3-circle-radial-force-valid", circle,
+            "fresh3-circle-radial-force-valid",
+            circle,
             problem="小球在水平圆盘上随圆盘做匀速圆周运动，需要列出水平方向的径向动力学方程。",
             purpose="method_candidate",
             question="应怎样用实际力的径向分量建立向心运动方程？",
@@ -253,7 +243,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="证据直接给出实际力径向合力等于 mv²/r 的记账方式。",
         ),
         proposed_case(
-            "fresh3-circle-zero-result-diagnostic", circle,
+            "fresh3-circle-zero-result-diagnostic",
+            circle,
             problem="某解答认为物体做匀速圆周运动时速度大小不变，所以加速度和合力都为零。",
             purpose="false_friend_check",
             question="速率不变是否意味着圆周运动的加速度和合力为零？",
@@ -263,7 +254,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["把匀速圆周运动误判为合力为零"],
         ),
         proposed_case(
-            "fresh3-circle-detached-trajectory-insufficient", circle,
+            "fresh3-circle-detached-trajectory-insufficient",
+            circle,
             problem="小球已经脱离圆形轨道，之后做二维运动；现在需要求落地点位置和飞行时间。",
             purpose="method_candidate",
             question="脱离约束后的二维轨迹、飞行时间和落地点怎样确定？",
@@ -273,7 +265,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["物体离开圆形约束后仍套用径向合力公式"],
         ),
         proposed_case(
-            "fresh3-projectile-time-valid", projectile,
+            "fresh3-projectile-time-valid",
+            projectile,
             problem="两个小球从同一高度同时水平抛出，水平初速度不同，忽略空气阻力。",
             purpose="verification_support",
             question="两球落地时间是否相同，由哪个方向的运动决定？",
@@ -282,7 +275,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="同一落差下飞行时间由竖直自由落体决定，与水平初速度无关。",
         ),
         proposed_case(
-            "fresh3-projectile-horizontal-speed-diagnostic", projectile,
+            "fresh3-projectile-horizontal-speed-diagnostic",
+            projectile,
             problem="某解答声称平抛物体水平初速度越大，在同一高度下落地所需时间越长。",
             purpose="false_friend_check",
             question="水平初速度会不会改变同一落差下的平抛飞行时间？",
@@ -292,7 +286,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["把水平初速度当作同一落差飞行时间的决定量"],
         ),
         proposed_case(
-            "fresh3-projectile-drag-insufficient", projectile,
+            "fresh3-projectile-drag-insufficient",
+            projectile,
             problem="小球在强空气阻力中运动，阻力大小与速度成正比，需要求速度随时间的变化和落地时间。",
             purpose="method_candidate",
             question="速度相关阻力下应怎样建立动力学方程并确定落地时间？",
@@ -302,7 +297,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["存在不可忽略空气阻力"],
         ),
         proposed_case(
-            "fresh3-gas-two-state-valid", gas,
+            "fresh3-gas-two-state-valid",
+            gas,
             problem="密闭容器内一定质量理想气体从一个平衡态缓慢变化到另一个平衡态，已知两态的 p、V、T 部分数据。",
             purpose="method_candidate",
             question="一定质量理想气体的两个平衡态应使用什么状态关系比较？",
@@ -311,7 +307,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="物质的量固定且两端均为平衡态，可直接使用 pV/T 常量。",
         ),
         proposed_case(
-            "fresh3-gas-celsius-diagnostic", gas,
+            "fresh3-gas-celsius-diagnostic",
+            gas,
             problem="某解答把 20℃ 和 40℃ 直接当作温度比 1:2 代入理想气体状态方程。",
             purpose="false_friend_check",
             question="状态方程中的温度能否直接使用摄氏温度数值作比例？",
@@ -321,7 +318,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["把摄氏温度直接代入状态方程比例"],
         ),
         proposed_case(
-            "fresh3-gas-leak-insufficient", gas,
+            "fresh3-gas-leak-insufficient",
+            gas,
             problem="带微孔容器持续漏气，容器内气体物质的量随时间改变，需要求漏气质量与压强的时间关系。",
             purpose="method_candidate",
             question="物质的量持续变化时如何联立漏气速率与压强演化？",
@@ -331,7 +329,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["容器漏气后仍按一定质量处理"],
         ),
         proposed_case(
-            "fresh3-emf-perpendicular-valid", emf,
+            "fresh3-emf-perpendicular-valid",
+            emf,
             problem="长为 L 的直导体棒以速度 v 垂直切割匀强磁场，导体、速度和磁场两两垂直。",
             purpose="method_candidate",
             question="该条件下如何确定导体两端的动生电动势？",
@@ -340,7 +339,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="两两垂直满足 ε=BLv 的直接适用条件。",
         ),
         proposed_case(
-            "fresh3-emf-open-current-diagnostic", emf,
+            "fresh3-emf-open-current-diagnostic",
+            emf,
             problem="导体棒在磁场中切割磁感线但回路开路，某解答仍声称回路中存在持续感应电流。",
             purpose="false_friend_check",
             question="开路时存在动生电动势是否等于存在持续感应电流？",
@@ -350,7 +350,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["开路存在电动势就声称有持续电流"],
         ),
         proposed_case(
-            "fresh3-emf-rotating-nonuniform-insufficient", emf,
+            "fresh3-emf-rotating-nonuniform-insufficient",
+            emf,
             problem="不规则导体在空间非匀强磁场中绕偏心轴转动，需要求各段电动势分布和总电动势。",
             purpose="method_candidate",
             question="非匀强场内转动导体的局部电动势怎样沿导体汇总？",
@@ -360,7 +361,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["转动导体或非匀强磁场仍直接套 BLv"],
         ),
         proposed_case(
-            "fresh3-shm-equilibrium-valid", shm,
+            "fresh3-shm-equilibrium-valid",
+            shm,
             problem="理想水平弹簧振子经过平衡位置，需要比较此刻速度和加速度的大小。",
             purpose="verification_support",
             question="简谐振子经过平衡位置时速度和加速度分别怎样？",
@@ -369,7 +371,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="证据直接给出平衡位置速度最大、加速度为零。",
         ),
         proposed_case(
-            "fresh3-shm-endpoint-diagnostic", shm,
+            "fresh3-shm-endpoint-diagnostic",
+            shm,
             problem="某解答认为弹簧振子到达振幅端点时位移最大，所以速度和加速度都为零。",
             purpose="false_friend_check",
             question="振幅端点的速度和加速度是否都为零？",
@@ -379,7 +382,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["把振幅端点误判为加速度为零"],
         ),
         proposed_case(
-            "fresh3-shm-damping-insufficient", shm,
+            "fresh3-shm-damping-insufficient",
+            shm,
             problem="振子受到与速度成正比的明显阻尼，需要求振幅衰减率和机械能随时间的函数。",
             purpose="method_candidate",
             question="阻尼系数给定时振幅和机械能如何随时间衰减？",
@@ -389,7 +393,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["存在明显阻尼仍令振幅和机械能恒定"],
         ),
         proposed_case(
-            "fresh3-tir-critical-valid", tir,
+            "fresh3-tir-critical-valid",
+            tir,
             problem="光从折射率较大的均匀介质射向折射率较小的均匀介质，入射角大于临界角。",
             purpose="applicability_check",
             question="该界面发生全反射需要满足哪些方向和角度条件？",
@@ -398,7 +403,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="传播方向和入射角均满足全反射条件。",
         ),
         proposed_case(
-            "fresh3-tir-thin-to-dense-diagnostic", tir,
+            "fresh3-tir-thin-to-dense-diagnostic",
+            tir,
             problem="光从空气射入玻璃，某解答因入射角很大就判断发生全反射。",
             purpose="false_friend_check",
             question="光从光疏介质射向光密介质时能否仅凭入射角大判定全反射？",
@@ -408,7 +414,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["光从光疏介质射向光密介质却声称全反射"],
         ),
         proposed_case(
-            "fresh3-tir-gradient-index-insufficient", tir,
+            "fresh3-tir-gradient-index-insufficient",
+            tir,
             problem="介质折射率随深度连续变化，光线逐渐弯曲，需要求转向点位置和完整传播轨迹。",
             purpose="method_candidate",
             question="连续折射率分布中光线轨迹和转向点怎样确定？",
@@ -418,7 +425,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             forbidden_conflicts=["折射率连续变化介质仍直接套单一界面临界角"],
         ),
         proposed_case(
-            "fresh3-decay-half-life-valid", decay,
+            "fresh3-decay-half-life-valid",
+            decay,
             problem="一批大量同种放射性原子核经过三个半衰期，需要求剩余核数占初始核数的比例。",
             purpose="method_candidate",
             question="经过若干半衰期后剩余核数怎样计算？",
@@ -427,7 +435,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             rationale="证据直接给出大量同种核的指数衰变关系。",
         ),
         proposed_case(
-            "fresh3-decay-temperature-diagnostic", decay,
+            "fresh3-decay-temperature-diagnostic",
+            decay,
             problem="某解答认为把放射性样品加热到高温就会显著缩短该核素的半衰期。",
             purpose="false_friend_check",
             question="通常的温度变化会不会改变核素自身的半衰期？",
@@ -437,7 +446,8 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
             diagnostic_targets=["升温或加压就改变核素半衰期"],
         ),
         proposed_case(
-            "fresh3-decay-bombardment-insufficient", decay,
+            "fresh3-decay-bombardment-insufficient",
+            decay,
             problem="样品同时受到高强度中子轰击并发生核反应，需要求反应产物生成率与原核数变化。",
             purpose="method_candidate",
             question="外来粒子诱发核反应时如何由反应截面和通量求产物生成率？",
@@ -452,9 +462,7 @@ def cases(unit_by_section: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
 def prior_evidence_ids() -> set[str]:
     result: set[str] = set()
     for path in PRIOR_DATASETS:
-        dataset = evidence_evaluation.normalize_gold_dataset(
-            json.loads(path.read_text(encoding="utf-8"))
-        )
+        dataset = evidence_evaluation.normalize_gold_dataset(json.loads(path.read_text(encoding="utf-8")))
         for item in dataset["cases"]:
             gold = item["gold_case"]
             for field in (
@@ -468,40 +476,30 @@ def prior_evidence_ids() -> set[str]:
 
 def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     overlay_units = units()
-    by_section = {
-        item["source_locator"]["section"]: item for item in overlay_units
-    }
+    by_section = {item["source_locator"]["section"]: item for item in overlay_units}
     new_ids = {item["evidence_id"] for item in overlay_units}
     overlap = prior_evidence_ids() & new_ids
     if overlap:
-        raise ValueError(
-            f"fresh overlay reuses revealed Evidence IDs: {sorted(overlap)}"
-        )
-    overlay = evidence_evaluation.normalize_evidence_overlay(
-        {
-            "schema": "wuli.evidence-overlay.v1",
-            "overlay_id": DATASET_ID,
-            "review_status": "draft",
-            "source_scope": ["curated_technique"],
-            "units": overlay_units,
-        }
-    )
-    dataset = evidence_evaluation.normalize_gold_dataset(
-        {
-            "schema": "wuli.evidence-gold-dataset.v1",
-            "dataset_id": DATASET_ID,
-            "dataset_version": "2026-07-31-v1",
-            "review_status": "draft",
-            "label_origin": "agent_proposed_fresh_holdout_v3",
-            "source_scope": ["curated_technique"],
-            "reviewer": "",
-            "reviewed_at": "",
-            "evidence_snapshot_fingerprint": overlay[
-                "overlay_fingerprint"
-            ],
-            "cases": cases(by_section),
-        }
-    )
+        raise ValueError(f"fresh overlay reuses revealed Evidence IDs: {sorted(overlap)}")
+    overlay = evidence_evaluation.normalize_evidence_overlay({
+        "schema": "wuli.evidence-overlay.v1",
+        "overlay_id": DATASET_ID,
+        "review_status": "draft",
+        "source_scope": ["curated_technique"],
+        "units": overlay_units,
+    })
+    dataset = evidence_evaluation.normalize_gold_dataset({
+        "schema": "wuli.evidence-gold-dataset.v1",
+        "dataset_id": DATASET_ID,
+        "dataset_version": "2026-07-31-v1",
+        "review_status": "draft",
+        "label_origin": "agent_proposed_fresh_holdout_v3",
+        "source_scope": ["curated_technique"],
+        "reviewer": "",
+        "reviewed_at": "",
+        "evidence_snapshot_fingerprint": overlay["overlay_fingerprint"],
+        "cases": cases(by_section),
+    })
     rows = []
     for item in dataset["cases"]:
         gold = item["gold_case"]
@@ -513,30 +511,21 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
             source_kinds=("curated_technique",),
             projection_overlay=overlay_units,
         )
-        ranked = [
-            unit["evidence_id"] for unit in pool.get("candidates", [])
-        ]
+        ranked = [unit["evidence_id"] for unit in pool.get("candidates", [])]
         expected_ids = (
-            gold["required_evidence_ids"]
-            if gold["expected_status"] == "sufficient"
-            else gold["forbidden_evidence_ids"]
+            gold["required_evidence_ids"] if gold["expected_status"] == "sufficient" else gold["forbidden_evidence_ids"]
         )
         missing = sorted(set(expected_ids) - set(ranked))
-        rows.append(
-            {
-                "case_id": gold["case_id"],
-                "expected_status": gold["expected_status"],
-                "target_evidence_ids": expected_ids,
-                "top5_candidate_ids": ranked,
-                "target_in_top5": not missing,
-            }
-        )
+        rows.append({
+            "case_id": gold["case_id"],
+            "expected_status": gold["expected_status"],
+            "target_evidence_ids": expected_ids,
+            "top5_candidate_ids": ranked,
+            "target_in_top5": not missing,
+        })
     failed = [item["case_id"] for item in rows if not item["target_in_top5"]]
     if len(dataset["cases"]) < 20 or failed:
-        raise ValueError(
-            f"fresh holdout preflight failed: "
-            f"count={len(dataset['cases'])}, cases={failed}"
-        )
+        raise ValueError(f"fresh holdout preflight failed: count={len(dataset['cases'])}, cases={failed}")
     preflight = {
         "schema": "wuli.evidence-holdout-preflight.v1",
         "status": "passed",
@@ -546,14 +535,8 @@ def build() -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         "revealed_evidence_overlap": [],
         "required_or_forbidden_target_top5_rate": 1.0,
         "expected_status_counts": {
-            "sufficient": sum(
-                item["gold_case"]["expected_status"] == "sufficient"
-                for item in dataset["cases"]
-            ),
-            "insufficient": sum(
-                item["gold_case"]["expected_status"] == "insufficient"
-                for item in dataset["cases"]
-            ),
+            "sufficient": sum(item["gold_case"]["expected_status"] == "sufficient" for item in dataset["cases"]),
+            "insufficient": sum(item["gold_case"]["expected_status"] == "insufficient" for item in dataset["cases"]),
         },
         "cases": rows,
         "live_provider_run": False,

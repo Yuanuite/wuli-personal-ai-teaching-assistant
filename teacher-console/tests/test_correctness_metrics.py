@@ -8,14 +8,7 @@ sys.path.insert(0, str(ROOT / "teacher-console"))
 import correctness_faults  # noqa: E402
 import correctness_metrics  # noqa: E402
 
-
-FIXTURE = (
-    ROOT
-    / "teacher-console"
-    / "tests"
-    / "fixtures"
-    / "correctness_faults.v1.json"
-)
+FIXTURE = ROOT / "teacher-console" / "tests" / "fixtures" / "correctness_faults.v1.json"
 
 
 def shadow_summary():

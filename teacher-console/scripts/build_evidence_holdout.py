@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
@@ -18,16 +17,8 @@ if str(CONSOLE) not in sys.path:
 import evidence_contract  # noqa: E402
 import evidence_evaluation  # noqa: E402
 
-
 BATCH_ID = "evidence-holdout-2026-07-30-a"
-CALIBRATION = (
-    ROOT
-    / "teacher-console"
-    / "tests"
-    / "fixtures"
-    / "evidence-agent"
-    / "calibration-curated-v1.json"
-)
+CALIBRATION = ROOT / "teacher-console" / "tests" / "fixtures" / "evidence-agent" / "calibration-curated-v1.json"
 
 LORENTZ = "EU-0da542351f084b059f89b89a"
 RADIAL = "EU-eef1ded86a99a91d252132b6"
@@ -61,9 +52,7 @@ def proposed_case(
         "gold_case": {
             "schema": "wuli.evidence-gold-case.v1",
             "case_id": case_id,
-            "question_snapshot_hash": evidence_contract.stable_fingerprint(
-                "question-snapshot-v1", problem
-            ),
+            "question_snapshot_hash": evidence_contract.stable_fingerprint("question-snapshot-v1", problem),
             "retrieval_need": {
                 "schema": "wuli.retrieval-need.v1",
                 "need_id": "N1",
@@ -96,7 +85,13 @@ def cases() -> list[dict[str, Any]]:
             problem="正电荷以不平行于磁场的速度进入匀强磁场，需要确定后续运动；候选证据只说明受力方向判断，没有给出速度分解或完整运动方法。",
             purpose="method_candidate",
             question="非垂直入射匀强磁场的完整方法是什么，为什么只给洛伦兹力方向判断不能满足？",
-            facets=["洛伦兹力方向判断只是局部步骤", "分解平行与垂直磁场的速度", "仅垂直分量参与圆周运动", "平行分量保持不变", "合成为螺旋运动"],
+            facets=[
+                "洛伦兹力方向判断只是局部步骤",
+                "分解平行与垂直磁场的速度",
+                "仅垂直分量参与圆周运动",
+                "平行分量保持不变",
+                "合成为螺旋运动",
+            ],
             conflicts=["只给受力方向口诀却替代完整运动方法"],
             sufficient=False,
             rationale="该证据局部正确但不覆盖本 Need 的完整方法 facets，可能干扰解题主线，因此不进入 Evidence Set。",
@@ -316,9 +311,7 @@ def cases() -> list[dict[str, Any]]:
 
 
 def build_dataset() -> dict[str, Any]:
-    calibration = evidence_evaluation.normalize_gold_dataset(
-        json.loads(CALIBRATION.read_text(encoding="utf-8"))
-    )
+    calibration = evidence_evaluation.normalize_gold_dataset(json.loads(CALIBRATION.read_text(encoding="utf-8")))
     calibration_ids = {
         evidence_id
         for item in calibration["cases"]
@@ -329,19 +322,17 @@ def build_dataset() -> dict[str, Any]:
         )
         for evidence_id in item["gold_case"][field]
     }
-    result = evidence_evaluation.normalize_gold_dataset(
-        {
-            "schema": "wuli.evidence-gold-dataset.v1",
-            "dataset_id": "wuli-evidence-fresh-holdout",
-            "dataset_version": "2026-07-30-v3",
-            "review_status": "draft",
-            "label_origin": "agent_proposed_holdout",
-            "source_scope": ["curated_technique"],
-            "reviewer": "",
-            "reviewed_at": "",
-            "cases": cases(),
-        }
-    )
+    result = evidence_evaluation.normalize_gold_dataset({
+        "schema": "wuli.evidence-gold-dataset.v1",
+        "dataset_id": "wuli-evidence-fresh-holdout",
+        "dataset_version": "2026-07-30-v3",
+        "review_status": "draft",
+        "label_origin": "agent_proposed_holdout",
+        "source_scope": ["curated_technique"],
+        "reviewer": "",
+        "reviewed_at": "",
+        "cases": cases(),
+    })
     holdout_ids = {
         evidence_id
         for item in result["cases"]
@@ -358,8 +349,7 @@ def build_dataset() -> dict[str, Any]:
     if len(result["cases"]) < 20:
         raise ValueError("fresh holdout requires at least 20 cases")
     if any(
-        item["gold_case"]["evaluation_split"] != "holdout"
-        or item["gold_case"]["batch_id"] != BATCH_ID
+        item["gold_case"]["evaluation_split"] != "holdout" or item["gold_case"]["batch_id"] != BATCH_ID
         for item in result["cases"]
     ):
         raise ValueError("every holdout case must belong to the frozen batch")

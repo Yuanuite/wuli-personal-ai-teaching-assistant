@@ -8,22 +8,17 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 CONSOLE_ROOT = Path(__file__).resolve().parents[1]
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
-SERVER_SPEC = importlib.util.spec_from_file_location(
-    "analysis_routing_server", CONSOLE_ROOT / "server.py"
-)
+SERVER_SPEC = importlib.util.spec_from_file_location("analysis_routing_server", CONSOLE_ROOT / "server.py")
 server = importlib.util.module_from_spec(SERVER_SPEC)
 SERVER_SPEC.loader.exec_module(server)
 import analysis_routing
 import w3_rendering
 import w3r_contract
 
-W3R_FIXTURE = (
-    CONSOLE_ROOT / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
-)
+W3R_FIXTURE = CONSOLE_ROOT / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
 
 
 class AnalysisRoutingServerTest(unittest.TestCase):
@@ -34,9 +29,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
         self.entry = self.library / "entries" / "gray-entry"
         (self.library / "config").mkdir(parents=True)
         self.entry.mkdir(parents=True)
-        (self.entry / "problem.md").write_text(
-            "粒子第一次进入区域后，求所有可能的返回时刻。", encoding="utf-8"
-        )
+        (self.entry / "problem.md").write_text("粒子第一次进入区域后，求所有可能的返回时刻。", encoding="utf-8")
         (self.entry / "record.json").write_text(
             json.dumps({"schema_version": 1, "entry_id": self.entry.name}),
             encoding="utf-8",
@@ -58,18 +51,14 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             }),
             encoding="utf-8",
         )
-        self.core_config_path = (
-            self.library / "config" / "analysis-production-routing.json"
-        )
+        self.core_config_path = self.library / "config" / "analysis-production-routing.json"
         self.core_config_path.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "policy_version": "wuli-core-first-routing-v1",
-                    "mode": "legacy-adaptive",
-                    "max_latency_seconds": 90,
-                }
-            ),
+            json.dumps({
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "legacy-adaptive",
+                "max_latency_seconds": 90,
+            }),
             encoding="utf-8",
         )
         self.handler = object.__new__(server.Handler)
@@ -92,40 +81,26 @@ class AnalysisRoutingServerTest(unittest.TestCase):
         routing = result["adaptive_routing"]
         self.assertEqual(routing["selected_route"], "w2")
         self.assertTrue(routing["observed_metrics"]["fallback_used"])
-        self.assertIn(
-            "w3-request-not-completed", routing["fallback"]["reason_codes"]
-        )
+        self.assertIn("w3-request-not-completed", routing["fallback"]["reason_codes"])
         self.assertEqual(routing["fallback"]["w2_status"], "completed")
 
     def test_core_first_config_bypasses_legacy_w2_w3_router(self):
         self.core_config_path.write_text(
-            json.dumps(
-                {
-                    "schema_version": 1,
-                    "policy_version": "wuli-core-first-routing-v1",
-                    "mode": "core-first",
-                    "max_latency_seconds": 90,
-                }
-            ),
+            json.dumps({
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "core-first",
+                "max_latency_seconds": 90,
+            }),
             encoding="utf-8",
         )
-        self.handler.run_core_analysis = mock.Mock(
-            return_value={"status": "completed", "stages": []}
-        )
-        self.handler.run_w3_shadow_analysis = mock.Mock(
-            side_effect=AssertionError("legacy W3 must not run")
-        )
-        self.handler.run_analysis = mock.Mock(
-            side_effect=AssertionError("legacy W2 must not run")
-        )
+        self.handler.run_core_analysis = mock.Mock(return_value={"status": "completed", "stages": []})
+        self.handler.run_w3_shadow_analysis = mock.Mock(side_effect=AssertionError("legacy W3 must not run"))
+        self.handler.run_analysis = mock.Mock(side_effect=AssertionError("legacy W2 must not run"))
         with mock.patch.object(server, "LIBRARY", self.library):
-            result = self.handler.run_adaptive_analysis(
-                self.entry, {"method_profile": "olympiad_official"}
-            )
+            result = self.handler.run_adaptive_analysis(self.entry, {"method_profile": "olympiad_official"})
         self.assertEqual(result["adaptive_routing"]["selected_route"], "core")
-        self.assertEqual(
-            result["adaptive_routing"]["limits"]["max_agent_calls"], 1
-        )
+        self.assertEqual(result["adaptive_routing"]["limits"]["max_agent_calls"], 1)
         self.handler.run_core_analysis.assert_called_once()
         self.handler.run_w3_shadow_analysis.assert_not_called()
         self.handler.run_analysis.assert_not_called()
@@ -139,9 +114,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             "message": "stage failed",
             "stages": [{"stage": "decompose", "status": "failed"}],
         }
-        self.handler.run_analysis = mock.Mock(
-            side_effect=AssertionError("W2 must not run after a failed W3")
-        )
+        self.handler.run_analysis = mock.Mock(side_effect=AssertionError("W2 must not run after a failed W3"))
         with (
             mock.patch.object(server, "LIBRARY", self.library),
             mock.patch.object(server, "W3_ROUTING_CONFIG_PATH", self.config_path),
@@ -152,9 +125,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
         self.assertEqual(routing["selected_route"], "w3")
         self.assertFalse(routing["observed_metrics"]["fallback_used"])
         self.assertEqual(routing["fallback"]["to"], "none")
-        self.assertEqual(
-            routing["fallback"]["policy"], "stop-after-w3-failure"
-        )
+        self.assertEqual(routing["fallback"]["policy"], "stop-after-w3-failure")
         self.handler.run_analysis.assert_not_called()
 
     def test_valid_w3_candidate_is_promoted_for_teacher_review(self):
@@ -196,12 +167,8 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             ),
             mock.patch.object(server, "_save_agent_baseline"),
             mock.patch.object(server, "assess_entry_difficulty", return_value={}),
-            mock.patch.object(
-                server, "resolve_model_id_for_task", return_value="model"
-            ),
-            mock.patch.object(
-                server, "archive_agent_result", return_value={"event_id": "event"}
-            ),
+            mock.patch.object(server, "resolve_model_id_for_task", return_value="model"),
+            mock.patch.object(server, "archive_agent_result", return_value={"event_id": "event"}),
         ):
             result = self.handler.run_adaptive_analysis(self.entry, {})
         self.assertEqual(result["adaptive_routing"]["selected_route"], "w3")
@@ -214,9 +181,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             "教师审计",
             (self.entry / "teacher-solution.md").read_text(encoding="utf-8"),
         )
-        promoted_record = json.loads(
-            (self.entry / "record.json").read_text(encoding="utf-8")
-        )
+        promoted_record = json.loads((self.entry / "record.json").read_text(encoding="utf-8"))
         self.assertEqual(
             promoted_record["knowledge_points"],
             ["受力分析", "牛顿第二定律"],
@@ -224,9 +189,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
 
     def test_gate_passed_w3r_is_materialized_and_keeps_teacher_approval_gate(self):
         source = json.loads(W3R_FIXTURE.read_text(encoding="utf-8"))
-        brief = w3r_contract.build_w3r_brief(
-            source["problem"], source["blueprint"], source["proof_package"]
-        )["brief"]
+        brief = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])["brief"]
         render = w3_rendering.render_w3r(brief)
         report = {
             "policy": "wuli-w3-shadow-v1",
@@ -254,29 +217,30 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             "stages": [{"stage": "solver-a", "status": "completed"}],
             "report": report,
         }
-        w3r_config_path = (
-            self.library / "config" / server.W3R_ROUTING_CONFIG_NAME
+        w3r_config_path = self.library / "config" / server.W3R_ROUTING_CONFIG_NAME
+        w3r_config_path.write_text(
+            json.dumps({
+                "schema_version": 1,
+                "policy_version": analysis_routing.W3R_POLICY_VERSION,
+                "mode": "gray",
+                "gray_entry_ids": [self.entry.name],
+                "evidence": {
+                    **analysis_routing.DEFAULT_W3R_EVIDENCE,
+                    "report_digest": "sha256:" + "a" * 64,
+                    "paired_case_count": 2,
+                    "teacher_reviewed_case_count": 2,
+                    "final_answer_fidelity": 1.0,
+                    "claim_support_coverage": 1.0,
+                    "condition_retention": 1.0,
+                    "target_coverage": 1.0,
+                    "latex_validity": 1.0,
+                    "unsupported_claim_rate": 0.0,
+                    "teacher_readability_preference": 1.0,
+                    "teacher_edit_rate_non_regression": True,
+                },
+            }),
+            encoding="utf-8",
         )
-        w3r_config_path.write_text(json.dumps({
-            "schema_version": 1,
-            "policy_version": analysis_routing.W3R_POLICY_VERSION,
-            "mode": "gray",
-            "gray_entry_ids": [self.entry.name],
-            "evidence": {
-                **analysis_routing.DEFAULT_W3R_EVIDENCE,
-                "report_digest": "sha256:" + "a" * 64,
-                "paired_case_count": 2,
-                "teacher_reviewed_case_count": 2,
-                "final_answer_fidelity": 1.0,
-                "claim_support_coverage": 1.0,
-                "condition_retention": 1.0,
-                "target_coverage": 1.0,
-                "latex_validity": 1.0,
-                "unsupported_claim_rate": 0.0,
-                "teacher_readability_preference": 1.0,
-                "teacher_edit_rate_non_regression": True,
-            },
-        }), encoding="utf-8")
         self.handler.run_w3_shadow_analysis = lambda _entry, _data: request
         with (
             mock.patch.object(server, "LIBRARY", self.library),
@@ -290,9 +254,7 @@ class AnalysisRoutingServerTest(unittest.TestCase):
             mock.patch.object(server, "_save_agent_baseline"),
             mock.patch.object(server, "assess_entry_difficulty", return_value={}),
             mock.patch.object(server, "resolve_model_id_for_task", return_value="model"),
-            mock.patch.object(
-                server, "archive_agent_result", return_value={"event_id": "event"}
-            ),
+            mock.patch.object(server, "archive_agent_result", return_value={"event_id": "event"}),
         ):
             result = self.handler.run_adaptive_analysis(self.entry, {})
         renderer = result["adaptive_routing"]["renderer"]

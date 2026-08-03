@@ -11,7 +11,6 @@ import html
 import re
 from typing import Any
 
-
 FLOWCHART_PLUGIN_ID = "logic-flowchart"
 
 

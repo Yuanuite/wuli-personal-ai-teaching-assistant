@@ -95,9 +95,7 @@ def run_visual_extract(
         _persist_ledger(entry, ledger_path, outcome)
         return outcome
 
-    effective_gateway = gateway or AgentGateway(
-        environment_resolver=lambda: resolved_environment(library)
-    )
+    effective_gateway = gateway or AgentGateway(environment_resolver=lambda: resolved_environment(library))
     try:
         extraction = effective_gateway.extract_visual_facts(
             payload,
@@ -107,9 +105,7 @@ def run_visual_extract(
             model_id=model_id,
         )
     except Exception as exc:  # noqa: BLE001 - provider/privacy/protocol failure
-        outcome = _failed_outcome(
-            entry.name, "extract-failed", "visual_extraction_failed", str(exc)
-        )
+        outcome = _failed_outcome(entry.name, "extract-failed", "visual_extraction_failed", str(exc))
         outcome["input_fingerprint"] = fingerprint
         _persist_ledger(entry, ledger_path, outcome)
         return outcome
@@ -117,9 +113,7 @@ def run_visual_extract(
     try:
         visual_source_review.stage_visual_extraction(entry, extraction)
     except Exception as exc:  # noqa: BLE001 - keep the human gate intact
-        outcome = _failed_outcome(
-            entry.name, "staging-failed", "visual_facts_staging_failed", str(exc)
-        )
+        outcome = _failed_outcome(entry.name, "staging-failed", "visual_facts_staging_failed", str(exc))
         outcome["input_fingerprint"] = fingerprint
         _persist_ledger(entry, ledger_path, outcome)
         return outcome
@@ -142,9 +136,7 @@ def run_visual_extract(
         "failure_type": "",
         "message": "visual facts staged for teacher review",
         "requested_tier": routing_tier,
-        "visual_gate_status": str(
-            (extraction.get("gate_result") or {}).get("status", "")
-        ).strip(),
+        "visual_gate_status": str((extraction.get("gate_result") or {}).get("status", "")).strip(),
         "uncertainties": len(visual_facts.get("uncertainties") or []),
     }
     _persist_ledger(entry, ledger_path, outcome)

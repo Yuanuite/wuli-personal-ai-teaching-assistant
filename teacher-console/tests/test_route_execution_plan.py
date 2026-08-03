@@ -51,7 +51,13 @@ class RouteExecutionPlanTest(unittest.TestCase):
             if core_mode
             else {}
         )
-        w3r_config = {"schema_version": 1, "policy_version": "wuli-w3r-routing-v1", "mode": w3r_mode, "gray_entry_ids": [], "evidence": {}}
+        w3r_config = {
+            "schema_version": 1,
+            "policy_version": "wuli-w3r-routing-v1",
+            "mode": w3r_mode,
+            "gray_entry_ids": [],
+            "evidence": {},
+        }
         return build_route_execution_plan(library=self.library, core_config=core_config, w3r_config=w3r_config)
 
     def test_core_plus_w3r_off(self):

@@ -99,9 +99,7 @@ class EntryVisualExtractCliTest(unittest.TestCase):
         self.assertIn("not found", json.loads(result.stdout)["error"])
 
     def test_auto_mode_resolves_to_registry_from_config(self):
-        options = process_uploads.resolve_review_options(
-            self.library, "auto", "unavailable", None, None
-        )
+        options = process_uploads.resolve_review_options(self.library, "auto", "unavailable", None, None)
         self.assertEqual(options["mode"], "registry")
         self.assertTrue(options["allow_remote"])
 

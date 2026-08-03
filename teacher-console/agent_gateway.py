@@ -81,15 +81,13 @@ def classify_agent_failure(result: dict) -> str:
     ]
     for attempt in attempts:
         if isinstance(attempt, dict):
-            text_parts.extend(
-                (
-                    attempt.get("error"),
-                    attempt.get("stdout"),
-                    attempt.get("stderr"),
-                    attempt.get("terminal_reason"),
-                    attempt.get("subtype"),
-                )
-            )
+            text_parts.extend((
+                attempt.get("error"),
+                attempt.get("stdout"),
+                attempt.get("stderr"),
+                attempt.get("terminal_reason"),
+                attempt.get("subtype"),
+            ))
     text = " ".join(str(value) for value in text_parts if value).lower()
 
     if "invalid_json_schema" in text or (
@@ -176,7 +174,7 @@ def _parse_failure_envelope(stderr: str) -> dict | None:
         index = line.find(_FAILURE_ENVELOPE_MARKER)
         if index < 0:
             continue
-        raw = line[index + len(_FAILURE_ENVELOPE_MARKER):].strip()
+        raw = line[index + len(_FAILURE_ENVELOPE_MARKER) :].strip()
         try:
             parsed = json.loads(raw)
         except (json.JSONDecodeError, TypeError):
@@ -456,9 +454,7 @@ class AgentGateway:
         # adapter stdin.
         if isinstance(context_payloads, dict):
             complexity: dict[str, Any] = {}
-            target_brief = context_payloads.get(
-                ".agent-context/target-brief.json", {}
-            )
+            target_brief = context_payloads.get(".agent-context/target-brief.json", {})
             if isinstance(target_brief, dict):
                 targets = target_brief.get("targets")
                 if isinstance(targets, list):
@@ -467,26 +463,19 @@ class AgentGateway:
                     complexity["target_count"] = max(0, targets)
                 else:
                     target_count = target_brief.get("target_count")
-                    if isinstance(target_count, int) and not isinstance(
-                        target_count, bool
-                    ):
+                    if isinstance(target_count, int) and not isinstance(target_count, bool):
                         complexity["target_count"] = max(0, target_count)
-            evidence = context_payloads.get(
-                ".agent-context/knowledge-evidence.json", {}
-            )
+            evidence = context_payloads.get(".agent-context/knowledge-evidence.json", {})
             if isinstance(evidence, dict):
                 context_budget = evidence.get("context_budget")
                 truncated = evidence.get("truncated") is True or (
-                    isinstance(context_budget, dict)
-                    and context_budget.get("truncated") is True
+                    isinstance(context_budget, dict) and context_budget.get("truncated") is True
                 )
                 complexity["evidence_truncated"] = truncated
             contract = safe.get("output_contract")
             schema = contract.get("schema") if isinstance(contract, dict) else None
             if isinstance(schema, dict):
-                complexity["contract_schema_chars"] = len(
-                    json.dumps(schema, ensure_ascii=False)
-                )
+                complexity["contract_schema_chars"] = len(json.dumps(schema, ensure_ascii=False))
             if complexity:
                 safe["request_complexity"] = complexity
         config = safe.get("model_config")
@@ -540,9 +529,7 @@ class AgentGateway:
             if configured and binary and not _command_exists(binary, self.which):
                 available = False
             version = _probe_version(binary, self.run_process) if binary and include_versions else ""
-            reason = "" if available else (
-                f"配置的 {name} 路径不存在" if configured else f"未找到 {name} 可执行文件"
-            )
+            reason = "" if available else (f"配置的 {name} 路径不存在" if configured else f"未找到 {name} 可执行文件")
             if available and binary and include_versions:
                 arguments = ["exec", "--help"] if name == "codex" else ["--help"]
                 required = (
@@ -763,9 +750,7 @@ class AgentGateway:
                 "exec",
                 "--skip-git-repo-check",
                 "--sandbox",
-                "read-only"
-                if structured or (task.get("probe") and not task.get("probe_write"))
-                else "workspace-write",
+                "read-only" if structured or (task.get("probe") and not task.get("probe_write")) else "workspace-write",
                 "--ephemeral",
                 "--ignore-user-config",
                 "--ignore-rules",
@@ -809,16 +794,14 @@ class AgentGateway:
             ]
             if structured:
                 schema = task["output_contract"].get("schema")
-                tokens.extend(
-                    [
-                        "--bare",
-                        "--disable-slash-commands",
-                        "--output-format",
-                        "json",
-                        "--json-schema",
-                        json.dumps(schema, ensure_ascii=False, separators=(",", ":")),
-                    ]
-                )
+                tokens.extend([
+                    "--bare",
+                    "--disable-slash-commands",
+                    "--output-format",
+                    "json",
+                    "--json-schema",
+                    json.dumps(schema, ensure_ascii=False, separators=(",", ":")),
+                ])
             model_config = task.get("model_config")
             if isinstance(model_config, dict):
                 model = str(model_config.get("model", "")).strip()
@@ -1009,9 +992,7 @@ class AgentGateway:
         blocks: list[str] = []
         total = 0
         context_patterns = [
-            str(item)
-            for item in task.get("structured_context_paths", [])
-            if isinstance(item, str) and item.strip()
+            str(item) for item in task.get("structured_context_paths", []) if isinstance(item, str) and item.strip()
         ]
         for path in sorted(staging.rglob("*")):
             if not path.is_file() or path.is_symlink():
@@ -1035,8 +1016,7 @@ class AgentGateway:
             "【结构化输出模式】不要调用工具，不要读取或修改文件，不要输出 Markdown 围栏或额外说明。"
             "只根据下方授权上下文返回符合所给 JSON Schema 的一个对象。"
             f"\n{instructions}\n\n"
-            "【授权上下文】"
-            + "".join(blocks)
+            "【授权上下文】" + "".join(blocks)
         )
 
     @staticmethod
@@ -1322,9 +1302,8 @@ class AgentGateway:
         # receives instead of silently diverging (300s adapter default).
         task_timeout = max(10, min(int(task.get("timeout_seconds", 1800)), 1800))
         base_environment = self._base_environment()
-        configured_timeout_value = (
-            str(model_config.get("timeout_seconds", "")).strip()
-            or base_environment.get("TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "600")
+        configured_timeout_value = str(model_config.get("timeout_seconds", "")).strip() or base_environment.get(
+            "TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "600"
         )
         try:
             configured_timeout = int(configured_timeout_value)
@@ -1562,9 +1541,7 @@ class AgentGateway:
                             attempt[key] = envelope[key]
                     raw_usage = envelope.get("usage")
                     if isinstance(raw_usage, dict) and raw_usage:
-                        attempt["token_usage"] = {
-                            k: v for k, v in raw_usage.items() if isinstance(v, int) and v >= 0
-                        }
+                        attempt["token_usage"] = {k: v for k, v in raw_usage.items() if isinstance(v, int) and v >= 0}
                     attempt["adapter_failure_type"] = envelope.get("failure_type", "")
                 # Structured telemetry from JSON adapter payload
                 if payload and isinstance(payload, dict):

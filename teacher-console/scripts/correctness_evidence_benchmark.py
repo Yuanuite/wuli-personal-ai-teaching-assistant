@@ -15,10 +15,7 @@ if str(CONSOLE) not in sys.path:
 import correctness_faults  # noqa: E402
 import correctness_metrics  # noqa: E402
 
-
-DEFAULT_FAULTS = (
-    CONSOLE / "tests" / "fixtures" / "correctness_faults.v1.json"
-)
+DEFAULT_FAULTS = CONSOLE / "tests" / "fixtures" / "correctness_faults.v1.json"
 
 
 def main() -> int:
@@ -47,11 +44,7 @@ def main() -> int:
         args.output_md.write_text(markdown, encoding="utf-8")
     if not args.output_json and not args.output_md:
         print(encoded, end="")
-    return 0 if all(
-        value
-        for key, value in report["gates"].items()
-        if key != "production_authorized"
-    ) else 2
+    return 0 if all(value for key, value in report["gates"].items() if key != "production_authorized") else 2
 
 
 if __name__ == "__main__":

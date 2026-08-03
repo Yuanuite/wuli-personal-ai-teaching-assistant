@@ -159,11 +159,7 @@ def teaching_trials(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
             rework = sum(1 for item in window if item.get("task_type") in REWORK_TASKS[task_type])
             if superseded:
                 rework += 1
-            evaluation = (
-                approval.get("evaluation")
-                if approval and isinstance(approval.get("evaluation"), dict)
-                else {}
-            )
+            evaluation = approval.get("evaluation") if approval and isinstance(approval.get("evaluation"), dict) else {}
             scores = evaluation.get("scores") if isinstance(evaluation.get("scores"), dict) else {}
             adoption = (
                 approval.get("feedback", {}).get("adoption", {})
@@ -222,9 +218,9 @@ def teaching_summary(trials: list[dict[str, Any]], min_samples: int) -> dict[str
             "first_pass_acceptance_rate": round(
                 sum(item["approved"] and item["rework_events"] == 0 for item in items) / len(items), 4
             ),
-            "avg_teacher_changed_lines": _average(
-                [float(item["teacher_changed_lines"]) for item in items if item["approved"]]
-            ),
+            "avg_teacher_changed_lines": _average([
+                float(item["teacher_changed_lines"]) for item in items if item["approved"]
+            ]),
             "adoption_levels": {
                 level: sum(item["adoption_level"] == level for item in items)
                 for level in ("redo", "major-revision", "minor-revision", "as-is")

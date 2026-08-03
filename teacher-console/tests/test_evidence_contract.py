@@ -4,7 +4,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
@@ -33,25 +32,23 @@ def retrieval_need(*, criticality="required"):
 
 
 def evidence_unit(*, evidence_id="EU1", source_kind="approved_solution", authority="B"):
-    return evidence_contract.normalize_evidence_unit(
-        {
-            "schema": "wuli.evidence-unit.v1",
-            "evidence_id": evidence_id,
-            "unit_kind": "method_applicability",
-            "source_kind": source_kind,
-            "source_locator": {
-                "path": "student-error-library/entries/example/teacher-solution.md",
-                "section": "磁场阶段",
-                "start_line": 12,
-                "end_line": 16,
-            },
-            "text": "仅受匀强磁场洛伦兹力且速度垂直磁场时，轨迹为圆。",
-            "physics_facets": ["受力条件", "速度与磁场方向", "适用公式"],
-            "applicability": ["仅受磁场力", "速度垂直磁场"],
-            "exceptions": ["存在电场时需重新检查能量变化"],
-            "authority_level": authority,
-        }
-    )
+    return evidence_contract.normalize_evidence_unit({
+        "schema": "wuli.evidence-unit.v1",
+        "evidence_id": evidence_id,
+        "unit_kind": "method_applicability",
+        "source_kind": source_kind,
+        "source_locator": {
+            "path": "student-error-library/entries/example/teacher-solution.md",
+            "section": "磁场阶段",
+            "start_line": 12,
+            "end_line": 16,
+        },
+        "text": "仅受匀强磁场洛伦兹力且速度垂直磁场时，轨迹为圆。",
+        "physics_facets": ["受力条件", "速度与磁场方向", "适用公式"],
+        "applicability": ["仅受磁场力", "速度垂直磁场"],
+        "exceptions": ["存在电场时需重新检查能量变化"],
+        "authority_level": authority,
+    })
 
 
 def sufficient_run():
@@ -153,9 +150,7 @@ class EvidenceContractTest(unittest.TestCase):
         declared = retrieval_need()
         declared["diagnostic_targets"] = ["中途改变角度正方向并直接相加"]
         self.assertEqual(
-            evidence_contract.normalize_retrieval_need(declared)[
-                "diagnostic_targets"
-            ],
+            evidence_contract.normalize_retrieval_need(declared)["diagnostic_targets"],
             ["中途改变角度正方向并直接相加"],
         )
 
@@ -202,11 +197,7 @@ class EvidenceContractTest(unittest.TestCase):
 
     def test_routing_summary_cannot_enter_evidence_set(self):
         invalid = sufficient_run()
-        invalid["evidence_set"] = [
-            evidence_unit(
-                evidence_id="EU1", source_kind="routing_summary", authority="N"
-            )
-        ]
+        invalid["evidence_set"] = [evidence_unit(evidence_id="EU1", source_kind="routing_summary", authority="N")]
         with self.assertRaisesRegex(ValueError, "cannot enter evidence_set"):
             evidence_contract.normalize_evidence_agent_run(invalid)
 
@@ -238,9 +229,7 @@ class EvidenceEvaluationTest(unittest.TestCase):
         }
 
     def test_three_layer_score_separates_candidates_from_selected_evidence(self):
-        report = evidence_evaluation.score_gold_cases(
-            [self.gold_case()], [self.prediction()]
-        )
+        report = evidence_evaluation.score_gold_cases([self.gold_case()], [self.prediction()])
         self.assertEqual(report["metrics"]["candidate_required_recall"], 1.0)
         self.assertEqual(report["metrics"]["candidate_false_friend_count"], 1)
         self.assertEqual(report["metrics"]["false_friend_admission_count"], 0)
@@ -250,9 +239,7 @@ class EvidenceEvaluationTest(unittest.TestCase):
         prediction = self.prediction()
         prediction["selected_evidence_ids"].append("BAD1")
         prediction["traceable_evidence_ids"].append("BAD1")
-        report = evidence_evaluation.score_gold_cases(
-            [self.gold_case()], [prediction]
-        )
+        report = evidence_evaluation.score_gold_cases([self.gold_case()], [prediction])
         self.assertEqual(report["metrics"]["false_friend_admission_count"], 1)
         self.assertFalse(report["gates"]["evidence_set_gate_ready"])
 
@@ -261,9 +248,7 @@ class EvidenceEvaluationTest(unittest.TestCase):
         prediction["candidate_evidence_ids"].append("IRRELEVANT")
         prediction["selected_evidence_ids"].append("IRRELEVANT")
         prediction["traceable_evidence_ids"].append("IRRELEVANT")
-        report = evidence_evaluation.score_gold_cases(
-            [self.gold_case()], [prediction]
-        )
+        report = evidence_evaluation.score_gold_cases([self.gold_case()], [prediction])
         self.assertLess(report["metrics"]["evidence_precision"], 1.0)
         self.assertFalse(report["gates"]["evidence_precision_100"])
         self.assertFalse(report["gates"]["evidence_set_gate_ready"])

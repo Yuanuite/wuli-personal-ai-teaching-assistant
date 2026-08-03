@@ -6,7 +6,6 @@ from __future__ import annotations
 import re
 from typing import Any
 
-
 _UNSUPPORTED_CONTROL_PATTERN = re.compile(r"[\x00-\x09\x0b\x0c\x0e-\x1f\x7f]")
 
 

@@ -18,13 +18,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
-SKILL_SCRIPTS = (
-    PROJECT_ROOT
-    / ".claude"
-    / "skills"
-    / "manage-student-error-library"
-    / "scripts"
-)
+SKILL_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
@@ -39,14 +33,12 @@ from runtime_environment import resolved_environment  # noqa: E402
 def configure_models(source: Path, target: Path) -> None:
     registry = json.loads(source.read_text(encoding="utf-8"))
     registry = copy.deepcopy(registry)
-    registry.setdefault("defaults", {}).update(
-        {
-            "analysis.generate": "Deepseek-v4-flash",
-            "claim.verify": "Deepseek-v4-pro",
-            "economy": "Deepseek-v4-flash",
-            "expert": "Deepseek-v4-pro",
-        }
-    )
+    registry.setdefault("defaults", {}).update({
+        "analysis.generate": "Deepseek-v4-flash",
+        "claim.verify": "Deepseek-v4-pro",
+        "economy": "Deepseek-v4-flash",
+        "expert": "Deepseek-v4-pro",
+    })
     for model in registry.get("models", []):
         model_id = str(model.get("id", ""))
         if model_id == "Deepseek-v4-flash":
@@ -109,13 +101,9 @@ def configure_server(library: Path, workspace: Path) -> None:
     teacher_server.LIBRARY = library
     teacher_server.UPLOADS = workspace / "error-collection"
     teacher_server.PUBLIC_SITE = workspace / "student-site"
-    teacher_server.MODEL_REGISTRY_PATH = (
-        library / "config" / "model-registry.json"
-    )
+    teacher_server.MODEL_REGISTRY_PATH = library / "config" / "model-registry.json"
     model_registry.LIBRARY = library
-    teacher_server.AGENT_GATEWAY = AgentGateway(
-        environment_resolver=lambda: resolved_environment(library)
-    )
+    teacher_server.AGENT_GATEWAY = AgentGateway(environment_resolver=lambda: resolved_environment(library))
     teacher_server._JOB_MANAGER = AgentJobManager(
         library / ".cache" / "agent-jobs",
         max_workers=1,

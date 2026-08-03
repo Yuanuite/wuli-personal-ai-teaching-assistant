@@ -6,10 +6,8 @@ from __future__ import annotations
 from typing import Any
 
 import analysis_artifacts
-import diagram_plugins
 import problem_decomposition
 import w3r_contract
-
 
 POLICY_VERSION = "wuli-analysis-adaptive-v1"
 CONFIG_SCHEMA_VERSION = 1
@@ -132,11 +130,7 @@ def normalize_w3r_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
         "teacher_readability_preference",
     ):
         value = evidence.get(field)
-        if (
-            isinstance(value, bool)
-            or not isinstance(value, (int, float))
-            or not 0.0 <= float(value) <= 1.0
-        ):
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0.0 <= float(value) <= 1.0:
             errors.append(f"w3r evidence {field} must be between 0 and 1")
         else:
             normalized_evidence[field] = float(value)
@@ -150,9 +144,7 @@ def normalize_w3r_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
     normalized_evidence["report_digest"] = digest
     edit_rate = evidence.get("teacher_edit_rate_non_regression")
     if not isinstance(edit_rate, bool):
-        errors.append(
-            "w3r evidence teacher_edit_rate_non_regression must be boolean"
-        )
+        errors.append("w3r evidence teacher_edit_rate_non_regression must be boolean")
     else:
         normalized_evidence["teacher_edit_rate_non_regression"] = edit_rate
     if errors:
@@ -210,8 +202,7 @@ def w3r_render_readiness(report: Any) -> tuple[bool, list[str]]:
     evidence = report.get("claim_evidence_shadow")
     aggregation = (
         evidence.get("aggregation", {})
-        if isinstance(evidence, dict)
-        and isinstance(evidence.get("aggregation"), dict)
+        if isinstance(evidence, dict) and isinstance(evidence.get("aggregation"), dict)
         else {}
     )
     if aggregation.get("status") != "VERIFIED":
@@ -228,9 +219,7 @@ def w3r_render_readiness(report: Any) -> tuple[bool, list[str]]:
         normalized_brief = w3r_contract.normalize_w3r_brief(brief)
     except ValueError:
         return False, [*errors, "w3r-render-contract-invalid"]
-    if w3r_contract.brief_fingerprint(normalized_brief) != normalized[
-        "brief_fingerprint"
-    ]:
+    if w3r_contract.brief_fingerprint(normalized_brief) != normalized["brief_fingerprint"]:
         errors.append("w3r-render-brief-binding-invalid")
     import w3_rendering
 
@@ -282,9 +271,7 @@ def select_renderer(
     elif mode == "gray" and entry_id not in normalized["gray_entry_ids"]:
         reason = "w3r-outside-gray-cohort"
     elif mode in {"gray", "default"}:
-        evidence_errors = w3r_evidence_errors(
-            normalized, default=mode == "default"
-        )
+        evidence_errors = w3r_evidence_errors(normalized, default=mode == "default")
         if evidence_errors:
             reason = "w3r-rollout-evidence-insufficient"
         elif not ready:
@@ -313,15 +300,10 @@ def w3r_teacher_review_summary(
     shadow = report.get("w3r_shadow")
     render = (
         shadow.get("render_result", {})
-        if isinstance(shadow, dict)
-        and isinstance(shadow.get("render_result"), dict)
+        if isinstance(shadow, dict) and isinstance(shadow.get("render_result"), dict)
         else {}
     )
-    gate = (
-        render.get("render_gate_report", {})
-        if isinstance(render.get("render_gate_report"), dict)
-        else {}
-    )
+    gate = render.get("render_gate_report", {}) if isinstance(render.get("render_gate_report"), dict) else {}
     violations = gate.get("violations", [])
     return {
         "schema_version": 1,
@@ -332,9 +314,7 @@ def w3r_teacher_review_summary(
         "metrics": gate.get("metrics", {}),
         "attempt": render.get("attempt", 0),
         "violation_codes": [
-            str(item.get("code", ""))
-            for item in violations[:8]
-            if isinstance(item, dict) and item.get("code")
+            str(item.get("code", "")) for item in violations[:8] if isinstance(item, dict) and item.get("code")
         ],
         "teacher_confirmation_required": True,
     }
@@ -351,9 +331,7 @@ def normalize_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
     policy_version = str(raw.get("policy_version", "")).strip()
     mode = str(raw.get("mode", "")).strip().lower()
     gray_entry_ids = raw.get("gray_entry_ids", [])
-    w3_failure_policy = str(
-        raw.get("w3_failure_policy", DEFAULT_CONFIG["w3_failure_policy"])
-    ).strip().lower()
+    w3_failure_policy = str(raw.get("w3_failure_policy", DEFAULT_CONFIG["w3_failure_policy"])).strip().lower()
     if schema_version != CONFIG_SCHEMA_VERSION:
         errors.append("routing config schema version mismatch")
     if policy_version != POLICY_VERSION:
@@ -386,9 +364,7 @@ def normalize_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
         "gray_entry_ids": list(gray_entry_ids),
         "max_agent_calls": bounded_int("max_agent_calls", 6, 1, 12),
         "max_teacher_focus": bounded_int("max_teacher_focus", 2, 0, 2),
-        "max_latency_seconds": bounded_int(
-            "max_latency_seconds", 900, 1, 3_600
-        ),
+        "max_latency_seconds": bounded_int("max_latency_seconds", 900, 1, 3_600),
         "w3_failure_policy": w3_failure_policy,
     }, errors
 
@@ -401,9 +377,7 @@ def decide(
     has_physics_model: bool = False,
 ) -> dict[str, Any]:
     normalized, errors = normalize_config(config)
-    screen = problem_decomposition.complexity_screen(
-        problem, has_physics_model=has_physics_model
-    )
+    screen = problem_decomposition.complexity_screen(problem, has_physics_model=has_physics_model)
     route = "w2"
     reason = "w3-production-disabled"
     if errors:
@@ -498,18 +472,14 @@ def candidate_files(
         config=w3r_config,
     )
     render_result = (
-        report.get("w3r_shadow", {}).get("render_result", {})
-        if isinstance(report.get("w3r_shadow"), dict)
-        else {}
+        report.get("w3r_shadow", {}).get("render_result", {}) if isinstance(report.get("w3r_shadow"), dict) else {}
     )
     if selection.get("selected_renderer") == "w3r":
         normalized = w3r_contract.normalize_render_result(render_result)
         student_body = normalized["student_solution_md"].strip()
         teacher_body = normalized["teacher_solution_md"].strip()
     else:
-        student_body = str(
-            report.get("recommended_student_solution", "")
-        ).strip()
+        student_body = str(report.get("recommended_student_solution", "")).strip()
         teacher_body = ""
     image_block = (
         "![解题流程图（可选插件）](assets/explanatory.svg)\n\n"
@@ -540,11 +510,7 @@ def candidate_files(
         if check:
             audit_lines.append(f"- 核对义务：{check}")
     if selection.get("selected_renderer") == "w3r":
-        teacher = (
-            "# 解析（教师版）\n\n"
-            f"{image_block}"
-            f"{teacher_body}\n"
-        )
+        teacher = f"# 解析（教师版）\n\n{image_block}{teacher_body}\n"
     else:
         teacher = student.rstrip() + "\n\n" + "\n".join(audit_lines) + "\n"
     files = {
@@ -554,7 +520,6 @@ def candidate_files(
     }
     if diagram_plugin_id:
         files["assets/explanatory.svg"] = analysis_artifacts.render_explanation_diagram(
-            "W3 关键关系", diagram_nodes
-            , plugin_id=diagram_plugin_id
+            "W3 关键关系", diagram_nodes, plugin_id=diagram_plugin_id
         )
     return files

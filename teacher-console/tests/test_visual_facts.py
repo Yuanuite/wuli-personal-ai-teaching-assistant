@@ -1,15 +1,15 @@
-import unittest
 import copy
 import hashlib
 import json
 import sys
+import unittest
 from pathlib import Path
 
 CONSOLE_DIR = Path(__file__).resolve().parents[1]
 if str(CONSOLE_DIR) not in sys.path:
     sys.path.insert(0, str(CONSOLE_DIR))
 
-from visual_facts import normalize_payload, evaluate_gate
+from visual_facts import evaluate_gate, normalize_payload
 
 
 def make_raw(**overrides):
@@ -49,7 +49,7 @@ class TestNormalizePayload(unittest.TestCase):
         self.assertEqual(norm["model_identity"], raw["model_identity"])
         self.assertIn("fingerprint", norm)
         self.assertTrue(norm["fingerprint"].startswith("sha256:"))
-        self.assertEqual(len(norm["fingerprint"][len("sha256:"):]), 64)
+        self.assertEqual(len(norm["fingerprint"][len("sha256:") :]), 64)
 
     def test_exact_sha_format(self):
         raw = make_raw()
@@ -194,9 +194,12 @@ class TestEvaluateGate(unittest.TestCase):
         canonical["diagram_facts"][0]["confidence"] = 0.5
         # Recompute fingerprint after mutation
         evidence = {k: v for k, v in canonical.items() if k != "fingerprint"}
-        canonical["fingerprint"] = "sha256:" + hashlib.sha256(
-            json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        ).hexdigest()
+        canonical["fingerprint"] = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+        )
         result = evaluate_gate(
             canonical,
             canonical["source_fingerprint"],
@@ -212,9 +215,12 @@ class TestEvaluateGate(unittest.TestCase):
         canonical = make_canonical()
         canonical["diagram_facts"][0]["confidence"] = 0.6
         evidence = {k: v for k, v in canonical.items() if k != "fingerprint"}
-        canonical["fingerprint"] = "sha256:" + hashlib.sha256(
-            json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        ).hexdigest()
+        canonical["fingerprint"] = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+        )
         result = evaluate_gate(
             canonical,
             canonical["source_fingerprint"],
@@ -227,9 +233,12 @@ class TestEvaluateGate(unittest.TestCase):
         canonical = make_canonical(reviewed_text="", uncertainties=["uncertain"])
         canonical["diagram_facts"][0]["confidence"] = 0.5
         evidence = {k: v for k, v in canonical.items() if k != "fingerprint"}
-        canonical["fingerprint"] = "sha256:" + hashlib.sha256(
-            json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        ).hexdigest()
+        canonical["fingerprint"] = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+        )
         result = evaluate_gate(
             canonical,
             canonical["source_fingerprint"],
@@ -256,9 +265,12 @@ class TestEvaluateGate(unittest.TestCase):
         canonical = make_canonical()
         canonical["model_identity"] = {"model_id": "model-x", "provider": "provider-y"}
         evidence = {k: v for k, v in canonical.items() if k != "fingerprint"}
-        canonical["fingerprint"] = "sha256:" + hashlib.sha256(
-            json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        ).hexdigest()
+        canonical["fingerprint"] = (
+            "sha256:"
+            + hashlib.sha256(
+                json.dumps(evidence, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            ).hexdigest()
+        )
         result = evaluate_gate(
             canonical,
             canonical["source_fingerprint"],

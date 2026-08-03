@@ -113,11 +113,7 @@ def _material_spend_reason(result: dict) -> str:
     """Explain why a full model retry would likely duplicate meaningful spend."""
     usage_sources = [result.get("usage")]
     attempts = result.get("attempts") if isinstance(result.get("attempts"), list) else []
-    usage_sources.extend(
-        attempt.get("token_usage")
-        for attempt in attempts
-        if isinstance(attempt, dict)
-    )
+    usage_sources.extend(attempt.get("token_usage") for attempt in attempts if isinstance(attempt, dict))
     for usage in usage_sources:
         if not isinstance(usage, dict):
             continue
@@ -234,8 +230,7 @@ def task_with_repair_evidence(task: dict, evidence: dict) -> dict:
     corrective = (
         "\n\n【一次性失败修复】上轮候选没有写入正式条目。"
         "请读取 .agent-context/failure-evidence.json，保持原任务与允许路径不变，"
-        "只修正下列问题：\n- "
-        + "\n- ".join(parts)
+        "只修正下列问题：\n- " + "\n- ".join(parts)
     )
     corrective += "\n必须生成完整、可校验的候选；不要批准、发布或修改 denied_paths。"
     repaired["prompt"] = (str(repaired.get("prompt", "")) + corrective[:MAX_PROMPT_APPEND]).strip()

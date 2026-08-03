@@ -96,10 +96,7 @@ def _soft_patch(entry: Path, review: dict) -> dict:
     if review.get("status") != "passed":
         return {"status": "skipped", "reason": "soft review did not pass"}
     suggestions = review.get("suggestions") or []
-    actionable = [
-        item for item in suggestions
-        if isinstance(item, dict) and str(item.get("severity", "")) == "warning"
-    ]
+    actionable = [item for item in suggestions if isinstance(item, dict) and str(item.get("severity", "")) == "warning"]
     if not actionable:
         return {"status": "skipped", "reason": "no actionable soft suggestions"}
     scene_path = entry / "physics-diagram-scene.json"
@@ -190,9 +187,7 @@ def build_diagram(
 
     from server import run_physics_diagram_gateway  # lazy: avoid circular import
 
-    gateway = run_gateway or (
-        lambda e, **kw: run_physics_diagram_gateway(e, **kw)
-    )
+    gateway = run_gateway or (lambda e, **kw: run_physics_diagram_gateway(e, **kw))
     result = gateway(
         entry,
         routing_tier=routing_tier,
@@ -218,9 +213,7 @@ def build_diagram(
     if enable_soft_review:
         soft_review = _soft_review(entry, library)
         summary["soft_review"] = {
-            key: soft_review[key]
-            for key in ("status", "reason", "model_id", "upstream_model")
-            if key in soft_review
+            key: soft_review[key] for key in ("status", "reason", "model_id", "upstream_model") if key in soft_review
         }
         summary["soft_review"]["suggestion_count"] = len(soft_review.get("suggestions") or [])
         if soft_review.get("status") == "passed" and (

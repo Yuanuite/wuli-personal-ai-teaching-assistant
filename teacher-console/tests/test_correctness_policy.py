@@ -12,14 +12,10 @@ class CorrectnessPolicyTest(unittest.TestCase):
     def test_shadow_feature_is_off_by_default_and_parsed_strictly(self):
         self.assertFalse(correctness_policy.claim_evidence_shadow_enabled({}))
         self.assertTrue(
-            correctness_policy.claim_evidence_shadow_enabled({
-                correctness_policy.CLAIM_EVIDENCE_SHADOW_ENV: "true"
-            })
+            correctness_policy.claim_evidence_shadow_enabled({correctness_policy.CLAIM_EVIDENCE_SHADOW_ENV: "true"})
         )
         self.assertFalse(
-            correctness_policy.claim_evidence_shadow_enabled({
-                correctness_policy.CLAIM_EVIDENCE_SHADOW_ENV: "OFF"
-            })
+            correctness_policy.claim_evidence_shadow_enabled({correctness_policy.CLAIM_EVIDENCE_SHADOW_ENV: "OFF"})
         )
         with self.assertRaisesRegex(ValueError, "must be one of"):
             correctness_policy.claim_evidence_shadow_enabled({
@@ -35,13 +31,8 @@ class CorrectnessPolicyTest(unittest.TestCase):
             requirement = correctness_policy.certificate_requirement(kind)
             self.assertTrue(requirement["verifier_kinds"])
             self.assertTrue(requirement["check_types"])
-            self.assertTrue(
-                set(requirement["verifier_kinds"])
-                <= set(correctness_policy.CERTIFICATE_VERIFIER_KINDS)
-            )
-            self.assertTrue(
-                set(requirement["check_types"]) <= set(correctness_policy.CHECK_TYPES)
-            )
+            self.assertTrue(set(requirement["verifier_kinds"]) <= set(correctness_policy.CERTIFICATE_VERIFIER_KINDS))
+            self.assertTrue(set(requirement["check_types"]) <= set(correctness_policy.CHECK_TYPES))
 
     def test_claim_verifier_concurrency_defaults_to_validated_parallelism(self):
         env = correctness_policy.CLAIM_VERIFY_CONCURRENCY_ENV
@@ -68,26 +59,16 @@ class CorrectnessPolicyTest(unittest.TestCase):
                 correctness_policy.require_agent_submittable_status(status)
 
     def test_same_version_cannot_be_resurrected_or_rewritten(self):
-        self.assertTrue(
-            correctness_policy.can_transition_claim_status("candidate", "verified")
-        )
-        self.assertTrue(
-            correctness_policy.can_transition_claim_status("verified", "disputed")
-        )
-        self.assertFalse(
-            correctness_policy.can_transition_claim_status("disputed", "candidate")
-        )
-        self.assertFalse(
-            correctness_policy.can_transition_claim_status("superseded", "verified")
-        )
+        self.assertTrue(correctness_policy.can_transition_claim_status("candidate", "verified"))
+        self.assertTrue(correctness_policy.can_transition_claim_status("verified", "disputed"))
+        self.assertFalse(correctness_policy.can_transition_claim_status("disputed", "candidate"))
+        self.assertFalse(correctness_policy.can_transition_claim_status("superseded", "verified"))
         with self.assertRaisesRegex(ValueError, "illegal claim status transition"):
             correctness_policy.require_claim_status_transition("verified", "candidate")
 
     def test_policy_snapshot_is_explicit_and_json_serializable(self):
         snapshot = correctness_policy.policy_snapshot()
-        self.assertEqual(
-            snapshot["policy_version"], correctness_policy.CORRECTNESS_POLICY_VERSION
-        )
+        self.assertEqual(snapshot["policy_version"], correctness_policy.CORRECTNESS_POLICY_VERSION)
         self.assertFalse(snapshot["shadow_default"])
         self.assertEqual(
             set(snapshot["certificate_requirements"]),

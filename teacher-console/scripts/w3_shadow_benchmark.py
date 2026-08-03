@@ -34,9 +34,7 @@ def digest(path: Path) -> str:
 
 
 def object_digest(value: Any) -> str:
-    payload = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -58,9 +56,7 @@ def reviewed_entries(library: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def historical_case_sources(
-    evals_root: Path, *, current_experiment: Path
-) -> dict[str, list[str]]:
+def historical_case_sources(evals_root: Path, *, current_experiment: Path) -> dict[str, list[str]]:
     sources: dict[str, list[str]] = {}
     if not evals_root.is_dir():
         return sources
@@ -79,13 +75,9 @@ def historical_case_sources(
     return sources
 
 
-def fresh_readiness(
-    library: Path, experiment: Path, *, holdout_count: int = 5
-) -> dict[str, Any]:
+def fresh_readiness(library: Path, experiment: Path, *, holdout_count: int = 5) -> dict[str, Any]:
     rows = reviewed_entries(library)
-    history = historical_case_sources(
-        library / "evals", current_experiment=experiment
-    )
+    history = historical_case_sources(library / "evals", current_experiment=experiment)
     eligible = [item for item in rows if item["entry_id"] not in history]
     return {
         "schema_version": 1,
@@ -93,9 +85,7 @@ def fresh_readiness(
         "reviewed_case_count": len(rows),
         "historical_case_count": len(history),
         "fresh_eligible_case_count": len(eligible),
-        "replay_candidate_count": len([
-            item for item in rows if item["entry_id"] in history
-        ]),
+        "replay_candidate_count": len([item for item in rows if item["entry_id"] in history]),
         "missing_case_count": max(0, max(5, int(holdout_count)) - len(eligible)),
         "ready_to_seed": len(eligible) >= max(5, int(holdout_count)),
         "eligible_cases": eligible,
@@ -117,23 +107,15 @@ def seed(
     rows.sort(key=lambda item: (-float(item.get("difficulty_score") or 0), item["entry_id"]))
     holdout_count = max(1, min(int(holdout_count), len(rows)))
     history: dict[str, list[str]] = {}
-    reused_ids = list(dict.fromkeys(
-        str(item).strip() for item in (reuse_case_ids or []) if str(item).strip()
-    ))
+    reused_ids = list(dict.fromkeys(str(item).strip() for item in (reuse_case_ids or []) if str(item).strip()))
     if fresh_only:
         holdout_count = max(5, int(holdout_count))
-        history = historical_case_sources(
-            library / "evals", current_experiment=experiment
-        )
+        history = historical_case_sources(library / "evals", current_experiment=experiment)
         by_id = {item["entry_id"]: item for item in rows}
-        invalid_reused = [
-            entry_id for entry_id in reused_ids
-            if entry_id not in by_id or entry_id not in history
-        ]
+        invalid_reused = [entry_id for entry_id in reused_ids if entry_id not in by_id or entry_id not in history]
         if invalid_reused:
             raise ValueError(
-                "replay cases must be teacher-reviewed cases from prior W3 manifests: "
-                + ", ".join(invalid_reused)
+                "replay cases must be teacher-reviewed cases from prior W3 manifests: " + ", ".join(invalid_reused)
             )
         if len(reused_ids) > holdout_count:
             raise ValueError("replay case count cannot exceed the requested batch size")
@@ -151,9 +133,7 @@ def seed(
             row["evaluation_split"] = "replay"
             row["prior_experiments"] = history[row["entry_id"]]
         else:
-            row["evaluation_split"] = (
-                "holdout" if fresh_only or index < holdout_count else "calibration"
-            )
+            row["evaluation_split"] = "holdout" if fresh_only or index < holdout_count else "calibration"
         row["review_status"] = "approved"
     target = experiment / "manifest.json"
     if target.exists():
@@ -184,9 +164,7 @@ def seed(
     if fresh_only:
         manifest["independence"] = {
             "fresh_only": True,
-            "prior_experiment_count": len(
-                {name for names in history.values() for name in names}
-            ),
+            "prior_experiment_count": len({name for names in history.values() for name in names}),
             "excluded_prior_case_count": len(history),
             "reused_case_count": len(reused_ids),
             "reused_cases_are_holdout": False,
@@ -195,8 +173,7 @@ def seed(
             "minimum_fresh_case_count_for_production": 5,
             "minimum_target_count": 12,
             "production_rule": (
-                "replay cases are regression controls and never count toward "
-                "independent holdout eligibility"
+                "replay cases are regression controls and never count toward independent holdout eligibility"
             ),
         }
         manifest["truth_contract"] = {
@@ -227,9 +204,7 @@ def seed(
 
 def freeze_truth(library: Path, experiment: Path) -> dict[str, Any]:
     manifest = load_json(experiment / "manifest.json")
-    if manifest.get("schema_version") != 2 or not manifest.get("independence", {}).get(
-        "fresh_only"
-    ):
+    if manifest.get("schema_version") != 2 or not manifest.get("independence", {}).get("fresh_only"):
         raise ValueError("truth locking is only available for a schema-v2 fresh holdout")
     lock_path = experiment / "truth-lock.json"
     if lock_path.exists():
@@ -267,9 +242,7 @@ def freeze_truth(library: Path, experiment: Path) -> dict[str, Any]:
             if not target_id or target_id in seen:
                 errors.append(f"{entry_id}: truth target id is missing or duplicated")
             if not conclusion or not source_basis:
-                errors.append(
-                    f"{entry_id}: {target_id or 'target'} lacks expected conclusion or source basis"
-                )
+                errors.append(f"{entry_id}: {target_id or 'target'} lacks expected conclusion or source basis")
             seen.add(target_id)
         if any(error.startswith(f"{entry_id}:") for error in errors):
             continue
@@ -299,9 +272,7 @@ def freeze_truth(library: Path, experiment: Path) -> dict[str, Any]:
         "cases": locked_cases,
     }
     lock["lock_digest"] = f"sha256:{object_digest(lock)}"
-    lock_path.write_text(
-        json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    lock_path.write_text(json.dumps(lock, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return lock
 
 
@@ -327,12 +298,8 @@ def validate_truth_lock(
             errors.append(f"{entry_id}: frozen target truth changed")
         if not answer.is_file() or str(case.get("reference_digest", "")) != f"sha256:{digest(answer)}":
             errors.append(f"{entry_id}: frozen teacher answer changed")
-        target_ids[entry_id] = {
-            str(item).strip() for item in case.get("target_ids", []) if str(item).strip()
-        }
-    manifest_ids = {
-        str(item.get("entry_id", "")).strip() for item in manifest.get("cases", [])
-    }
+        target_ids[entry_id] = {str(item).strip() for item in case.get("target_ids", []) if str(item).strip()}
+    manifest_ids = {str(item.get("entry_id", "")).strip() for item in manifest.get("cases", [])}
     if set(target_ids) != manifest_ids:
         errors.append("fresh holdout: truth lock does not cover the frozen manifest")
     return target_ids, errors
@@ -375,8 +342,10 @@ def resolved_target_judgments(
         if verdict == "valid-supplement":
             checks = item.get("validation", {})
             required = ("prompt_constraints", "recomputable_relation", "boundary_cases")
-            if item.get("teacher_confirmed") is not True or not isinstance(checks, dict) or any(
-                not str(checks.get(key, "")).strip() for key in required
+            if (
+                item.get("teacher_confirmed") is not True
+                or not isinstance(checks, dict)
+                or any(not str(checks.get(key, "")).strip() for key in required)
             ):
                 errors.append(
                     f"{entry_id}: {target_id} valid-supplement lacks teacher confirmation "
@@ -453,18 +422,12 @@ def collect(library: Path, experiment: Path) -> tuple[list[dict[str, Any]], list
             continue
         report = shadow.get("report", {})
         metrics = report.get("metrics", {}) if isinstance(report, dict) else {}
-        correct, supplements, judgments, judgment_errors = resolved_target_judgments(
-            label, entry_id=entry_id
-        )
+        correct, supplements, judgments, judgment_errors = resolved_target_judgments(label, entry_id=entry_id)
         errors.extend(judgment_errors)
         if manifest.get("schema_version") == 2:
-            judgment_ids = {
-                str(item.get("target_id", "")).strip() for item in judgments
-            }
+            judgment_ids = {str(item.get("target_id", "")).strip() for item in judgments}
             if judgment_ids != locked_targets.get(entry_id, set()):
-                errors.append(
-                    f"{entry_id}: scored target ids do not match frozen teacher truth"
-                )
+                errors.append(f"{entry_id}: scored target ids do not match frozen teacher truth")
         w2_correct, w2_judgments, w2_errors = resolved_w2_target_judgments(
             label,
             expected_target_ids=locked_targets.get(entry_id, set()),
@@ -476,15 +439,11 @@ def collect(library: Path, experiment: Path) -> tuple[list[dict[str, Any]], list
             "target_count": int(label.get("target_count", 0)),
             "correct_target_count": correct,
             "w2_correct_target_count": (
-                w2_correct
-                if manifest.get("schema_version") == 2
-                else int(label.get("w2_correct_target_count", 0))
+                w2_correct if manifest.get("schema_version") == 2 else int(label.get("w2_correct_target_count", 0))
             ),
             "w2_target_judgments": w2_judgments,
             "w2_quality_warnings": [
-                str(item)[:500]
-                for item in label.get("w2_quality_warnings", [])
-                if str(item).strip()
+                str(item)[:500] for item in label.get("w2_quality_warnings", []) if str(item).strip()
             ],
             "validated_supplement_target_count": supplements,
             "target_judgments": judgments,
@@ -576,25 +535,13 @@ def paired_score(library: Path, experiment: Path) -> dict[str, Any]:
         "policy": manifest.get("policy"),
         "pair_count": len(pairs),
         "target_count": total_targets,
-        "w2_target_accuracy": (
-            round(w2_correct / total_targets, 4) if total_targets else None
-        ),
-        "w3_target_accuracy": (
-            round(w3_correct / total_targets, 4) if total_targets else None
-        ),
-        "w3_accuracy_delta": (
-            round((w3_correct - w2_correct) / total_targets, 4)
-            if total_targets
-            else None
-        ),
-        "w2_delivery_quality_pass_count": sum(
-            item["w2_delivery_quality_pass"] for item in pairs
-        ),
+        "w2_target_accuracy": (round(w2_correct / total_targets, 4) if total_targets else None),
+        "w3_target_accuracy": (round(w3_correct / total_targets, 4) if total_targets else None),
+        "w3_accuracy_delta": (round((w3_correct - w2_correct) / total_targets, 4) if total_targets else None),
+        "w2_delivery_quality_pass_count": sum(item["w2_delivery_quality_pass"] for item in pairs),
         "comparison_ready": bool(pairs and not errors),
         "production_evidence": bool(
-            pairs
-            and not errors
-            and all(item["evaluation_split"] == "holdout" for item in pairs)
+            pairs and not errors and all(item["evaluation_split"] == "holdout" for item in pairs)
         ),
         "pairs": pairs,
         "errors": errors,
@@ -611,21 +558,19 @@ def score(library: Path, experiment: Path) -> dict[str, Any]:
     metrics = w3_pipeline.acceptance_metrics(rows)
     manifest = load_json(experiment / "manifest.json")
     holdout_ids = {
-        str(item.get("entry_id", ""))
-        for item in manifest.get("cases", [])
-        if item.get("evaluation_split") == "holdout"
+        str(item.get("entry_id", "")) for item in manifest.get("cases", []) if item.get("evaluation_split") == "holdout"
     }
-    schema_v2_ids = {
-        str(item.get("entry_id", ""))
-        for item in manifest.get("cases", [])
-    } if manifest.get("schema_version") == 2 else set()
+    schema_v2_ids = (
+        {str(item.get("entry_id", "")) for item in manifest.get("cases", [])}
+        if manifest.get("schema_version") == 2
+        else set()
+    )
     blocking_ids = schema_v2_ids or holdout_ids
     blocking_errors = [
         error for error in errors if any(entry_id and error.startswith(entry_id) for entry_id in blocking_ids)
     ]
     blocking_errors.extend(
-        error for error in errors
-        if error.startswith("fresh holdout:") and error not in blocking_errors
+        error for error in errors if error.startswith("fresh holdout:") and error not in blocking_errors
     )
     if blocking_errors:
         metrics["gates"]["production_eligible"] = False
@@ -638,9 +583,7 @@ def score(library: Path, experiment: Path) -> dict[str, Any]:
         "blocking_errors": blocking_errors,
         "calibration_warnings": [error for error in errors if error not in blocking_errors],
     }
-    (experiment / "result.json").write_text(
-        json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    (experiment / "result.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return metrics
 
 
@@ -680,9 +623,7 @@ def main() -> int:
                 reuse_case_ids=args.reuse_case,
             )
         elif args.command == "status":
-            result = fresh_readiness(
-                args.library, args.experiment, holdout_count=args.holdout_count
-            )
+            result = fresh_readiness(args.library, args.experiment, holdout_count=args.holdout_count)
         elif args.command == "freeze-truth":
             result = freeze_truth(args.library, args.experiment)
         elif args.command == "score":

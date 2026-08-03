@@ -14,19 +14,10 @@ import structured_text
 BLUEPRINT_CONTRACT = "wuli.problem-decompose.v1"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 KNOWLEDGE_UNIT_REGISTRY_PATH = (
-    PROJECT_ROOT
-    / ".claude"
-    / "skills"
-    / "manage-student-error-library"
-    / "scripts"
-    / "difficulty_knowledge_units.json"
+    PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts" / "difficulty_knowledge_units.json"
 )
-KNOWLEDGE_UNIT_REGISTRY = json.loads(
-    KNOWLEDGE_UNIT_REGISTRY_PATH.read_text(encoding="utf-8")
-)
-KNOWLEDGE_UNIT_IDS = {
-    str(item["id"]) for item in KNOWLEDGE_UNIT_REGISTRY["units"]
-}
+KNOWLEDGE_UNIT_REGISTRY = json.loads(KNOWLEDGE_UNIT_REGISTRY_PATH.read_text(encoding="utf-8"))
+KNOWLEDGE_UNIT_IDS = {str(item["id"]) for item in KNOWLEDGE_UNIT_REGISTRY["units"]}
 COGNITIVE_OPERATION_IDS = {
     "identify",
     "apply",
@@ -37,9 +28,7 @@ COGNITIVE_OPERATION_IDS = {
 }
 DEFAULT_OBLIGATION_POLICY = "wuli.default-obligation-rules.v1"
 
-_DEFAULT_SOLVE_PATTERN = re.compile(
-    r"(?:求|求出|计算|确定|给出).{0,24}(?:时刻|时间|位置|坐标|速度|范围|取值|结果|解)"
-)
+_DEFAULT_SOLVE_PATTERN = re.compile(r"(?:求|求出|计算|确定|给出).{0,24}(?:时刻|时间|位置|坐标|速度|范围|取值|结果|解)")
 _ALL_SOLUTIONS_SUPPRESSOR = re.compile(
     r"第一次|首次|最早|最后|唯一|最小正值|最小|最大|任一|一个可能|取一个|只求|只需|是否存在|判断是否|证明"
 )
@@ -51,9 +40,7 @@ STRONG_PATTERNS = {
     "piecewise-process": re.compile(r"先.{0,20}(?:再|然后)|当.{0,20}时|直到|随后|接着|每隔|交替"),
     "multi-region": re.compile(r"区域|边界|上半平面|下半平面|圆内|圆外|场区|分区"),
     "multi-object": re.compile(r"甲、?乙|两(?:个|种|粒子|物体)|分别|同时"),
-    "inverse-modeling": re.compile(
-        r"轨道方程|待定系数|反推|随.{0,10}(?:位置|时间|x).{0,10}(?:变化|关系)"
-    ),
+    "inverse-modeling": re.compile(r"轨道方程|待定系数|反推|随.{0,10}(?:位置|时间|x).{0,10}(?:变化|关系)"),
 }
 ORDINARY_PATTERNS = {
     "multiple-targets": re.compile(r"(?:（|\()[1-9一二三四五六七八九十](?:）|\))|第[一二三四五六七八九十]+问"),
@@ -335,12 +322,8 @@ def infer_default_obligation_suggestions(
     verification_obligations, because doing so would change the solve contract
     and could break already-correct answer paths.
     """
-    problem_text = structured_text.reject_unsupported_controls(
-        str(problem or ""), "problem"
-    ).strip()
-    existing_obligations = [
-        item for item in blueprint.get("verification_obligations", []) if isinstance(item, dict)
-    ]
+    problem_text = structured_text.reject_unsupported_controls(str(problem or ""), "problem").strip()
+    existing_obligations = [item for item in blueprint.get("verification_obligations", []) if isinstance(item, dict)]
     suggestions: list[dict[str, Any]] = []
     for target in blueprint.get("question_targets", []) or []:
         if not isinstance(target, dict):
@@ -575,9 +558,7 @@ def split_assessment_payload(
     verification, or adjudication.
     """
     solve_payload = deepcopy(payload)
-    raw_steps = [
-        item for item in payload.get("reasoning_steps") or [] if isinstance(item, dict)
-    ]
+    raw_steps = [item for item in payload.get("reasoning_steps") or [] if isinstance(item, dict)]
     for item in solve_payload.get("reasoning_steps") or []:
         if isinstance(item, dict):
             item.pop("cognitive_operation", None)
@@ -608,21 +589,15 @@ def split_assessment_payload(
                     for index in indexes
                 )
             ):
-                raise ValueError(
-                    "knowledge unit must bind valid decisive relation indexes"
-                )
+                raise ValueError("knowledge unit must bind valid decisive relation indexes")
             knowledge_units.append({
                 "id": unit_id,
                 "relation_indexes": sorted(set(indexes)),
             })
         if cognitive_operation != "algebra_only" and not knowledge_units:
-            raise ValueError(
-                "non-algebra assessment annotation must bind a knowledge unit"
-            )
+            raise ValueError("non-algebra assessment annotation must bind a knowledge unit")
         if cognitive_operation == "algebra_only" and knowledge_units:
-            raise ValueError(
-                "algebra-only assessment annotation cannot bind knowledge units"
-            )
+            raise ValueError("algebra-only assessment annotation cannot bind knowledge units")
         annotations.append({
             "step_id": normalized["id"],
             "cognitive_operation": cognitive_operation,
@@ -659,8 +634,6 @@ def split_assessment_payload(
                 "type_distance.recognition_barrier",
                 240,
             ),
-            "novel_bridge": str(
-                raw_type_distance.get("novel_bridge", "")
-            ).strip()[:240],
+            "novel_bridge": str(raw_type_distance.get("novel_bridge", "")).strip()[:240],
         },
     }

@@ -13,7 +13,6 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-
 ROOT = Path("/private/tmp/cpho-2021-web-pipeline-v1")
 LIBRARY = ROOT / "web-workspace" / "student-error-library"
 ENTRIES = LIBRARY / "entries"
@@ -143,16 +142,14 @@ def freeze() -> dict:
             path = entry / name
             if path.is_file():
                 files[name] = {"sha256": digest(path), "bytes": path.stat().st_size}
-        rows.append(
-            {
-                "question": question,
-                "entry_id": entry_id,
-                "job_id": job_id,
-                "candidate_answer_present": (entry / "student-solution.md").is_file()
-                and (entry / "teacher-solution.md").is_file(),
-                "files": files,
-            }
-        )
+        rows.append({
+            "question": question,
+            "entry_id": entry_id,
+            "job_id": job_id,
+            "candidate_answer_present": (entry / "student-solution.md").is_file()
+            and (entry / "teacher-solution.md").is_file(),
+            "files": files,
+        })
     payload = {
         "schema_version": 1,
         "frozen_at": now(),
@@ -207,25 +204,19 @@ def collect() -> dict:
         completed = parse_time(job["completed_at"])
         usage = [stage.get("usage", {}) for stage in sources]
         review = GOLD_REVIEW[question]
-        rows.append(
-            {
-                "question": question,
-                "entry_id": entry_id,
-                "job_id": frozen_item["job_id"],
-                "status": job["status"],
-                "warm_run_seconds": round((completed - started).total_seconds(), 3),
-                "cold_equivalent_seconds": round(
-                    sum(float(stage.get("duration_seconds", 0) or 0) for stage in sources), 3
-                ),
-                "provider_seconds": round(
-                    sum(float(stage.get("provider_seconds", 0) or 0) for stage in sources), 3
-                ),
-                "input_tokens": sum(int(item.get("prompt_tokens", 0) or 0) for item in usage),
-                "output_tokens": sum(int(item.get("completion_tokens", 0) or 0) for item in usage),
-                "candidate_answer_present": frozen_item["candidate_answer_present"],
-                **review,
-            }
-        )
+        rows.append({
+            "question": question,
+            "entry_id": entry_id,
+            "job_id": frozen_item["job_id"],
+            "status": job["status"],
+            "warm_run_seconds": round((completed - started).total_seconds(), 3),
+            "cold_equivalent_seconds": round(sum(float(stage.get("duration_seconds", 0) or 0) for stage in sources), 3),
+            "provider_seconds": round(sum(float(stage.get("provider_seconds", 0) or 0) for stage in sources), 3),
+            "input_tokens": sum(int(item.get("prompt_tokens", 0) or 0) for item in usage),
+            "output_tokens": sum(int(item.get("completion_tokens", 0) or 0) for item in usage),
+            "candidate_answer_present": frozen_item["candidate_answer_present"],
+            **review,
+        })
     cold_times = [row["cold_equivalent_seconds"] for row in rows]
     summary = {
         "question_count": len(rows),
@@ -341,15 +332,15 @@ h1{{margin:0 0 8px;font-size:32px}}header p{{margin:0;opacity:.86}}.grid{{displa
 </style></head><body><main>
 <header><h1>CPhO 2021 · W3 直接 API 盲测</h1><p>全年 8 题 · Flash · 候选冻结后由标准答案自动审核 · 无用户参与</p></header>
 <section class="grid">
-<div class="metric"><b>{s['structural_success_count']} / 8</b><span>结构成功</span></div>
-<div class="metric"><b>{s['sla_pass_count']} / 8</b><span>冷启动 ≤90s</span></div>
-<div class="metric"><b>{s['final_answer_correct_count']} / 8</b><span>整题正确</span></div>
-<div class="metric"><b>{s['teaching_approved_count']} / 8</b><span>教学批准</span></div>
+<div class="metric"><b>{s["structural_success_count"]} / 8</b><span>结构成功</span></div>
+<div class="metric"><b>{s["sla_pass_count"]} / 8</b><span>冷启动 ≤90s</span></div>
+<div class="metric"><b>{s["final_answer_correct_count"]} / 8</b><span>整题正确</span></div>
+<div class="metric"><b>{s["teaching_approved_count"]} / 8</b><span>教学批准</span></div>
 </section>
 <section class="card"><h2>判定</h2><div class="callout">结构问题已经解决，但内容质量未恢复。直接 API 消除了 Claude Code 的协议瓶颈；当前阻断是 Flash 的物理推导与验证门禁。</div></section>
 <section class="card"><h2>逐题结果</h2><div class="scroll"><table><thead><tr><th>题</th><th>冷启动等价(s)</th><th>SLA</th><th>结构</th><th>整题</th><th>教学</th><th>原因码</th></tr></thead><tbody>{rows}</tbody></table></div></section>
 <section class="card"><h2>说明</h2><p>完整方法、遥测口径、防泄漏声明与来源见同包 <code>report.md</code>。报告不含候选或官方答案正文。</p></section>
-<footer>生成于 {html.escape(data['generated_at'])}</footer></main></body></html>"""
+<footer>生成于 {html.escape(data["generated_at"])}</footer></main></body></html>"""
 
 
 def build(gold: Path, destination: Path) -> Path:
@@ -366,17 +357,11 @@ def build(gold: Path, destination: Path) -> Path:
         "frozen_candidate_count": 8,
         "answer_text_stored": False,
         "feedback_returned_to_model": False,
-        "approvals": [
-            {"question": question, **GOLD_REVIEW[question]} for question, _ in QUESTIONS
-        ],
+        "approvals": [{"question": question, **GOLD_REVIEW[question]} for question, _ in QUESTIONS],
     }
     PACKAGE.mkdir(parents=True, exist_ok=True)
-    (PACKAGE / "gold-review.json").write_text(
-        json.dumps(review, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-    (PACKAGE / "telemetry.json").write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    (PACKAGE / "gold-review.json").write_text(json.dumps(review, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (PACKAGE / "telemetry.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (PACKAGE / "report.md").write_text(markdown(data, gold_hash), encoding="utf-8")
     (PACKAGE / "report.html").write_text(html_report(data), encoding="utf-8")
     (PACKAGE / "sources.json").write_text(
@@ -396,8 +381,7 @@ def build(gold: Path, destination: Path) -> Path:
         encoding="utf-8",
     )
     (PACKAGE / "README.txt").write_text(
-        "打开 report.html 查看结果；report.md 为文字报告。"
-        "本包不含官方答案、模型答案正文、API key 或私有工作区。\n",
+        "打开 report.html 查看结果；report.md 为文字报告。本包不含官方答案、模型答案正文、API key 或私有工作区。\n",
         encoding="utf-8",
     )
     destination.parent.mkdir(parents=True, exist_ok=True)

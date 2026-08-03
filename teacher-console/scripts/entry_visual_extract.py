@@ -90,20 +90,22 @@ def main() -> int:
     if outcome.get("status") != "completed":
         print(json.dumps({"status": "failed", "error": outcome.get("message", "")}, ensure_ascii=False))
         return 3
-    print(json.dumps(
-        {
-            "status": "completed",
-            "entry_id": entry.name,
-            "outcome_schema": outcome.get("schema"),
-            "source_review_status": "needs-review",
-            "visual_gate_status": outcome.get("visual_gate_status"),
-            "model_id": outcome.get("model_id"),
-            "upstream_model": outcome.get("upstream_model"),
-            "uncertainties": outcome.get("uncertainties"),
-            "artifacts": ["visual-facts.json", "visual-facts-gate.json", "source-review.md", "source-review.json"],
-        },
-        ensure_ascii=False,
-    ))
+    print(
+        json.dumps(
+            {
+                "status": "completed",
+                "entry_id": entry.name,
+                "outcome_schema": outcome.get("schema"),
+                "source_review_status": "needs-review",
+                "visual_gate_status": outcome.get("visual_gate_status"),
+                "model_id": outcome.get("model_id"),
+                "upstream_model": outcome.get("upstream_model"),
+                "uncertainties": outcome.get("uncertainties"),
+                "artifacts": ["visual-facts.json", "visual-facts-gate.json", "source-review.md", "source-review.json"],
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 

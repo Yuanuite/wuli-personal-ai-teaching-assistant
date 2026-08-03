@@ -19,14 +19,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
 PROVIDERS = CONSOLE / "providers"
 sys.path.insert(0, str(PROVIDERS))
 
 import openai_compatible_agent_adapter as api_adapter  # noqa: E402
-
 
 QUESTIONS = (
     (1, "20260730-question-01-p1-01627971"),
@@ -59,12 +57,10 @@ def load_model(registry_path: Path, model_id: str) -> dict:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
     for item in registry.get("models", []):
         if isinstance(item, dict) and str(item.get("id", "")) == model_id:
-            api_key_env = str(
-                item.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")
-            ).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
-            api_key = str(item.get("api_key", "")).strip() or os.environ.get(
-                api_key_env, ""
-            ).strip()
+            api_key_env = (
+                str(item.get("api_key_env", "TEACHER_CONSOLE_AGENT_API_KEY")).strip() or "TEACHER_CONSOLE_AGENT_API_KEY"
+            )
+            api_key = str(item.get("api_key", "")).strip() or os.environ.get(api_key_env, "").strip()
             if str(item.get("provider", "")) != "openai-compatible":
                 raise ValueError(f"model {model_id} is not openai-compatible")
             if not api_key:
@@ -209,9 +205,7 @@ def validate_candidate(candidate: dict, profile: str) -> None:
             raise ValueError(f"{part} has no final answer")
         evidence_field = "key_relations" if profile == "core" else "derivation"
         evidence = result.get(evidence_field)
-        if not isinstance(evidence, list) or not any(
-            str(item).strip() for item in evidence
-        ):
+        if not isinstance(evidence, list) or not any(str(item).strip() for item in evidence):
             raise ValueError(f"{part} has no {evidence_field}")
 
 
@@ -226,21 +220,14 @@ def solve(
     problem_path = source_root / entry_id / "problem.md"
     problem = problem_path.read_text(encoding="utf-8")
     task = {
-        "prompt": (
-            "独立求解下面这道物理竞赛题。不得访问外部答案或根据评测信息反推答案。\n\n"
-            + problem
-        ),
+        "prompt": ("独立求解下面这道物理竞赛题。不得访问外部答案或根据评测信息反推答案。\n\n" + problem),
     }
     contract = output_contract(profile)
     instruction = api_adapter.build_structured_instruction(task, contract, "")
     options = api_adapter.request_options(
         model["base_url"],
         model["model"],
-        {
-            "TEACHER_CONSOLE_AGENT_API_MAX_OUTPUT_TOKENS": str(
-                max_output_tokens
-            )
-        },
+        {"TEACHER_CONSOLE_AGENT_API_MAX_OUTPUT_TOKENS": str(max_output_tokens)},
     )
     started = time.monotonic()
     try:
@@ -253,9 +240,7 @@ def solve(
             options=options,
         )
     except Exception as exc:
-        raise TimedEvaluationError(
-            round(time.monotonic() - started, 3), exc
-        ) from exc
+        raise TimedEvaluationError(round(time.monotonic() - started, 3), exc) from exc
     elapsed = round(time.monotonic() - started, 3)
     validate_candidate(candidate, profile)
     return {
@@ -284,20 +269,14 @@ def main() -> int:
         help="comma-separated question numbers",
     )
     parser.add_argument("--max-output-tokens", type=int, default=10000)
-    parser.add_argument(
-        "--profile", choices=("core", "teaching"), default="core"
-    )
+    parser.add_argument("--profile", choices=("core", "teaching"), default="core")
     args = parser.parse_args()
     if not 1 <= args.workers <= 4:
         parser.error("--workers must be from 1 to 4")
     if not 256 <= args.max_output_tokens <= 16384:
         parser.error("--max-output-tokens must be from 256 to 16384")
     try:
-        selected_numbers = {
-            int(item.strip())
-            for item in args.questions.split(",")
-            if item.strip()
-        }
+        selected_numbers = {int(item.strip()) for item in args.questions.split(",") if item.strip()}
     except ValueError:
         parser.error("--questions must contain integers")
     selected = [item for item in QUESTIONS if item[0] in selected_numbers]
@@ -328,29 +307,21 @@ def main() -> int:
                     json.dumps(row, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8",
                 )
-                rows.append(
-                    {
-                        "question": question,
-                        "status": "completed",
-                        "elapsed_seconds": row["elapsed_seconds"],
-                        "usage": row["usage"],
-                        "candidate_sha256": digest(path),
-                    }
-                )
+                rows.append({
+                    "question": question,
+                    "status": "completed",
+                    "elapsed_seconds": row["elapsed_seconds"],
+                    "usage": row["usage"],
+                    "candidate_sha256": digest(path),
+                })
             except Exception as exc:
-                rows.append(
-                    {
-                        "question": question,
-                        "status": "failed",
-                        "elapsed_seconds": getattr(
-                            exc, "elapsed_seconds", None
-                        ),
-                        "error_type": getattr(
-                            exc, "error_type", type(exc).__name__
-                        ),
-                        "message": str(exc)[:500],
-                    }
-                )
+                rows.append({
+                    "question": question,
+                    "status": "failed",
+                    "elapsed_seconds": getattr(exc, "elapsed_seconds", None),
+                    "error_type": getattr(exc, "error_type", type(exc).__name__),
+                    "message": str(exc)[:500],
+                })
     rows.sort(key=lambda item: item["question"])
     freeze = {
         "schema_version": 1,

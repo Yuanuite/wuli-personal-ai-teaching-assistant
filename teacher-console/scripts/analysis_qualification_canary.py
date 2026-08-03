@@ -110,9 +110,7 @@ def _build_task(problem: dict) -> dict:
     model_registry.LIBRARY = LIBRARY
     if not model_registry.remote_agent_allowed():
         raise SystemExit("project privacy allow_remote_agent is not enabled; refusing remote canary")
-    brief = core_analysis.build_target_brief(
-        problem["text"], method_profile="high_school_standard"
-    )
+    brief = core_analysis.build_target_brief(problem["text"], method_profile="high_school_standard")
     task = {
         "schema_version": 1,
         "id": f"canary-{problem['id']}",
@@ -228,7 +226,9 @@ def main() -> int:
         run["gate_ok"] = ok
         run["gate_problems"] = problems
         runs.append(run)
-        print(f"  -> structural={run.get('structural_ok')} gate={ok} duration={run.get('duration_seconds')}s", flush=True)
+        print(
+            f"  -> structural={run.get('structural_ok')} gate={ok} duration={run.get('duration_seconds')}s", flush=True
+        )
 
     structural = sum(1 for r in runs if r.get("structural_ok"))
     gates = sum(1 for r in runs if r.get("gate_ok"))
@@ -285,13 +285,17 @@ def main() -> int:
             for r in runs
         ],
         "redactions": [
-            "api-keys", "full-prompts", "reasoning-bodies", "student-data", "absolute-paths",
+            "api-keys",
+            "full-prompts",
+            "reasoning-bodies",
+            "student-data",
+            "absolute-paths",
         ],
     }
     report_path.write_text(
         "# 分析资格 canary（A5.4，脱敏）\n\n"
         f"- 模型：`{args.model}`；结论：`{conclusion}`；样本：{n}（合成复杂物理题，无学生数据）\n"
-        f"- 结构成功 {structural}/{n}；领域 Gate {gates}/{n}；p50 {round(p50*1000)}ms / p95 {round(p95*1000)}ms\n"
+        f"- 结构成功 {structural}/{n}；领域 Gate {gates}/{n}；p50 {round(p50 * 1000)}ms / p95 {round(p95 * 1000)}ms\n"
         f"- 契约：`wuli.core-solve.v1`（Target Brief digest + 顺序 + 方法策略）\n"
         f"- 逐题：\n"
         + "\n".join(

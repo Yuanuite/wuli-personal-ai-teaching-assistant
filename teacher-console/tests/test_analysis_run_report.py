@@ -24,9 +24,7 @@ for path in (CONSOLE,):
     if str(path) not in sys.path:
         sys.path.insert(0, str(path))
 
-SPEC = importlib.util.spec_from_file_location(
-    "analysis_run_report", CONSOLE / "scripts" / "analysis_run_report.py"
-)
+SPEC = importlib.util.spec_from_file_location("analysis_run_report", CONSOLE / "scripts" / "analysis_run_report.py")
 report_mod = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(report_mod)
 
@@ -62,26 +60,48 @@ def _entry(lib: Path, *, answer_review=True, source_review=True, archive=True) -
     entry = lib / "entries" / ENTRY_ID
     entry.mkdir(parents=True)
     if source_review:
-        (entry / "source-review.json").write_text(json.dumps({
-            "entry_id": ENTRY_ID, "input_digest": "0fb6853185b2140e367f528f8430867efc0949cfe73ffdfcdaabfeb992745bc2",
-            "problem_sha256": "16667ae0b6db39fede04ec098ae0af44b98e0bf21e1a099b970a241b04c99583",
-            "method": "human", "reviewer": "teacher", "status": "passed",
-        }), encoding="utf-8")
+        (entry / "source-review.json").write_text(
+            json.dumps({
+                "entry_id": ENTRY_ID,
+                "input_digest": "0fb6853185b2140e367f528f8430867efc0949cfe73ffdfcdaabfeb992745bc2",
+                "problem_sha256": "16667ae0b6db39fede04ec098ae0af44b98e0bf21e1a099b970a241b04c99583",
+                "method": "human",
+                "reviewer": "teacher",
+                "status": "passed",
+            }),
+            encoding="utf-8",
+        )
     if answer_review:
-        (entry / "answer-review.json").write_text(json.dumps({
-            "entry_id": ENTRY_ID, "answer_digest": "2188b9572725d888dcabc732b2f184a0c85764f5ec07a987eb21b378d8893e50",
-            "reviewed_at": "2026-08-02T18:00:00+08:00", "reviewer": "teacher", "status": "passed",
-        }), encoding="utf-8")
+        (entry / "answer-review.json").write_text(
+            json.dumps({
+                "entry_id": ENTRY_ID,
+                "answer_digest": "2188b9572725d888dcabc732b2f184a0c85764f5ec07a987eb21b378d8893e50",
+                "reviewed_at": "2026-08-02T18:00:00+08:00",
+                "reviewer": "teacher",
+                "status": "passed",
+            }),
+            encoding="utf-8",
+        )
     if archive:
         event_id = f"{ENTRY_ID}-archive01"
         (entry / "candidate-archive.jsonl").write_text(
-            json.dumps({
-                "actor": "agent", "changed_files": ["solution.md", "student-solution.md", "teacher-solution.md", "record.json"],
-                "created_at": "2026-08-02T18:01:00+08:00", "entry_id": ENTRY_ID, "event_id": event_id,
-                "event_type": "agent-result", "raw_status": "completed", "status": "succeeded",
-                "evaluation": {"status": "succeeded", "scores": {}}, "task_type": "analysis.generate",
-                "schema_version": 2,
-            }, ensure_ascii=False) + "\n",
+            json.dumps(
+                {
+                    "actor": "agent",
+                    "changed_files": ["solution.md", "student-solution.md", "teacher-solution.md", "record.json"],
+                    "created_at": "2026-08-02T18:01:00+08:00",
+                    "entry_id": ENTRY_ID,
+                    "event_id": event_id,
+                    "event_type": "agent-result",
+                    "raw_status": "completed",
+                    "status": "succeeded",
+                    "evaluation": {"status": "succeeded", "scores": {}},
+                    "task_type": "analysis.generate",
+                    "schema_version": 2,
+                },
+                ensure_ascii=False,
+            )
+            + "\n",
             encoding="utf-8",
         )
     return entry
@@ -117,49 +137,84 @@ def _failed_job() -> dict:
             "changed_files": [],
             "unauthorized_changes": [],
             "validation_errors": [],
-            "attempts": [{
-                "provider": "openai-compatible", "status": "failed", "returncode": 1,
-                "stdout": "", "stderr": FAILED_STDERR + "\n", "changed_files": [],
-                "unauthorized_changes": [], "validation_errors": [], "requires_change": True,
-                "started_at": "2026-08-02T20:38:00+08:00", "duration_seconds": 60.969,
-                "failure_type": "candidate_no_change", "budget_guard": "stopped-before-costly-failover",
-            }],
+            "attempts": [
+                {
+                    "provider": "openai-compatible",
+                    "status": "failed",
+                    "returncode": 1,
+                    "stdout": "",
+                    "stderr": FAILED_STDERR + "\n",
+                    "changed_files": [],
+                    "unauthorized_changes": [],
+                    "validation_errors": [],
+                    "requires_change": True,
+                    "started_at": "2026-08-02T20:38:00+08:00",
+                    "duration_seconds": 60.969,
+                    "failure_type": "candidate_no_change",
+                    "budget_guard": "stopped-before-costly-failover",
+                }
+            ],
             "stages": [
-                {"name": "structured-generation", "status": "failed", "provider": "openai-compatible",
-                 "duration_seconds": 60.969, "failure_type": "candidate_no_change"},
+                {
+                    "name": "structured-generation",
+                    "status": "failed",
+                    "provider": "openai-compatible",
+                    "duration_seconds": 60.969,
+                    "failure_type": "candidate_no_change",
+                },
                 {"name": "authoritative-review", "status": "not-run", "authority": "teacher-or-standard-answer"},
             ],
             "resulting_state": "needs-analysis-and-answer",
             "failure_type": "candidate_no_change",
             "archive_event_id": f"{ENTRY_ID}-archive01",
             "evidence_context": {
-                "status": "ready", "reference_count": 3,
+                "status": "ready",
+                "reference_count": 3,
                 "budget": {"requested_chars": 8000, "serialized_chars": 7586, "truncated": True},
             },
-            "budget_guard": {"status": "stopped", "reason": "failed-attempt-consumed-material-budget",
-                             "provider": "openai-compatible", "threshold_seconds": 30.0, "duration_seconds": 60.969},
+            "budget_guard": {
+                "status": "stopped",
+                "reason": "failed-attempt-consumed-material-budget",
+                "provider": "openai-compatible",
+                "threshold_seconds": 30.0,
+                "duration_seconds": 60.969,
+            },
             "adaptive_routing": {
-                "schema_version": 1, "policy_version": "wuli-core-first-routing-v1",
-                "mode": "core-first", "route": "core", "selected_route": "core",
-                "reason": "unified-core-first-default", "config_errors": [],
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "core-first",
+                "route": "core",
+                "selected_route": "core",
+                "reason": "unified-core-first-default",
+                "config_errors": [],
                 "limits": {"max_latency_seconds": 90, "max_agent_calls": 1},
             },
             "target_brief": {
-                "schema_version": 1, "method_profile": "high_school_standard",
+                "schema_version": 1,
+                "method_profile": "high_school_standard",
                 "digest": "6b85dce801cd9f50f0322bdce41bda092bb1ee3dcd9c36452f65fc2a87f76716",
                 "targets": [{"id": "Q1", "prompt_hint": "compute E(r)"}],
                 "risk_signals": ["multiple-targets"],
             },
         },
         "outcome": {
-            "schema_version": 1, "status": "failed", "provider": "openai-compatible",
-            "model": "deepseek-v4-flash-api", "failure_type": "candidate_no_change",
+            "schema_version": 1,
+            "status": "failed",
+            "provider": "openai-compatible",
+            "model": "deepseek-v4-flash-api",
+            "failure_type": "candidate_no_change",
             "usage": {"measurement": "unavailable"},
             "attempts": {"count": 1, "providers": ["openai-compatible"], "provider_seconds": 60.969},
             "timing": {"queue_seconds": 0.003, "run_seconds": 61.105, "total_seconds": 61.109},
-            "controls": {"budget_guard_reason": "failed-attempt-consumed-material-budget", "resumed_from_checkpoint": False},
-            "evidence_context": {"status": "ready", "reference_count": 3,
-                                 "budget": {"requested_chars": 8000, "serialized_chars": 7586, "truncated": True}},
+            "controls": {
+                "budget_guard_reason": "failed-attempt-consumed-material-budget",
+                "resumed_from_checkpoint": False,
+            },
+            "evidence_context": {
+                "status": "ready",
+                "reference_count": 3,
+                "budget": {"requested_chars": 8000, "serialized_chars": 7586, "truncated": True},
+            },
         },
     }
 
@@ -187,49 +242,100 @@ def _completed_job(lib: Path, *, snapshot: bool = True) -> dict:
             "returncode": 0,
             "stdout": "",
             "stderr": "",
-            "changed_files": ["solution.md", "student-solution.md", "teacher-solution.md", "record.json", "assets/explanatory.svg"],
+            "changed_files": [
+                "solution.md",
+                "student-solution.md",
+                "teacher-solution.md",
+                "record.json",
+                "assets/explanatory.svg",
+            ],
             "unauthorized_changes": [],
             "validation_errors": [],
-            "attempts": [{
-                "provider": "claude", "status": "completed", "returncode": 0,
-                "stdout": "", "stderr": "", "changed_files": ["solution.md", "student-solution.md", "teacher-solution.md", "record.json", "assets/explanatory.svg"],
-                "unauthorized_changes": [], "validation_errors": [], "requires_change": True,
-                "started_at": "2026-08-02T19:00:01+08:00", "duration_seconds": 113.389, "failure_type": "",
-            }],
+            "attempts": [
+                {
+                    "provider": "claude",
+                    "status": "completed",
+                    "returncode": 0,
+                    "stdout": "",
+                    "stderr": "",
+                    "changed_files": [
+                        "solution.md",
+                        "student-solution.md",
+                        "teacher-solution.md",
+                        "record.json",
+                        "assets/explanatory.svg",
+                    ],
+                    "unauthorized_changes": [],
+                    "validation_errors": [],
+                    "requires_change": True,
+                    "started_at": "2026-08-02T19:00:01+08:00",
+                    "duration_seconds": 113.389,
+                    "failure_type": "",
+                }
+            ],
             "stages": [
-                {"name": "structured-generation", "status": "completed", "provider": "claude", "duration_seconds": 113.389},
+                {
+                    "name": "structured-generation",
+                    "status": "completed",
+                    "provider": "claude",
+                    "duration_seconds": 113.389,
+                },
                 {"name": "authoritative-review", "status": "not-run", "authority": "teacher-or-standard-answer"},
             ],
             "resulting_state": "needs-answer-review",
             "archive_event_id": f"{ENTRY_ID}-archive01",
-            "evidence_context": {"status": "ready", "reference_count": 4, "budget": {"requested_chars": 8000, "serialized_chars": 4500, "truncated": False}},
+            "evidence_context": {
+                "status": "ready",
+                "reference_count": 4,
+                "budget": {"requested_chars": 8000, "serialized_chars": 4500, "truncated": False},
+            },
             "adaptive_routing": {
-                "schema_version": 1, "policy_version": "wuli-core-first-routing-v1",
-                "mode": "core-first", "route": "core", "selected_route": "core",
-                "reason": "unified-core-first-default", "config_errors": [],
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "core-first",
+                "route": "core",
+                "selected_route": "core",
+                "reason": "unified-core-first-default",
+                "config_errors": [],
                 "limits": {"max_latency_seconds": 90, "max_agent_calls": 1},
             },
             "target_brief": {
-                "schema_version": 1, "method_profile": "high_school_standard",
+                "schema_version": 1,
+                "method_profile": "high_school_standard",
                 "digest": "6b85dce801cd9f50f0322bdce41bda092bb1ee3dcd9c36452f65fc2a87f76716",
                 "targets": [{"id": "Q1", "prompt_hint": "find B(r)"}],
                 "risk_signals": [],
             },
         },
         "outcome": {
-            "schema_version": 1, "status": "completed", "provider": "claude",
-            "model": "Deepseek-v4-pro", "failure_type": None,
-            "usage": {"measurement": "provider-reported", "input_tokens": 12613, "output_tokens": 12242, "total_tokens": 24855},
+            "schema_version": 1,
+            "status": "completed",
+            "provider": "claude",
+            "model": "Deepseek-v4-pro",
+            "failure_type": None,
+            "usage": {
+                "measurement": "provider-reported",
+                "input_tokens": 12613,
+                "output_tokens": 12242,
+                "total_tokens": 24855,
+            },
             "attempts": {"count": 1, "providers": ["claude"], "provider_seconds": 113.389},
             "timing": {"queue_seconds": 0.001, "run_seconds": 113.389, "total_seconds": 113.390},
             "controls": {"budget_guard_reason": None, "resumed_from_checkpoint": False},
-            "evidence_context": {"status": "ready", "reference_count": 4, "budget": {"serialized_chars": 4500, "truncated": False}},
+            "evidence_context": {
+                "status": "ready",
+                "reference_count": 4,
+                "budget": {"serialized_chars": 4500, "truncated": False},
+            },
         },
     }
     if snapshot:
         from route_snapshot import build_route_snapshot
+
         job["route_snapshot"] = build_route_snapshot(
-            kind="analysis.generate", routing_tier="auto", requested_model_id="Deepseek-v4-pro",
+            kind="analysis.generate",
+            routing_tier="auto",
+            requested_model_id="Deepseek-v4-pro",
             config={"id": "Deepseek-v4-pro", "provider": "claude", "model": "Deepseek-v4-pro"},
             library=lib,
         )
@@ -245,17 +351,55 @@ def _w3_report() -> dict:
         "routing_tier": "shadow",
         "policy": "wuli-w3-shadow-v1",
         "stages": [
-            {"stage": "decompose", "provider": "checkpoint", "status": "completed", "model_id": "Deepseek-v4-pro", "usage": {}},
-            {"stage": "solver-a", "provider": "checkpoint", "status": "completed", "model_id": "Deepseek-v4-pro", "usage": {}},
-            {"stage": "verifier", "provider": "checkpoint", "status": "completed", "model_id": "Deepseek-v4-flash", "usage": {}},
-            {"stage": "solver-b", "provider": "codex", "status": "completed", "model_id": "codex-visualization", "usage": {}},
-            {"stage": "adjudicator", "provider": "codex", "status": "completed", "model_id": "codex-visualization", "usage": {}},
+            {
+                "stage": "decompose",
+                "provider": "checkpoint",
+                "status": "completed",
+                "model_id": "Deepseek-v4-pro",
+                "usage": {},
+            },
+            {
+                "stage": "solver-a",
+                "provider": "checkpoint",
+                "status": "completed",
+                "model_id": "Deepseek-v4-pro",
+                "usage": {},
+            },
+            {
+                "stage": "verifier",
+                "provider": "checkpoint",
+                "status": "completed",
+                "model_id": "Deepseek-v4-flash",
+                "usage": {},
+            },
+            {
+                "stage": "solver-b",
+                "provider": "codex",
+                "status": "completed",
+                "model_id": "codex-visualization",
+                "usage": {},
+            },
+            {
+                "stage": "adjudicator",
+                "provider": "codex",
+                "status": "completed",
+                "model_id": "codex-visualization",
+                "usage": {},
+            },
         ],
         "report": {
             "verifier": {"status": "completed"},
             "screen": {"decision": "decompose", "score": 6},
-            "metrics": {"solver_b_used": True, "target_count": 4, "verified_target_count": 4, "conflict_target_count": 2},
-            "adjudication": {"status": "completed", "target_decisions": [{"target_id": "T_C", "decision": "recomputed"}]},
+            "metrics": {
+                "solver_b_used": True,
+                "target_count": 4,
+                "verified_target_count": 4,
+                "conflict_target_count": 2,
+            },
+            "adjudication": {
+                "status": "completed",
+                "target_decisions": [{"target_id": "T_C", "decision": "recomputed"}],
+            },
             "blueprint": {"verification_obligations": [{"id": "VO_A", "check": "核对穿越次数计数"}]},
             "recommended_student_solution": "## 答案速览\n- 选项C正确。",
         },
@@ -279,24 +423,54 @@ class SchemaTest(unittest.TestCase):
     def _valid_report(self) -> dict:
         return {
             "schema": "wuli.analysis-run-report.v1",
-            "run": {"job_id": "a" * 32, "entry_id": ENTRY_ID, "status": "failed",
-                    "mode": "core-first", "selected_route": "core"},
+            "run": {
+                "job_id": "a" * 32,
+                "entry_id": ENTRY_ID,
+                "status": "failed",
+                "mode": "core-first",
+                "selected_route": "core",
+            },
             "runtime_identities": [{"registered_id": "m1", "provider": "claude", "kind": "model", "source": "job"}],
-            "steps": [{
-                "step_id": "P00", "name": "job + route snapshot", "category": "inputs",
-                "contract": "wuli.agent-job.v1", "input_fingerprint": "sha256:" + "0" * 64,
-                "runtime_identity": {"kind": "local-verifier", "registered_id": None, "provider": None, "source": "deterministic-gate"},
-                "started_at": "2026-08-02T20:38:00+08:00", "duration": 1.0, "attempt_count": 1,
-                "upstream_request_count": 1, "artifact_refs": ["solution.md"],
-                "verification_obligations": ["x"], "verification_result": "passed",
-                "failure_type": None, "retry_or_backjump": None, "terminal_effect": None,
-            }],
-            "counts": {"logical_stage_count": 1, "provider_attempt_count": 1, "upstream_request_count": 1,
-                       "checkpoint_replay_count": 0, "rollback_count": 0,
-                       "supplemental_analysis_count": 0, "control_transition_count": 0},
+            "steps": [
+                {
+                    "step_id": "P00",
+                    "name": "job + route snapshot",
+                    "category": "inputs",
+                    "contract": "wuli.agent-job.v1",
+                    "input_fingerprint": "sha256:" + "0" * 64,
+                    "runtime_identity": {
+                        "kind": "local-verifier",
+                        "registered_id": None,
+                        "provider": None,
+                        "source": "deterministic-gate",
+                    },
+                    "started_at": "2026-08-02T20:38:00+08:00",
+                    "duration": 1.0,
+                    "attempt_count": 1,
+                    "upstream_request_count": 1,
+                    "artifact_refs": ["solution.md"],
+                    "verification_obligations": ["x"],
+                    "verification_result": "passed",
+                    "failure_type": None,
+                    "retry_or_backjump": None,
+                    "terminal_effect": None,
+                }
+            ],
+            "counts": {
+                "logical_stage_count": 1,
+                "provider_attempt_count": 1,
+                "upstream_request_count": 1,
+                "checkpoint_replay_count": 0,
+                "rollback_count": 0,
+                "supplemental_analysis_count": 0,
+                "control_transition_count": 0,
+            },
             "verification_summary": {"exit_code": 3},
-            "terminal": {"status": "failed", "diagnosed_failure_type": "output_truncated",
-                         "recorded_failure_type": "candidate_no_change"},
+            "terminal": {
+                "status": "failed",
+                "diagnosed_failure_type": "output_truncated",
+                "recorded_failure_type": "candidate_no_change",
+            },
             "redactions": ["api-keys"],
         }
 
@@ -412,9 +586,7 @@ class FailedJobReportTest(unittest.TestCase):
     def test_verify_mode_prints_gate_matrix_and_exits_3(self):
         out = io.StringIO()
         with redirect_stdout(out):
-            code = report_mod.main(
-                ["--job-id", FAILED_JOB_ID, "--format", "markdown", "--verify"], library=self.lib
-            )
+            code = report_mod.main(["--job-id", FAILED_JOB_ID, "--format", "markdown", "--verify"], library=self.lib)
         self.assertEqual(code, 3)
         self.assertIn("## 逐步验证（--verify）", out.getvalue())
         self.assertIn("P00", out.getvalue())
@@ -484,9 +656,7 @@ class W3CountsTest(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.lib = _library(Path(self.tmp.name))
         entry = _entry(self.lib)
-        (entry / "w3-shadow-report.json").write_text(
-            json.dumps(_w3_report(), ensure_ascii=False), encoding="utf-8"
-        )
+        (entry / "w3-shadow-report.json").write_text(json.dumps(_w3_report(), ensure_ascii=False), encoding="utf-8")
         self.job = _completed_job(self.lib)
         self.job["id"] = "ccccccccccccccccccccccccccccc001"
         self.job["result"].pop("adaptive_routing", None)

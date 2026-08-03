@@ -15,31 +15,37 @@ FIXED_RANDOM_SEED = 20260729
 
 BLUEPRINT = {
     "status": "completed",
-    "question_targets": [{
-        "id": "q1",
-        "prompt": "求第一次进入后的结果",
-        "answer_type": "value",
-    }],
+    "question_targets": [
+        {
+            "id": "q1",
+            "prompt": "求第一次进入后的结果",
+            "answer_type": "value",
+        }
+    ],
     "physical_stages": [{"id": "p1"}],
     "reasoning_steps": [],
     "stage_step_links": [],
-    "verification_obligations": [{
-        "id": "v1",
-        "target_id": "q1",
-        "check": "核对首次事件与结果",
-        "risk": "medium",
-    }],
+    "verification_obligations": [
+        {
+            "id": "v1",
+            "target_id": "q1",
+            "check": "核对首次事件与结果",
+            "risk": "medium",
+        }
+    ],
 }
 SOLVER = {
     "status": "completed",
     "message": "ok",
-    "targets": [{
-        "id": "q1",
-        "final_answer": "6",
-        "supporting_relations": ["2×3=6"],
-        "conditions": [],
-        "covered_obligation_ids": ["v1"],
-    }],
+    "targets": [
+        {
+            "id": "q1",
+            "final_answer": "6",
+            "supporting_relations": ["2×3=6"],
+            "conditions": [],
+            "covered_obligation_ids": ["v1"],
+        }
+    ],
     "stage_results": [],
     "option_verdicts": [],
     "blueprint_audit": {
@@ -66,9 +72,7 @@ def _controlled_hypotheses(scenario: str) -> list[dict[str, Any]]:
     common = {
         "snapshot_version": 1,
         "challenge_id": "CH1",
-        "explains_gap": (
-            f"It proposes a finite falsification path for the {scenario} gap."
-        ),
+        "explains_gap": (f"It proposes a finite falsification path for the {scenario} gap."),
         "falsification": {
             "test_type": "deterministic",
             "procedure": "Enumerate the declared alternatives and compare outcomes.",
@@ -104,12 +108,8 @@ def _select_controlled_hypothesis(scenario: str) -> dict[str, Any]:
         "random_seed": FIXED_RANDOM_SEED,
         "exploration_rate": 0.2,
     }
-    first = cognitive_loop.select_hypothesis(
-        _controlled_hypotheses(scenario), **arguments
-    )
-    replay = cognitive_loop.select_hypothesis(
-        _controlled_hypotheses(scenario), **arguments
-    )
+    first = cognitive_loop.select_hypothesis(_controlled_hypotheses(scenario), **arguments)
+    replay = cognitive_loop.select_hypothesis(_controlled_hypotheses(scenario), **arguments)
     return {
         **first,
         "replayable": first == replay,
@@ -137,12 +137,8 @@ def _stage_runner(verdict: str, call_log: list[dict[str, Any]]):
                 "claim_version": claim["version"],
                 "verdict": verdict,
                 "normalized_result": f"fixed-{verdict}",
-                "decisive_checks": (
-                    ["fixed isolated recomputation"] if verdict == "pass" else []
-                ),
-                "issues": (
-                    [] if verdict == "pass" else [f"fixed {verdict} evidence"]
-                ),
+                "decisive_checks": (["fixed isolated recomputation"] if verdict == "pass" else []),
+                "issues": ([] if verdict == "pass" else [f"fixed {verdict} evidence"]),
             })
         return {
             "status": "completed",
@@ -180,31 +176,16 @@ def _run_mode(
 def run_ablation(*, generated_at: str | None = None) -> dict[str, Any]:
     cases = []
     for scenario, verdict in SCENARIOS:
-        off, off_calls = _run_mode(
-            scenario, verdict, loop_enabled=False
-        )
-        on, on_calls = _run_mode(
-            scenario, verdict, loop_enabled=True
-        )
+        off, off_calls = _run_mode(scenario, verdict, loop_enabled=False)
+        on, on_calls = _run_mode(scenario, verdict, loop_enabled=True)
         off_final = off["aggregation"]["final_claims"]
         on_final = on["aggregation"]["final_claims"]
         same_request = off_calls == on_calls
-        same_input = (
-            off["ledger"]["input_fingerprint"]
-            == on["ledger"]["input_fingerprint"]
-        )
+        same_input = off["ledger"]["input_fingerprint"] == on["ledger"]["input_fingerprint"]
         fault_case = verdict != "pass"
-        association = (
-            _select_controlled_hypothesis(scenario)
-            if fault_case
-            else None
-        )
-        off_false_promotion = (
-            fault_case and off["aggregation"]["status"] == "VERIFIED"
-        )
-        on_false_promotion = (
-            fault_case and on["aggregation"]["status"] == "VERIFIED"
-        )
+        association = _select_controlled_hypothesis(scenario) if fault_case else None
+        off_false_promotion = fault_case and off["aggregation"]["status"] == "VERIFIED"
+        on_false_promotion = fault_case and on["aggregation"]["status"] == "VERIFIED"
         cases.append({
             "scenario": scenario,
             "injected_verdict": verdict,
@@ -217,18 +198,14 @@ def run_ablation(*, generated_at: str | None = None) -> dict[str, Any]:
             "same_final_answer": off_final == on_final,
             "off": {
                 "aggregation_status": off["aggregation"]["status"],
-                "verified_claim_count": off["metrics"][
-                    "verified_claim_count"
-                ],
+                "verified_claim_count": off["metrics"]["verified_claim_count"],
                 "challenge_count": off["metrics"]["challenge_count"],
                 "fuse_triggered": off["metrics"]["fuse_triggered"],
                 "false_promotion": off_false_promotion,
             },
             "on": {
                 "aggregation_status": on["aggregation"]["status"],
-                "verified_claim_count": on["metrics"][
-                    "verified_claim_count"
-                ],
+                "verified_claim_count": on["metrics"]["verified_claim_count"],
                 "challenge_count": on["metrics"]["challenge_count"],
                 "fuse_triggered": on["metrics"]["fuse_triggered"],
                 "false_promotion": on_false_promotion,
@@ -273,33 +250,21 @@ def run_ablation(*, generated_at: str | None = None) -> dict[str, Any]:
             "off_challenge_count": off_challenges,
             "on_challenge_count": on_challenges,
             "diagnostic_challenge_gain": on_challenges - off_challenges,
-            "on_fault_fuse_count": sum(
-                item["on"]["fuse_triggered"] for item in fault_cases
-            ),
+            "on_fault_fuse_count": sum(item["on"]["fuse_triggered"] for item in fault_cases),
             "controlled_association_count": len(associations),
             "association_replay_rate": round(
-                sum(item["replayable"] for item in associations)
-                / len(associations),
+                sum(item["replayable"] for item in associations) / len(associations),
                 6,
             ),
-            "association_truth_promotion_count": sum(
-                item["truth_status"] != "candidate" for item in associations
-            ),
+            "association_truth_promotion_count": sum(item["truth_status"] != "candidate" for item in associations),
         },
         "gates": {
             "fixed_conditions_intact": conditions_equal,
             "no_error_promotion_regression": on_false <= off_false == 0,
-            "answer_not_mutated": all(
-                item["same_final_answer"] for item in cases
-            ),
+            "answer_not_mutated": all(item["same_final_answer"] for item in cases),
             "diagnostic_gain_positive": on_challenges > off_challenges,
-            "controlled_association_replayable": all(
-                item["replayable"] for item in associations
-            ),
-            "association_never_promotes_truth": all(
-                item["truth_status"] == "candidate"
-                for item in associations
-            ),
+            "controlled_association_replayable": all(item["replayable"] for item in associations),
+            "association_never_promotes_truth": all(item["truth_status"] == "candidate" for item in associations),
             "production_authorized": False,
         },
         "cases": cases,
@@ -319,15 +284,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         "# 受控认知环同条件消融报告 v1",
         "",
         f"- 生成时间：`{report['generated_at']}`",
-        f"- 场景：{conditions['case_count']}；故障场景："
-        f"{conditions['fault_case_count']}",
+        f"- 场景：{conditions['case_count']}；故障场景：{conditions['fault_case_count']}",
         f"- 固定随机种子：`{conditions['random_seed']}`",
         f"- 同题、同模型、同证据：{str(conditions['conditions_equal']).lower()}",
-        f"- 错误晋升 off / on：{metrics['off_false_promotion_count']} / "
-        f"{metrics['on_false_promotion_count']}",
+        f"- 错误晋升 off / on：{metrics['off_false_promotion_count']} / {metrics['on_false_promotion_count']}",
         f"- 候选答案一致率：{metrics['answer_consistency_rate']:.1%}",
-        f"- Challenge off / on：{metrics['off_challenge_count']} / "
-        f"{metrics['on_challenge_count']}",
+        f"- Challenge off / on：{metrics['off_challenge_count']} / {metrics['on_challenge_count']}",
         f"- 故障场景熔断数（on）：{metrics['on_fault_fuse_count']}",
         f"- 固定种子联想选择：{metrics['controlled_association_count']}；"
         f"重放一致率：{metrics['association_replay_rate']:.1%}；"
@@ -354,7 +316,6 @@ def render_markdown(report: dict[str, Any]) -> str:
         "随机性只用于从受约束、可证伪的候选中选择下一项搜索任务；固定种子可完全重放，"
         "被选中的假设仍保持 `candidate`，不能进入证明 DAG 或改变真值。",
         "",
-        "本消融只能证明诊断增强且无错误晋升回归，尚不能证明自然题正确率提高；"
-        "后者仍需新鲜、教师评分的独立 holdout。",
+        "本消融只能证明诊断增强且无错误晋升回归，尚不能证明自然题正确率提高；后者仍需新鲜、教师评分的独立 holdout。",
     ])
     return "\n".join(lines) + "\n"

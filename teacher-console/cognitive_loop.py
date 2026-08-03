@@ -279,19 +279,13 @@ def normalize_stage_interface(payload: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("stage interface fields are invalid")
     entry_state = _json_state(payload["entry_state"], "entry_state")
     exit_state = _json_state(payload["exit_state"], "exit_state")
-    required = _state_key_list(
-        payload["required_entry_keys"], "required_entry_keys"
-    )
-    carried = _state_key_list(
-        payload["carried_state_keys"], "carried_state_keys"
-    )
+    required = _state_key_list(payload["required_entry_keys"], "required_entry_keys")
+    carried = _state_key_list(payload["carried_state_keys"], "carried_state_keys")
     if not set(required).issubset(entry_state):
         raise ValueError("required_entry_keys must exist in entry_state")
     return {
         "stage_id": _identifier(payload["stage_id"], "stage_id"),
-        "coordinate_frame": _text(
-            payload["coordinate_frame"], "coordinate_frame", 240
-        ),
+        "coordinate_frame": _text(payload["coordinate_frame"], "coordinate_frame", 240),
         "time_origin": _text(payload["time_origin"], "time_origin", 240),
         "directions": _direction_map(payload["directions"]),
         "entry_state": entry_state,
@@ -313,40 +307,26 @@ def normalize_stage_transition(payload: dict[str, Any]) -> dict[str, Any]:
         if not isinstance(raw, dict) or set(raw) != _MAPPING_FIELDS:
             raise ValueError("state_mapping item fields are invalid")
         item = {
-            "from_key": _state_key(
-                raw["from_key"], "state_mapping.from_key"
-            ),
+            "from_key": _state_key(raw["from_key"], "state_mapping.from_key"),
             "to_key": _state_key(raw["to_key"], "state_mapping.to_key"),
-            "transform": _optional_transform(
-                raw["transform"], "state_mapping.transform"
-            ),
+            "transform": _optional_transform(raw["transform"], "state_mapping.transform"),
         }
         if item["to_key"] in target_keys:
             raise ValueError("state_mapping cannot assign an entry key twice")
         target_keys.add(item["to_key"])
         mapping.append(item)
-    introduced = _state_key_list(
-        payload["introduced_entry_keys"], "introduced_entry_keys"
-    )
+    introduced = _state_key_list(payload["introduced_entry_keys"], "introduced_entry_keys")
     if set(introduced) & target_keys:
-        raise ValueError(
-            "introduced_entry_keys cannot also be assigned by state_mapping"
-        )
+        raise ValueError("introduced_entry_keys cannot also be assigned by state_mapping")
     return {
         "from_stage": _identifier(payload["from_stage"], "from_stage"),
         "to_stage": _identifier(payload["to_stage"], "to_stage"),
         "event": _text(payload["event"], "event", 300),
         "state_mapping": mapping,
         "introduced_entry_keys": introduced,
-        "coordinate_transform": _optional_transform(
-            payload["coordinate_transform"], "coordinate_transform"
-        ),
-        "time_transform": _optional_transform(
-            payload["time_transform"], "time_transform"
-        ),
-        "direction_transform": _optional_transform(
-            payload["direction_transform"], "direction_transform"
-        ),
+        "coordinate_transform": _optional_transform(payload["coordinate_transform"], "coordinate_transform"),
+        "time_transform": _optional_transform(payload["time_transform"], "time_transform"),
+        "direction_transform": _optional_transform(payload["direction_transform"], "direction_transform"),
     }
 
 
@@ -376,15 +356,11 @@ def check_stage_interfaces(
     transitions: list[dict[str, Any]],
 ) -> dict[str, Any]:
     """Check assembly compatibility without interpreting free-text transforms."""
-    normalized_interfaces = [
-        normalize_stage_interface(item) for item in interfaces
-    ]
+    normalized_interfaces = [normalize_stage_interface(item) for item in interfaces]
     by_stage = {item["stage_id"]: item for item in normalized_interfaces}
     if len(by_stage) != len(normalized_interfaces):
         raise ValueError("stage interfaces must have unique stage_id values")
-    normalized_transitions = [
-        normalize_stage_transition(item) for item in transitions
-    ]
+    normalized_transitions = [normalize_stage_transition(item) for item in transitions]
     issues: list[dict[str, Any]] = []
 
     def has_temporal_state(*stages: dict[str, Any]) -> bool:
@@ -413,89 +389,96 @@ def check_stage_interfaces(
                 continue
             transform = transition[transform_field]
             if transform is None:
-                issues.append(_issue(
-                    code,
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    message=f"{field} differs without an explicit transform",
-                ))
+                issues.append(
+                    _issue(
+                        code,
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        message=f"{field} differs without an explicit transform",
+                    )
+                )
             else:
-                issues.append(_issue(
-                    f"{code}-transform-unverified",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    message=f"{field} differs; transform requires semantic verification",
-                    semantic_required=True,
-                ))
+                issues.append(
+                    _issue(
+                        f"{code}-transform-unverified",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        message=f"{field} differs; transform requires semantic verification",
+                        semantic_required=True,
+                    )
+                )
 
         mapped_targets = {item["to_key"] for item in transition["state_mapping"]}
         for required_key in target["required_entry_keys"]:
-            if (
-                required_key not in mapped_targets
-                and required_key not in transition["introduced_entry_keys"]
-            ):
-                issues.append(_issue(
-                    "missing-entry-state",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=required_key,
-                    message=f"required entry state {required_key} is not mapped",
-                ))
+            if required_key not in mapped_targets and required_key not in transition["introduced_entry_keys"]:
+                issues.append(
+                    _issue(
+                        "missing-entry-state",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=required_key,
+                        message=f"required entry state {required_key} is not mapped",
+                    )
+                )
         for introduced_key in transition["introduced_entry_keys"]:
             if introduced_key not in target["entry_state"]:
-                issues.append(_issue(
-                    "unknown-introduced-entry-state",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=introduced_key,
-                    message=(
-                        f"introduced entry state {introduced_key} does not "
-                        "exist in target entry_state"
-                    ),
-                ))
+                issues.append(
+                    _issue(
+                        "unknown-introduced-entry-state",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=introduced_key,
+                        message=(f"introduced entry state {introduced_key} does not exist in target entry_state"),
+                    )
+                )
         for mapping in transition["state_mapping"]:
             source_key = mapping["from_key"]
             target_key = mapping["to_key"]
             if source_key not in source["exit_state"]:
-                issues.append(_issue(
-                    "unknown-exit-state",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=source_key,
-                    message=f"mapped exit state {source_key} does not exist",
-                ))
+                issues.append(
+                    _issue(
+                        "unknown-exit-state",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=source_key,
+                        message=f"mapped exit state {source_key} does not exist",
+                    )
+                )
                 continue
             if target_key not in target["entry_state"]:
-                issues.append(_issue(
-                    "unknown-entry-state",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=target_key,
-                    message=f"mapped entry state {target_key} does not exist",
-                ))
+                issues.append(
+                    _issue(
+                        "unknown-entry-state",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=target_key,
+                        message=f"mapped entry state {target_key} does not exist",
+                    )
+                )
                 continue
             if source["exit_state"][source_key] == target["entry_state"][target_key]:
                 continue
             if mapping["transform"] is None:
-                issues.append(_issue(
-                    "state-value-mismatch",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=target_key,
-                    message=(
-                        f"{source_key} exit value does not match "
-                        f"{target_key} entry value"
-                    ),
-                ))
+                issues.append(
+                    _issue(
+                        "state-value-mismatch",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=target_key,
+                        message=(f"{source_key} exit value does not match {target_key} entry value"),
+                    )
+                )
             else:
-                issues.append(_issue(
-                    "state-transform-unverified",
-                    from_stage=from_id,
-                    to_stage=to_id,
-                    state_key=target_key,
-                    message="state transform requires semantic verification",
-                    semantic_required=True,
-                ))
+                issues.append(
+                    _issue(
+                        "state-transform-unverified",
+                        from_stage=from_id,
+                        to_stage=to_id,
+                        state_key=target_key,
+                        message="state transform requires semantic verification",
+                        semantic_required=True,
+                    )
+                )
 
     hard_issues = [item for item in issues if not item["semantic_required"]]
     semantic_issues = [item for item in issues if item["semantic_required"]]
@@ -525,10 +508,7 @@ def check_stage_interfaces(
 
 def _specific_text(value: Any, field: str) -> str:
     normalized = _text(value, field, 500)
-    if (
-        len(normalized) < 8
-        or normalized.lower() in _VAGUE_CHALLENGE_TEXT
-    ):
+    if len(normalized) < 8 or normalized.lower() in _VAGUE_CHALLENGE_TEXT:
         raise ValueError(f"{field} must be specific and testable")
     return normalized
 
@@ -542,11 +522,7 @@ def normalize_challenge_ticket(
     if not isinstance(payload, dict) or set(payload) != _CHALLENGE_FIELDS:
         raise ValueError("challenge ticket fields are invalid")
     snapshot_version = payload["snapshot_version"]
-    if (
-        isinstance(snapshot_version, bool)
-        or not isinstance(snapshot_version, int)
-        or snapshot_version < 1
-    ):
+    if isinstance(snapshot_version, bool) or not isinstance(snapshot_version, int) or snapshot_version < 1:
         raise ValueError("challenge snapshot_version must be a positive integer")
     trigger = _text(payload["trigger"], "challenge.trigger", 40).lower()
     if trigger not in CHALLENGE_TRIGGERS:
@@ -558,9 +534,7 @@ def normalize_challenge_ticket(
         unknown = set(claim_ids) - available_claim_ids
         if unknown:
             raise ValueError(f"challenge references unknown claims: {sorted(unknown)}")
-    backjump = _identifier(
-        payload["suggested_backjump"], "challenge.suggested_backjump"
-    )
+    backjump = _identifier(payload["suggested_backjump"], "challenge.suggested_backjump")
     if backjump not in claim_ids:
         raise ValueError("challenge suggested_backjump must be one of claim_ids")
     status = _text(payload["status"], "challenge.status", 32).lower()
@@ -573,12 +547,8 @@ def normalize_challenge_ticket(
         "snapshot_version": snapshot_version,
         "trigger": trigger,
         "claim_ids": claim_ids,
-        "specific_doubt": _specific_text(
-            payload["specific_doubt"], "challenge.specific_doubt"
-        ),
-        "falsification_test": _specific_text(
-            payload["falsification_test"], "challenge.falsification_test"
-        ),
+        "specific_doubt": _specific_text(payload["specific_doubt"], "challenge.specific_doubt"),
+        "falsification_test": _specific_text(payload["falsification_test"], "challenge.falsification_test"),
         "suggested_backjump": backjump,
         "status": status,
     }
@@ -623,10 +593,7 @@ def challenge_from_interface_issue(
 def normalize_conflict_evidence(payload: dict[str, Any]) -> dict[str, list[str]]:
     if not isinstance(payload, dict) or set(payload) != _CONFLICT_EVIDENCE_FIELDS:
         raise ValueError("conflict evidence fields are invalid")
-    result = {
-        field: _id_list(payload[field], f"conflict_evidence.{field}")
-        for field in _CONFLICT_EVIDENCE_FIELDS
-    }
+    result = {field: _id_list(payload[field], f"conflict_evidence.{field}") for field in _CONFLICT_EVIDENCE_FIELDS}
     return result
 
 
@@ -653,24 +620,15 @@ def diagnose_minimal_conflict(
         raise ValueError(f"conflict evidence references unknown claims: {sorted(unknown)}")
     unbound = evidence_claim_ids - set(ticket["claim_ids"])
     if unbound:
-        raise ValueError(
-            f"conflict evidence is outside the challenge binding: {sorted(unbound)}"
-        )
+        raise ValueError(f"conflict evidence is outside the challenge binding: {sorted(unbound)}")
     candidates = evidence_claim_ids or {ticket["suggested_backjump"]}
     downstream_by_candidate = {
-        claim_id: set(
-            claim_ledger.dependency_impact_cone(claims, {claim_id})
-        )
-        for claim_id in candidates
+        claim_id: set(claim_ledger.dependency_impact_cone(claims, {claim_id})) for claim_id in candidates
     }
     minimal_roots = sorted(
         claim_id
         for claim_id in candidates
-        if not any(
-            claim_id in downstream_by_candidate[other_id]
-            for other_id in candidates
-            if other_id != claim_id
-        )
+        if not any(claim_id in downstream_by_candidate[other_id] for other_id in candidates if other_id != claim_id)
     )
 
     if normalized_evidence["interface_issue_codes"]:
@@ -685,10 +643,7 @@ def diagnose_minimal_conflict(
     elif normalized_evidence["missing_target_ids"]:
         conflict_class = "decomposition"
         rationale = "the proof graph does not cover a question target"
-    elif (
-        normalized_evidence["component_failure_claim_ids"]
-        or normalized_evidence["conflicting_claim_ids"]
-    ):
+    elif normalized_evidence["component_failure_claim_ids"] or normalized_evidence["conflicting_claim_ids"]:
         conflict_class = "component"
         rationale = "one or more component Claims fail their accepted verification route"
     else:
@@ -706,10 +661,7 @@ def diagnose_minimal_conflict(
         "snapshot_version": ticket["snapshot_version"],
         "conflict_class": conflict_class,
         "minimal_conflict_claim_ids": minimal_roots,
-        "suggested_backjump": (
-            minimal_roots[0] if len(minimal_roots) == 1
-            else ticket["suggested_backjump"]
-        ),
+        "suggested_backjump": (minimal_roots[0] if len(minimal_roots) == 1 else ticket["suggested_backjump"]),
         "rationale": rationale,
         "evidence": normalized_evidence,
     }
@@ -724,11 +676,7 @@ def invalidate_dependency_cone(
     challenge_id: str,
 ) -> dict[str, Any]:
     """Invalidate only a causal subgraph and plan versioned rebuilding."""
-    if (
-        isinstance(snapshot_version, bool)
-        or not isinstance(snapshot_version, int)
-        or snapshot_version < 1
-    ):
+    if isinstance(snapshot_version, bool) or not isinstance(snapshot_version, int) or snapshot_version < 1:
         raise ValueError("snapshot_version must be a positive integer")
     normalized_challenge_id = _identifier(challenge_id, "challenge_id")
     active = claim_ledger.active_claims(claims)
@@ -738,11 +686,7 @@ def invalidate_dependency_cone(
     if unknown:
         raise ValueError(f"backjump roots are unknown: {sorted(unknown)}")
     affected = set(root_claim_ids)
-    affected.update(
-        claim_ledger.dependency_impact_cone(
-            claims, root_claim_ids, include_changed=False
-        )
-    )
+    affected.update(claim_ledger.dependency_impact_cone(claims, root_claim_ids, include_changed=False))
     logger.info(
         "stage=backjump challenge_id=%s root_count=%d affected_count=%d",
         normalized_challenge_id,
@@ -750,9 +694,7 @@ def invalidate_dependency_cone(
         len(affected),
     )
     topological_order = claim_ledger.topological_claim_ids(claims)
-    rebuild_order = [
-        claim_id for claim_id in topological_order if claim_id in affected
-    ]
+    rebuild_order = [claim_id for claim_id in topological_order if claim_id in affected]
 
     invalidated_claims: list[dict[str, Any]] = []
     preserved_claims: list[dict[str, Any]] = []
@@ -762,30 +704,16 @@ def invalidate_dependency_cone(
             preserved_claims.append(claim)
             continue
         if claim["status"] in {"candidate", "verified"}:
-            status = correctness_policy.require_claim_status_transition(
-                claim["status"], "disputed"
-            )
+            status = correctness_policy.require_claim_status_transition(claim["status"], "disputed")
         elif claim["status"] == "disputed":
             status = "disputed"
         else:
-            raise ValueError(
-                f"claim {claim_id} status cannot be invalidated in place"
-            )
+            raise ValueError(f"claim {claim_id} status cannot be invalidated in place")
         invalidated_claims.append({**claim, "status": status})
 
-    normalized_certificates = [
-        claim_ledger.normalize_certificate(item) for item in certificates
-    ]
-    preserved_certificates = [
-        item
-        for item in normalized_certificates
-        if item["claim_id"] not in affected
-    ]
-    invalidated_certificates = [
-        item
-        for item in normalized_certificates
-        if item["claim_id"] in affected
-    ]
+    normalized_certificates = [claim_ledger.normalize_certificate(item) for item in certificates]
+    preserved_certificates = [item for item in normalized_certificates if item["claim_id"] not in affected]
+    invalidated_certificates = [item for item in normalized_certificates if item["claim_id"] in affected]
     rebuild_tasks = []
     for claim_id in rebuild_order:
         claim = active[claim_id]
@@ -797,9 +725,7 @@ def invalidate_dependency_cone(
             "next_version": next_version,
             "action": action,
             "depends_on_rebuild_ids": [
-                dependency_id
-                for dependency_id in claim["depends_on"]
-                if dependency_id in affected
+                dependency_id for dependency_id in claim["depends_on"] if dependency_id in affected
             ],
         })
 
@@ -809,9 +735,7 @@ def invalidate_dependency_cone(
         "next_snapshot_version": snapshot_version + 1,
         "root_claim_ids": sorted(root_claim_ids),
         "affected_claim_ids": rebuild_order,
-        "preserved_claim_ids": [
-            claim_id for claim_id in topological_order if claim_id not in affected
-        ],
+        "preserved_claim_ids": [claim_id for claim_id in topological_order if claim_id not in affected],
         "invalidated_claims": invalidated_claims,
         "preserved_claims": preserved_claims,
         "invalidated_certificates": invalidated_certificates,
@@ -886,8 +810,7 @@ def evaluate_progress(
             improvements.append(field)
     if (
         before["open_conflict_scope_size"] > 0
-        and after["open_conflict_scope_size"]
-        < before["open_conflict_scope_size"]
+        and after["open_conflict_scope_size"] < before["open_conflict_scope_size"]
     ):
         improvements.append("open_conflict_scope_reduced")
     return {
@@ -959,10 +882,7 @@ def advance_loop_control(
         if set(policy) != set(DEFAULT_LOOP_POLICY):
             raise ValueError("loop policy fields are invalid")
         settings.update(policy)
-    if any(
-        isinstance(value, bool) or not isinstance(value, int) or value < 1
-        for value in settings.values()
-    ):
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in settings.values()):
         raise ValueError("loop policy values must be positive integers")
 
     next_control = {
@@ -981,9 +901,7 @@ def advance_loop_control(
         }
 
     if next_control["transition_count"] >= settings["max_transitions"]:
-        next_control["terminal_status"] = (
-            "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
-        )
+        next_control["terminal_status"] = "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
         logger.warning(
             "stage=loop_advance action=hard-fuse transition_count=%d max=%d terminal_status=%s",
             next_control["transition_count"],
@@ -1007,10 +925,7 @@ def advance_loop_control(
         }
 
     next_control["stagnant_rounds"] = current["stagnant_rounds"] + 1
-    if (
-        next_control["stagnant_rounds"]
-        >= settings["stagnation_before_strategy_change"]
-    ):
+    if next_control["stagnant_rounds"] >= settings["stagnation_before_strategy_change"]:
         if next_control["strategy_index"] + 1 < settings["strategy_count"]:
             next_control["strategy_index"] += 1
             next_control["stagnant_rounds"] = 0
@@ -1024,9 +939,7 @@ def advance_loop_control(
                 "provider_call_allowed": True,
                 "reason": "stagnation threshold reached; identical retry is forbidden",
             }
-        next_control["terminal_status"] = (
-            "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
-        )
+        next_control["terminal_status"] = "UNRESOLVED" if has_open_conflict else "PROVISIONAL"
         logger.warning(
             "stage=loop_advance action=strategy-fuse all_strategies_exhausted terminal_status=%s",
             next_control["terminal_status"],
@@ -1054,18 +967,12 @@ def normalize_hypothesis(
     if not isinstance(payload, dict) or set(payload) != _HYPOTHESIS_FIELDS:
         raise ValueError("hypothesis fields are invalid")
     snapshot_version = payload["snapshot_version"]
-    if (
-        isinstance(snapshot_version, bool)
-        or not isinstance(snapshot_version, int)
-        or snapshot_version < 1
-    ):
+    if isinstance(snapshot_version, bool) or not isinstance(snapshot_version, int) or snapshot_version < 1:
         raise ValueError("hypothesis snapshot_version must be a positive integer")
     operator_name = _text(payload["operator"], "hypothesis.operator", 64).lower()
     if operator_name not in HYPOTHESIS_OPERATORS:
         raise ValueError("hypothesis operator is invalid")
-    affected = _id_list(
-        payload["affected_claim_ids"], "hypothesis.affected_claim_ids"
-    )
+    affected = _id_list(payload["affected_claim_ids"], "hypothesis.affected_claim_ids")
     if not affected:
         raise ValueError("hypothesis.affected_claim_ids must not be empty")
     if available_claim_ids is not None:
@@ -1075,9 +982,7 @@ def normalize_hypothesis(
     falsification = payload["falsification"]
     if not isinstance(falsification, dict) or set(falsification) != _FALSIFICATION_FIELDS:
         raise ValueError("hypothesis falsification fields are invalid")
-    test_type = _text(
-        falsification["test_type"], "hypothesis.falsification.test_type", 32
-    ).lower()
+    test_type = _text(falsification["test_type"], "hypothesis.falsification.test_type", 32).lower()
     if test_type not in {"deterministic", "independent-agent", "teacher"}:
         raise ValueError("hypothesis falsification test_type is invalid")
     status = _text(payload["status"], "hypothesis.status", 32).lower()
@@ -1088,19 +993,11 @@ def normalize_hypothesis(
     return {
         "id": _identifier(payload["id"], "hypothesis.id"),
         "snapshot_version": snapshot_version,
-        "challenge_id": _identifier(
-            payload["challenge_id"], "hypothesis.challenge_id"
-        ),
+        "challenge_id": _identifier(payload["challenge_id"], "hypothesis.challenge_id"),
         "operator": operator_name,
-        "proposal": _specific_text(
-            payload["proposal"], "hypothesis.proposal"
-        ),
-        "explains_gap": _specific_text(
-            payload["explains_gap"], "hypothesis.explains_gap"
-        ),
-        "novelty_basis": _specific_text(
-            payload["novelty_basis"], "hypothesis.novelty_basis"
-        ),
+        "proposal": _specific_text(payload["proposal"], "hypothesis.proposal"),
+        "explains_gap": _specific_text(payload["explains_gap"], "hypothesis.explains_gap"),
+        "novelty_basis": _specific_text(payload["novelty_basis"], "hypothesis.novelty_basis"),
         "falsification": {
             "test_type": test_type,
             "procedure": _specific_text(
@@ -1122,9 +1019,7 @@ def normalize_hypothesis(
 
 
 def hypothesis_fingerprint(hypothesis: dict[str, Any]) -> str:
-    normalized = normalize_hypothesis(
-        hypothesis, agent_submission=False
-    )
+    normalized = normalize_hypothesis(hypothesis, agent_submission=False)
     return claim_ledger.stable_fingerprint(
         "hypothesis-v1",
         {
@@ -1191,13 +1086,9 @@ def add_hypothesis_to_pool(
         available_claim_ids=set(active),
         agent_submission=False,
     )
-    candidate = normalize_hypothesis(
-        hypothesis, available_claim_ids=set(active)
-    )
+    candidate = normalize_hypothesis(hypothesis, available_claim_ids=set(active))
     pool = [
-        normalize_hypothesis(
-            item, available_claim_ids=set(active), agent_submission=False
-        )
+        normalize_hypothesis(item, available_claim_ids=set(active), agent_submission=False)
         for item in existing_hypotheses
     ]
     reasons: list[str] = []
@@ -1208,14 +1099,10 @@ def add_hypothesis_to_pool(
     if not set(candidate["affected_claim_ids"]).issubset(ticket["claim_ids"]):
         reasons.append("hypothesis affects Claims outside the challenge")
     candidate_fingerprint = hypothesis_fingerprint(candidate)
-    if any(
-        hypothesis_fingerprint(item) == candidate_fingerprint for item in pool
-    ):
+    if any(hypothesis_fingerprint(item) == candidate_fingerprint for item in pool):
         reasons.append("hypothesis duplicates an existing candidate")
     proposal_key = " ".join(candidate["proposal"].lower().split())
-    existing_claim_statements = {
-        " ".join(item["statement"].lower().split()) for item in active.values()
-    }
+    existing_claim_statements = {" ".join(item["statement"].lower().split()) for item in active.values()}
     if proposal_key in existing_claim_statements:
         reasons.append("hypothesis merely repeats an existing Claim")
     if len(pool) >= maximum_pool_size:
@@ -1258,14 +1145,8 @@ def _operator_history(
     }
     if set(raw) - required:
         raise ValueError(f"operator stats for {operator_name} has unknown fields")
-    result = {
-        field: raw.get(field, 0)
-        for field in required
-    }
-    if any(
-        isinstance(value, bool) or not isinstance(value, int) or value < 0
-        for value in result.values()
-    ):
+    result = {field: raw.get(field, 0) for field in required}
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 0 for value in result.values()):
         raise ValueError("operator stats values must be non-negative integers")
     if (
         result["conflict_found_count"] > result["attempt_count"]
@@ -1282,9 +1163,7 @@ def score_hypothesis(
     claim_risks: dict[str, float],
     operator_stats: dict[str, dict[str, int]],
 ) -> dict[str, Any]:
-    normalized = normalize_hypothesis(
-        hypothesis, agent_submission=False
-    )
+    normalized = normalize_hypothesis(hypothesis, agent_submission=False)
     conflict = str(conflict_class).strip().lower()
     if conflict not in CONFLICT_CLASSES:
         raise ValueError("conflict_class is invalid")
@@ -1299,30 +1178,16 @@ def score_hypothesis(
         risks.append(numeric)
     risk_score = max(risks, default=0.5)
     history = _operator_history(normalized["operator"], operator_stats)
-    successes = (
-        history["conflict_found_count"] + history["certificate_gain_count"]
-    )
-    discovery_yield = (successes + 1.0) / (
-        2.0 * history["attempt_count"] + 2.0
-    )
-    compatibility = (
-        1.0
-        if normalized["operator"] in _CONFLICT_OPERATOR_PREFERENCES[conflict]
-        else 0.45
-    )
+    successes = history["conflict_found_count"] + history["certificate_gain_count"]
+    discovery_yield = (successes + 1.0) / (2.0 * history["attempt_count"] + 2.0)
+    compatibility = 1.0 if normalized["operator"] in _CONFLICT_OPERATOR_PREFERENCES[conflict] else 0.45
     testability = {
         "deterministic": 1.0,
         "independent-agent": 0.75,
         "teacher": 0.55,
     }[normalized["falsification"]["test_type"]]
     diversity = 1.0 / (1.0 + 0.08 * history["attempt_count"])
-    score = (
-        0.35 * risk_score
-        + 0.25 * discovery_yield
-        + 0.20 * compatibility
-        + 0.15 * testability
-        + 0.05 * diversity
-    )
+    score = 0.35 * risk_score + 0.25 * discovery_yield + 0.20 * compatibility + 0.15 * testability + 0.05 * diversity
     return {
         "hypothesis_id": normalized["id"],
         "operator": normalized["operator"],
@@ -1390,9 +1255,7 @@ def select_hypothesis(
             "random_seed": random_seed,
             "exploration_rate": float(exploration_rate),
             "conflict_class": conflict_class,
-            "candidate_fingerprints": [
-                hypothesis_fingerprint(item) for item in candidates
-            ],
+            "candidate_fingerprints": [hypothesis_fingerprint(item) for item in candidates],
             "scores": scores,
             "mode": mode,
             "selected_id": selected["id"],

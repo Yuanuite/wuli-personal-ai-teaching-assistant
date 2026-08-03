@@ -59,9 +59,7 @@ PROBLEM_C = (
     "$\\omega$、$\\Omega$，真空磁导率 $\\mu_0$，电荷 $q$。求：（1）系统总机械角动量 $L$。"
 )
 
-PROBLEM_D = (
-    "物块沿斜面下滑，已知高度 $h$、质量 $m$。求：（1）到达底端的速度 $v$。"
-)
+PROBLEM_D = "物块沿斜面下滑，已知高度 $h$、质量 $m$。求：（1）到达底端的速度 $v$。"
 
 FIXTURE_A_TARGETS = [
     {
@@ -127,9 +125,7 @@ GOOD_G2_TARGETS = [
     }
 ]
 
-PROBLEM_G3 = (
-    "长直导线单位长度电荷 $\\lambda$，距离 $r1$、$r2$ 处。求：（1）两点间电势差 $U$。"
-)
+PROBLEM_G3 = "长直导线单位长度电荷 $\\lambda$，距离 $r1$、$r2$ 处。求：（1）两点间电势差 $U$。"
 GOOD_G3_TARGETS = [
     {
         "id": "Q1",
@@ -223,7 +219,9 @@ class MaterializePhysicsGateTest(unittest.TestCase):
     def materialize(self, problem, targets):
         (self.entry / "problem.md").write_text(problem, encoding="utf-8")
         (self.entry / "record.json").write_text(
-            json.dumps({"schema_version": 1, "id": "entry", "title": "原题", "subject": "高中物理"}, ensure_ascii=False),
+            json.dumps(
+                {"schema_version": 1, "id": "entry", "title": "原题", "subject": "高中物理"}, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         brief = _brief(problem)
@@ -254,7 +252,9 @@ class MaterializePhysicsGateTest(unittest.TestCase):
         ]
         (self.entry / "problem.md").write_text(PROBLEM_G1, encoding="utf-8")
         (self.entry / "record.json").write_text(
-            json.dumps({"schema_version": 1, "id": "entry", "title": "原题", "subject": "高中物理"}, ensure_ascii=False),
+            json.dumps(
+                {"schema_version": 1, "id": "entry", "title": "原题", "subject": "高中物理"}, ensure_ascii=False
+            ),
             encoding="utf-8",
         )
         # final_answer "a = F/m" is embedded verbatim by the renderer, so the

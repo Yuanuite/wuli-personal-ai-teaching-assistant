@@ -182,36 +182,25 @@ class KnowledgeStoreTest(unittest.TestCase):
         false_friend = next(
             item
             for item in units
-            if item["unit_kind"] == "false_friend_warning"
-            and self.entry.name in item["source_locator"]["path"]
+            if item["unit_kind"] == "false_friend_warning" and self.entry.name in item["source_locator"]["path"]
         )
         self.assertEqual(false_friend["source_kind"], "approved_solution")
         self.assertEqual(false_friend["authority_level"], "B")
         self.assertTrue(false_friend["applicability"])
         self.assertTrue(false_friend["exceptions"])
         self.assertTrue(false_friend["content_hash"].startswith("sha256:"))
-        curated = next(
-            item for item in units if item["source_kind"] == "curated_technique"
-        )
+        curated = next(item for item in units if item["source_kind"] == "curated_technique")
         self.assertEqual(curated["authority_level"], "A")
         self.assertNotIn(self.entry.name, curated["source_locator"]["path"])
-        circuit_node = next(
-            item for item in units
-            if item["source_locator"]["section"] == "circuit-node-topology"
-        )
+        circuit_node = next(item for item in units if item["source_locator"]["section"] == "circuit-node-topology")
         self.assertEqual(circuit_node["authority_level"], "A")
         self.assertIn("连接节点", circuit_node["physics_facets"])
         self.assertIn("电流通路", circuit_node["physics_facets"])
 
-        identity_before = {
-            item["evidence_id"]: item["content_hash"] for item in units
-        }
+        identity_before = {item["evidence_id"]: item["content_hash"] for item in units}
         second = knowledge_store.rebuild(self.library)
         projection_after = knowledge_store.load_evidence_unit_projection(self.library)
-        identity_after = {
-            item["evidence_id"]: item["content_hash"]
-            for item in projection_after["units"]
-        }
+        identity_after = {item["evidence_id"]: item["content_hash"] for item in projection_after["units"]}
         self.assertEqual(first["evidence_units"], second["evidence_units"])
         self.assertEqual(identity_before, identity_after)
 
@@ -239,9 +228,7 @@ class KnowledgeStoreTest(unittest.TestCase):
         serialized = json.dumps(complete, ensure_ascii=False)
         self.assertNotIn(unapproved.name, serialized)
 
-        excluded = knowledge_store.load_evidence_unit_projection(
-            self.library, exclude_entry_id=self.entry.name
-        )
+        excluded = knowledge_store.load_evidence_unit_projection(self.library, exclude_entry_id=self.entry.name)
         self.assertEqual(excluded["status"], "ready")
         self.assertTrue(excluded["excluded_current_entry"])
         self.assertNotIn(
@@ -270,17 +257,9 @@ class KnowledgeStoreTest(unittest.TestCase):
 
         knowledge_store.rebuild(self.library)
         projection = knowledge_store.load_evidence_unit_projection(self.library)
-        entry_units = [
-            item
-            for item in projection["units"]
-            if self.entry.name in item["source_locator"]["path"]
-        ]
-        method = next(
-            item for item in entry_units if item["unit_kind"] == "method_applicability"
-        )
-        conclusion = next(
-            item for item in entry_units if item["unit_kind"] == "secondary_conclusion"
-        )
+        entry_units = [item for item in projection["units"] if self.entry.name in item["source_locator"]["path"]]
+        method = next(item for item in entry_units if item["unit_kind"] == "method_applicability")
+        conclusion = next(item for item in entry_units if item["unit_kind"] == "secondary_conclusion")
         self.assertIn("规定正方向", method["text"])
         self.assertTrue(any("题型识别" in item for item in method["applicability"]))
         self.assertEqual(conclusion["applicability"], ["碰撞后两物体粘在一起。"])
@@ -298,9 +277,7 @@ class KnowledgeStoreTest(unittest.TestCase):
         report = knowledge_store.rebuild(self.library)
         self.assertEqual(report["status"], "rebuilt")
         self.assertGreaterEqual(report["evidence_unit_projection_errors"], 1)
-        evidence = knowledge_store.query(
-            self.library, "动量守恒 非弹性碰撞", mode="teaching", top_k=3
-        )
+        evidence = knowledge_store.query(self.library, "动量守恒 非弹性碰撞", mode="teaching", top_k=3)
         self.assertEqual(evidence["status"], "ok")
 
     def test_kb_rebuild_refreshes_knowledge_store_fail_soft(self):
@@ -449,9 +426,7 @@ class KnowledgeStoreTest(unittest.TestCase):
         self.assertEqual(evidence["query_expansions"], ["方向判断", "符号方向", "空间想象"])
 
     def test_teaching_intent_removes_task_phrasing_and_adds_reviewed_aliases(self):
-        intent, removed, additions = knowledge_store._teaching_intent_query(
-            "帮我找一道关于粒子反复进出磁场的题目"
-        )
+        intent, removed, additions = knowledge_store._teaching_intent_query("帮我找一道关于粒子反复进出磁场的题目")
         self.assertNotIn("帮我找一道", intent)
         self.assertNotIn("题目", intent)
         self.assertIn("反复进出磁场", intent)
@@ -510,11 +485,14 @@ class KnowledgeStoreTest(unittest.TestCase):
         )
 
         self.assertEqual(evidence["retrieval"]["strategy"], "multi-route-bm25-rrf-v1")
-        self.assertEqual([route["id"] for route in evidence["retrieval"]["routes"]], [
-            "metadata",
-            "problem",
-            "solution",
-        ])
+        self.assertEqual(
+            [route["id"] for route in evidence["retrieval"]["routes"]],
+            [
+                "metadata",
+                "problem",
+                "solution",
+            ],
+        )
         self.assertEqual(evidence["query_plan"]["raw_query"], "回旋半径判据")
         self.assertEqual(evidence["results"][0]["entry_id"], "cross-route-match")
         by_id = {item["entry_id"]: item for item in evidence["results"]}
@@ -526,7 +504,9 @@ class KnowledgeStoreTest(unittest.TestCase):
             {item["route"] for item in by_id["solution-route-match"]["route_matches"]},
             {"solution"},
         )
-        self.assertTrue(all("route" in document for item in evidence["results"] for document in item["matched_documents"]))
+        self.assertTrue(
+            all("route" in document for item in evidence["results"] for document in item["matched_documents"])
+        )
 
     def test_condition_audit_rejects_cross_domain_false_positive(self):
         query_plan = {
@@ -538,9 +518,11 @@ class KnowledgeStoreTest(unittest.TestCase):
             title="两同向分区磁场中带电粒子的平均速度",
             knowledge_points=["带电粒子在磁场中的运动"],
             error_types=[],
-            matched_documents=[{
-                "snippet": "粒子依次经过两个分区磁场，求平均速度。",
-            }],
+            matched_documents=[
+                {
+                    "snippet": "粒子依次经过两个分区磁场，求平均速度。",
+                }
+            ],
             route_matches=[{"route": "problem"}],
         )
         rejected = knowledge_store._evidence_relevance_audit(
@@ -548,9 +530,11 @@ class KnowledgeStoreTest(unittest.TestCase):
             title="正方形线框匀速穿越宽磁场",
             knowledge_points=["电磁感应", "感应电动势"],
             error_types=[],
-            matched_documents=[{
-                "snippet": "导线框穿越磁场，判断感应电流。",
-            }],
+            matched_documents=[
+                {
+                    "snippet": "导线框穿越磁场，判断感应电流。",
+                }
+            ],
             route_matches=[{"route": "solution"}],
         )
 

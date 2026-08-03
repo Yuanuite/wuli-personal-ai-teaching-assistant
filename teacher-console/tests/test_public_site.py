@@ -215,9 +215,9 @@ class PublicSiteTest(unittest.TestCase):
         )
         prepared = public_site.prepare_publication(self.library, self.entry_id, self.site)
         public_id = prepared["public_id"]
-        copied = (
-            self.entry / public_site.DRAFT_DIR / "questions" / public_id / "assets" / "asset-1.svg"
-        ).read_text(encoding="utf-8")
+        copied = (self.entry / public_site.DRAFT_DIR / "questions" / public_id / "assets" / "asset-1.svg").read_text(
+            encoding="utf-8"
+        )
 
         self.assertNotIn(self.entry_id, copied)
         self.assertIn(public_id, copied)
@@ -247,12 +247,10 @@ class PublicSiteTest(unittest.TestCase):
                 '<use xlink:href="https://example.com/a.svg#x"/></svg>'
             ),
             "encoded.svg": (
-                '<svg xmlns="http://www.w3.org/2000/svg">'
-                '<a href="jav&#x61;script:alert(1)"><text>x</text></a></svg>'
+                '<svg xmlns="http://www.w3.org/2000/svg"><a href="jav&#x61;script:alert(1)"><text>x</text></a></svg>'
             ),
             "external-css.svg": (
-                '<svg xmlns="http://www.w3.org/2000/svg"><style>'
-                ".x{fill:url(https://example.com/a.svg#x)}</style></svg>"
+                '<svg xmlns="http://www.w3.org/2000/svg"><style>.x{fill:url(https://example.com/a.svg#x)}</style></svg>'
             ),
             "entity.svg": (
                 '<!DOCTYPE svg [<!ENTITY leak SYSTEM "file:///etc/passwd">]>'

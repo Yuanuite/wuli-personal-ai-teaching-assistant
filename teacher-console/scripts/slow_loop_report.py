@@ -56,13 +56,11 @@ def _observation_window(*reports: dict[str, Any]) -> dict[str, Any]:
             starts.append(start)
         if end:
             ends.append(end)
-        source_fingerprints.append(
-            {
-                key: report.get(key)
-                for key in ("report_type", "generated_at", "evidence_counts", "overall", "kinds", "operational")
-                if key in report
-            }
-        )
+        source_fingerprints.append({
+            key: report.get(key)
+            for key in ("report_type", "generated_at", "evidence_counts", "overall", "kinds", "operational")
+            if key in report
+        })
     digest = hashlib.sha256(
         json.dumps(source_fingerprints, ensure_ascii=False, sort_keys=True).encode("utf-8")
     ).hexdigest()

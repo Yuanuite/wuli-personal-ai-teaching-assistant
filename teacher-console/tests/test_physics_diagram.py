@@ -29,12 +29,52 @@ def visual_facts():
 
 def scene_payload():
     return {
-        "status": "completed", "message": "ok", "title": "带电粒子在磁场中的偏转",
+        "status": "completed",
+        "message": "ok",
+        "title": "带电粒子在磁场中的偏转",
         "panels": [{"id": "main", "title": "俯视图"}],
-        "regions": [{"id": "b", "panel_id": "main", "kind": "magnetic", "x": 30, "y": 12, "width": 62, "height": 72, "label": "B 垂直纸面向里", "fact_ids": ["field"], "direction": "into-page"}],
-        "objects": [{"id": "p", "panel_id": "main", "kind": "point", "x": 27, "y": 62, "width": 4, "height": 5, "label": "P", "fact_ids": ["point-p"], "polarity": "none"}],
-        "paths": [{"id": "track", "panel_id": "main", "kind": "trajectory", "geometry": "smooth", "points": [{"x": 10, "y": 64}, {"x": 30, "y": 64}, {"x": 48, "y": 55}, {"x": 58, "y": 35}], "label": "轨迹", "direction": "up", "fact_ids": []}],
-        "annotations": [], "omissions": [],
+        "regions": [
+            {
+                "id": "b",
+                "panel_id": "main",
+                "kind": "magnetic",
+                "x": 30,
+                "y": 12,
+                "width": 62,
+                "height": 72,
+                "label": "B 垂直纸面向里",
+                "fact_ids": ["field"],
+                "direction": "into-page",
+            }
+        ],
+        "objects": [
+            {
+                "id": "p",
+                "panel_id": "main",
+                "kind": "point",
+                "x": 27,
+                "y": 62,
+                "width": 4,
+                "height": 5,
+                "label": "P",
+                "fact_ids": ["point-p"],
+                "polarity": "none",
+            }
+        ],
+        "paths": [
+            {
+                "id": "track",
+                "panel_id": "main",
+                "kind": "trajectory",
+                "geometry": "smooth",
+                "points": [{"x": 10, "y": 64}, {"x": 30, "y": 64}, {"x": 48, "y": 55}, {"x": 58, "y": 35}],
+                "label": "轨迹",
+                "direction": "up",
+                "fact_ids": [],
+            }
+        ],
+        "annotations": [],
+        "omissions": [],
     }
 
 
@@ -44,9 +84,7 @@ class PhysicsDiagramTests(unittest.TestCase):
             visual_facts(),
             "带电粒子在周期性交替电场和磁场中运动，二者都垂直纸面向里并同时作用。",
         )
-        self.assertEqual([view["id"] for view in obligations["views"]], [
-            "motion", "b-time", "e-time"
-        ])
+        self.assertEqual([view["id"] for view in obligations["views"]], ["motion", "b-time", "e-time"])
         self.assertIn(
             "spatial-projection-label",
             obligations["views"][0]["required_content"],
@@ -74,16 +112,16 @@ class PhysicsDiagramTests(unittest.TestCase):
         raw["regions"][0]["fact_ids"] = []
         raw["objects"][0]["fact_ids"] = []
         raw["paths"][0]["kind"] = "connector"
-        gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(raw), visual_facts(), "带电粒子进入磁场"
-        )
+        gate = physics_diagram.semantic_gate(physics_diagram.normalize_scene(raw), visual_facts(), "带电粒子进入磁场")
         self.assertEqual(gate["status"], "failed")
         self.assertTrue(any("not drawn" in error for error in gate["errors"]))
         self.assertTrue(any("requires a trajectory" in error for error in gate["errors"]))
 
     def test_renderer_escapes_model_text_and_is_deterministic(self):
         raw = scene_payload()
-        raw["annotations"] = [{"id": "a", "panel_id": "main", "x": 50, "y": 90, "text": "<script>alert(1)</script>", "fact_ids": []}]
+        raw["annotations"] = [
+            {"id": "a", "panel_id": "main", "x": 50, "y": 90, "text": "<script>alert(1)</script>", "fact_ids": []}
+        ]
         scene = physics_diagram.normalize_scene(raw)
         first = physics_diagram.render_svg(scene)
         second = physics_diagram.render_svg(scene)
@@ -102,16 +140,19 @@ class PhysicsDiagramTests(unittest.TestCase):
                 model_config={"id": "deepseek-v4-flash-api", "provider": "openai-compatible"},
             )
             self.assertEqual(result["gate"]["status"], "passed")
-            for relative in (physics_diagram.SCENE_PATH, physics_diagram.GATE_PATH, physics_diagram.SVG_PATH, physics_diagram.PROVENANCE_PATH):
+            for relative in (
+                physics_diagram.SCENE_PATH,
+                physics_diagram.GATE_PATH,
+                physics_diagram.SVG_PATH,
+                physics_diagram.PROVENANCE_PATH,
+            ):
                 self.assertTrue((entry / relative).is_file())
 
     def test_materializer_preserves_rejected_candidate_with_structured_diagnostic(self):
         with tempfile.TemporaryDirectory() as directory:
             entry = Path(directory)
             (entry / "problem.md").write_text("带电粒子进入磁场。", encoding="utf-8")
-            (entry / "visual-facts.json").write_text(
-                json.dumps(visual_facts(), ensure_ascii=False), encoding="utf-8"
-            )
+            (entry / "visual-facts.json").write_text(json.dumps(visual_facts(), ensure_ascii=False), encoding="utf-8")
             raw = scene_payload()
             raw["panels"].extend([
                 {"id": "extra-1", "title": "附图一"},
@@ -137,26 +178,24 @@ class PhysicsDiagramTests(unittest.TestCase):
     def test_scene_patch_repairs_only_targeted_field_and_has_no_progress_fuse(self):
         raw = scene_payload()
         raw["paths"][0]["geometry"] = "circular-arc"
-        raw["paths"][0]["points"] = [
-            {"x": 10, "y": 64}, {"x": 30, "y": 64}, {"x": 50, "y": 64}
-        ]
+        raw["paths"][0]["points"] = [{"x": 10, "y": 64}, {"x": 30, "y": 64}, {"x": 50, "y": 64}]
         patch = {
             "status": "completed",
             "message": "修复圆弧中间点",
-            "patches": [{
-                "op": "replace",
-                "path": "/paths/0/points/1/y",
-                "value": 52,
-            }],
+            "patches": [
+                {
+                    "op": "replace",
+                    "path": "/paths/0/points/1/y",
+                    "value": 52,
+                }
+            ],
         }
         repaired = physics_diagram.apply_scene_patches(raw, patch)
         self.assertEqual(repaired["paths"][0]["points"][1]["y"], 52)
         self.assertEqual(repaired["regions"], raw["regions"])
         no_progress = {
             **patch,
-            "patches": [{
-                "op": "replace", "path": "/paths/0/points/1/y", "value": 64
-            }],
+            "patches": [{"op": "replace", "path": "/paths/0/points/1/y", "value": 64}],
         }
         with self.assertRaisesRegex(ValueError, "no progress"):
             physics_diagram.apply_scene_patches(raw, no_progress)
@@ -177,22 +216,14 @@ class PhysicsDiagramTests(unittest.TestCase):
             for index in range(2)
         ]
         diagnostics = physics_diagram._aggregate_preflight_diagnostics(raw)
-        arc_diagnostics = [
-            item for item in diagnostics if item["code"] == "scene.circular-arc-degenerate"
-        ]
-        self.assertEqual([item["path"] for item in arc_diagnostics], [
-            "/paths/0/points", "/paths/1/points"
-        ])
+        arc_diagnostics = [item for item in diagnostics if item["code"] == "scene.circular-arc-degenerate"]
+        self.assertEqual([item["path"] for item in arc_diagnostics], ["/paths/0/points", "/paths/1/points"])
 
     def test_materializer_stops_on_structural_panel_error_without_soft_gate_noise(self):
         with tempfile.TemporaryDirectory() as directory:
             entry = Path(directory)
-            (entry / "problem.md").write_text(
-                "带电粒子在周期性交替电场和磁场中运动。", encoding="utf-8"
-            )
-            (entry / "visual-facts.json").write_text(
-                json.dumps(visual_facts(), ensure_ascii=False), encoding="utf-8"
-            )
+            (entry / "problem.md").write_text("带电粒子在周期性交替电场和磁场中运动。", encoding="utf-8")
+            (entry / "visual-facts.json").write_text(json.dumps(visual_facts(), ensure_ascii=False), encoding="utf-8")
             raw = scene_payload()
             raw["panels"].extend([
                 {"id": "p2", "title": "图二"},
@@ -200,7 +231,8 @@ class PhysicsDiagramTests(unittest.TestCase):
                 {"id": "p4", "title": "图四"},
             ])
             result = physics_diagram.materialize(
-                entry, raw,
+                entry,
+                raw,
                 model_config={"id": "deepseek-v4-flash-api", "provider": "openai-compatible"},
             )
         codes = [item["code"] for item in result["diagnostic_report"]["diagnostics"]]
@@ -250,6 +282,7 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_renderer_emits_geometry_specific_svg_markers(self):
         import copy
+
         base = scene_payload()
         cases = [
             ("line", [{"x": 10, "y": 64}, {"x": 30, "y": 64}], "<line x1="),
@@ -267,6 +300,7 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_circular_arc_rendering_is_deterministic(self):
         import copy
+
         raw = copy.deepcopy(scene_payload())
         raw["paths"][0]["geometry"] = "circular-arc"
         raw["paths"][0]["points"] = [{"x": 10, "y": 64}, {"x": 30, "y": 64}, {"x": 50, "y": 70}]
@@ -277,6 +311,7 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_circular_arc_path_flags_for_unit_circle(self):
         import math
+
         points = [(1.0, 0.0), (math.cos(math.pi / 4), math.sin(math.pi / 4)), (0.0, 1.0)]
         self.assertIn("0 0 1", physics_diagram._circular_arc_path(points))
         points = [(1.0, 0.0), (math.cos(5 * math.pi / 4), math.sin(5 * math.pi / 4)), (0.0, 1.0)]
@@ -293,10 +328,9 @@ class PhysicsDiagramTests(unittest.TestCase):
         occupied: list[tuple[float, float, float, float]] = []
         for anchor in ("start", "middle"):
             physics_diagram._place_label("测试", 100.0, 50.0, occupied, 200.0, 100.0, anchor=anchor)
-            self.assertTrue(all(
-                box[0] >= 4.0 and box[1] >= 4.0 and box[2] <= 196.0 and box[3] <= 96.0
-                for box in occupied
-            ))
+            self.assertTrue(
+                all(box[0] >= 4.0 and box[1] >= 4.0 and box[2] <= 196.0 and box[3] <= 96.0 for box in occupied)
+            )
 
     def test_place_label_avoids_overlap_with_two_px_separation(self):
         occupied: list[tuple[float, float, float, float]] = []
@@ -311,7 +345,7 @@ class PhysicsDiagramTests(unittest.TestCase):
     def test_render_svg_contains_reduced_weight_marker_and_patterns(self):
         svg = physics_diagram.render_svg(physics_diagram.normalize_scene(scene_payload()))
         self.assertIn('markerWidth="8"', svg)
-        self.assertIn('M0,0 L8,3 L0,6 Z', svg)
+        self.assertIn("M0,0 L8,3 L0,6 Z", svg)
         self.assertIn('width="30" height="30"', svg)
         self.assertIn('r="1.8"', svg)
 
@@ -335,15 +369,70 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_periodic_field_positive_passes_with_axes_and_waves(self):
         import copy
+
         raw = copy.deepcopy(scene_payload())
         raw["panels"].extend([{"id": "bt", "title": "B-t 图"}, {"id": "et", "title": "E-t 图"}])
         raw["paths"].extend([
-            {"id": "axis-bt", "panel_id": "bt", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}], "label": "t", "direction": "right", "fact_ids": []},
-            {"id": "axis-b", "panel_id": "bt", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}], "label": "B", "direction": "up", "fact_ids": []},
-            {"id": "axis-et", "panel_id": "et", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}], "label": "t", "direction": "right", "fact_ids": []},
-            {"id": "axis-e", "panel_id": "et", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}], "label": "E", "direction": "up", "fact_ids": []},
-            {"id": "wave-b", "panel_id": "bt", "kind": "field-line", "geometry": "polyline", "points": [{"x": 10, "y": 50}, {"x": 30, "y": 30}, {"x": 50, "y": 50}, {"x": 70, "y": 70}], "label": "B(t)", "direction": "none", "fact_ids": []},
-            {"id": "wave-e", "panel_id": "et", "kind": "field-line", "geometry": "polyline", "points": [{"x": 10, "y": 50}, {"x": 30, "y": 70}, {"x": 50, "y": 50}, {"x": 70, "y": 30}], "label": "E(t)", "direction": "none", "fact_ids": []},
+            {
+                "id": "axis-bt",
+                "panel_id": "bt",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}],
+                "label": "t",
+                "direction": "right",
+                "fact_ids": [],
+            },
+            {
+                "id": "axis-b",
+                "panel_id": "bt",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}],
+                "label": "B",
+                "direction": "up",
+                "fact_ids": [],
+            },
+            {
+                "id": "axis-et",
+                "panel_id": "et",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}],
+                "label": "t",
+                "direction": "right",
+                "fact_ids": [],
+            },
+            {
+                "id": "axis-e",
+                "panel_id": "et",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}],
+                "label": "E",
+                "direction": "up",
+                "fact_ids": [],
+            },
+            {
+                "id": "wave-b",
+                "panel_id": "bt",
+                "kind": "field-line",
+                "geometry": "polyline",
+                "points": [{"x": 10, "y": 50}, {"x": 30, "y": 30}, {"x": 50, "y": 50}, {"x": 70, "y": 70}],
+                "label": "B(t)",
+                "direction": "none",
+                "fact_ids": [],
+            },
+            {
+                "id": "wave-e",
+                "panel_id": "et",
+                "kind": "field-line",
+                "geometry": "polyline",
+                "points": [{"x": 10, "y": 50}, {"x": 30, "y": 70}, {"x": 50, "y": 50}, {"x": 70, "y": 30}],
+                "label": "E(t)",
+                "direction": "none",
+                "fact_ids": [],
+            },
         ])
         raw["annotations"].extend([
             {"id": "phase-b", "panel_id": "bt", "x": 50, "y": 15, "text": "T_B", "fact_ids": []},
@@ -358,7 +447,8 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_spatial_projection_missing_axes_and_corpus_is_soft_feedback(self):
         gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(scene_payload()), visual_facts(),
+            physics_diagram.normalize_scene(scene_payload()),
+            visual_facts(),
             "电场和磁场都垂直纸面向里并同时作用",
         )
         self.assertEqual(gate["status"], "passed")
@@ -369,27 +459,48 @@ class PhysicsDiagramTests(unittest.TestCase):
     def test_source_gate_rejects_fact_bound_and_omitted_at_once(self):
         raw = scene_payload()
         raw["omissions"] = [{"fact_id": "field", "reason": "不应与绑定并存"}]
-        gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(raw), visual_facts(), "带电粒子进入磁场"
-        )
+        gate = physics_diagram.semantic_gate(physics_diagram.normalize_scene(raw), visual_facts(), "带电粒子进入磁场")
         self.assertEqual(gate["status"], "failed")
         self.assertTrue(any("both drawn and omitted" in item for item in gate["errors"]))
 
     def test_topology_gate_rejects_reversed_upper_and_lower_plates(self):
         facts = visual_facts()
         facts["diagram_facts"].append({
-            "id": "plates", "kind": "label", "statement": "上板为P，下板为Q", "confidence": 0.9,
+            "id": "plates",
+            "kind": "label",
+            "statement": "上板为P，下板为Q",
+            "confidence": 0.9,
         })
         facts.pop("fingerprint", None)
         facts = normalize_payload(facts, facts["source_fingerprint"])
         raw = scene_payload()
         raw["objects"].extend([
-            {"id": "plate-p", "panel_id": "main", "kind": "plate", "x": 10, "y": 80, "width": 80, "height": 4, "label": "P", "fact_ids": ["plates"], "polarity": "none"},
-            {"id": "plate-q", "panel_id": "main", "kind": "plate", "x": 10, "y": 15, "width": 80, "height": 4, "label": "Q", "fact_ids": ["plates"], "polarity": "none"},
+            {
+                "id": "plate-p",
+                "panel_id": "main",
+                "kind": "plate",
+                "x": 10,
+                "y": 80,
+                "width": 80,
+                "height": 4,
+                "label": "P",
+                "fact_ids": ["plates"],
+                "polarity": "none",
+            },
+            {
+                "id": "plate-q",
+                "panel_id": "main",
+                "kind": "plate",
+                "x": 10,
+                "y": 15,
+                "width": 80,
+                "height": 4,
+                "label": "Q",
+                "fact_ids": ["plates"],
+                "polarity": "none",
+            },
         ])
-        gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(raw), facts, "带电粒子从Q射向P"
-        )
+        gate = physics_diagram.semantic_gate(physics_diagram.normalize_scene(raw), facts, "带电粒子从Q射向P")
         self.assertEqual(gate["status"], "failed")
         self.assertTrue(gate["hard_gate_categories"]["topology-consistency"])
 
@@ -400,22 +511,53 @@ class PhysicsDiagramTests(unittest.TestCase):
             for item in raw[collection]:
                 item["panel_id"] = "motion"
         raw["objects"].extend([
-            {"id": "plate-p", "panel_id": "motion", "kind": "plate", "x": 10, "y": 80, "width": 80, "height": 4, "label": "P", "fact_ids": [], "polarity": "none"},
-            {"id": "plate-q", "panel_id": "motion", "kind": "plate", "x": 10, "y": 15, "width": 80, "height": 4, "label": "Q", "fact_ids": [], "polarity": "none"},
+            {
+                "id": "plate-p",
+                "panel_id": "motion",
+                "kind": "plate",
+                "x": 10,
+                "y": 80,
+                "width": 80,
+                "height": 4,
+                "label": "P",
+                "fact_ids": [],
+                "polarity": "none",
+            },
+            {
+                "id": "plate-q",
+                "panel_id": "motion",
+                "kind": "plate",
+                "x": 10,
+                "y": 15,
+                "width": 80,
+                "height": 4,
+                "label": "Q",
+                "fact_ids": [],
+                "polarity": "none",
+            },
         ])
         model = {
             "regions": [
                 {"id": "plate-q", "label": "Q 板", "field": {"kind": "boundary"}, "shape": {"origin": [0, 0, 0]}},
                 {"id": "plate-p", "label": "P 板", "field": {"kind": "boundary"}, "shape": {"origin": [0, 1, 0]}},
             ],
-            "event_model": {"timeline": [
-                {"id": "case-start", "position": [0, 0, 0]},
-                {"id": "case-hit-p", "position": [0.5, 1, 0]},
-            ]},
-            "trajectory": {"segments": [{
-                "id": "case-segment", "label": "模型轨迹", "start_event": "case-start", "end_event": "case-hit-p",
-                "geometry": {"path_kind": "points", "points": [[0, 0, 0], [0.2, 0.5, 0], [0.5, 1, 0]]},
-            }]},
+            "event_model": {
+                "timeline": [
+                    {"id": "case-start", "position": [0, 0, 0]},
+                    {"id": "case-hit-p", "position": [0.5, 1, 0]},
+                ]
+            },
+            "trajectory": {
+                "segments": [
+                    {
+                        "id": "case-segment",
+                        "label": "模型轨迹",
+                        "start_event": "case-start",
+                        "end_event": "case-hit-p",
+                        "geometry": {"path_kind": "points", "points": [[0, 0, 0], [0.2, 0.5, 0], [0.5, 1, 0]]},
+                    }
+                ]
+            },
         }
         scene = physics_diagram.normalize_scene(raw)
         compiled, report = physics_diagram_assets.compile_model_scene(scene, model)
@@ -434,19 +576,34 @@ class PhysicsDiagramTests(unittest.TestCase):
             for item in raw[collection]:
                 item["panel_id"] = "motion"
         model = {
-            "event_model": {"timeline": [
-                {"id": "p1-start", "label": "从 Q 板水平射入", "position": [0, 0, 0]},
-                {"id": "p1-b-switch", "label": "磁场反向", "position": [1, 1, 0]},
-            ]},
-            "trajectory": {"segments": [{
-                "id": "p1-arc", "case_ids": ["part1"], "label": "+B₀：转过 90°",
-                "start_event": "p1-start", "end_event": "p1-b-switch",
-                "geometry": {"path_kind": "arc3d", "center": [0, 1, 0], "basis_u": [1, 0, 0], "basis_v": [0, 1, 0], "radius": 1, "start_deg": -90, "end_deg": 0},
-            }]},
+            "event_model": {
+                "timeline": [
+                    {"id": "p1-start", "label": "从 Q 板水平射入", "position": [0, 0, 0]},
+                    {"id": "p1-b-switch", "label": "磁场反向", "position": [1, 1, 0]},
+                ]
+            },
+            "trajectory": {
+                "segments": [
+                    {
+                        "id": "p1-arc",
+                        "case_ids": ["part1"],
+                        "label": "+B₀：转过 90°",
+                        "start_event": "p1-start",
+                        "end_event": "p1-b-switch",
+                        "geometry": {
+                            "path_kind": "arc3d",
+                            "center": [0, 1, 0],
+                            "basis_u": [1, 0, 0],
+                            "basis_v": [0, 1, 0],
+                            "radius": 1,
+                            "start_deg": -90,
+                            "end_deg": 0,
+                        },
+                    }
+                ]
+            },
         }
-        compiled, report = physics_diagram_assets.compile_model_scene(
-            physics_diagram.normalize_scene(raw), model
-        )
+        compiled, report = physics_diagram_assets.compile_model_scene(physics_diagram.normalize_scene(raw), model)
         compiled = physics_diagram.normalize_scene({key: value for key, value in compiled.items() if key != "schema"})
         trajectory = next(item for item in compiled["paths"] if item["kind"] == "trajectory")
         self.assertEqual(trajectory["geometry"], "circular-arc")
@@ -460,16 +617,22 @@ class PhysicsDiagramTests(unittest.TestCase):
     def test_sampled_circular_projection_is_promoted_but_noncircle_is_not(self):
         circle = [
             (1.0, 0.0, 0.0),
-            (2 ** -0.5, 2 ** -0.5, 0.1),
+            (2**-0.5, 2**-0.5, 0.1),
             (0.0, 1.0, 0.2),
         ]
         self.assertIsNotNone(physics_diagram_assets._circular_projection(circle))
-        self.assertIsNone(physics_diagram_assets._circular_projection([
-            (0.0, 0.0, 0.0), (0.4, 0.2, 0.0), (1.0, 1.0, 0.0), (1.8, 1.1, 0.0),
-        ]))
+        self.assertIsNone(
+            physics_diagram_assets._circular_projection([
+                (0.0, 0.0, 0.0),
+                (0.4, 0.2, 0.0),
+                (1.0, 1.0, 0.0),
+                (1.8, 1.1, 0.0),
+            ])
+        )
 
     def test_three_panel_renderer_gives_motion_panel_double_weight(self):
         import copy
+
         raw = copy.deepcopy(scene_payload())
         raw["panels"] = [
             {"id": "motion", "title": "运动"},
@@ -485,21 +648,49 @@ class PhysicsDiagramTests(unittest.TestCase):
 
     def test_spatial_projection_positive_passes_with_axes_and_annotation(self):
         import copy
+
         raw = copy.deepcopy(scene_payload())
         raw["paths"].extend([
-            {"id": "axis-x", "panel_id": "main", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}], "label": "x轴", "direction": "right", "fact_ids": []},
-            {"id": "axis-z", "panel_id": "main", "kind": "axis", "geometry": "line", "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}], "label": "z轴", "direction": "up", "fact_ids": []},
+            {
+                "id": "axis-x",
+                "panel_id": "main",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 90, "y": 80}],
+                "label": "x轴",
+                "direction": "right",
+                "fact_ids": [],
+            },
+            {
+                "id": "axis-z",
+                "panel_id": "main",
+                "kind": "axis",
+                "geometry": "line",
+                "points": [{"x": 10, "y": 80}, {"x": 10, "y": 20}],
+                "label": "z轴",
+                "direction": "up",
+                "fact_ids": [],
+            },
         ])
-        raw["annotations"].append({"id": "proj", "panel_id": "main", "x": 50, "y": 90, "text": "空间投影示意", "fact_ids": []})
+        raw["annotations"].append({
+            "id": "proj",
+            "panel_id": "main",
+            "x": 50,
+            "y": 90,
+            "text": "空间投影示意",
+            "fact_ids": [],
+        })
         gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(raw), visual_facts(),
+            physics_diagram.normalize_scene(raw),
+            visual_facts(),
             "电场和磁场都垂直纸面向里并同时作用",
         )
         self.assertEqual(gate["status"], "passed")
 
     def test_plain_magnetic_field_does_not_trigger_teaching_signals(self):
         gate = physics_diagram.semantic_gate(
-            physics_diagram.normalize_scene(scene_payload()), visual_facts(),
+            physics_diagram.normalize_scene(scene_payload()),
+            visual_facts(),
             "带电粒子进入垂直纸面向里的磁场",
         )
         self.assertEqual(gate["status"], "passed")

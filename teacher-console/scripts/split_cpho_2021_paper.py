@@ -17,7 +17,6 @@ from pathlib import Path
 from pypdf import PdfReader, PdfWriter, Transformation
 from pypdf._page import PageObject
 
-
 # (zero-based page index, top edge in PDF points, bottom edge in PDF points)
 QUESTION_CROPS: dict[int, list[tuple[int, float, float]]] = {
     1: [(0, 25, 248)],
@@ -73,9 +72,7 @@ def main() -> int:
         writer = PdfWriter()
         cropped_pages = []
         for page_index, top, bottom in segments:
-            cropped_pages.append(
-                crop_page(copy.deepcopy(reader.pages[page_index]), top, bottom)
-            )
+            cropped_pages.append(crop_page(copy.deepcopy(reader.pages[page_index]), top, bottom))
         width = max(float(page.mediabox.width) for page in cropped_pages)
         height = sum(float(page.mediabox.height) for page in cropped_pages)
         combined = PageObject.create_blank_page(width=width, height=height)
@@ -93,17 +90,12 @@ def main() -> int:
         target = args.output_dir / f"question-{question:02d}.pdf"
         with target.open("wb") as handle:
             writer.write(handle)
-        manifest["questions"].append(
-            {
-                "question": question,
-                "file": target.name,
-                "page_segments": [
-                    {"page": page + 1, "top_pt": top, "bottom_pt": bottom}
-                    for page, top, bottom in segments
-                ],
-                "sha256": sha256(target),
-            }
-        )
+        manifest["questions"].append({
+            "question": question,
+            "file": target.name,
+            "page_segments": [{"page": page + 1, "top_pt": top, "bottom_pt": bottom} for page, top, bottom in segments],
+            "sha256": sha256(target),
+        })
 
     (args.output_dir / "source-split-manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",

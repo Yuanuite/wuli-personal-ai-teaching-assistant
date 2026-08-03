@@ -41,11 +41,7 @@ def make_review_output(overrides=None):
 
 
 def make_response(content):
-    return {
-        "choices": [
-            {"message": {"role": "assistant", "content": content}}
-        ]
-    }
+    return {"choices": [{"message": {"role": "assistant", "content": content}}]}
 
 
 class FakeResponse:
@@ -172,6 +168,7 @@ class TestDiagramVisualReview(unittest.TestCase):
             {"suggestions": [{"code": "c", "severity": "warning"}]},
         ]
         for bad in bad_outputs:
+
             def fake_urlopen(req, timeout=None, _bad=bad):
                 return FakeResponse(make_response(json.dumps(_bad)))
 
@@ -249,13 +246,11 @@ class TestDiagramVisualReview(unittest.TestCase):
 
     def test_extra_model_fields_are_not_propagated(self):
         # Model tries to smuggle approval/physics fields: they must be dropped.
-        output = make_review_output(
-            {
-                "status": "approved",
-                "physics_conclusion": "答案正确",
-                "approved_by": "mimo",
-            }
-        )
+        output = make_review_output({
+            "status": "approved",
+            "physics_conclusion": "答案正确",
+            "approved_by": "mimo",
+        })
 
         def fake_urlopen(req, timeout=None):
             return FakeResponse(make_response(json.dumps(output)))
@@ -267,10 +262,18 @@ class TestDiagramVisualReview(unittest.TestCase):
             allow_remote=False,
         )
         self.assertEqual(result["status"], "passed")
-        self.assertEqual(set(result.keys()), {
-            "schema", "status", "suggestions", "model_id",
-            "upstream_model", "checked_at", "reason",
-        })
+        self.assertEqual(
+            set(result.keys()),
+            {
+                "schema",
+                "status",
+                "suggestions",
+                "model_id",
+                "upstream_model",
+                "checked_at",
+                "reason",
+            },
+        )
         self.assertEqual(result["suggestions"], make_suggestions())
 
     def test_output_never_leaks_api_key_or_data_url(self):

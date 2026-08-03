@@ -83,13 +83,15 @@ class AgentFailurePipelineTest(unittest.TestCase):
             "failure_type": "provider_timeout",
             "message": "selected provider timed out",
             "stderr": f"secret process output from {self.entry}",
-            "attempts": [{
-                "provider": "claude",
-                "status": "failed",
-                "failure_type": "provider_timeout",
-                "duration_seconds": 600.0,
-                "error": f"private path {self.entry}",
-            }],
+            "attempts": [
+                {
+                    "provider": "claude",
+                    "status": "failed",
+                    "failure_type": "provider_timeout",
+                    "duration_seconds": 600.0,
+                    "error": f"private path {self.entry}",
+                }
+            ],
             "changed_files": [],
             "validation_errors": [],
             "unauthorized_changes": [],
@@ -212,9 +214,7 @@ class AgentFailurePipelineTest(unittest.TestCase):
         )
         self.assertEqual(len(normalizer_calls), 1)
         self.assertEqual(replayed["status"], "completed")
-        self.assertEqual(
-            replayed["_runtime_identity"]["model_id"], "verifier-model"
-        )
+        self.assertEqual(replayed["_runtime_identity"]["model_id"], "verifier-model")
         self.assertNotIn("usage", replayed)
 
     def test_w3_stage_timing_separates_provider_time_from_overhead(self):
@@ -244,14 +244,14 @@ class AgentFailurePipelineTest(unittest.TestCase):
                 "claim_evidence_shadow": {
                     "status": "completed",
                     "ledger": {
-                        "claims": [{
-                            "statement": "private final answer",
-                            "local_path": str(self.entry / "answer.md"),
-                        }]
+                        "claims": [
+                            {
+                                "statement": "private final answer",
+                                "local_path": str(self.entry / "answer.md"),
+                            }
+                        ]
                     },
-                    "certificates": [{
-                        "decisive_checks": ["private reasoning chain"]
-                    }],
+                    "certificates": [{"decisive_checks": ["private reasoning chain"]}],
                     "aggregation": {"status": "PROVISIONAL"},
                     "metrics": {
                         "claim_count": 4,
@@ -263,16 +263,12 @@ class AgentFailurePipelineTest(unittest.TestCase):
                 }
             },
         }
-        event = teacher_console_server.archive_claim_evidence_shadow(
-            self.entry, request
-        )
+        event = teacher_console_server.archive_claim_evidence_shadow(self.entry, request)
         encoded = json.dumps(event, ensure_ascii=False)
         self.assertNotIn("private final answer", encoded)
         self.assertNotIn("private reasoning chain", encoded)
         self.assertNotIn(str(self.entry), encoded)
-        self.assertEqual(
-            event["result"]["aggregation_status"], "PROVISIONAL"
-        )
+        self.assertEqual(event["result"]["aggregation_status"], "PROVISIONAL")
         self.assertFalse(event["result"]["canonical_answer_changed"])
 
 

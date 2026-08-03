@@ -203,10 +203,7 @@ def payload_errors(payload: dict[str, Any], question: dict[str, Any]) -> list[st
     subanswers = payload.get("subanswers", [])
     if not isinstance(subanswers, list):
         return errors + ["subanswers must be an array"]
-    actual = [
-        item.get("subpart_id") if isinstance(item, dict) else None
-        for item in subanswers
-    ]
+    actual = [item.get("subpart_id") if isinstance(item, dict) else None for item in subanswers]
     if actual != expected:
         errors.append(f"subpart order mismatch: expected {expected}, got {actual}")
     for index, item in enumerate(subanswers):
@@ -252,9 +249,7 @@ def completed_run_record(experiment: Path, question_id: str) -> dict[str, Any]:
         if record.get("status") == "completed":
             records.append(record)
     if len(records) != 1:
-        raise ValueError(
-            f"{question_id} needs exactly one completed solve record, found {len(records)}"
-        )
+        raise ValueError(f"{question_id} needs exactly one completed solve record, found {len(records)}")
     return records[0]
 
 
@@ -278,12 +273,7 @@ def token_totals(records: list[dict[str, Any]]) -> dict[str, Any]:
             unavailable += 1
             continue
         for key, value in usage.items():
-            if (
-                key.endswith("_tokens")
-                and isinstance(value, int)
-                and not isinstance(value, bool)
-                and value >= 0
-            ):
+            if key.endswith("_tokens") and isinstance(value, int) and not isinstance(value, bool) and value >= 0:
                 totals[key] = totals.get(key, 0) + value
     if not totals:
         return {
@@ -395,15 +385,9 @@ def aggregate_results(experiment: Path) -> dict[str, Any]:
             "subparts": subparts,
         })
 
-    valid_solve_seconds = round(
-        sum(float(record["wall_seconds"]) for record in all_valid_solve_records), 3
-    )
-    failed_solve_seconds = round(
-        sum(float(record.get("wall_seconds", 0)) for record in all_failed_solve_records), 3
-    )
-    grading_seconds = round(
-        sum(float(record["wall_seconds"]) for record in all_grade_records), 3
-    )
+    valid_solve_seconds = round(sum(float(record["wall_seconds"]) for record in all_valid_solve_records), 3)
+    failed_solve_seconds = round(sum(float(record.get("wall_seconds", 0)) for record in all_failed_solve_records), 3)
+    grading_seconds = round(sum(float(record["wall_seconds"]) for record in all_grade_records), 3)
     summary = {
         "schema_version": 1,
         "experiment_id": manifest["experiment_id"],
@@ -427,9 +411,7 @@ def aggregate_results(experiment: Path) -> dict[str, Any]:
             "valid_solve_agent_seconds_sum": valid_solve_seconds,
             "failed_harness_agent_seconds_sum": failed_solve_seconds,
             "grading_agent_seconds_sum": grading_seconds,
-            "all_recorded_agent_seconds_sum": round(
-                valid_solve_seconds + failed_solve_seconds + grading_seconds, 3
-            ),
+            "all_recorded_agent_seconds_sum": round(valid_solve_seconds + failed_solve_seconds + grading_seconds, 3),
             "solve_tokens": token_totals(all_valid_solve_records),
             "failed_harness_tokens": token_totals(all_failed_solve_records),
             "grading_tokens": token_totals(all_grade_records),
@@ -463,9 +445,7 @@ def _write_answer_sheet(
     for question_id in QUESTION_IDS:
         question = manifest_question(manifest, question_id)
         result = summary_by_id[question_id]
-        candidate = load_json(
-            experiment / "work" / question_id / "candidate-answer.json"
-        )
+        candidate = load_json(experiment / "work" / question_id / "candidate-answer.json")
         lines.extend([
             f"## {question_id} — {question['title']} ({result['awarded_points']:g}/{result['maximum_points']:g})",
             "",
@@ -514,9 +494,7 @@ def _write_score_report(experiment: Path, summary: dict[str, Any]) -> None:
         grading = question["grading"]
         solve_usage = solve["token_usage"]
         solve_tokens = (
-            str(solve_usage.get("total_tokens"))
-            if solve_usage.get("status") == "reported"
-            else "unavailable"
+            str(solve_usage.get("total_tokens")) if solve_usage.get("status") == "reported" else "unavailable"
         )
         grading_usage = grading["token_usage"]
         grading_total = grading_usage.get(
@@ -562,8 +540,7 @@ def _write_score_report(experiment: Path, summary: dict[str, Any]) -> None:
     for question in summary["questions"]:
         for item in question["subparts"]:
             lines.append(
-                "| {question} | {subpart} | {score:g}/{maximum:g} | {verdict} | "
-                "{confidence} | {rationale} |".format(
+                "| {question} | {subpart} | {score:g}/{maximum:g} | {verdict} | {confidence} | {rationale} |".format(
                     question=question["question_id"],
                     subpart=item["subpart_id"],
                     score=item["awarded_points"],
@@ -613,9 +590,7 @@ def freeze_candidates(experiment: Path) -> dict[str, Any]:
         "frozen_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "question_count": len(candidates),
         "candidate_count": len(candidates),
-        "truth_disclosed_during_solve": any(
-            item.get("truth_disclosed") is not False for item in candidates
-        ),
+        "truth_disclosed_during_solve": any(item.get("truth_disclosed") is not False for item in candidates),
         "candidates": candidates,
     }
     if freeze["truth_disclosed_during_solve"]:
@@ -647,9 +622,7 @@ def unlock_truth(experiment: Path) -> dict[str, Any]:
         "experiment_id": manifest["experiment_id"],
         "status": "unlocked-for-scoring",
         "unlocked_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "candidate_freeze_sha256": sha256_file(
-            experiment / "results" / "candidate-freeze.json"
-        ),
+        "candidate_freeze_sha256": sha256_file(experiment / "results" / "candidate-freeze.json"),
         "candidate_count": freeze["candidate_count"],
         "solutions": solutions,
     }
@@ -751,10 +724,7 @@ def grade_payload_errors(payload: dict[str, Any], question: dict[str, Any]) -> l
     grades = payload.get("grades", [])
     if not isinstance(grades, list):
         return errors + ["grades must be an array"]
-    actual_ids = [
-        item.get("subpart_id") if isinstance(item, dict) else None
-        for item in grades
-    ]
+    actual_ids = [item.get("subpart_id") if isinstance(item, dict) else None for item in grades]
     if actual_ids != expected_ids:
         errors.append(f"grade order mismatch: expected {expected_ids}, got {actual_ids}")
     for index, grade in enumerate(grades):
@@ -769,9 +739,7 @@ def grade_payload_errors(payload: dict[str, Any], question: dict[str, Any]) -> l
             errors.append(f"{actual_ids[index]}: points are not numeric")
             continue
         if abs(declared - maximum) > 1e-9:
-            errors.append(
-                f"{actual_ids[index]}: max_points {declared} does not match official {maximum}"
-            )
+            errors.append(f"{actual_ids[index]}: max_points {declared} does not match official {maximum}")
         if awarded < -1e-9 or awarded > maximum + 1e-9:
             errors.append(f"{actual_ids[index]}: awarded points outside [0, {maximum}]")
         verdict = grade.get("verdict")
@@ -798,17 +766,13 @@ def grade_question(
     if not unlock_path.is_file():
         raise RuntimeError("truth must be explicitly unlocked after candidate freeze")
     freeze = freeze_candidates(experiment)
-    frozen = next(
-        item for item in freeze["candidates"] if item["question_id"] == question_id
-    )
+    frozen = next(item for item in freeze["candidates"] if item["question_id"] == question_id)
     candidate_source = experiment / frozen["candidate_path"]
     if sha256_file(candidate_source) != frozen["candidate_sha256"]:
         raise ValueError(f"{question_id}: frozen candidate changed before grading")
     manifest = load_json(experiment / "source-manifest.json")
     question = manifest_question(manifest, question_id)
-    solution_source = (
-        experiment / "truth" / "solutions" / f"{question_id}-solution-en.txt"
-    )
+    solution_source = experiment / "truth" / "solutions" / f"{question_id}-solution-en.txt"
     if not solution_source.is_file():
         raise FileNotFoundError(solution_source)
     grading_entry = experiment / "grading" / question_id
@@ -824,16 +788,9 @@ def grade_question(
     )
 
     model_registry.LIBRARY = LIBRARY
-    resolved_model = model_registry.resolve_model_id_for_task(
-        "analysis.generate", routing_tier, model_id
-    )
-    model_config = model_registry.model_config_for_task(
-        "analysis.generate", resolved_model, routing_tier
-    )
-    allocation = ", ".join(
-        f"{subpart}={point:g}"
-        for subpart, point in zip(question["subparts"], question["points"])
-    )
+    resolved_model = model_registry.resolve_model_id_for_task("analysis.generate", routing_tier, model_id)
+    model_config = model_registry.model_config_for_task("analysis.generate", resolved_model, routing_tier)
+    allocation = ", ".join(f"{subpart}={point:g}" for subpart, point in zip(question["subparts"], question["points"]))
     task = {
         "schema_version": 1,
         "id": f"ipho-2021-grade-{question_id.lower()}-{int(time.time())}",
@@ -869,6 +826,7 @@ def grade_question(
             "official-solution.txt",
         ],
     }
+
     def materializer(staging: Path, payload: dict[str, Any]) -> dict[str, Any]:
         errors = grade_payload_errors(payload, question)
         if errors:
@@ -897,9 +855,7 @@ def grade_question(
     completed_at = datetime.now().astimezone().isoformat(timespec="seconds")
     attempts = gateway_result.get("attempts", [])
     grade = load_json(grade_path) if grade_path.is_file() else {}
-    awarded = round(
-        sum(float(item["awarded_points"]) for item in grade.get("grades", [])), 4
-    )
+    awarded = round(sum(float(item["awarded_points"]) for item in grade.get("grades", [])), 4)
     record = {
         "schema_version": 1,
         "experiment_id": manifest["experiment_id"],
@@ -937,9 +893,7 @@ def grade_question(
         "awarded_points": awarded,
         "maximum_points": 10.0,
         "needs_teacher_review": [
-            item["subpart_id"]
-            for item in grade.get("grades", [])
-            if item.get("requires_teacher_review") is True
+            item["subpart_id"] for item in grade.get("grades", []) if item.get("requires_teacher_review") is True
         ],
         "validation_errors": gateway_result.get("validation_errors", []),
         "unauthorized_changes": gateway_result.get("unauthorized_changes", []),
@@ -973,12 +927,8 @@ def solve_question(
     result_path = experiment / "results" / f"{question_id}-run-{attempt_no:03d}.json"
 
     model_registry.LIBRARY = LIBRARY
-    resolved_model = model_registry.resolve_model_id_for_task(
-        "analysis.generate", routing_tier, model_id
-    )
-    model_config = model_registry.model_config_for_task(
-        "analysis.generate", resolved_model, routing_tier
-    )
+    resolved_model = model_registry.resolve_model_id_for_task("analysis.generate", routing_tier, model_id)
+    model_config = model_registry.model_config_for_task("analysis.generate", resolved_model, routing_tier)
     subparts = list(question["subparts"])
     prompt = (
         f"You are sitting the official 2021 IPhO theory exam, question {question_id}: "
@@ -1053,11 +1003,7 @@ def solve_question(
     completed_at = datetime.now().astimezone().isoformat(timespec="seconds")
     attempts = gateway_result.get("attempts", [])
     candidate_sha = sha256_file(candidate_path) if candidate_path.is_file() else ""
-    answer_chars = (
-        len(candidate_path.read_text(encoding="utf-8"))
-        if candidate_path.is_file()
-        else 0
-    )
+    answer_chars = len(candidate_path.read_text(encoding="utf-8")) if candidate_path.is_file() else 0
     run_record = {
         "schema_version": 1,
         "experiment_id": manifest["experiment_id"],
@@ -1158,12 +1104,17 @@ def main() -> int:
             timeout_seconds=max(30, min(args.timeout_seconds, 1800)),
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result.get("status") in {
-        "passed",
-        "completed",
-        "frozen",
-        "unlocked-for-scoring",
-    } else 1
+    return (
+        0
+        if result.get("status")
+        in {
+            "passed",
+            "completed",
+            "frozen",
+            "unlocked-for-scoring",
+        }
+        else 1
+    )
 
 
 if __name__ == "__main__":

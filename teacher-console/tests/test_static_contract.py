@@ -78,7 +78,9 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("交给大模型修改", html)
         self.assertIn("解释图", html)
         self.assertIn('<textarea id="answer-note"', html)
-        self.assertIn('grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "focus" "evidence" "approval"', css)
+        self.assertIn(
+            'grid-template-areas: "toolbar" "solution" "difficulty" "workbench" "focus" "evidence" "approval"', css
+        )
         self.assertIn(".approval-box { grid-area: approval; }", css)
         self.assertIn("overflow-y: auto", css)
         self.assertIn("max-height:min(38vh,320px)", css)
@@ -92,7 +94,7 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn('<details id="w3-review-focus"', html)
         self.assertIn('id="w3-review-focus-count"', html)
         self.assertIn("panel.open = false", script)
-        self.assertIn('.w3-review-focus[open] .w3-review-focus-head::after', css)
+        self.assertIn(".w3-review-focus[open] .w3-review-focus-head::after", css)
         self.assertIn("copyAuditText", script)
         self.assertIn("useAuditAsRevision", script)
         self.assertIn("填入修改意见", script)
@@ -243,9 +245,7 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("front:[0,180]", piecewise_3d)
         self.assertNotIn("pitch=clamp(drag.pitch", piecewise_3d)
         self.assertIn("distance_pair", piecewise_3d)
-        browser_check = (simulator / "scripts" / "browser_check.mjs").read_text(
-            encoding="utf-8"
-        )
+        browser_check = (simulator / "scripts" / "browser_check.mjs").read_text(encoding="utf-8")
         self.assertIn("select:visible:enabled", browser_check)
         self.assertIn("selectOptions", browser_check)
 

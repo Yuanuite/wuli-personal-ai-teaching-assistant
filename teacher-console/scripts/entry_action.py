@@ -21,7 +21,6 @@ sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
 
-
 def _fail(status: int, error: str) -> int:
     print(json.dumps({"status": "failed", "error": str(error)[:500]}, ensure_ascii=False))
     return status

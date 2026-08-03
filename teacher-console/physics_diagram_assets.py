@@ -16,7 +16,6 @@ import math
 import re
 from typing import Any
 
-
 CATALOG_SCHEMA = "wuli.physics-diagram-component-catalog.v1"
 
 COMPONENTS: tuple[dict[str, Any], ...] = (
@@ -105,10 +104,15 @@ def _segment_points(segment: dict[str, Any]) -> list[tuple[float, float, float]]
     start = geometry.get("start_deg")
     end = geometry.get("end_deg")
     if (
-        center is None or basis_u is None or basis_v is None
-        or isinstance(radius, bool) or not isinstance(radius, (int, float))
-        or isinstance(start, bool) or not isinstance(start, (int, float))
-        or isinstance(end, bool) or not isinstance(end, (int, float))
+        center is None
+        or basis_u is None
+        or basis_v is None
+        or isinstance(radius, bool)
+        or not isinstance(radius, (int, float))
+        or isinstance(start, bool)
+        or not isinstance(start, (int, float))
+        or isinstance(end, bool)
+        or not isinstance(end, (int, float))
     ):
         return []
     sweep = float(end) - float(start)
@@ -116,12 +120,12 @@ def _segment_points(segment: dict[str, Any]) -> list[tuple[float, float, float]]
     points: list[tuple[float, float, float]] = []
     for index in range(steps + 1):
         angle = math.radians(float(start) + sweep * index / steps)
-        points.append(tuple(
-            center[axis] + float(radius) * (
-                math.cos(angle) * basis_u[axis] + math.sin(angle) * basis_v[axis]
+        points.append(
+            tuple(
+                center[axis] + float(radius) * (math.cos(angle) * basis_u[axis] + math.sin(angle) * basis_v[axis])
+                for axis in range(3)
             )
-            for axis in range(3)
-        ))
+        )
     return points
 
 
@@ -167,21 +171,16 @@ def _circular_projection(points: list[tuple[float, float, float]]) -> list[tuple
     if abs(determinant) < 1e-9:
         return None
     ux = (
-        (x1 * x1 + y1 * y1) * (y2 - y3)
-        + (x2 * x2 + y2 * y2) * (y3 - y1)
-        + (x3 * x3 + y3 * y3) * (y1 - y2)
+        (x1 * x1 + y1 * y1) * (y2 - y3) + (x2 * x2 + y2 * y2) * (y3 - y1) + (x3 * x3 + y3 * y3) * (y1 - y2)
     ) / determinant
     uy = (
-        (x1 * x1 + y1 * y1) * (x3 - x2)
-        + (x2 * x2 + y2 * y2) * (x1 - x3)
-        + (x3 * x3 + y3 * y3) * (x2 - x1)
+        (x1 * x1 + y1 * y1) * (x3 - x2) + (x2 * x2 + y2 * y2) * (x1 - x3) + (x3 * x3 + y3 * y3) * (x2 - x1)
     ) / determinant
     radius = math.hypot(x1 - ux, y1 - uy)
     if radius <= 1e-9:
         return None
     relative_error = max(
-        abs(math.hypot(x - ux, y - uy) - radius) / radius
-        for x, y in (_project(point) for point in points)
+        abs(math.hypot(x - ux, y - uy) - radius) / radius for x, y in (_project(point) for point in points)
     )
     return selected if relative_error <= 0.015 else None
 
@@ -210,7 +209,9 @@ def _event_label(event: dict[str, Any]) -> str:
     return ""
 
 
-def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | None) -> tuple[dict[str, Any], dict[str, Any]]:
+def compile_model_scene(
+    scene: dict[str, Any], physics_model: dict[str, Any] | None
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Replace model-owned geometry while preserving Agent-owned teaching intent."""
     if not isinstance(physics_model, dict):
         return copy.deepcopy(scene), {"status": "not-applicable", "model_fingerprint": ""}
@@ -233,23 +234,31 @@ def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | N
     projected = [_project(point) for _, points in sampled for point in points]
     event_model = physics_model.get("event_model", {})
     timeline = event_model.get("timeline", []) if isinstance(event_model, dict) else []
-    event_positions = [
-        point for item in timeline if isinstance(item, dict)
-        if (point := _point3(item.get("position"))) is not None
-    ] if isinstance(timeline, list) else []
-    boundary_regions = [
-        item for item in physics_model.get("regions", [])
-        if isinstance(item, dict)
-        and isinstance(item.get("field"), dict)
-        and item["field"].get("kind") == "boundary"
-    ] if isinstance(physics_model.get("regions"), list) else []
+    event_positions = (
+        [point for item in timeline if isinstance(item, dict) if (point := _point3(item.get("position"))) is not None]
+        if isinstance(timeline, list)
+        else []
+    )
+    boundary_regions = (
+        [
+            item
+            for item in physics_model.get("regions", [])
+            if isinstance(item, dict)
+            and isinstance(item.get("field"), dict)
+            and item["field"].get("kind") == "boundary"
+        ]
+        if isinstance(physics_model.get("regions"), list)
+        else []
+    )
     boundary_origins = [
-        point for item in boundary_regions
+        point
+        for item in boundary_regions
         if isinstance(item.get("shape"), dict)
         if (point := _point3(item["shape"].get("origin"))) is not None
     ]
     geometry_centers = [
-        point for segment, _points in sampled
+        point
+        for segment, _points in sampled
         if isinstance(segment.get("geometry"), dict)
         if (point := _point3(segment["geometry"].get("center"))) is not None
     ]
@@ -257,14 +266,19 @@ def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | N
         projected + [_project(point) for point in event_positions + boundary_origins + geometry_centers]
     )
 
-    inherited_fact_ids = list(dict.fromkeys(
-        fact_id
-        for path in compiled.get("paths", []) if isinstance(path, dict) and path.get("kind") == "trajectory"
-        for fact_id in path.get("fact_ids", []) if isinstance(fact_id, str)
-    ))
+    inherited_fact_ids = list(
+        dict.fromkeys(
+            fact_id
+            for path in compiled.get("paths", [])
+            if isinstance(path, dict) and path.get("kind") == "trajectory"
+            for fact_id in path.get("fact_ids", [])
+            if isinstance(fact_id, str)
+        )
+    )
     is_spatial_model = physics_model.get("model_type") == "piecewise-field-particle-3d"
     other_paths = [
-        path for path in compiled.get("paths", [])
+        path
+        for path in compiled.get("paths", [])
         if (
             not isinstance(path, dict)
             or (
@@ -283,9 +297,7 @@ def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | N
     for segment_index, (segment, points) in enumerate(sampled):
         is_analytic_arc = segment.get("geometry", {}).get("path_kind") == "arc3d"
         circular_points = (
-            [points[0], points[len(points) // 2], points[-1]]
-            if is_analytic_arc
-            else _circular_projection(points)
+            [points[0], points[len(points) // 2], points[-1]] if is_analytic_arc else _circular_projection(points)
         )
         display_points = circular_points or points
         model_paths.append({
@@ -328,9 +340,7 @@ def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | N
                 "fact_ids": [],
             })
     compiled["paths"] = other_paths + geometry_paths + model_paths
-    existing_object_ids = {
-        str(item.get("id", "")) for item in compiled.get("objects", []) if isinstance(item, dict)
-    }
+    existing_object_ids = {str(item.get("id", "")) for item in compiled.get("objects", []) if isinstance(item, dict)}
     event_objects: list[dict[str, Any]] = []
     for event in timeline if isinstance(timeline, list) else []:
         label = _event_label(event) if isinstance(event, dict) else ""
@@ -369,25 +379,39 @@ def compile_model_scene(scene: dict[str, Any], physics_model: dict[str, Any] | N
         short_label = label.replace(" 板", "").replace("板", "").strip()
         if not short_label:
             continue
-        target = next((
-            item for item in compiled.get("objects", [])
-            if isinstance(item, dict) and item.get("kind") == "plate"
-            and str(item.get("label", "")).replace(" 板", "").replace("板", "").strip() == short_label
-        ), None)
+        target = next(
+            (
+                item
+                for item in compiled.get("objects", [])
+                if isinstance(item, dict)
+                and item.get("kind") == "plate"
+                and str(item.get("label", "")).replace(" 板", "").replace("板", "").strip() == short_label
+            ),
+            None,
+        )
         if target is not None:
             target["y"] = max(0.0, min(100.0 - float(target.get("height", 1)), normalize(_project(origin))["y"]))
 
-    start_event = next((
-        item for item in timeline
-        if isinstance(item, dict) and str(item.get("id", "")).endswith("-start")
-        and _point3(item.get("position")) is not None
-    ), None) if isinstance(timeline, list) else None
+    start_event = (
+        next(
+            (
+                item
+                for item in timeline
+                if isinstance(item, dict)
+                and str(item.get("id", "")).endswith("-start")
+                and _point3(item.get("position")) is not None
+            ),
+            None,
+        )
+        if isinstance(timeline, list)
+        else None
+    )
     if start_event is not None:
         start = normalize(_project(_point3(start_event["position"])))
-        particle = next((
-            item for item in compiled.get("objects", [])
-            if isinstance(item, dict) and item.get("kind") == "particle"
-        ), None)
+        particle = next(
+            (item for item in compiled.get("objects", []) if isinstance(item, dict) and item.get("kind") == "particle"),
+            None,
+        )
         if particle is not None:
             particle["x"] = max(0.0, min(100.0 - float(particle.get("width", 1)), start["x"]))
             particle["y"] = max(0.0, min(100.0 - float(particle.get("height", 1)), start["y"]))

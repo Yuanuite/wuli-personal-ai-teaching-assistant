@@ -3,14 +3,14 @@
 
 from __future__ import annotations
 
-from concurrent.futures import ThreadPoolExecutor
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Callable
 
-import correctness_policy
 import claim_ledger
 import cognitive_loop
+import correctness_policy
 import proof_aggregation
 import solution_reasoning
 from log import TraceContext, get_logger
@@ -57,9 +57,7 @@ def semantic_audit_plan(
             continue
         check_spec = item.get("check_spec")
         check_type = (
-            str(check_spec.get("type", "")).strip()
-            if isinstance(check_spec, dict)
-            else "missing"
+            str(check_spec.get("type", "")).strip() if isinstance(check_spec, dict) else "missing"
         ) or "missing"
         if check_type == "aggregation":
             structural_ids.append(claim_id)
@@ -74,11 +72,7 @@ def semantic_audit_plan(
         "semantic_request_count": request_count,
         "minimum_safe_request_count": request_count,
         "safe_skippable_claim_count": 0,
-        "projected_batch_count": (
-            (request_count + batch_size - 1) // batch_size
-            if request_count
-            else 0
-        ),
+        "projected_batch_count": ((request_count + batch_size - 1) // batch_size if request_count else 0),
         "semantic_claim_ids": semantic_ids,
         "local_structural_certificate_claim_ids": structural_ids,
         "reduction_blockers": [
@@ -86,8 +80,7 @@ def semantic_audit_plan(
                 "check_spec_type": check_type,
                 "claim_count": count,
                 "reason": (
-                    "The current Solver projection does not provide an executable "
-                    "deterministic checker for this Claim."
+                    "The current Solver projection does not provide an executable deterministic checker for this Claim."
                     if check_type != "aggregation"
                     else "The local aggregation certificate checks links only; "
                     "final-answer semantics still require an independent audit."
@@ -95,11 +88,7 @@ def semantic_audit_plan(
             }
             for check_type, count in sorted(blocker_counts.items())
         ],
-        "recommended_action": (
-            "extend-solver-check-spec-before-reducing-audits"
-            if request_count
-            else "none"
-        ),
+        "recommended_action": ("extend-solver-check-spec-before-reducing-audits" if request_count else "none"),
     }
 
 
@@ -116,8 +105,7 @@ def _attach_approved_problem_root(
         "version": 1,
         "kind": "premise",
         "statement": (
-            "Approved problem snapshot "
-            f"sha256:{claim_ledger.stable_fingerprint('problem-text-v1', problem)}"
+            f"Approved problem snapshot sha256:{claim_ledger.stable_fingerprint('problem-text-v1', problem)}"
         ),
         "target_ids": sorted(target_ids),
         "stage_ids": [],
@@ -149,12 +137,8 @@ def _attach_approved_problem_root(
         "check_type": "source-match",
         "verdict": "pass",
         "normalized_result": premise["statement"],
-        "decisive_checks": [
-            "Claim binds the exact approved problem-text fingerprint."
-        ],
-        "input_fingerprint": (
-            claim_ledger.claim_verification_input_fingerprint(premise, [])
-        ),
+        "decisive_checks": ["Claim binds the exact approved problem-text fingerprint."],
+        "input_fingerprint": (claim_ledger.claim_verification_input_fingerprint(premise, [])),
         "verifier_identity": {
             "model_id": "approved-source-snapshot-v1",
             "provider": "local",
@@ -187,16 +171,10 @@ def _challenge_tickets_from_evidence(
         if claim_id not in active_ids:
             continue
         dependency_ids = [
-            str(item)
-            for item in assessment.get("unverified_dependency_ids", [])
-            if str(item) in active_ids
+            str(item) for item in assessment.get("unverified_dependency_ids", []) if str(item) in active_ids
         ]
         bound_ids = list(dict.fromkeys([*dependency_ids, claim_id]))
-        issues = [
-            str(item)
-            for item in assessment.get("issues", [])
-            if str(item).strip()
-        ]
+        issues = [str(item) for item in assessment.get("issues", []) if str(item).strip()]
         trigger = (
             "verification-conflict"
             if decision == "disputed" or int(assessment.get("conflict_count", 0)) > 0
@@ -236,26 +214,18 @@ def _loop_snapshot(
     verified_ids = set(graph_evidence.get("verified_claim_ids", []))
     critical_ids = set(graph_evidence.get("critical_claim_ids", []))
     verified_claims = [
-        item
-        for item in graph_evidence.get("claims", [])
-        if isinstance(item, dict) and item.get("id") in verified_ids
+        item for item in graph_evidence.get("claims", []) if isinstance(item, dict) and item.get("id") in verified_ids
     ]
     current = {
         "verified_claim_count": len(verified_ids),
         "verified_critical_claim_count": len(verified_ids & critical_ids),
-        "accepted_certificate_count": sum(
-            1 for item in certificates if item.get("verdict") == "pass"
-        ),
+        "accepted_certificate_count": sum(1 for item in certificates if item.get("verdict") == "pass"),
         "closed_obligation_count": len({
-            obligation_id
-            for claim in verified_claims
-            for obligation_id in claim.get("obligation_ids", [])
+            obligation_id for claim in verified_claims for obligation_id in claim.get("obligation_ids", [])
         }),
         "localized_conflict_count": len(challenges),
         "open_conflict_scope_size": len({
-            claim_id
-            for challenge in challenges
-            for claim_id in challenge.get("claim_ids", [])
+            claim_id for challenge in challenges for claim_id in challenge.get("claim_ids", [])
         }),
         "novel_hypothesis_count": 0,
     }
@@ -286,9 +256,7 @@ def _loop_snapshot(
         transition = cognitive_loop.advance_loop_control(
             transition["control"],
             no_progress,
-            evidence_status=str(
-                graph_evidence.get("result_status", "PROVISIONAL")
-            ),
+            evidence_status=str(graph_evidence.get("result_status", "PROVISIONAL")),
             has_open_conflict=bool(challenges),
             policy=integration_policy,
         )
@@ -352,9 +320,7 @@ def run_claim_evidence_shadow(
         for item in blueprint.get("verification_obligations", [])
         if str(item.get("id", "")).strip()
     }
-    snapshot, source_certificate = _attach_approved_problem_root(
-        snapshot, problem, target_ids=target_ids
-    )
+    snapshot, source_certificate = _attach_approved_problem_root(snapshot, problem, target_ids=target_ids)
     active = claim_ledger.active_claims(snapshot["claims"])
     audit_plan = semantic_audit_plan(snapshot)
     semantic_claim_ids = set(audit_plan["semantic_claim_ids"])
@@ -363,33 +329,25 @@ def run_claim_evidence_shadow(
     for claim_id in claim_ledger.topological_claim_ids(snapshot["claims"]):
         item = active[claim_id]
         dependencies = [active[parent] for parent in item["depends_on"]]
-        check_type = (
-            str(item["check_spec"].get("type", "")).strip()
-            if isinstance(item["check_spec"], dict)
-            else ""
-        )
+        check_type = str(item["check_spec"].get("type", "")).strip() if isinstance(item["check_spec"], dict) else ""
         if check_type == "aggregation":
-            aggregation_certificates.append(claim_ledger.normalize_certificate({
-                "claim_id": item["id"],
-                "claim_version": item["version"],
-                "verifier_kind": "deterministic",
-                "check_type": "aggregation",
-                "verdict": "pass",
-                "normalized_result": "dependency and obligation links are structurally complete",
-                "decisive_checks": [
-                    "All declared dependencies exist in the current acyclic graph."
-                ],
-                "input_fingerprint": (
-                    claim_ledger.claim_verification_input_fingerprint(
-                        item, dependencies
-                    )
-                ),
-                "verifier_identity": {
-                    "model_id": "proof-link-check-v1",
-                    "provider": "local",
-                    "context_isolated": True,
-                },
-            }))
+            aggregation_certificates.append(
+                claim_ledger.normalize_certificate({
+                    "claim_id": item["id"],
+                    "claim_version": item["version"],
+                    "verifier_kind": "deterministic",
+                    "check_type": "aggregation",
+                    "verdict": "pass",
+                    "normalized_result": "dependency and obligation links are structurally complete",
+                    "decisive_checks": ["All declared dependencies exist in the current acyclic graph."],
+                    "input_fingerprint": (claim_ledger.claim_verification_input_fingerprint(item, dependencies)),
+                    "verifier_identity": {
+                        "model_id": "proof-link-check-v1",
+                        "provider": "local",
+                        "context_isolated": True,
+                    },
+                })
+            )
             # A deterministic dependency-link certificate closes the base
             # aggregation route. High/critical final Claims still need an
             # independent semantic confirmation, so they must also be present
@@ -404,26 +362,23 @@ def run_claim_evidence_shadow(
         solver_a.get("stage_interfaces", []),
         solver_a.get("stage_transitions", []),
     )
-    source_facts = [{
-        "id": "approved-problem",
-        "statement": problem,
-        "conditions": [],
-    }]
+    source_facts = [
+        {
+            "id": "approved-problem",
+            "statement": problem,
+            "conditions": [],
+        }
+    ]
     batch_inputs = []
     for batch_index, start in enumerate(range(0, len(semantic_requests), 8)):
-        view = claim_verification_view(
-            semantic_requests[start:start + 8], source_facts
-        )
+        view = claim_verification_view(semantic_requests[start : start + 8], source_facts)
         if batch_index == 0:
             view["stage_interface_view"] = {
                 "interfaces": solver_a.get("stage_interfaces", []),
                 "transitions": solver_a.get("stage_transitions", []),
                 "deterministic_report": deterministic_interface_report,
             }
-        expected_versions = {
-            item["claim"]["id"]: item["claim"]["version"]
-            for item in view["requests"]
-        }
+        expected_versions = {item["claim"]["id"]: item["claim"]["version"] for item in view["requests"]}
         batch_inputs.append((batch_index, view, expected_versions))
 
     def run_audit_batch(batch_input):
@@ -460,8 +415,7 @@ def run_claim_evidence_shadow(
     )
     if not 1 <= concurrency <= correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY:
         raise ValueError(
-            "claim_verifier_concurrency must be between 1 and "
-            f"{correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY}"
+            f"claim_verifier_concurrency must be between 1 and {correctness_policy.MAX_CLAIM_VERIFY_CONCURRENCY}"
         )
     audit_started = time.monotonic()
     if concurrency > 1 and len(batch_inputs) > 1:
@@ -482,33 +436,20 @@ def run_claim_evidence_shadow(
     )
     audit_batches = [item[0] for item in batch_results]
     semantic_certificates = [
-        certificate
-        for _, batch_certificates in batch_results
-        for certificate in batch_certificates
+        certificate for _, batch_certificates in batch_results for certificate in batch_certificates
     ]
     audit = {
         "status": (
             "completed"
-            if audit_batches
-            and all(item.get("status") == "completed" for item in audit_batches)
+            if audit_batches and all(item.get("status") == "completed" for item in audit_batches)
             else "unsupported"
         ),
         "message": "；".join(
-            str(item.get("message", "")).strip()
-            for item in audit_batches
-            if str(item.get("message", "")).strip()
+            str(item.get("message", "")).strip() for item in audit_batches if str(item.get("message", "")).strip()
         )[:1000],
-        "claim_audits": [
-            claim_audit
-            for item in audit_batches
-            for claim_audit in item.get("claim_audits", [])
-        ],
+        "claim_audits": [claim_audit for item in audit_batches for claim_audit in item.get("claim_audits", [])],
         "interface_audit": next(
-            (
-                item.get("interface_audit")
-                for item in audit_batches
-                if isinstance(item.get("interface_audit"), dict)
-            ),
+            (item.get("interface_audit") for item in audit_batches if isinstance(item.get("interface_audit"), dict)),
             None,
         ),
         "batch_count": len(audit_batches),
@@ -534,10 +475,7 @@ def run_claim_evidence_shadow(
     risks = {
         claim_id: (
             max(
-                (
-                    risk_by_target.get(target_id, "medium")
-                    for target_id in item["target_ids"]
-                ),
+                (risk_by_target.get(target_id, "medium") for target_id in item["target_ids"]),
                 key=lambda value: {
                     "medium": 0,
                     "high": 1,
@@ -565,10 +503,7 @@ def run_claim_evidence_shadow(
     )
     interface_report = dict(deterministic_interface_report)
     interface_audit = audit.get("interface_audit")
-    if (
-        interface_report.get("status") == "provisional"
-        and isinstance(interface_audit, dict)
-    ):
+    if interface_report.get("status") == "provisional" and isinstance(interface_audit, dict):
         if interface_audit.get("verdict") == "pass":
             interface_report["status"] = "pass"
             interface_report["semantic_verification"] = interface_audit
@@ -645,20 +580,12 @@ def run_claim_evidence_shadow(
         "metrics": {
             "claim_count": len(active),
             "certificate_count": len(certificates),
-            "verified_claim_count": len(
-                aggregation["claim_evidence"]["verified_claim_ids"]
-            ),
-            "critical_certificate_coverage": aggregation[
-                "claim_evidence"
-            ]["critical_certificate_coverage"],
-            "unresolved_claim_count": len(active) - len(
-                aggregation["claim_evidence"]["verified_claim_ids"]
-            ),
+            "verified_claim_count": len(aggregation["claim_evidence"]["verified_claim_ids"]),
+            "critical_certificate_coverage": aggregation["claim_evidence"]["critical_certificate_coverage"],
+            "unresolved_claim_count": len(active) - len(aggregation["claim_evidence"]["verified_claim_ids"]),
             "challenge_count": len(challenges),
             "loop_transition_count": (
-                loop["transition"]["control"]["transition_count"]
-                if isinstance(loop.get("transition"), dict)
-                else 0
+                loop["transition"]["control"]["transition_count"] if isinstance(loop.get("transition"), dict) else 0
             ),
             "repeated_task_count": loop["repeated_task_count"],
             "fuse_triggered": loop["fuse_triggered"],
@@ -677,9 +604,7 @@ def solution_target_map(solution: dict[str, Any]) -> dict[str, dict[str, Any]]:
 def _without_runtime_identity(payload: dict[str, Any] | None) -> dict[str, Any] | None:
     if not isinstance(payload, dict):
         return payload
-    return {
-        key: value for key, value in payload.items() if not str(key).startswith("_")
-    }
+    return {key: value for key, value in payload.items() if not str(key).startswith("_")}
 
 
 def answer_signature(value: Any) -> str:
@@ -696,15 +621,10 @@ def augment_mandatory_physics_obligations(
 ) -> dict[str, Any]:
     """Add source-triggered hard obligations that generic decomposition may omit."""
     text = str(problem)
-    is_multifluid_plate = all(
-        marker in text
-        for marker in ("油", "水", "密度", "板", "下边缘", "合力")
-    ) and ("不再有水" in text or "完全排开" in text)
-    obligations = [
-        dict(item)
-        for item in blueprint.get("verification_obligations", [])
-        if isinstance(item, dict)
-    ]
+    is_multifluid_plate = all(marker in text for marker in ("油", "水", "密度", "板", "下边缘", "合力")) and (
+        "不再有水" in text or "完全排开" in text
+    )
+    obligations = [dict(item) for item in blueprint.get("verification_obligations", []) if isinstance(item, dict)]
     existing_ids = {str(item.get("id", "")) for item in obligations}
     if is_multifluid_plate:
         for target in blueprint.get("question_targets", []):
@@ -764,14 +684,11 @@ def augment_mandatory_physics_obligations(
             if not trigger.search(source_view):
                 continue
             if any(
-                str(item.get("target_id", "")).strip() == target_id
-                and coverage.search(str(item.get("check", "")))
+                str(item.get("target_id", "")).strip() == target_id and coverage.search(str(item.get("check", "")))
                 for item in obligations
             ):
                 continue
-            obligation_id = (
-                f"{SOURCE_DOMAIN_OBLIGATION_PREFIX}{target_id}_{suffix}"
-            )[:40]
+            obligation_id = (f"{SOURCE_DOMAIN_OBLIGATION_PREFIX}{target_id}_{suffix}")[:40]
             if obligation_id in existing_ids:
                 continue
             obligations.append({
@@ -793,14 +710,14 @@ def answers_equivalent(left: Any, right: Any) -> bool:
         return False
     final_first = first.rsplit("=", 1)[-1]
     final_second = second.rsplit("=", 1)[-1]
-    return first == second or final_first == final_second or (
-        min(len(first), len(second)) >= 8 and (first in second or second in first)
+    return (
+        first == second
+        or final_first == final_second
+        or (min(len(first), len(second)) >= 8 and (first in second or second in first))
     )
 
 
-def project_blueprint(
-    blueprint: dict[str, Any], target_ids: set[str]
-) -> dict[str, Any]:
+def project_blueprint(blueprint: dict[str, Any], target_ids: set[str]) -> dict[str, Any]:
     """Create a target-scoped blueprint for a blind second solver."""
     target_ids = {str(item) for item in target_ids if str(item)}
     obligation_ids = {
@@ -811,18 +728,12 @@ def project_blueprint(
     return {
         **blueprint,
         "question_targets": [
-            item
-            for item in blueprint.get("question_targets", [])
-            if str(item.get("id", "")) in target_ids
+            item for item in blueprint.get("question_targets", []) if str(item.get("id", "")) in target_ids
         ],
         "reasoning_steps": [
             {
                 **item,
-                "target_ids": [
-                    target_id
-                    for target_id in item.get("target_ids", [])
-                    if str(target_id) in target_ids
-                ],
+                "target_ids": [target_id for target_id in item.get("target_ids", []) if str(target_id) in target_ids],
             }
             for item in blueprint.get("reasoning_steps", [])
             if set(map(str, item.get("target_ids", []))) & target_ids
@@ -830,19 +741,13 @@ def project_blueprint(
         "retrieval_needs": [
             {
                 **item,
-                "target_ids": [
-                    target_id
-                    for target_id in item.get("target_ids", [])
-                    if str(target_id) in target_ids
-                ],
+                "target_ids": [target_id for target_id in item.get("target_ids", []) if str(target_id) in target_ids],
             }
             for item in blueprint.get("retrieval_needs", [])
             if set(map(str, item.get("target_ids", []))) & target_ids
         ],
         "verification_obligations": [
-            item
-            for item in blueprint.get("verification_obligations", [])
-            if str(item.get("id", "")) in obligation_ids
+            item for item in blueprint.get("verification_obligations", []) if str(item.get("id", "")) in obligation_ids
         ],
     }
 
@@ -869,9 +774,7 @@ def conflict_target_ids(
     return {item for item in conflicts if item}
 
 
-def selected_targets(
-    solver_a: dict[str, Any], adjudication: dict[str, Any] | None
-) -> list[dict[str, Any]]:
+def selected_targets(solver_a: dict[str, Any], adjudication: dict[str, Any] | None) -> list[dict[str, Any]]:
     """Apply target-level adjudication without exposing internal role details."""
     decisions = {
         str(item.get("target_id", "")): item
@@ -931,19 +834,13 @@ def teacher_review_snapshot(report: dict[str, Any]) -> list[dict[str, Any]]:
             section("独立复算结论", audit.get("recomputed_result"), actionable=True),
         ]
         alternative_result = str(alternative.get("final_answer", "")).strip()
-        if alternative_result and not answers_equivalent(
-            target.get("final_answer", ""), alternative_result
-        ):
+        if alternative_result and not answers_equivalent(target.get("final_answer", ""), alternative_result):
             sections.append(section("交叉候选结论", alternative_result, actionable=True))
         sections.extend([
             section("仲裁采用结论", decision.get("selected_result"), actionable=True),
             section(
                 "决定性关系",
-                "\n".join(
-                    f"• {item}"
-                    for item in audit.get("decisive_checks", [])[:4]
-                    if str(item).strip()
-                ),
+                "\n".join(f"• {item}" for item in audit.get("decisive_checks", [])[:4] if str(item).strip()),
             ),
             section(
                 "仲裁说明",
@@ -970,11 +867,7 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
     Runtime identities, fingerprints, task metadata and raw semantic-audit
     payloads are deliberately excluded from this API projection.
     """
-    evidence = (
-        report.get("claim_evidence_shadow", {})
-        if isinstance(report.get("claim_evidence_shadow"), dict)
-        else {}
-    )
+    evidence = report.get("claim_evidence_shadow", {}) if isinstance(report.get("claim_evidence_shadow"), dict) else {}
     run_status = str(evidence.get("status", "not-run"))
     empty = {
         "schema_version": 1,
@@ -989,15 +882,9 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
     if run_status != "completed":
         return empty
 
-    aggregation = (
-        evidence.get("aggregation", {})
-        if isinstance(evidence.get("aggregation"), dict)
-        else {}
-    )
+    aggregation = evidence.get("aggregation", {}) if isinstance(evidence.get("aggregation"), dict) else {}
     graph_evidence = (
-        aggregation.get("claim_evidence", {})
-        if isinstance(aggregation.get("claim_evidence"), dict)
-        else {}
+        aggregation.get("claim_evidence", {}) if isinstance(aggregation.get("claim_evidence"), dict) else {}
     )
     assessments = {
         str(item.get("claim_id", "")): item
@@ -1012,26 +899,16 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
         claim_id = str(raw.get("id", ""))
         version = int(raw.get("version", 1))
         status = str(raw.get("status", "candidate"))
-        obligation_ids = [
-            str(item) for item in raw.get("obligation_ids", []) if str(item)
-        ]
+        obligation_ids = [str(item) for item in raw.get("obligation_ids", []) if str(item)]
         claims.append({
             "id": claim_id,
             "version": version,
             "kind": str(raw.get("kind", "")),
             "statement": str(raw.get("statement", ""))[:2_000],
-            "target_ids": [
-                str(item) for item in raw.get("target_ids", []) if str(item)
-            ],
-            "stage_ids": [
-                str(item) for item in raw.get("stage_ids", []) if str(item)
-            ],
-            "depends_on": [
-                str(item) for item in raw.get("depends_on", []) if str(item)
-            ],
-            "conditions": [
-                str(item)[:300] for item in raw.get("conditions", []) if str(item)
-            ],
+            "target_ids": [str(item) for item in raw.get("target_ids", []) if str(item)],
+            "stage_ids": [str(item) for item in raw.get("stage_ids", []) if str(item)],
+            "depends_on": [str(item) for item in raw.get("depends_on", []) if str(item)],
+            "conditions": [str(item)[:300] for item in raw.get("conditions", []) if str(item)],
             "obligation_ids": obligation_ids,
             "status": status,
         })
@@ -1044,11 +921,7 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
                 "claim_version": version,
                 "obligation_ids": obligation_ids,
                 "status": status,
-                "issues": [
-                    str(item)[:500]
-                    for item in assessment.get("issues", [])
-                    if str(item)
-                ],
+                "issues": [str(item)[:500] for item in assessment.get("issues", []) if str(item)],
             })
 
     certificates = []
@@ -1062,11 +935,7 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
             "check_type": str(raw.get("check_type", "")),
             "verdict": str(raw.get("verdict", "")),
             "normalized_result": str(raw.get("normalized_result", ""))[:2_000],
-            "decisive_checks": [
-                str(item)[:500]
-                for item in raw.get("decisive_checks", [])
-                if str(item)
-            ],
+            "decisive_checks": [str(item)[:500] for item in raw.get("decisive_checks", []) if str(item)],
         })
 
     for index, raw in enumerate(aggregation.get("interface_issues", []), start=1):
@@ -1090,13 +959,9 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
             "id": str(challenge_id),
             "type": "challenge",
             "status": "open",
-            "claim_ids": [
-                str(item) for item in challenge.get("claim_ids", []) if str(item)
-            ],
+            "claim_ids": [str(item) for item in challenge.get("claim_ids", []) if str(item)],
             "message": str(challenge.get("specific_doubt", ""))[:500],
-            "falsification_test": str(
-                challenge.get("falsification_test", "")
-            )[:500],
+            "falsification_test": str(challenge.get("falsification_test", ""))[:500],
         })
     hypothesis_by_id = {
         str(item.get("id", "")): item
@@ -1133,22 +998,12 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
             {
                 "claim_id": str(item.get("claim_id", "")),
                 "claim_version": int(item.get("claim_version", 1)),
-                "target_ids": [
-                    str(target_id)
-                    for target_id in item.get("target_ids", [])
-                    if str(target_id)
-                ],
+                "target_ids": [str(target_id) for target_id in item.get("target_ids", []) if str(target_id)],
                 "statement": str(item.get("statement", ""))[:2_000],
-                "conditions": [
-                    str(condition)[:300]
-                    for condition in item.get("conditions", [])
-                    if str(condition)
-                ],
+                "conditions": [str(condition)[:300] for condition in item.get("conditions", []) if str(condition)],
                 "status": str(item.get("status", "candidate")),
                 "obligation_ids": [
-                    str(obligation_id)
-                    for obligation_id in item.get("obligation_ids", [])
-                    if str(obligation_id)
+                    str(obligation_id) for obligation_id in item.get("obligation_ids", []) if str(obligation_id)
                 ],
             }
             for item in aggregation.get("final_claims", [])
@@ -1224,10 +1079,12 @@ def attach_w3r_shadow(
             "schema_version": 1,
             "mode": "shadow",
             "status": "rejected",
-            "violations": [{
-                "code": "w3r-shadow-contract-failure",
-                "message": str(exc)[:1_000],
-            }],
+            "violations": [
+                {
+                    "code": "w3r-shadow-contract-failure",
+                    "message": str(exc)[:1_000],
+                }
+            ],
             "production_candidate_unchanged": True,
             "solver_fallback_allowed": False,
         }
@@ -1240,6 +1097,7 @@ def render_recommended_student_solution(
     adjudication: dict[str, Any] | None,
 ) -> str:
     """Deterministically render one concise teacher-reviewable answer candidate."""
+
     def high_school_student_text(text: str) -> str:
         """Apply condition-preserving rewrites for known high-school equivalents.
 
@@ -1252,16 +1110,12 @@ def render_recommended_student_solution(
         remain visible and are rejected by the downstream method gate.
         """
         replacements = {
-            "二次微分绳长约束并消去速度平方项":
-                "用极短时间位移 s=at²/2 建立释放瞬间的绳长约束",
-            "检查正方向约定与绳长微分符号一致":
-                "检查正方向约定与绳长变化符号一致",
+            "二次微分绳长约束并消去速度平方项": "用极短时间位移 s=at²/2 建立释放瞬间的绳长约束",
+            "检查正方向约定与绳长微分符号一致": "检查正方向约定与绳长变化符号一致",
             "确认二次微分中的速度平方项只因释放瞬间初速度为零而消失，"
-            "不能把所得加速度关系误当作全过程恒成立的常比例关系。":
-                "确认用 s=at²/2 建立的位移关系依赖释放瞬间初速度为零，"
-                "不能把所得加速度关系误当作全过程恒成立的常比例关系。",
-            "分别积分得到水侧和油侧对右板的水平压力合力":
-                "分别用三角形压强-深度图的面积得到水侧和油侧对右板的水平压力合力",
+            "不能把所得加速度关系误当作全过程恒成立的常比例关系。": "确认用 s=at²/2 建立的位移关系依赖释放瞬间初速度为零，"
+            "不能把所得加速度关系误当作全过程恒成立的常比例关系。",
+            "分别积分得到水侧和油侧对右板的水平压力合力": "分别用三角形压强-深度图的面积得到水侧和油侧对右板的水平压力合力",
             "表压积分": "表压-深度图像面积",
         }
         for source, target in replacements.items():
@@ -1289,9 +1143,7 @@ def render_recommended_student_solution(
         "## 详细解答",
         "",
     ])
-    stage_results = [
-        item for item in solver_a.get("stage_results", []) if str(item.get("result", "")).strip()
-    ]
+    stage_results = [item for item in solver_a.get("stage_results", []) if str(item.get("result", "")).strip()]
     if len(stage_results) > 5:
         stage_results = [
             *stage_results[:4],
@@ -1310,17 +1162,13 @@ def render_recommended_student_solution(
     obligations = sorted(
         blueprint.get("verification_obligations", []),
         key=lambda item: (
-            {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(
-                str(item.get("risk", "")), 4
-            ),
+            {"critical": 0, "high": 1, "medium": 2, "low": 3}.get(str(item.get("risk", "")), 4),
             str(item.get("id", "")),
         ),
     )
     lines.extend(["## 易错点", ""])
     for item in obligations[:3]:
-        lines.append(
-            f"- {high_school_student_text(str(item.get('check', '')).strip())}"
-        )
+        lines.append(f"- {high_school_student_text(str(item.get('check', '')).strip())}")
     lines.extend([
         "",
         "## 30 秒自测",
@@ -1343,11 +1191,7 @@ def risk_plan(
     by_target: dict[str, list[dict[str, Any]]] = {}
     for item in obligations:
         by_target.setdefault(str(item.get("target_id", "")), []).append(item)
-    evidence_status = str(
-        evidence.get("evidence_set", {}).get("status")
-        or evidence.get("status")
-        or "unavailable"
-    )
+    evidence_status = str(evidence.get("evidence_set", {}).get("status") or evidence.get("status") or "unavailable")
     blueprint_status = str(solution.get("blueprint_audit", {}).get("status", "followed"))
     result = []
     for target in solution.get("targets", []):
@@ -1387,11 +1231,7 @@ def build_shadow_summary(
     try:
         from analysis_artifacts import student_method_errors
 
-        method_errors = (
-            student_method_errors(recommended, method_profile)
-            if recommended
-            else []
-        )
+        method_errors = student_method_errors(recommended, method_profile) if recommended else []
     except ImportError:
         method_errors = []
     if method_errors and len(focus) < 2:
@@ -1429,9 +1269,7 @@ def build_shadow_summary(
         "teacher_review_focus": focus[:2],
         "metrics": {
             "target_count": len((solver_a or {}).get("targets", [])),
-            "verified_target_count": sum(
-                1 for item in (risk_decisions or []) if item.get("decision") == "verify"
-            ),
+            "verified_target_count": sum(1 for item in (risk_decisions or []) if item.get("decision") == "verify"),
             "solver_b_used": solver_b is not None,
             "conflict_target_count": len(conflict_target_ids(solver_a or {}, verifier, solver_b)),
             "teacher_focus_count": len(focus[:2]),
@@ -1466,9 +1304,7 @@ def run_shadow(
 
     method_profile = teaching_method_policy.normalize_profile(method_profile)
     if claim_evidence_shadow_enabled is None:
-        claim_evidence_shadow_enabled = (
-            correctness_policy.claim_evidence_shadow_enabled()
-        )
+        claim_evidence_shadow_enabled = correctness_policy.claim_evidence_shadow_enabled()
     screen = complexity_screen(problem, has_physics_model=has_physics_model)
     if screen["decision"] == "w2":
         return build_shadow_summary(
@@ -1486,9 +1322,7 @@ def run_shadow(
             method_profile=method_profile,
         )
     blueprint = augment_mandatory_physics_obligations(problem, blueprint)
-    default_obligation_suggestions = infer_default_obligation_suggestions(
-        problem, blueprint
-    )
+    default_obligation_suggestions = infer_default_obligation_suggestions(problem, blueprint)
     evidence = evidence_builder(blueprint)
     solver_a = stage_runner(
         "solver-a",
@@ -1505,14 +1339,8 @@ def run_shadow(
             method_profile=method_profile,
         )
 
-    decisions = risk_plan(
-        blueprint, solver_a, evidence, calibration=calibration
-    )
-    verify_ids = {
-        str(item.get("target_id", ""))
-        for item in decisions
-        if item.get("decision") == "verify"
-    }
+    decisions = risk_plan(blueprint, solver_a, evidence, calibration=calibration)
+    verify_ids = {str(item.get("target_id", "")) for item in decisions if item.get("decision") == "verify"}
     verifier = None
     stage_warnings: list[dict[str, Any]] = []
     if verify_ids and not claim_evidence_shadow_enabled:
@@ -1523,11 +1351,7 @@ def run_shadow(
                     "problem": problem,
                     "blueprint": blueprint,
                     "evidence": evidence,
-                    "candidate_targets": [
-                        item
-                        for item in solver_a.get("targets", [])
-                        if item.get("id") in verify_ids
-                    ],
+                    "candidate_targets": [item for item in solver_a.get("targets", []) if item.get("id") in verify_ids],
                     "target_ids": sorted(verify_ids),
                 },
             )
@@ -1544,8 +1368,7 @@ def run_shadow(
         challenge = {
             str(item.get("target_id", ""))
             for item in decisions
-            if float(item.get("risk", 0))
-            >= float(calibration["challenge_risk_threshold"])
+            if float(item.get("risk", 0)) >= float(calibration["challenge_risk_threshold"])
         }
         challenge.update(conflict_target_ids(solver_a, verifier, None))
     solver_b = None
@@ -1625,17 +1448,11 @@ def run_shadow(
                 "policy": correctness_policy.CORRECTNESS_POLICY_VERSION,
                 "message": str(exc)[:1_000],
             }
-        attach_w3r_shadow(
-            summary, problem=problem, method_profile=method_profile
-        )
+        attach_w3r_shadow(summary, problem=problem, method_profile=method_profile)
         aggregation_status = str(
-            summary.get("claim_evidence_shadow", {})
-            .get("aggregation", {})
-            .get("status", "missing")
+            summary.get("claim_evidence_shadow", {}).get("aggregation", {}).get("status", "missing")
         )
-        render_status = str(
-            summary.get("w3r_shadow", {}).get("status", "missing")
-        )
+        render_status = str(summary.get("w3r_shadow", {}).get("status", "missing"))
         method_errors = []
         try:
             from analysis_artifacts import student_method_errors
@@ -1648,11 +1465,7 @@ def run_shadow(
             pass
         summary["evaluation_layers"] = {
             "solution_execution": {
-                "status": (
-                    "completed"
-                    if summary.get("solver_a", {}).get("status") == "completed"
-                    else "failed"
-                ),
+                "status": ("completed" if summary.get("solver_a", {}).get("status") == "completed" else "failed"),
             },
             "proof_fidelity": {"status": aggregation_status},
             "teaching_method": {
@@ -1677,32 +1490,18 @@ def acceptance_metrics(cases: list[dict[str, Any]]) -> dict[str, Any]:
         correct = sum(int(item.get("correct_target_count", 0)) for item in cohort)
         w2_values = [item.get("w2_correct_target_count") for item in cohort]
         w2_complete = bool(cohort) and all(value is not None for value in w2_values)
-        w2_correct = (
-            sum(int(value) for value in w2_values if value is not None)
-            if w2_complete
-            else None
-        )
-        supplements = sum(
-            int(item.get("validated_supplement_target_count", 0)) for item in cohort
-        )
-        revised_references = sum(
-            1 for item in cohort if item.get("reference_revised_after_shadow")
-        )
+        w2_correct = sum(int(value) for value in w2_values if value is not None) if w2_complete else None
+        supplements = sum(int(item.get("validated_supplement_target_count", 0)) for item in cohort)
+        revised_references = sum(1 for item in cohort if item.get("reference_revised_after_shadow"))
         calls = sum(int(item.get("agent_call_count", 0)) for item in cohort)
         focus = sum(int(item.get("teacher_focus_count", 0)) for item in cohort)
         return {
             "case_count": len(cohort),
             "target_count": targets,
             "target_accuracy": round(correct / targets, 4) if targets else None,
-            "w2_target_accuracy": (
-                round(w2_correct / targets, 4)
-                if targets and w2_correct is not None
-                else None
-            ),
+            "w2_target_accuracy": (round(w2_correct / targets, 4) if targets and w2_correct is not None else None),
             "accuracy_delta": (
-                round((correct - w2_correct) / targets, 4)
-                if targets and w2_correct is not None
-                else None
+                round((correct - w2_correct) / targets, 4) if targets and w2_correct is not None else None
             ),
             "validated_supplement_target_count": supplements,
             "reference_revision_case_count": revised_references,
@@ -1715,18 +1514,14 @@ def acceptance_metrics(cases: list[dict[str, Any]]) -> dict[str, Any]:
     replay_metrics = cohort_metrics(replay)
     holdout_ready = len(holdout) >= 5 and int(holdout_metrics["target_count"] or 0) >= 12
     accuracy_safe = (
-        holdout_ready
-        and holdout_metrics["accuracy_delta"] is not None
-        and holdout_metrics["accuracy_delta"] >= 0
+        holdout_ready and holdout_metrics["accuracy_delta"] is not None and holdout_metrics["accuracy_delta"] >= 0
     )
     workload_safe = (
         holdout_ready
         and holdout_metrics["average_teacher_focus"] is not None
         and holdout_metrics["average_teacher_focus"] <= 2
     )
-    independent_holdout_intact = (
-        holdout_ready and int(holdout_metrics["reference_revision_case_count"] or 0) == 0
-    )
+    independent_holdout_intact = holdout_ready and int(holdout_metrics["reference_revision_case_count"] or 0) == 0
     return {
         "schema_version": 1,
         "policy": W3_POLICY,
@@ -1739,8 +1534,6 @@ def acceptance_metrics(cases: list[dict[str, Any]]) -> dict[str, Any]:
             "teacher_focus_bounded": workload_safe,
             "independent_holdout_intact": independent_holdout_intact,
             "fresh_holdout_required": not independent_holdout_intact,
-            "production_eligible": bool(
-                accuracy_safe and workload_safe and independent_holdout_intact
-            ),
+            "production_eligible": bool(accuracy_safe and workload_safe and independent_holdout_intact),
         },
     }

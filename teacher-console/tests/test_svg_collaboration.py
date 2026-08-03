@@ -70,11 +70,11 @@ class SvgCollaborationTests(unittest.TestCase):
 
     def test_rejects_unsafe_svg_constructs(self):
         unsafe = [
-            '<svg><script/></svg>',
+            "<svg><script/></svg>",
             '<svg onclick="x"/>',
             '<svg><image href="https://example.test/x"/></svg>',
-            '<svg><foreignObject/></svg>',
-            '<!DOCTYPE svg><svg/>',
+            "<svg><foreignObject/></svg>",
+            "<!DOCTYPE svg><svg/>",
         ]
         for svg in unsafe:
             with self.subTest(svg=svg), self.assertRaises(ValueError):

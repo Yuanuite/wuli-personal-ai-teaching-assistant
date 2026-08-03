@@ -6,10 +6,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
-import claim_validation  # noqa: E402
 import claim_ledger  # noqa: E402
+import claim_validation  # noqa: E402
 import correctness_policy  # noqa: E402
-
 
 FINGERPRINT = "c" * 64
 
@@ -58,14 +57,9 @@ class ClaimValidationRoutingTest(unittest.TestCase):
         )
 
     def test_legacy_semantic_required_never_becomes_deterministic_pass(self):
-        routed = claim_validation.route_claim_verification(
-            claim("derived", {"type": "semantic-required"})
-        )
+        routed = claim_validation.route_claim_verification(claim("derived", {"type": "semantic-required"}))
         self.assertTrue(
-            all(
-                route["verifier_kind"] != "deterministic"
-                for route in routed["required_groups"][0]["one_of"]
-            )
+            all(route["verifier_kind"] != "deterministic" for route in routed["required_groups"][0]["one_of"])
         )
 
     def test_high_risk_adds_independent_confirmation(self):
@@ -77,9 +71,7 @@ class ClaimValidationRoutingTest(unittest.TestCase):
             [group["id"] for group in routed["required_groups"]],
             ["base", "independent-confirmation"],
         )
-        self.assertTrue(
-            routed["required_groups"][1]["distinct_verifier_required"]
-        )
+        self.assertTrue(routed["required_groups"][1]["distinct_verifier_required"])
 
     def test_unknown_claim_or_check_type_fails_closed(self):
         bad = claim()
@@ -88,9 +80,7 @@ class ClaimValidationRoutingTest(unittest.TestCase):
             claim_validation.route_claim_verification(bad)
 
         with self.assertRaisesRegex(ValueError, "unsupported claim check_spec"):
-            claim_validation.route_claim_verification(
-                claim("derived", {"type": "python-eval"})
-            )
+            claim_validation.route_claim_verification(claim("derived", {"type": "python-eval"}))
 
     def test_route_match_enforces_context_isolation(self):
         certificate = {
@@ -113,14 +103,10 @@ class ClaimValidationRoutingTest(unittest.TestCase):
             "check_type": "semantic",
             "context_isolated": True,
         }
-        self.assertTrue(
-            claim_validation.certificate_matches_route(certificate, route)
-        )
+        self.assertTrue(claim_validation.certificate_matches_route(certificate, route))
         shared_context = copy.deepcopy(certificate)
         shared_context["verifier_identity"]["context_isolated"] = False
-        self.assertFalse(
-            claim_validation.certificate_matches_route(shared_context, route)
-        )
+        self.assertFalse(claim_validation.certificate_matches_route(shared_context, route))
 
 
 class SafeArithmeticTest(unittest.TestCase):
@@ -137,11 +123,13 @@ class SafeArithmeticTest(unittest.TestCase):
             {
                 "type": "arithmetic",
                 "variables": {"m": "3/2", "v": 4, "r": 3},
-                "relations": [{
-                    "left": "m * v**2 / (2 * r)",
-                    "operator": "==",
-                    "right": "4",
-                }],
+                "relations": [
+                    {
+                        "left": "m * v**2 / (2 * r)",
+                        "operator": "==",
+                        "right": "4",
+                    }
+                ],
             },
         )
         certificate = claim_validation.verify_arithmetic_claim(payload, [])
@@ -154,11 +142,13 @@ class SafeArithmeticTest(unittest.TestCase):
             {
                 "type": "arithmetic",
                 "variables": {"v": 3},
-                "relations": [{
-                    "left": "v**2",
-                    "operator": "==",
-                    "right": "8",
-                }],
+                "relations": [
+                    {
+                        "left": "v**2",
+                        "operator": "==",
+                        "right": "8",
+                    }
+                ],
             },
         )
         certificate = claim_validation.verify_arithmetic_claim(payload, [])
@@ -176,11 +166,13 @@ class SafeArithmeticTest(unittest.TestCase):
                 {
                     "type": "arithmetic",
                     "variables": {},
-                    "relations": [{
-                        "left": expression,
-                        "operator": "==",
-                        "right": "1",
-                    }],
+                    "relations": [
+                        {
+                            "left": expression,
+                            "operator": "==",
+                            "right": "1",
+                        }
+                    ],
                 },
             )
             certificate = claim_validation.verify_arithmetic_claim(payload, [])
@@ -193,12 +185,14 @@ class SafeArithmeticTest(unittest.TestCase):
             {
                 "type": "arithmetic",
                 "variables": {},
-                "relations": [{
-                    "left": "1 / 3",
-                    "operator": "==",
-                    "right": "0.333",
-                    "absolute_tolerance": "1/1000",
-                }],
+                "relations": [
+                    {
+                        "left": "1 / 3",
+                        "operator": "==",
+                        "right": "0.333",
+                        "absolute_tolerance": "1/1000",
+                    }
+                ],
             },
         )
         certificate = claim_validation.verify_arithmetic_claim(payload, [])
@@ -217,25 +211,25 @@ class DimensionCheckTest(unittest.TestCase):
                     "v": {"L": 1, "T": -1},
                     "B": {"M": 1, "T": -2, "I": -1},
                 },
-                "relations": [{
-                    "label": "F=qvB",
-                    "left": {"symbol": "F"},
-                    "right": {
-                        "op": "mul",
-                        "args": [
-                            {"symbol": "q"},
-                            {"symbol": "v"},
-                            {"symbol": "B"},
-                        ],
-                    },
-                }],
+                "relations": [
+                    {
+                        "label": "F=qvB",
+                        "left": {"symbol": "F"},
+                        "right": {
+                            "op": "mul",
+                            "args": [
+                                {"symbol": "q"},
+                                {"symbol": "v"},
+                                {"symbol": "B"},
+                            ],
+                        },
+                    }
+                ],
             },
         )
 
     def test_mechanics_and_electromagnetic_dimensions_pass(self):
-        certificate = claim_validation.verify_dimension_claim(
-            self.magnetic_force_claim(), []
-        )
+        certificate = claim_validation.verify_dimension_claim(self.magnetic_force_claim(), [])
         self.assertEqual(certificate["verdict"], "pass")
         self.assertIn("F=qvB", certificate["decisive_checks"][0])
 
@@ -264,10 +258,12 @@ class DimensionCheckTest(unittest.TestCase):
             {
                 "type": "dimension",
                 "symbols": {},
-                "relations": [{
-                    "left": {"unit": "banana"},
-                    "right": {"unit": "newton"},
-                }],
+                "relations": [
+                    {
+                        "left": {"unit": "banana"},
+                        "right": {"unit": "newton"},
+                    }
+                ],
             },
         )
         certificate = claim_validation.verify_dimension_claim(payload, [])
@@ -345,26 +341,18 @@ class IntervalAndEventOrderTest(unittest.TestCase):
         )
 
     def test_first_event_filters_domain_and_rejects_later_root(self):
-        passing = claim_validation.verify_event_order_claim(
-            self.event_claim("first", ["first"]), []
-        )
+        passing = claim_validation.verify_event_order_claim(self.event_claim("first", ["first"]), [])
         self.assertEqual(passing["verdict"], "pass")
 
-        omitted_earlier = claim_validation.verify_event_order_claim(
-            self.event_claim("first", ["later"]), []
-        )
+        omitted_earlier = claim_validation.verify_event_order_claim(self.event_claim("first", ["later"]), [])
         self.assertEqual(omitted_earlier["verdict"], "conflict")
         self.assertIn("first", omitted_earlier["normalized_result"])
 
     def test_unique_and_all_obligations_detect_missing_branches(self):
-        unique = claim_validation.verify_event_order_claim(
-            self.event_claim("unique", ["first"]), []
-        )
+        unique = claim_validation.verify_event_order_claim(self.event_claim("unique", ["first"]), [])
         self.assertEqual(unique["verdict"], "conflict")
 
-        all_events = claim_validation.verify_event_order_claim(
-            self.event_claim("all", ["first"]), []
-        )
+        all_events = claim_validation.verify_event_order_claim(self.event_claim("all", ["first"]), [])
         self.assertEqual(all_events["verdict"], "conflict")
 
 
@@ -375,11 +363,13 @@ class CertificatePromotionTest(unittest.TestCase):
             {
                 "type": "arithmetic",
                 "variables": {},
-                "relations": [{
-                    "left": "1 + 1",
-                    "operator": "==",
-                    "right": "2",
-                }],
+                "relations": [
+                    {
+                        "left": "1 + 1",
+                        "operator": "==",
+                        "right": "2",
+                    }
+                ],
             },
         )
 
@@ -392,9 +382,7 @@ class CertificatePromotionTest(unittest.TestCase):
         provider="test",
         context_isolated=True,
     ):
-        fingerprint = claim_ledger.claim_verification_input_fingerprint(
-            payload, []
-        )
+        fingerprint = claim_ledger.claim_verification_input_fingerprint(payload, [])
         return {
             "claim_id": payload["id"],
             "claim_version": payload["version"],
@@ -414,16 +402,12 @@ class CertificatePromotionTest(unittest.TestCase):
     def test_only_current_bound_certificate_promotes_candidate(self):
         payload = self.arithmetic_claim()
         certificate = claim_validation.verify_arithmetic_claim(payload, [])
-        result = claim_validation.apply_certificate_decision(
-            payload, [], [certificate]
-        )
+        result = claim_validation.apply_certificate_decision(payload, [], [certificate])
         self.assertEqual(result["claim"]["status"], "verified")
 
         stale = copy.deepcopy(certificate)
         stale["claim_version"] = 2
-        result = claim_validation.apply_certificate_decision(
-            payload, [], [stale]
-        )
+        result = claim_validation.apply_certificate_decision(payload, [], [stale])
         self.assertEqual(result["claim"]["status"], "candidate")
         self.assertEqual(result["assessment"]["stale_certificate_count"], 1)
 
@@ -433,9 +417,7 @@ class CertificatePromotionTest(unittest.TestCase):
         self.assertEqual(missing["claim"]["status"], "candidate")
         self.assertEqual(missing["assessment"]["decision"], "provisional")
 
-        self_certificate = self.semantic_certificate(
-            payload, model_id="solver", provider="same"
-        )
+        self_certificate = self.semantic_certificate(payload, model_id="solver", provider="same")
         rejected = claim_validation.apply_certificate_decision(
             payload,
             [],
@@ -449,17 +431,13 @@ class CertificatePromotionTest(unittest.TestCase):
         payload = self.arithmetic_claim()
         payload["check_spec"]["relations"][0]["right"] = "3"
         conflict = claim_validation.verify_arithmetic_claim(payload, [])
-        result = claim_validation.apply_certificate_decision(
-            payload, [], [conflict]
-        )
+        result = claim_validation.apply_certificate_decision(payload, [], [conflict])
         self.assertEqual(result["claim"]["status"], "disputed")
 
     def test_high_risk_requires_distinct_independent_confirmation(self):
         payload = self.arithmetic_claim()
         deterministic = claim_validation.verify_arithmetic_claim(payload, [])
-        insufficient = self.semantic_certificate(
-            payload, verdict="insufficient"
-        )
+        insufficient = self.semantic_certificate(payload, verdict="insufficient")
         provisional = claim_validation.apply_certificate_decision(
             payload,
             [],
@@ -483,16 +461,10 @@ class CertificatePromotionTest(unittest.TestCase):
         upstream["source"]["task_id"] = "build-C0"
         downstream = self.arithmetic_claim()
         downstream["depends_on"] = ["C0"]
-        certificate = claim_validation.verify_arithmetic_claim(
-            downstream, [upstream]
-        )
-        result = claim_validation.apply_certificate_decision(
-            downstream, [upstream], [certificate]
-        )
+        certificate = claim_validation.verify_arithmetic_claim(downstream, [upstream])
+        result = claim_validation.apply_certificate_decision(downstream, [upstream], [certificate])
         self.assertEqual(result["claim"]["status"], "candidate")
-        self.assertEqual(
-            result["assessment"]["unverified_dependency_ids"], ["C0"]
-        )
+        self.assertEqual(result["assessment"]["unverified_dependency_ids"], ["C0"])
 
 
 class GraphEvidenceGateTest(unittest.TestCase):
@@ -506,11 +478,13 @@ class GraphEvidenceGateTest(unittest.TestCase):
             {
                 "type": "arithmetic",
                 "variables": {},
-                "relations": [{
-                    "left": "2 * 3",
-                    "operator": "==",
-                    "right": "6",
-                }],
+                "relations": [
+                    {
+                        "left": "2 * 3",
+                        "operator": "==",
+                        "right": "6",
+                    }
+                ],
             },
         )
         numerical["depends_on"] = ["C0"]
@@ -521,9 +495,7 @@ class GraphEvidenceGateTest(unittest.TestCase):
         final["obligation_ids"] = ["V1"]
         final["source"]["task_id"] = "build-C2"
 
-        premise_fp = claim_ledger.claim_verification_input_fingerprint(
-            premise, []
-        )
+        premise_fp = claim_ledger.claim_verification_input_fingerprint(premise, [])
         source_certificate = {
             "claim_id": "C0",
             "claim_version": 1,
@@ -539,12 +511,8 @@ class GraphEvidenceGateTest(unittest.TestCase):
                 "context_isolated": True,
             },
         }
-        arithmetic_certificate = claim_validation.verify_arithmetic_claim(
-            numerical, [premise]
-        )
-        final_fp = claim_ledger.claim_verification_input_fingerprint(
-            final, [numerical]
-        )
+        arithmetic_certificate = claim_validation.verify_arithmetic_claim(numerical, [premise])
+        final_fp = claim_ledger.claim_verification_input_fingerprint(final, [numerical])
         final_certificate = {
             "claim_id": "C2",
             "claim_version": 1,

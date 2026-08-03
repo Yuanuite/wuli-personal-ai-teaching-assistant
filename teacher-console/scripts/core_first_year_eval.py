@@ -17,7 +17,6 @@ from datetime import datetime
 from pathlib import Path
 from urllib.request import urlopen
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 SKILL_SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
@@ -28,7 +27,6 @@ import core_analysis  # noqa: E402
 import openai_compatible_agent_adapter as api_adapter  # noqa: E402
 import source_review  # noqa: E402
 from visual_extraction import extract_visual_facts  # noqa: E402
-
 
 QUESTIONS = (
     (1, "20260730-question-01-p1-01627971"),
@@ -74,7 +72,9 @@ def load_model(registry: dict, model_id: str) -> dict:
 def source_preflight(entry: Path) -> dict:
     record = read_json(entry / "record.json")
     stored = [str(item) for item in record.get("source", {}).get("stored_files", [])]
-    image_paths = [entry / item for item in stored if (entry / item).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}]
+    image_paths = [
+        entry / item for item in stored if (entry / item).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}
+    ]
     missing = [str(path.relative_to(entry)) for path in image_paths if not path.is_file()]
     return {
         "stored_count": len(stored),
@@ -159,15 +159,13 @@ def flash_solve(
     try:
         normalized = core_analysis.normalize_payload(candidate, brief)
     except ValueError as exc:
-        actual_ids = [
-            str(item.get("id", ""))
-            for item in candidate.get("targets", [])
-            if isinstance(item, dict)
-        ] if isinstance(candidate, dict) else []
+        actual_ids = (
+            [str(item.get("id", "")) for item in candidate.get("targets", []) if isinstance(item, dict)]
+            if isinstance(candidate, dict)
+            else []
+        )
         expected_ids = [item["id"] for item in brief["targets"]]
-        raise ValueError(
-            f"{exc}; expected_target_ids={expected_ids}; actual_target_ids={actual_ids}"
-        ) from exc
+        raise ValueError(f"{exc}; expected_target_ids={expected_ids}; actual_target_ids={actual_ids}") from exc
     return normalized, response, elapsed
 
 
@@ -212,9 +210,7 @@ def run_question(
                 )
         problem = (entry / "problem.md").read_text(encoding="utf-8")
         phase = "flash"
-        candidate, response, flash_seconds = flash_solve(
-            problem, visual, flash, thinking=thinking
-        )
+        candidate, response, flash_seconds = flash_solve(problem, visual, flash, thinking=thinking)
         private = {
             "schema_version": 1,
             "question": number,
@@ -234,9 +230,7 @@ def run_question(
             "status": "completed",
             "source": preflight,
             "visual_gate": visual["gate_result"]["status"],
-            "visual_fallback": (
-                "prior-human-source-review" if visual_fallback else None
-            ),
+            "visual_fallback": ("prior-human-source-review" if visual_fallback else None),
             "visual_uncertainty_count": len(visual["visual_facts"]["uncertainties"]),
             "visual_seconds": visual_seconds,
             "flash_seconds": flash_seconds,
@@ -312,7 +306,25 @@ def main() -> int:
         for future in as_completed(futures):
             row = future.result()
             rows.append(row)
-            print(json.dumps({k: row.get(k) for k in ("question", "status", "failed_phase", "failure_type", "message", "visual_seconds", "flash_seconds", "pipeline_seconds")}, ensure_ascii=False), flush=True)
+            print(
+                json.dumps(
+                    {
+                        k: row.get(k)
+                        for k in (
+                            "question",
+                            "status",
+                            "failed_phase",
+                            "failure_type",
+                            "message",
+                            "visual_seconds",
+                            "flash_seconds",
+                            "pipeline_seconds",
+                        )
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
     rows.sort(key=lambda item: item["question"])
     freeze = {
         "schema_version": 1,
@@ -336,8 +348,12 @@ def main() -> int:
             "source_redownload_needed_count": sum(row["source"]["download_needed"] for row in rows),
             "mimo_visual_gate_pass_count": sum(row.get("visual_gate") == "passed" for row in rows),
             "structural_success_count": sum(row["status"] == "completed" for row in rows),
-            "flash_90s_pass_count": sum(row.get("status") == "completed" and row.get("flash_seconds", 9999) <= 90 for row in rows),
-            "combined_90s_pass_count": sum(row.get("status") == "completed" and row.get("pipeline_seconds", 9999) <= 90 for row in rows),
+            "flash_90s_pass_count": sum(
+                row.get("status") == "completed" and row.get("flash_seconds", 9999) <= 90 for row in rows
+            ),
+            "combined_90s_pass_count": sum(
+                row.get("status") == "completed" and row.get("pipeline_seconds", 9999) <= 90 for row in rows
+            ),
             "gold_opened": False,
             "questions": rows,
         }
@@ -347,6 +363,7 @@ def main() -> int:
         )
         print(json.dumps(structural, ensure_ascii=False))
         return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

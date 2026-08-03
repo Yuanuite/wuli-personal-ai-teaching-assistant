@@ -120,11 +120,7 @@ def _strings(
         raise ValueError(f"{field} has too many items")
     result = []
     for index, raw in enumerate(value):
-        item = (
-            _identifier(raw, f"{field}[{index}]")
-            if identifiers
-            else _text(raw, f"{field}[{index}]", maximum_text)
-        )
+        item = _identifier(raw, f"{field}[{index}]") if identifiers else _text(raw, f"{field}[{index}]", maximum_text)
         if item in result:
             raise ValueError(f"{field} must not contain duplicates")
         result.append(item)
@@ -140,12 +136,8 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
         raise ValueError(f"brief.schema must be {BRIEF_SCHEMA}")
     result: dict[str, Any] = {
         "schema": BRIEF_SCHEMA,
-        "problem_fingerprint": _fingerprint(
-            raw["problem_fingerprint"], "brief.problem_fingerprint"
-        ),
-        "proof_package_fingerprint": _fingerprint(
-            raw["proof_package_fingerprint"], "brief.proof_package_fingerprint"
-        ),
+        "problem_fingerprint": _fingerprint(raw["problem_fingerprint"], "brief.problem_fingerprint"),
+        "proof_package_fingerprint": _fingerprint(raw["proof_package_fingerprint"], "brief.proof_package_fingerprint"),
     }
 
     targets = []
@@ -179,9 +171,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
         )
         target_id = _identifier(item["target_id"], "final_answer.target_id")
         text = _text(item["text"], "final_answer.text", 2_000)
-        signature = _text(
-            item["answer_signature"], "final_answer.answer_signature", 2_000
-        )
+        signature = _text(item["answer_signature"], "final_answer.answer_signature", 2_000)
         if signature != answer_signature(text):
             raise ValueError("final_answer.answer_signature does not match text")
         if not isinstance(item["complete"], bool):
@@ -249,19 +239,11 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
             raise ValueError(f"teaching_role is invalid: {role!r}")
         steps.append({
             "step_id": _identifier(item["step_id"], "step.step_id"),
-            "target_ids": _strings(
-                item["target_ids"], "step.target_ids", identifiers=True, allow_empty=False
-            ),
-            "claim_ids": _strings(
-                item["claim_ids"], "step.claim_ids", identifiers=True, allow_empty=False
-            ),
-            "depends_on": _strings(
-                item["depends_on"], "step.depends_on", identifiers=True
-            ),
+            "target_ids": _strings(item["target_ids"], "step.target_ids", identifiers=True, allow_empty=False),
+            "claim_ids": _strings(item["claim_ids"], "step.claim_ids", identifiers=True, allow_empty=False),
+            "depends_on": _strings(item["depends_on"], "step.depends_on", identifiers=True),
             "statement": _text(item["statement"], "step.statement", 2_000),
-            "formula_latex": _text(
-                item["formula_latex"], "step.formula_latex", 2_000, empty=True
-            ),
+            "formula_latex": _text(item["formula_latex"], "step.formula_latex", 2_000, empty=True),
             "conditions": _strings(item["conditions"], "step.conditions"),
             "teaching_role": role,
         })
@@ -283,9 +265,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
         if not isinstance(item["resolved"], bool):
             raise ValueError("obligation.resolved must be boolean")
         obligations.append({
-            "obligation_id": _identifier(
-                item["obligation_id"], "obligation.obligation_id"
-            ),
+            "obligation_id": _identifier(item["obligation_id"], "obligation.obligation_id"),
             "target_id": _identifier(item["target_id"], "obligation.target_id"),
             "check": _text(item["check"], "obligation.check", 1_000),
             "render_as": render_as,
@@ -302,9 +282,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
         )
         cues.append({
             "cue_id": _identifier(item["cue_id"], "cue.cue_id"),
-            "step_ids": _strings(
-                item["step_ids"], "cue.step_ids", identifiers=True, allow_empty=False
-            ),
+            "step_ids": _strings(item["step_ids"], "cue.step_ids", identifiers=True, allow_empty=False),
             "instruction": _text(item["instruction"], "cue.instruction", 1_000),
         })
     result["teaching_cues"] = cues
@@ -315,9 +293,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
         {"level", "max_main_steps", "forbidden_methods"},
     )
     if scope["level"] not in {"high_school", "olympiad_official"}:
-        raise ValueError(
-            "method_scope.level must be high_school or olympiad_official"
-        )
+        raise ValueError("method_scope.level must be high_school or olympiad_official")
     max_steps = scope["max_main_steps"]
     if isinstance(max_steps, bool) or not isinstance(max_steps, int) or not 1 <= max_steps <= 5:
         raise ValueError("method_scope.max_main_steps must be between 1 and 5")
@@ -342,18 +318,11 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
     for answer in answers:
         if not set(answer["claim_ids"]).issubset(claim_set):
             raise ValueError("final_answer references an unknown Claim")
-        supporting_claims = [
-            item for item in claims if item["claim_id"] in answer["claim_ids"]
-        ]
-        if not any(
-            answer_signature(item["statement"]) == answer["answer_signature"]
-            for item in supporting_claims
-        ):
+        supporting_claims = [item for item in claims if item["claim_id"] in answer["claim_ids"]]
+        if not any(answer_signature(item["statement"]) == answer["answer_signature"] for item in supporting_claims):
             raise ValueError("final_answer signature is not sourced by its Claims")
         if (
-            next(item for item in targets if item["target_id"] == answer["target_id"])[
-                "response_mode"
-            ]
+            next(item for item in targets if item["target_id"] == answer["target_id"])["response_mode"]
             == "enumerate_all"
             and not answer["complete"]
         ):
@@ -365,12 +334,14 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
             raise ValueError("proof step references an unknown Claim")
         if not set(step["depends_on"]).issubset(step_set):
             raise ValueError("proof step has a dangling dependency")
-        expected_conditions = list(dict.fromkeys(
-            condition
-            for claim in claims
-            if claim["claim_id"] in step["claim_ids"]
-            for condition in claim["conditions"]
-        ))
+        expected_conditions = list(
+            dict.fromkeys(
+                condition
+                for claim in claims
+                if claim["claim_id"] in step["claim_ids"]
+                for condition in claim["conditions"]
+            )
+        )
         if step["conditions"] != expected_conditions:
             raise ValueError("proof step conditions do not match its Claims")
     for item in obligations:
@@ -422,26 +393,17 @@ def preflight_w3r_brief(
     violations = []
     if (
         expected_proof_package_fingerprint is not None
-        and brief["proof_package_fingerprint"]
-        != expected_proof_package_fingerprint
+        and brief["proof_package_fingerprint"] != expected_proof_package_fingerprint
     ):
         violations.append({
             "code": "proof-package-fingerprint-mismatch",
             "message": "Brief does not bind the expected frozen Proof Package.",
         })
-    step_targets = {
-        target_id
-        for step in brief["proof_skeleton"]
-        for target_id in step["target_ids"]
-    }
+    step_targets = {target_id for step in brief["proof_skeleton"] for target_id in step["target_ids"]}
     for target in brief["question_targets"]:
         target_id = target["target_id"]
-        target_steps = [
-            item for item in brief["proof_skeleton"] if target_id in item["target_ids"]
-        ]
-        if target_id not in step_targets or not any(
-            item["teaching_role"] == "conclusion" for item in target_steps
-        ):
+        target_steps = [item for item in brief["proof_skeleton"] if target_id in item["target_ids"]]
+        if target_id not in step_targets or not any(item["teaching_role"] == "conclusion" for item in target_steps):
             violations.append({
                 "code": "target-proof-incomplete",
                 "target_id": target_id,
@@ -499,15 +461,9 @@ def normalize_render_result(payload: Any) -> dict[str, Any]:
         spans.append({
             "document": document,
             "section_id": _identifier(item["section_id"], "span.section_id"),
-            "claim_ids": _strings(
-                item["claim_ids"], "span.claim_ids", identifiers=True, allow_empty=False
-            ),
-            "step_ids": _strings(
-                item["step_ids"], "span.step_ids", identifiers=True, allow_empty=False
-            ),
-            "text_fingerprint": _fingerprint(
-                item["text_fingerprint"], "span.text_fingerprint"
-            ),
+            "claim_ids": _strings(item["claim_ids"], "span.claim_ids", identifiers=True, allow_empty=False),
+            "step_ids": _strings(item["step_ids"], "span.step_ids", identifiers=True, allow_empty=False),
+            "text_fingerprint": _fingerprint(item["text_fingerprint"], "span.text_fingerprint"),
         })
     gate = _object(
         raw["render_gate_report"],
@@ -517,24 +473,16 @@ def normalize_render_result(payload: Any) -> dict[str, Any]:
     gate_status = _text(gate["status"], "render_gate_report.status", 16)
     if gate_status not in GATE_STATUSES:
         raise ValueError("render_gate_report.status is invalid")
-    if not isinstance(gate["violations"], list) or not all(
-        isinstance(item, dict) for item in gate["violations"]
-    ):
+    if not isinstance(gate["violations"], list) or not all(isinstance(item, dict) for item in gate["violations"]):
         raise ValueError("render_gate_report.violations must be an object array")
     if not isinstance(gate["metrics"], dict):
         raise ValueError("render_gate_report.metrics must be an object")
     return {
         "schema": RENDER_RESULT_SCHEMA,
         "status": status,
-        "brief_fingerprint": _fingerprint(
-            raw["brief_fingerprint"], "render_result.brief_fingerprint"
-        ),
-        "student_solution_md": _text(
-            raw["student_solution_md"], "student_solution_md", 100_000, empty=True
-        ),
-        "teacher_solution_md": _text(
-            raw["teacher_solution_md"], "teacher_solution_md", 120_000, empty=True
-        ),
+        "brief_fingerprint": _fingerprint(raw["brief_fingerprint"], "render_result.brief_fingerprint"),
+        "student_solution_md": _text(raw["student_solution_md"], "student_solution_md", 100_000, empty=True),
+        "teacher_solution_md": _text(raw["teacher_solution_md"], "teacher_solution_md", 120_000, empty=True),
         "claim_span_map": spans,
         "render_gate_report": {
             "status": gate_status,
@@ -569,18 +517,16 @@ def build_w3r_brief(
             "status": "needs_render_material",
             "violations": [{"code": "proof-package-missing"}],
         }
-    aggregation_status = str(
-        proof_package.get("aggregation_status")
-        or proof_package.get("status")
-        or ""
-    ).upper()
+    aggregation_status = str(proof_package.get("aggregation_status") or proof_package.get("status") or "").upper()
     if aggregation_status != "VERIFIED":
         return {
             "status": "needs_render_material",
-            "violations": [{
-                "code": "proof-package-not-verified",
-                "message": f"Proof Package status is {aggregation_status or 'missing'}.",
-            }],
+            "violations": [
+                {
+                    "code": "proof-package-not-verified",
+                    "message": f"Proof Package status is {aggregation_status or 'missing'}.",
+                }
+            ],
         }
     if not isinstance(blueprint, dict):
         return {
@@ -589,20 +535,20 @@ def build_w3r_brief(
         }
 
     raw_claims = [
-        item for item in proof_package.get("claims", [])
+        item
+        for item in proof_package.get("claims", [])
         if isinstance(item, dict) and str(item.get("status", "")).lower() == "verified"
     ]
     certificates = [
-        item for item in proof_package.get("certificates", [])
+        item
+        for item in proof_package.get("certificates", [])
         if isinstance(item, dict) and str(item.get("verdict", "")).lower() == "pass"
     ]
     certs_by_claim: dict[str, list[str]] = {}
     for index, certificate in enumerate(certificates, 1):
         claim_id = str(certificate.get("claim_id", "")).strip()
         if claim_id:
-            certs_by_claim.setdefault(claim_id, []).append(
-                f"vc-{index}-{claim_id}"
-            )
+            certs_by_claim.setdefault(claim_id, []).append(f"vc-{index}-{claim_id}")
     verified_claims = []
     for claim in raw_claims:
         claim_id = str(claim.get("id") or claim.get("claim_id") or "").strip()
@@ -611,27 +557,21 @@ def build_w3r_brief(
         verified_claims.append({
             "claim_id": claim_id,
             "statement": str(claim.get("statement", "")).strip(),
-            "conditions": [
-                str(item).strip()
-                for item in claim.get("conditions", [])
-                if str(item).strip()
-            ],
+            "conditions": [str(item).strip() for item in claim.get("conditions", []) if str(item).strip()],
             "status": "verified",
             "certificate_ids": certs_by_claim[claim_id],
         })
     verified_ids = {item["claim_id"] for item in verified_claims}
 
-    raw_targets = [
-        item for item in blueprint.get("question_targets", [])
-        if isinstance(item, dict)
+    raw_targets = [item for item in blueprint.get("question_targets", []) if isinstance(item, dict)]
+    question_targets = [
+        {
+            "target_id": str(item.get("id", "")).strip(),
+            "prompt": str(item.get("prompt", "")).strip(),
+            "response_mode": infer_response_mode(str(item.get("prompt", "")), str(item.get("answer_type", ""))),
+        }
+        for item in raw_targets
     ]
-    question_targets = [{
-        "target_id": str(item.get("id", "")).strip(),
-        "prompt": str(item.get("prompt", "")).strip(),
-        "response_mode": infer_response_mode(
-            str(item.get("prompt", "")), str(item.get("answer_type", ""))
-        ),
-    } for item in raw_targets]
     final_answers = []
     final_by_target: dict[str, dict[str, Any]] = {}
     for item in proof_package.get("final_answers", []):
@@ -653,13 +593,10 @@ def build_w3r_brief(
             "text": text,
             "answer_signature": answer_signature(text),
             "claim_ids": [str(item["claim_id"])],
-            "complete": target["response_mode"] != "enumerate_all"
-            or bool(item.get("complete", False)),
+            "complete": target["response_mode"] != "enumerate_all" or bool(item.get("complete", False)),
         })
 
-    claim_by_id = {
-        str(item.get("id") or item.get("claim_id")): item for item in raw_claims
-    }
+    claim_by_id = {str(item.get("id") or item.get("claim_id")): item for item in raw_claims}
     final_claim_ids = {
         str(item.get("claim_id", ""))
         for item in final_by_target.values()
@@ -684,13 +621,7 @@ def build_w3r_brief(
         ready = sorted(
             claim_id
             for claim_id in pending
-            if not (
-                {
-                    str(item)
-                    for item in claim_by_id[claim_id].get("depends_on", [])
-                }
-                & pending
-            )
+            if not ({str(item) for item in claim_by_id[claim_id].get("depends_on", [])} & pending)
         )
         if not ready:
             return {
@@ -699,25 +630,14 @@ def build_w3r_brief(
             }
         ordered_ids.extend(ready)
         pending.difference_update(ready)
-    verified_by_id = {
-        item["claim_id"]: item for item in verified_claims
-    }
-    renderable_ids = [
-        claim_id
-        for claim_id in ordered_ids
-        if str(claim_by_id[claim_id].get("kind", "")) != "premise"
-    ]
+    verified_by_id = {item["claim_id"]: item for item in verified_claims}
+    renderable_ids = [claim_id for claim_id in ordered_ids if str(claim_by_id[claim_id].get("kind", "")) != "premise"]
     method_scope = teaching_method_policy.scope(method_profile)
     max_steps = method_scope["max_main_steps"]
     group_size = max(1, (len(renderable_ids) + max_steps - 1) // max_steps)
-    claim_groups = [
-        renderable_ids[index:index + group_size]
-        for index in range(0, len(renderable_ids), group_size)
-    ]
+    claim_groups = [renderable_ids[index : index + group_size] for index in range(0, len(renderable_ids), group_size)]
     step_by_claim_id = {
-        claim_id: f"s{group_index}"
-        for group_index, group in enumerate(claim_groups, 1)
-        for claim_id in group
+        claim_id: f"s{group_index}" for group_index, group in enumerate(claim_groups, 1) for claim_id in group
     }
     target_set = {target["target_id"] for target in question_targets}
     proof_skeleton = []
@@ -725,58 +645,55 @@ def build_w3r_brief(
         group_set = set(group)
         sources = [claim_by_id[claim_id] for claim_id in group]
         items = [verified_by_id[claim_id] for claim_id in group]
-        target_ids = list(dict.fromkeys(
-            str(target_id)
-            for source in sources
-            for target_id in source.get("target_ids", [])
-            if str(target_id) in target_set
-        ))
+        target_ids = list(
+            dict.fromkeys(
+                str(target_id)
+                for source in sources
+                for target_id in source.get("target_ids", [])
+                if str(target_id) in target_set
+            )
+        )
         if not target_ids:
             continue
         dependencies = sorted({
             step_by_claim_id[str(dependency_id)]
             for source in sources
             for dependency_id in source.get("depends_on", [])
-            if str(dependency_id) in step_by_claim_id
-            and str(dependency_id) not in group_set
+            if str(dependency_id) in step_by_claim_id and str(dependency_id) not in group_set
         })
-        statements = list(dict.fromkeys(
-            str(item["statement"]).strip() for item in items
-        ))
+        statements = list(dict.fromkeys(str(item["statement"]).strip() for item in items))
         statement = "；".join(statements)
         if len(statement) > 2_000:
             return {
                 "status": "needs_render_material",
-                "violations": [{
-                    "code": "proof-step-text-too-long",
-                    "message": (
-                        "Verified atomic Claims cannot be grouped within the "
-                        "non-solving five-step rendering budget."
-                    ),
-                }],
+                "violations": [
+                    {
+                        "code": "proof-step-text-too-long",
+                        "message": (
+                            "Verified atomic Claims cannot be grouped within the "
+                            "non-solving five-step rendering budget."
+                        ),
+                    }
+                ],
             }
-        conditions = list(dict.fromkeys(
-            condition
-            for item in verified_claims
-            if item["claim_id"] in group_set
-            for condition in item["conditions"]
-        ))
+        conditions = list(
+            dict.fromkeys(
+                condition
+                for item in verified_claims
+                if item["claim_id"] in group_set
+                for condition in item["conditions"]
+            )
+        )
         proof_skeleton.append({
             "step_id": f"s{group_index}",
             "target_ids": target_ids,
             "claim_ids": group,
             "depends_on": dependencies,
             "statement": statement,
-            "formula_latex": (
-                str(sources[0].get("formula_latex", "")).strip()
-                if len(sources) == 1
-                else ""
-            ),
+            "formula_latex": (str(sources[0].get("formula_latex", "")).strip() if len(sources) == 1 else ""),
             "conditions": conditions,
             "teaching_role": (
-                "conclusion"
-                if any(str(source.get("kind", "")) == "final" for source in sources)
-                else "derivation"
+                "conclusion" if any(str(source.get("kind", "")) == "final" for source in sources) else "derivation"
             ),
         })
 
@@ -785,15 +702,17 @@ def build_w3r_brief(
         for item in proof_package.get("unresolved_obligations", [])
         if isinstance(item, dict)
     }
-    verification_obligations = [{
-        "obligation_id": str(item.get("id", "")).strip(),
-        "target_id": str(item.get("target_id", "")).strip(),
-        "check": str(item.get("check", "")).strip(),
-        "render_as": (
-            "condition" if str(item.get("risk", "")) == "critical" else "self_check"
-        ),
-        "resolved": str(item.get("id", "")).strip() not in unresolved_ids,
-    } for item in blueprint.get("verification_obligations", []) if isinstance(item, dict)]
+    verification_obligations = [
+        {
+            "obligation_id": str(item.get("id", "")).strip(),
+            "target_id": str(item.get("target_id", "")).strip(),
+            "check": str(item.get("check", "")).strip(),
+            "render_as": ("condition" if str(item.get("risk", "")) == "critical" else "self_check"),
+            "resolved": str(item.get("id", "")).strip() not in unresolved_ids,
+        }
+        for item in blueprint.get("verification_obligations", [])
+        if isinstance(item, dict)
+    ]
 
     package_fingerprint = stable_fingerprint(proof_package)
     brief = {
@@ -812,14 +731,10 @@ def build_w3r_brief(
             "forbidden_methods": method_scope["forbidden_methods"],
         },
         "allowed_symbols": [
-            str(item).strip()
-            for item in proof_package.get("allowed_symbols", [])
-            if str(item).strip()
+            str(item).strip() for item in proof_package.get("allowed_symbols", []) if str(item).strip()
         ],
     }
-    preflight = preflight_w3r_brief(
-        brief, expected_proof_package_fingerprint=package_fingerprint
-    )
+    preflight = preflight_w3r_brief(brief, expected_proof_package_fingerprint=package_fingerprint)
     if preflight["status"] != "pass":
         return preflight
     return {

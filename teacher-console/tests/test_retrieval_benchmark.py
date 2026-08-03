@@ -185,10 +185,12 @@ class RetrievalBenchmarkTest(unittest.TestCase):
         ]
         rejected = {
             "status": "ok",
-            "results": [{
-                "entry_id": self.entry.name,
-                "evidence_audit": {"decision": "rejected-low-precision"},
-            }],
+            "results": [
+                {
+                    "entry_id": self.entry.name,
+                    "evidence_audit": {"decision": "rejected-low-precision"},
+                }
+            ],
         }
 
         with mock.patch.object(benchmark.knowledge_store, "query", return_value=rejected):

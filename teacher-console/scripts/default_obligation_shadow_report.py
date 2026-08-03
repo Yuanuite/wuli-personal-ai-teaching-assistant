@@ -22,7 +22,6 @@ sys.path.insert(0, str(CONSOLE))
 
 import problem_decomposition  # noqa: E402
 
-
 DEFAULT_LIBRARY = PROJECT_ROOT / "student-error-library"
 DEFAULT_OUTPUT_JSON = PROJECT_ROOT / "docs" / "reports" / "default-obligation-shadow-report.json"
 DEFAULT_OUTPUT_MD = PROJECT_ROOT / "docs" / "reports" / "default-obligation-shadow-report.md"
@@ -104,9 +103,7 @@ def suggestions_for_report(
     suggestions = [item for item in stored if isinstance(item, dict)]
     if recompute and isinstance(blueprint, dict):
         problem = entry_problem_text(entry) if entry.is_dir() else ""
-        suggestions = problem_decomposition.infer_default_obligation_suggestions(
-            problem, blueprint
-        )
+        suggestions = problem_decomposition.infer_default_obligation_suggestions(problem, blueprint)
         source = "recomputed-from-blueprint"
     return {
         "entry_id": entry_id,
@@ -129,19 +126,9 @@ def ipho_coverage() -> dict[str, Any]:
             "reason": "IPhO closed-book summary not found",
         }
     questions = summary.get("questions", [])
-    subpart_count = sum(
-        len(item.get("subparts", [])) for item in questions if isinstance(item, dict)
-    )
-    awarded = sum(
-        float(item.get("awarded_points", 0.0))
-        for item in questions
-        if isinstance(item, dict)
-    )
-    maximum = sum(
-        float(item.get("maximum_points", 0.0))
-        for item in questions
-        if isinstance(item, dict)
-    )
+    subpart_count = sum(len(item.get("subparts", [])) for item in questions if isinstance(item, dict))
+    awarded = sum(float(item.get("awarded_points", 0.0)) for item in questions if isinstance(item, dict))
+    maximum = sum(float(item.get("maximum_points", 0.0)) for item in questions if isinstance(item, dict))
     return {
         "status": "not-covered-by-w3-blueprint-recompute",
         "path": display_path(IPHO_SUMMARY),
@@ -164,10 +151,7 @@ def summarize(
     recompute: bool = True,
     include_ipho: bool = True,
 ) -> dict[str, Any]:
-    cases = [
-        suggestions_for_report(path, recompute=recompute, library=library)
-        for path in report_paths(library)
-    ]
+    cases = [suggestions_for_report(path, recompute=recompute, library=library) for path in report_paths(library)]
     triggered = [case for case in cases if int(case["suggestion_count"]) > 0]
     rules = Counter(
         str(item.get("rule_id", "unknown"))
@@ -258,9 +242,7 @@ def markdown(report: dict[str, Any]) -> str:
         ])
         if ipho.get("score"):
             score = ipho["score"]
-            lines.append(
-                f"- 已有整卷成绩：{score.get('awarded_points')}/{score.get('maximum_points')}"
-            )
+            lines.append(f"- 已有整卷成绩：{score.get('awarded_points')}/{score.get('maximum_points')}")
         lines.extend(["", str(ipho.get("reason", "")).strip(), ""])
     lines.extend(["## 触发明细", ""])
     triggered = [case for case in report["cases"] if case["suggestion_count"]]

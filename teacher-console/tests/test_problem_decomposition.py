@@ -12,9 +12,7 @@ def valid_blueprint():
     return {
         "status": "completed",
         "message": "已完成双层拆解",
-        "question_targets": [
-            {"id": "Q1", "prompt": "求首次相遇时间", "answer_type": "time"}
-        ],
+        "question_targets": [{"id": "Q1", "prompt": "求首次相遇时间", "answer_type": "time"}],
         "physical_stages": [
             {
                 "id": "P1",
@@ -31,9 +29,7 @@ def valid_blueprint():
                 "state_carried": ["横坐标", "速度方向"],
             },
         ],
-        "stage_transitions": [
-            {"from_stage": "P1", "to_stage": "P2", "event": "粒子穿过 x 轴"}
-        ],
+        "stage_transitions": [{"from_stage": "P1", "to_stage": "P2", "event": "粒子穿过 x 轴"}],
         "reasoning_steps": [
             {
                 "id": "S1",
@@ -42,9 +38,7 @@ def valid_blueprint():
                 "depends_on": [],
                 "target_ids": ["Q1"],
                 "decisive_relations": ["t=φm/(qB)"],
-                "knowledge_units": [
-                    {"id": "circular_motion", "relation_indexes": [0]}
-                ],
+                "knowledge_units": [{"id": "circular_motion", "relation_indexes": [0]}],
             },
             {
                 "id": "S2",
@@ -53,9 +47,7 @@ def valid_blueprint():
                 "depends_on": ["S1"],
                 "target_ids": ["Q1"],
                 "decisive_relations": ["不存在更早的公共位置事件"],
-                "knowledge_units": [
-                    {"id": "geometry_constraint", "relation_indexes": [0]}
-                ],
+                "knowledge_units": [{"id": "geometry_constraint", "relation_indexes": [0]}],
             },
         ],
         "stage_step_links": [
@@ -113,16 +105,10 @@ class ProblemDecompositionTest(unittest.TestCase):
 
     def test_default_obligation_suggests_all_solutions_when_not_limited(self):
         blueprint = {
-            "question_targets": [
-                {"id": "Q1", "prompt": "求粒子进入区域的时刻", "answer_type": "time"}
-            ],
-            "verification_obligations": [
-                {"id": "V1", "target_id": "Q1", "check": "复算进入时刻", "risk": "medium"}
-            ],
+            "question_targets": [{"id": "Q1", "prompt": "求粒子进入区域的时刻", "answer_type": "time"}],
+            "verification_obligations": [{"id": "V1", "target_id": "Q1", "check": "复算进入时刻", "risk": "medium"}],
         }
-        suggestions = problem_decomposition.infer_default_obligation_suggestions(
-            "粒子可多次穿过区域边界。", blueprint
-        )
+        suggestions = problem_decomposition.infer_default_obligation_suggestions("粒子可多次穿过区域边界。", blueprint)
         self.assertEqual(len(suggestions), 1)
         self.assertEqual(suggestions[0]["source"], "default-convention")
         self.assertEqual(suggestions[0]["rule_id"], "default.solve.all-physical-solutions.v1")
@@ -167,9 +153,7 @@ class ProblemDecompositionTest(unittest.TestCase):
 
     def test_shadow_annotations_are_stripped_before_solving(self):
         payload = valid_blueprint()
-        solve_blueprint, annotations = (
-            problem_decomposition.split_assessment_payload(payload)
-        )
+        solve_blueprint, annotations = problem_decomposition.split_assessment_payload(payload)
         self.assertNotIn("type_distance", solve_blueprint)
         self.assertNotIn(
             "cognitive_operation",
@@ -191,9 +175,7 @@ class ProblemDecompositionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "acyclic"):
             problem_decomposition.normalize_payload(payload)
         payload = valid_blueprint()
-        payload["question_targets"].append(
-            {"id": "Q2", "prompt": "求位置", "answer_type": "position"}
-        )
+        payload["question_targets"].append({"id": "Q2", "prompt": "求位置", "answer_type": "position"})
         with self.assertRaisesRegex(ValueError, "covered"):
             problem_decomposition.normalize_payload(payload)
 

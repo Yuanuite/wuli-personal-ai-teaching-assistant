@@ -907,8 +907,7 @@ def build_steps(
                 (
                     item.get("request_preflight")
                     for item in attempts
-                    if isinstance(item, dict)
-                    and isinstance(item.get("request_preflight"), dict)
+                    if isinstance(item, dict) and isinstance(item.get("request_preflight"), dict)
                 ),
                 None,
             )
@@ -916,16 +915,8 @@ def build_steps(
         target_count = len(target_brief.get("targets", [])) if isinstance(target_brief, dict) else 0
         evidence_context = result.get("evidence_context")
         evidence_budget = evidence_context.get("budget") if isinstance(evidence_context, dict) else None
-        complex_openai_request = (
-            str(job.get("provider") or result.get("provider") or "")
-            == "openai-compatible"
-            and (
-                target_count >= 5
-                or (
-                    isinstance(evidence_budget, dict)
-                    and evidence_budget.get("truncated") is True
-                )
-            )
+        complex_openai_request = str(job.get("provider") or result.get("provider") or "") == "openai-compatible" and (
+            target_count >= 5 or (isinstance(evidence_budget, dict) and evidence_budget.get("truncated") is True)
         )
         if complex_openai_request:
             preflight_passed = (

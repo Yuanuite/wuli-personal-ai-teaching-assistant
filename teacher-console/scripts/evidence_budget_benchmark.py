@@ -68,7 +68,11 @@ def validate_cases(cases: list[dict[str, Any]]) -> dict[str, Any]:
             errors.append(f"line {line}: invalid review_status {status or '<empty>'}")
         if status == "approved":
             approved += 1
-        if not isinstance(facts, list) or not facts or not all(isinstance(item, str) and item.strip() for item in facts):
+        if (
+            not isinstance(facts, list)
+            or not facts
+            or not all(isinstance(item, str) and item.strip() for item in facts)
+        ):
             errors.append(f"line {line}: required_facts must be a non-empty string list")
     return {
         "valid": not errors,
@@ -138,9 +142,7 @@ def run(
     eligible = [
         case
         for case in cases
-        if case.get("review_status") == "approved"
-        or include_draft
-        and case.get("review_status") == "draft"
+        if case.get("review_status") == "approved" or include_draft and case.get("review_status") == "draft"
     ]
     results = [
         evaluate_case(
@@ -154,8 +156,7 @@ def run(
     ]
     savings = [float(item["savings_ratio"]) for item in results]
     fact_retention = (
-        sum(item["candidate_fact_hits"] for item in results)
-        / sum(item["required_fact_count"] for item in results)
+        sum(item["candidate_fact_hits"] for item in results) / sum(item["required_fact_count"] for item in results)
         if results and sum(item["required_fact_count"] for item in results)
         else 0.0
     )
@@ -204,10 +205,7 @@ def print_markdown(report: dict[str, Any]) -> None:
         f"- cases: {report['case_count']}; median savings: {report['median_savings_ratio']:.1%}; "
         f"required fact retention: {report['required_fact_retention']:.1%}"
     )
-    print(
-        f"- preflight_passed: {str(report['preflight_passed']).lower()}; "
-        f"authorizes: {report['authorizes']}"
-    )
+    print(f"- preflight_passed: {str(report['preflight_passed']).lower()}; authorizes: {report['authorizes']}")
     print()
     print("| case | baseline chars | candidate chars | savings | fact retention | within budget |")
     print("|---|---:|---:|---:|---:|---|")

@@ -7,8 +7,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "teacher-console"))
 
-import cognitive_loop  # noqa: E402
 import claim_ledger  # noqa: E402
+import cognitive_loop  # noqa: E402
 
 
 def interface(stage_id, *, entry_x, exit_x):
@@ -60,19 +60,14 @@ class StageInterfaceTest(unittest.TestCase):
         stages[1]["coordinate_frame"] = "moving-frame"
         stages[1]["time_origin"] = "stage-entry"
         stages[1]["directions"]["x"] = "left"
-        report = cognitive_loop.check_stage_interfaces(
-            stages, [transition()]
-        )
+        report = cognitive_loop.check_stage_interfaces(stages, [transition()])
         self.assertEqual(report["status"], "conflict")
         codes = {item["code"] for item in report["issues"]}
         self.assertIn("coordinate-frame-mismatch", codes)
         self.assertIn("time-origin-mismatch", codes)
         self.assertIn("direction-mismatch", codes)
         self.assertIn("state-value-mismatch", codes)
-        state_issue = next(
-            item for item in report["issues"]
-            if item["code"] == "state-value-mismatch"
-        )
+        state_issue = next(item for item in report["issues"] if item["code"] == "state-value-mismatch")
         self.assertEqual(state_issue["from_stage"], "P1")
         self.assertEqual(state_issue["to_stage"], "P2")
         self.assertEqual(state_issue["state_key"], "x")
@@ -131,9 +126,7 @@ class StageInterfaceTest(unittest.TestCase):
         payload = interface("P1", entry_x="0", exit_x="L")
         payload["carried_state_keys"] = ["future_observable"]
         normalized = cognitive_loop.normalize_stage_interface(payload)
-        self.assertEqual(
-            normalized["carried_state_keys"], ["future_observable"]
-        )
+        self.assertEqual(normalized["carried_state_keys"], ["future_observable"])
 
     def test_physics_symbol_state_keys_normalize_consistently(self):
         payload = interface("P1", entry_x="0", exit_x="L")
@@ -141,9 +134,7 @@ class StageInterfaceTest(unittest.TestCase):
         payload["exit_state"]["ρ₀"] = "water density"
         payload["required_entry_keys"].append("ρ₀")
         normalized = cognitive_loop.normalize_stage_interface(payload)
-        normalized_key = next(
-            key for key in normalized["entry_state"] if key.startswith("u03c1")
-        )
+        normalized_key = next(key for key in normalized["entry_state"] if key.startswith("u03c1"))
         self.assertIn(normalized_key, normalized["required_entry_keys"])
 
 
@@ -181,9 +172,7 @@ class ChallengeTicketTest(unittest.TestCase):
 
         unknown = self.ticket()
         with self.assertRaisesRegex(ValueError, "unknown claims"):
-            cognitive_loop.normalize_challenge_ticket(
-                unknown, available_claim_ids={"C11"}
-            )
+            cognitive_loop.normalize_challenge_ticket(unknown, available_claim_ids={"C11"})
 
         bad_backjump = self.ticket()
         bad_backjump["suggested_backjump"] = "C99"
@@ -296,9 +285,7 @@ class ConflictDiagnosisTest(unittest.TestCase):
         ]
         for evidence, expected in cases:
             with self.subTest(expected=expected):
-                diagnosis = cognitive_loop.diagnose_minimal_conflict(
-                    self.challenge(), self.claims(), evidence
-                )
+                diagnosis = cognitive_loop.diagnose_minimal_conflict(self.challenge(), self.claims(), evidence)
                 self.assertEqual(diagnosis["conflict_class"], expected)
 
     def test_rejects_evidence_outside_challenge_binding(self):
@@ -321,9 +308,7 @@ class DependencyBackjumpTest(unittest.TestCase):
         ]
 
     def certificate(self, claim):
-        dependencies = [
-            item for item in self.claims() if item["id"] in claim["depends_on"]
-        ]
+        dependencies = [item for item in self.claims() if item["id"] in claim["depends_on"]]
         return {
             "claim_id": claim["id"],
             "claim_version": claim["version"],
@@ -332,11 +317,7 @@ class DependencyBackjumpTest(unittest.TestCase):
             "verdict": "pass",
             "normalized_result": "pass",
             "decisive_checks": ["isolated recomputation"],
-            "input_fingerprint": (
-                claim_ledger.claim_verification_input_fingerprint(
-                    claim, dependencies
-                )
-            ),
+            "input_fingerprint": (claim_ledger.claim_verification_input_fingerprint(claim, dependencies)),
             "verifier_identity": {
                 "model_id": f"verifier-{claim['id']}",
                 "provider": "test",
@@ -357,9 +338,7 @@ class DependencyBackjumpTest(unittest.TestCase):
         self.assertEqual(plan["affected_claim_ids"], ["C2", "C3"])
         self.assertEqual(plan["preserved_claim_ids"], ["C1", "C4", "C5"])
         self.assertEqual(plan["next_snapshot_version"], 5)
-        self.assertTrue(
-            all(item["status"] == "disputed" for item in plan["invalidated_claims"])
-        )
+        self.assertTrue(all(item["status"] == "disputed" for item in plan["invalidated_claims"]))
         self.assertEqual(
             {item["claim_id"] for item in plan["preserved_certificates"]},
             {"C1", "C4", "C5"},
@@ -424,16 +403,12 @@ class LoopControlTest(unittest.TestCase):
     def test_identical_task_fingerprint_allows_zero_repeat_calls(self):
         completed = atomic_task("old-task", "completed")
         duplicate = atomic_task("renamed-task", "pending")
-        decision = cognitive_loop.deduplicate_atomic_task(
-            duplicate, [completed]
-        )
+        decision = cognitive_loop.deduplicate_atomic_task(duplicate, [completed])
         self.assertEqual(decision["decision"], "reuse")
         self.assertFalse(decision["provider_call_allowed"])
 
         distinct = atomic_task("new-strategy", "pending", "counterexample")
-        decision = cognitive_loop.deduplicate_atomic_task(
-            distinct, [completed]
-        )
+        decision = cognitive_loop.deduplicate_atomic_task(distinct, [completed])
         self.assertEqual(decision["decision"], "execute")
         self.assertTrue(decision["provider_call_allowed"])
 
@@ -537,41 +512,31 @@ class HypothesisPoolTest(unittest.TestCase):
         }
 
     def test_all_controlled_association_operators_are_challenge_bound(self):
-        probes = cognitive_loop.operator_probes(
-            self.challenge(), self.claims()
-        )
+        probes = cognitive_loop.operator_probes(self.challenge(), self.claims())
         self.assertEqual(
             {item["operator"] for item in probes},
             set(cognitive_loop.HYPOTHESIS_OPERATORS),
         )
-        self.assertTrue(
-            all(item["challenge_id"] == "CH1" for item in probes)
-        )
+        self.assertTrue(all(item["challenge_id"] == "CH1" for item in probes))
         self.assertTrue(all(item["required_output"] for item in probes))
 
     def test_relevant_novel_falsifiable_hypothesis_enters_isolated_pool(self):
         claims = self.claims()
         original_claims = copy.deepcopy(claims)
-        result = cognitive_loop.add_hypothesis_to_pool(
-            self.hypothesis(), self.challenge(), claims, []
-        )
+        result = cognitive_loop.add_hypothesis_to_pool(self.hypothesis(), self.challenge(), claims, [])
         self.assertEqual(result["decision"], "accepted")
         self.assertEqual(result["pool"][0]["status"], "candidate")
         self.assertEqual(claims, original_claims)
 
     def test_duplicate_or_existing_claim_restatement_is_rejected(self):
         candidate = self.hypothesis()
-        duplicate = cognitive_loop.add_hypothesis_to_pool(
-            candidate, self.challenge(), self.claims(), [candidate]
-        )
+        duplicate = cognitive_loop.add_hypothesis_to_pool(candidate, self.challenge(), self.claims(), [candidate])
         self.assertEqual(duplicate["decision"], "rejected")
         self.assertIn("duplicates", " ".join(duplicate["reasons"]))
 
         restatement = self.hypothesis()
         restatement["proposal"] = "Claim C1 statement"
-        result = cognitive_loop.add_hypothesis_to_pool(
-            restatement, self.challenge(), self.claims(), []
-        )
+        result = cognitive_loop.add_hypothesis_to_pool(restatement, self.challenge(), self.claims(), [])
         self.assertEqual(result["decision"], "rejected")
         self.assertIn("repeats", " ".join(result["reasons"]))
 
@@ -579,15 +544,11 @@ class HypothesisPoolTest(unittest.TestCase):
         vague = self.hypothesis()
         vague["novelty_basis"] = "不确定"
         with self.assertRaisesRegex(ValueError, "specific and testable"):
-            cognitive_loop.add_hypothesis_to_pool(
-                vague, self.challenge(), self.claims(), []
-            )
+            cognitive_loop.add_hypothesis_to_pool(vague, self.challenge(), self.claims(), [])
         promoted = self.hypothesis()
         promoted["status"] = "promoted"
         with self.assertRaisesRegex(ValueError, "must be candidate"):
-            cognitive_loop.add_hypothesis_to_pool(
-                promoted, self.challenge(), self.claims(), []
-            )
+            cognitive_loop.add_hypothesis_to_pool(promoted, self.challenge(), self.claims(), [])
 
     def test_risk_weighted_selection_is_replayable_and_never_promotes(self):
         first = self.hypothesis()
@@ -615,12 +576,8 @@ class HypothesisPoolTest(unittest.TestCase):
             "random_seed": 20260729,
             "exploration_rate": 0.1,
         }
-        selected_a = cognitive_loop.select_hypothesis(
-            [first, second], **arguments
-        )
-        selected_b = cognitive_loop.select_hypothesis(
-            [first, second], **arguments
-        )
+        selected_a = cognitive_loop.select_hypothesis([first, second], **arguments)
+        selected_b = cognitive_loop.select_hypothesis([first, second], **arguments)
         self.assertEqual(selected_a, selected_b)
         self.assertEqual(selected_a["truth_status"], "candidate")
         self.assertEqual([first, second], original)
@@ -682,11 +639,7 @@ class BoundedCognitiveLoopGateTest(unittest.TestCase):
         downstream = {f"C{index}": set() for index in range(30)}
         for index in range(30):
             claim_id = f"C{index}"
-            dependencies = [
-                f"C{parent}"
-                for parent in range(index)
-                if rng.random() < 0.08
-            ]
+            dependencies = [f"C{parent}" for parent in range(index) if rng.random() < 0.08]
             claims.append(graph_claim(claim_id, dependencies))
             for parent_id in dependencies:
                 downstream[parent_id].add(claim_id)
@@ -701,9 +654,7 @@ class BoundedCognitiveLoopGateTest(unittest.TestCase):
                     if child_id not in expected:
                         expected.add(child_id)
                         frontier.append(child_id)
-            actual = set(
-                claim_ledger.dependency_impact_cone(claims, {root_id})
-            )
+            actual = set(claim_ledger.dependency_impact_cone(claims, {root_id}))
             self.assertEqual(actual, expected)
 
     def test_persistent_conflict_exhausts_distinct_strategies_not_forever(self):
@@ -736,14 +687,10 @@ class BoundedCognitiveLoopGateTest(unittest.TestCase):
         candidate = helper.hypothesis()
         challenge = helper.challenge()
         claims = helper.claims()
-        first = cognitive_loop.add_hypothesis_to_pool(
-            candidate, challenge, claims, []
-        )
+        first = cognitive_loop.add_hypothesis_to_pool(candidate, challenge, claims, [])
         pool = first["pool"]
         for _ in range(20):
-            repeated = cognitive_loop.add_hypothesis_to_pool(
-                candidate, challenge, claims, pool
-            )
+            repeated = cognitive_loop.add_hypothesis_to_pool(candidate, challenge, claims, pool)
             self.assertEqual(repeated["decision"], "rejected")
             self.assertEqual(len(repeated["pool"]), 1)
             pool = repeated["pool"]

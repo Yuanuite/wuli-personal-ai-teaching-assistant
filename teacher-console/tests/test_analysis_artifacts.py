@@ -188,18 +188,12 @@ class AnalysisArtifactsTest(unittest.TestCase):
             "建立方程并求解。",
             "使用积分 $W=\\int F\\,dx$ 求解。",
         )
-        self.assertFalse(
-            analysis_artifacts.student_method_errors(
-                calculus, "olympiad_official"
-            )
-        )
+        self.assertFalse(analysis_artifacts.student_method_errors(calculus, "olympiad_official"))
         lagrange = calculus.replace("使用积分", "使用拉格朗日方程与积分")
         self.assertTrue(
             any(
                 "大学力学方法" in item
-                for item in analysis_artifacts.student_method_errors(
-                    lagrange, "olympiad_official"
-                )
+                for item in analysis_artifacts.student_method_errors(lagrange, "olympiad_official")
             )
         )
 
@@ -217,11 +211,14 @@ class AnalysisArtifactsTest(unittest.TestCase):
 
     def test_existing_physics_model_blocks_wrong_options_and_preserves_physical_svg(self):
         (self.entry / "physics-model.json").write_text(
-            json.dumps({
-                "student_solution": {
-                    "quick_answers": ["A 错；B、C、D 正确"],
-                }
-            }, ensure_ascii=False),
+            json.dumps(
+                {
+                    "student_solution": {
+                        "quick_answers": ["A 错；B、C、D 正确"],
+                    }
+                },
+                ensure_ascii=False,
+            ),
             encoding="utf-8",
         )
         assets = self.entry / "assets"

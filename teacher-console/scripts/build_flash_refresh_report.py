@@ -12,7 +12,6 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 
-
 REVIEW = {
     1: ["optical-surface-equation-wrong", "beam-radius-ratio-wrong"],
     2: ["work-result-wrong", "process-feasibility-wrong", "heat-result-wrong"],
@@ -45,35 +44,27 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
     for item in primary["questions"]:
         question = item["question"]
         recovery = retry_by_question.get(question)
-        recovered = item["status"] != "completed" and bool(
-            recovery and recovery.get("status") == "completed"
-        )
+        recovered = item["status"] != "completed" and bool(recovery and recovery.get("status") == "completed")
         elapsed = (
-            item.get("elapsed_seconds")
-            if item["status"] == "completed"
-            else (recovery or {}).get("elapsed_seconds")
+            item.get("elapsed_seconds") if item["status"] == "completed" else (recovery or {}).get("elapsed_seconds")
         )
-        rows.append(
-            {
-                "question": question,
-                "first_attempt_status": item["status"],
-                "first_attempt_elapsed_seconds": item.get("elapsed_seconds"),
-                "failure_type": item.get("error_type", ""),
-                "recovered_by_budget_retry": recovered,
-                "recovery_elapsed_seconds": (recovery or {}).get("elapsed_seconds"),
-                "candidate_available": item["status"] == "completed" or recovered,
-                "strict_whole_question_correct": False,
-                "teaching_approved": False,
-                "reason_codes": REVIEW[question],
-                "display_elapsed_seconds": elapsed,
-            }
-        )
+        rows.append({
+            "question": question,
+            "first_attempt_status": item["status"],
+            "first_attempt_elapsed_seconds": item.get("elapsed_seconds"),
+            "failure_type": item.get("error_type", ""),
+            "recovered_by_budget_retry": recovered,
+            "recovery_elapsed_seconds": (recovery or {}).get("elapsed_seconds"),
+            "candidate_available": item["status"] == "completed" or recovered,
+            "strict_whole_question_correct": False,
+            "teaching_approved": False,
+            "reason_codes": REVIEW[question],
+            "display_elapsed_seconds": elapsed,
+        })
     first_success = sum(row["first_attempt_status"] == "completed" for row in rows)
     recovered_success = sum(row["candidate_available"] for row in rows)
     first_latencies = [
-        row["first_attempt_elapsed_seconds"]
-        for row in rows
-        if row["first_attempt_elapsed_seconds"] is not None
+        row["first_attempt_elapsed_seconds"] for row in rows if row["first_attempt_elapsed_seconds"] is not None
     ]
     summary = {
         "question_count": 8,
@@ -86,9 +77,7 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
         "strict_whole_question_correct_count": 0,
         "strict_whole_question_accuracy": 0.0,
         "teaching_approved_count": 0,
-        "median_completed_first_attempt_seconds": round(
-            statistics.median(first_latencies), 3
-        ),
+        "median_completed_first_attempt_seconds": round(statistics.median(first_latencies), 3),
         "max_completed_first_attempt_seconds": round(max(first_latencies), 3),
     }
     telemetry = {
@@ -117,9 +106,9 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
         "",
         "## 结果",
         "",
-        f"- 一次调用结构成功：**{first_success}/8（{first_success/8:.1%}）**",
-        f"- 允许一次纯预算重试后有候选：**{recovered_success}/8（{recovered_success/8:.0%}）**",
-        f"- 一次调用 90 秒端到端通过：**{first_success}/8（{first_success/8:.1%}）**",
+        f"- 一次调用结构成功：**{first_success}/8（{first_success / 8:.1%}）**",
+        f"- 允许一次纯预算重试后有候选：**{recovered_success}/8（{recovered_success / 8:.0%}）**",
+        f"- 一次调用 90 秒端到端通过：**{first_success}/8（{first_success / 8:.1%}）**",
         f"- 已完成首轮中位耗时：**{summary['median_completed_first_attempt_seconds']:.1f}s**；"
         f"最慢 **{summary['max_completed_first_attempt_seconds']:.1f}s**",
         "- 严格整题正确：**0/8（0%）**",
@@ -137,7 +126,7 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
     for row in rows:
         elapsed = row["first_attempt_elapsed_seconds"]
         lines.append(
-            f"| {row['question']} | {'成功' if row['first_attempt_status']=='completed' else '失败'} | "
+            f"| {row['question']} | {'成功' if row['first_attempt_status'] == 'completed' else '失败'} | "
             f"{f'{elapsed:.1f}' if elapsed is not None else '不可用'} | "
             f"{'是' if row['recovered_by_budget_retry'] else '—'} | 错误 | "
             f"`{', '.join(row['reason_codes'])}` |"
@@ -151,8 +140,7 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
         "核心答案一次生成 → 标准答案/隐藏真值审核 → 仅对通过答案生成教学稿。"
         "当前模型不能切为无人值守生产解题默认。",
         "",
-        "报告不包含题目、候选或标准答案正文，不包含 API key；只保存冻结摘要、哈希、"
-        "耗时、通过状态和错误类型。",
+        "报告不包含题目、候选或标准答案正文，不包含 API key；只保存冻结摘要、哈希、耗时、通过状态和错误类型。",
         "",
     ]
     md = "\n".join(lines)
@@ -161,7 +149,7 @@ def build(primary_path: Path, retry_path: Path, gold_path: Path, output: Path) -
     table_rows = "".join(
         "<tr>"
         f"<td>{row['question']}</td>"
-        f"<td>{'成功' if row['first_attempt_status']=='completed' else '失败'}</td>"
+        f"<td>{'成功' if row['first_attempt_status'] == 'completed' else '失败'}</td>"
         f"<td>{row['first_attempt_elapsed_seconds'] if row['first_attempt_elapsed_seconds'] is not None else '—'}</td>"
         f"<td>{'是' if row['recovered_by_budget_retry'] else '—'}</td>"
         "<td class='bad'>错误</td>"

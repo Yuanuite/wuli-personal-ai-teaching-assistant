@@ -41,9 +41,7 @@ class TestStageVisualExtraction(unittest.TestCase):
         (self.entry / "unrelated.txt").write_text("unchanged", encoding="utf-8")
 
     def extraction(self, *, uncertainties=None, confidence=0.9, gate_status=None):
-        source_fp = "sha256:" + source_review.input_digest(
-            self.entry, self.record, self.ocr
-        )
+        source_fp = "sha256:" + source_review.input_digest(self.entry, self.record, self.ocr)
         raw = {
             "schema": "wuli.visual-facts.v1",
             "source_fingerprint": source_fp,
@@ -94,9 +92,7 @@ class TestStageVisualExtraction(unittest.TestCase):
         self.assertEqual(extraction, self.extraction())
 
     def test_uncertainty_is_preserved(self):
-        report = stage_visual_extraction(
-            self.entry, self.extraction(uncertainties=["箭头方向不清"])
-        )
+        report = stage_visual_extraction(self.entry, self.extraction(uncertainties=["箭头方向不清"]))
         self.assertEqual(report["visual_gate_status"], "needs-source-review")
         self.assertEqual(report["uncertainties"], ["箭头方向不清"])
         self.assertIn("箭头方向不清", (self.entry / "source-review.md").read_text())

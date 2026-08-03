@@ -7,14 +7,7 @@ sys.path.insert(0, str(ROOT / "teacher-console"))
 
 import correctness_faults  # noqa: E402
 
-
-FIXTURE = (
-    ROOT
-    / "teacher-console"
-    / "tests"
-    / "fixtures"
-    / "correctness_faults.v1.json"
-)
+FIXTURE = ROOT / "teacher-console" / "tests" / "fixtures" / "correctness_faults.v1.json"
 
 
 class CorrectnessFaultInjectionTest(unittest.TestCase):
@@ -35,9 +28,7 @@ class CorrectnessFaultInjectionTest(unittest.TestCase):
             "backjump",
             "loop",
         }
-        self.assertTrue(required_categories.issubset({
-            case["category"] for case in self.cases
-        }))
+        self.assertTrue(required_categories.issubset({case["category"] for case in self.cases}))
 
     def test_every_declared_fault_is_detected_without_false_pass(self):
         outcomes = correctness_faults.run_fault_suite(self.cases)

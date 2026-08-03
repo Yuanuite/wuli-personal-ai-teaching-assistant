@@ -31,9 +31,7 @@ def target_risk(
         *(str(item.get("check", "")) for item in obligations),
     ])
     signals: list[str] = []
-    score = max(
-        [RISK_WEIGHT.get(str(item.get("risk", "low")), 0.1) for item in obligations] or [0.1]
-    )
+    score = max([RISK_WEIGHT.get(str(item.get("risk", "low")), 0.1) for item in obligations] or [0.1])
     for name, pattern, increment in (
         ("uniqueness", r"唯一|所有可能|全部|至少|至多", 0.2),
         ("first-event", r"第一次|首次|最早", 0.2),
@@ -98,13 +96,9 @@ def verification_evidence_view(evidence: dict[str, Any]) -> dict[str, Any]:
             continue
         references.append({
             "reference": str(raw.get("reference", ""))[:80],
-            "knowledge_points": [
-                str(item)[:80] for item in raw.get("knowledge_points", [])[:8]
-            ],
+            "knowledge_points": [str(item)[:80] for item in raw.get("knowledge_points", [])[:8]],
             "methods": [str(item)[:160] for item in raw.get("methods", [])[:6]],
-            "secondary_conclusions": [
-                str(item)[:200] for item in raw.get("secondary_conclusions", [])[:5]
-            ],
+            "secondary_conclusions": [str(item)[:200] for item in raw.get("secondary_conclusions", [])[:5]],
             "coverage": raw.get("coverage", {}),
             "evidence_audit": raw.get("evidence_audit", {}),
             "retrieval_target_ids": raw.get("retrieval_target_ids", []),
@@ -282,11 +276,7 @@ def claim_verification_view(
         facts.append({
             "id": fact_id[:80],
             "statement": statement[:8_000],
-            "conditions": [
-                str(item).strip()[:240]
-                for item in raw.get("conditions", [])
-                if str(item).strip()
-            ][:12],
+            "conditions": [str(item).strip()[:240] for item in raw.get("conditions", []) if str(item).strip()][:12],
         })
 
     minimal_requests = []
@@ -294,16 +284,9 @@ def claim_verification_view(
     for raw in requests:
         if not isinstance(raw, dict) or set(raw) != {"claim", "dependencies"}:
             raise ValueError("claim verification request fields are invalid")
-        claim = claim_ledger.normalize_claim(
-            raw["claim"], agent_submission=False
-        )
-        dependencies = [
-            claim_ledger.normalize_claim(item, agent_submission=False)
-            for item in raw["dependencies"]
-        ]
-        fingerprint = claim_ledger.claim_verification_input_fingerprint(
-            claim, dependencies
-        )
+        claim = claim_ledger.normalize_claim(raw["claim"], agent_submission=False)
+        dependencies = [claim_ledger.normalize_claim(item, agent_submission=False) for item in raw["dependencies"]]
+        fingerprint = claim_ledger.claim_verification_input_fingerprint(claim, dependencies)
         key = (claim["id"], claim["version"])
         if key in seen:
             raise ValueError("claim verification request is duplicated")
@@ -335,9 +318,7 @@ def claim_verification_view(
                         "conditions",
                     )
                 }
-                for dependency in sorted(
-                    dependencies, key=lambda item: (item["id"], item["version"])
-                )
+                for dependency in sorted(dependencies, key=lambda item: (item["id"], item["version"]))
             ],
             "input_fingerprint": fingerprint,
         })
@@ -408,9 +389,7 @@ def normalize_claim_audit(
         verdict = str(raw["verdict"]).strip().lower()
         if verdict not in {"pass", "conflict", "insufficient"}:
             raise ValueError("claim audit verdict is invalid")
-        if not isinstance(raw["decisive_checks"], list) or not isinstance(
-            raw["issues"], list
-        ):
+        if not isinstance(raw["decisive_checks"], list) or not isinstance(raw["issues"], list):
             raise ValueError("claim audit checks and issues must be arrays")
         checks = [
             _safe_text(item, "claim_audits.decisive_checks", 500)
@@ -431,9 +410,7 @@ def normalize_claim_audit(
             "claim_id": claim_id,
             "claim_version": version,
             "verdict": verdict,
-            "normalized_result": _safe_text(
-                raw["normalized_result"], "claim_audits.normalized_result", 2_000
-            ),
+            "normalized_result": _safe_text(raw["normalized_result"], "claim_audits.normalized_result", 2_000),
             "decisive_checks": checks,
             "issues": issues,
         })
@@ -497,21 +474,23 @@ def materialize_claim_certificates(
         key = (item["claim_id"], item["claim_version"])
         if key not in input_fingerprints:
             raise ValueError("claim audit has no trusted input fingerprint")
-        certificates.append(claim_ledger.normalize_certificate({
-            "claim_id": item["claim_id"],
-            "claim_version": item["claim_version"],
-            "verifier_kind": "independent-agent",
-            "check_type": "semantic",
-            "verdict": item["verdict"],
-            "normalized_result": item["normalized_result"],
-            "decisive_checks": item["decisive_checks"],
-            "input_fingerprint": input_fingerprints[key],
-            "verifier_identity": {
-                "model_id": model_id,
-                "provider": provider,
-                "context_isolated": True,
-            },
-        }))
+        certificates.append(
+            claim_ledger.normalize_certificate({
+                "claim_id": item["claim_id"],
+                "claim_version": item["claim_version"],
+                "verifier_kind": "independent-agent",
+                "check_type": "semantic",
+                "verdict": item["verdict"],
+                "normalized_result": item["normalized_result"],
+                "decisive_checks": item["decisive_checks"],
+                "input_fingerprint": input_fingerprints[key],
+                "verifier_identity": {
+                    "model_id": model_id,
+                    "provider": provider,
+                    "context_isolated": True,
+                },
+            })
+        )
     return certificates
 
 

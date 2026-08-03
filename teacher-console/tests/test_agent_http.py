@@ -56,8 +56,7 @@ class AgentHttpTest(unittest.TestCase):
         assets.mkdir(parents=True)
         source = assets / "original.png"
         source_bytes = base64.b64decode(
-            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC"
-            "AAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
         )
         source.write_bytes(source_bytes)
         kb.write_text(
@@ -139,9 +138,7 @@ class AgentHttpTest(unittest.TestCase):
                 return response.status, json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
-            raise AssertionError(
-                f"{method} {path} returned HTTP {exc.code}: {detail}"
-            ) from exc
+            raise AssertionError(f"{method} {path} returned HTTP {exc.code}: {detail}") from exc
 
     def test_health_and_async_analysis_job(self):
         status, health = self.request_json("/api/health")
@@ -288,59 +285,69 @@ class AgentHttpTest(unittest.TestCase):
                     "mode": "shadow",
                     "claim_evidence_shadow": {
                         "status": "completed",
-                        "certificates": [{
-                            "claim_id": "C1",
-                            "claim_version": 1,
-                            "verifier_kind": "independent-agent",
-                            "check_type": "semantic",
-                            "verdict": "insufficient",
-                            "normalized_result": "尚缺边界复算",
-                            "decisive_checks": ["已核对主方程"],
-                            "input_fingerprint": "a" * 64,
-                            "verifier_identity": {
-                                "model_id": "private-model",
-                                "provider": "private-provider",
-                                "context_isolated": True,
-                            },
-                        }],
-                        "aggregation": {
-                            "status": "PROVISIONAL",
-                            "final_claims": [{
+                        "certificates": [
+                            {
                                 "claim_id": "C1",
                                 "claim_version": 1,
-                                "target_ids": ["Q1"],
-                                "statement": "完整暂定答案",
-                                "conditions": ["允许越过边界后返回"],
-                                "status": "candidate",
-                                "obligation_ids": ["V1"],
-                            }],
-                            "claim_evidence": {
-                                "claims": [{
-                                    "id": "C1",
-                                    "version": 1,
-                                    "kind": "final",
-                                    "statement": "完整暂定答案",
-                                    "target_ids": ["Q1"],
-                                    "stage_ids": ["P1"],
-                                    "depends_on": [],
-                                    "conditions": ["允许越过边界后返回"],
-                                    "obligation_ids": ["V1"],
-                                    "status": "candidate",
-                                    "source": {
-                                        "input_fingerprint": "secret",
-                                        "task_id": "secret-task",
-                                    },
-                                }],
-                                "assessments": [{
+                                "verifier_kind": "independent-agent",
+                                "check_type": "semantic",
+                                "verdict": "insufficient",
+                                "normalized_result": "尚缺边界复算",
+                                "decisive_checks": ["已核对主方程"],
+                                "input_fingerprint": "a" * 64,
+                                "verifier_identity": {
+                                    "model_id": "private-model",
+                                    "provider": "private-provider",
+                                    "context_isolated": True,
+                                },
+                            }
+                        ],
+                        "aggregation": {
+                            "status": "PROVISIONAL",
+                            "final_claims": [
+                                {
                                     "claim_id": "C1",
-                                    "issues": ["required certificate groups are incomplete"],
-                                }],
+                                    "claim_version": 1,
+                                    "target_ids": ["Q1"],
+                                    "statement": "完整暂定答案",
+                                    "conditions": ["允许越过边界后返回"],
+                                    "status": "candidate",
+                                    "obligation_ids": ["V1"],
+                                }
+                            ],
+                            "claim_evidence": {
+                                "claims": [
+                                    {
+                                        "id": "C1",
+                                        "version": 1,
+                                        "kind": "final",
+                                        "statement": "完整暂定答案",
+                                        "target_ids": ["Q1"],
+                                        "stage_ids": ["P1"],
+                                        "depends_on": [],
+                                        "conditions": ["允许越过边界后返回"],
+                                        "obligation_ids": ["V1"],
+                                        "status": "candidate",
+                                        "source": {
+                                            "input_fingerprint": "secret",
+                                            "task_id": "secret-task",
+                                        },
+                                    }
+                                ],
+                                "assessments": [
+                                    {
+                                        "claim_id": "C1",
+                                        "issues": ["required certificate groups are incomplete"],
+                                    }
+                                ],
                             },
                             "interface_status": "provisional",
-                            "interface_issues": [{
-                                "code": "boundary-state",
-                                "message": "需核对返回边界时的状态",
-                            }],
+                            "interface_issues": [
+                                {
+                                    "code": "boundary-state",
+                                    "message": "需核对返回边界时的状态",
+                                }
+                            ],
                             "open_challenge_ids": [],
                             "active_hypothesis_ids": [],
                             "root_path_issues": [],
@@ -351,9 +358,7 @@ class AgentHttpTest(unittest.TestCase):
                             "verified_claim_count": 0,
                             "unresolved_claim_count": 1,
                         },
-                        "semantic_audit": {
-                            "raw_reasoning": "must stay private"
-                        },
+                        "semantic_audit": {"raw_reasoning": "must stay private"},
                     },
                 },
             },
@@ -362,9 +367,7 @@ class AgentHttpTest(unittest.TestCase):
         self.assertEqual(status, 200)
         snapshot = detail["w3_shadow"]["claim_evidence"]
         self.assertEqual(snapshot["aggregation_status"], "PROVISIONAL")
-        self.assertEqual(
-            snapshot["final_answers"][0]["statement"], "完整暂定答案"
-        )
+        self.assertEqual(snapshot["final_answers"][0]["statement"], "完整暂定答案")
         self.assertEqual(len(snapshot["claims"]), 1)
         self.assertEqual(len(snapshot["certificates"]), 1)
         self.assertEqual(len(snapshot["unresolved_obligations"]), 2)
@@ -730,11 +733,7 @@ class AgentHttpTest(unittest.TestCase):
                 with self.subTest(name=name):
                     kb.write_text(
                         self.entry / "problem.md",
-                        (
-                            "# 复杂过程测试\n\n"
-                            "粒子先经过边界，再返回区域，并要求求出全部可能结果与首次事件。"
-                            f" {marker}"
-                        ),
+                        (f"# 复杂过程测试\n\n粒子先经过边界，再返回区域，并要求求出全部可能结果与首次事件。 {marker}"),
                     )
                     _status, queued = self.request_json(
                         f"/api/entries/{self.entry.name}/analyze-w3-shadow",
@@ -749,38 +748,28 @@ class AgentHttpTest(unittest.TestCase):
                         time.sleep(0.01)
                     self.assertEqual(job["status"], "completed")
                     self.assertEqual(job["result"]["status"], "completed")
-                    raw_report = kb.load_json(
-                        self.entry / "w3-shadow-report.json", {}
-                    )
+                    raw_report = kb.load_json(self.entry / "w3-shadow-report.json", {})
                     self.assertEqual(raw_report["status"], "completed")
                     report = raw_report["report"]["claim_evidence_shadow"]
                     self.assertEqual(report["status"], "completed", raw_report)
-                    self.assertEqual(
-                        report["aggregation"]["status"], expected_status
-                    )
+                    self.assertEqual(report["aggregation"]["status"], expected_status)
                     self.assertGreaterEqual(
                         report["metrics"]["challenge_count"],
                         minimum_challenges,
                     )
-                    self.assertEqual(
-                        report["metrics"]["fuse_triggered"], expected_fuse
-                    )
+                    self.assertEqual(report["metrics"]["fuse_triggered"], expected_fuse)
                     if expected_fuse:
                         self.assertIn(
                             report["loop"]["transition"]["action"],
                             {"strategy-fuse", "hard-fuse"},
                         )
                         self.assertNotEqual(
-                            report["loop"]["transition"]["control"][
-                                "terminal_status"
-                            ],
+                            report["loop"]["transition"]["control"]["terminal_status"],
                             "VERIFIED",
                         )
                     self.assertEqual(report["metrics"]["repeated_task_count"], 0)
                     self.assertEqual(
-                        (self.entry / "student-solution.md").read_text(
-                            encoding="utf-8"
-                        ),
+                        (self.entry / "student-solution.md").read_text(encoding="utf-8"),
                         canonical,
                     )
         finally:

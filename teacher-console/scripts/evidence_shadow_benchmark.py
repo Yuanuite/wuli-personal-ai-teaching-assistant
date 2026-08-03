@@ -9,14 +9,13 @@ import os
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = PROJECT_ROOT / "teacher-console"
 if str(CONSOLE) not in sys.path:
     sys.path.insert(0, str(CONSOLE))
 
-from agent_gateway import AgentGateway  # noqa: E402
 import evidence_benchmark  # noqa: E402
+from agent_gateway import AgentGateway  # noqa: E402
 
 
 def main() -> int:

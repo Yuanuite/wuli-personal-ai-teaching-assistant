@@ -109,9 +109,7 @@ def validate_cases(library: Path, cases: list[dict[str, Any]]) -> dict[str, Any]
             if missing:
                 errors.append(f"line {line}: unknown relevant entries: {', '.join(missing)}")
     approved_by_split = Counter(
-        str(case.get("evaluation_split", "calibration"))
-        for case in cases
-        if case.get("review_status") == "approved"
+        str(case.get("evaluation_split", "calibration")) for case in cases if case.get("review_status") == "approved"
     )
     calibration_approved = approved_by_split.get("calibration", 0)
     holdout_approved = approved_by_split.get("holdout", 0)
@@ -128,14 +126,9 @@ def validate_cases(library: Path, cases: list[dict[str, Any]]) -> dict[str, Any]
     missing_categories = sorted(CATEGORIES - set(category_counts))
     if missing_categories:
         warnings.append(f"categories not covered: {', '.join(missing_categories)}")
-    overlapping_queries = sorted(
-        query for query, splits in query_splits.items() if len(splits) > 1
-    )
+    overlapping_queries = sorted(query for query, splits in query_splits.items() if len(splits) > 1)
     if overlapping_queries:
-        errors.append(
-            "holdout queries must not duplicate calibration queries: "
-            + ", ".join(overlapping_queries[:5])
-        )
+        errors.append("holdout queries must not duplicate calibration queries: " + ", ".join(overlapping_queries[:5]))
     return {
         "schema_version": SCHEMA_VERSION,
         "valid": not errors,
@@ -145,8 +138,7 @@ def validate_cases(library: Path, cases: list[dict[str, Any]]) -> dict[str, Any]
         "split_counts": dict(sorted(split_counts.items())),
         "approved_split_counts": dict(sorted(approved_by_split.items())),
         "approved_split_categories": {
-            split: sorted(categories)
-            for split, categories in sorted(approved_split_categories.items())
+            split: sorted(categories) for split, categories in sorted(approved_split_categories.items())
         },
         "errors": errors,
         "warnings": warnings,
@@ -271,8 +263,7 @@ def run_benchmark(
     eligible = [
         case
         for case in approved_or_draft
-        if evaluation_split == "all"
-        or str(case.get("evaluation_split", "calibration")) == evaluation_split
+        if evaluation_split == "all" or str(case.get("evaluation_split", "calibration")) == evaluation_split
     ]
     per_case: list[dict[str, Any]] = []
     for case in eligible:
@@ -288,8 +279,7 @@ def run_benchmark(
         accepted_retrieved = [
             str(item.get("entry_id", ""))
             for item in evidence.get("results", [])
-            if item.get("entry_id")
-            and item.get("evidence_audit", {}).get("decision") == "accepted"
+            if item.get("entry_id") and item.get("evidence_audit", {}).get("decision") == "accepted"
         ]
         selection = knowledge_store.select_evidence_results(
             result_items,
@@ -297,11 +287,7 @@ def run_benchmark(
             limit=top_k,
         )
         selected_results = selection["selected_results"]
-        selected_retrieved = [
-            str(item.get("entry_id", ""))
-            for item in selected_results
-            if item.get("entry_id")
-        ]
+        selected_retrieved = [str(item.get("entry_id", "")) for item in selected_results if item.get("entry_id")]
         selected_duplicate_pairs = sum(
             1
             for left, right in combinations(selected_results, 2)
@@ -326,15 +312,11 @@ def run_benchmark(
             "retrieved_entry_ids": retrieved,
             "accepted_retrieved_entry_ids": accepted_retrieved,
             "selected_retrieved_entry_ids": selected_retrieved,
-            "selected_relevant_entry_ids": sorted(
-                relevant & set(selected_retrieved[:top_k])
-            ),
+            "selected_relevant_entry_ids": sorted(relevant & set(selected_retrieved[:top_k])),
             "evidence_selection_trace": selection["trace"],
             "selected_duplicate_pair_count": selected_duplicate_pairs,
             "selected_conflict_pair_count": selected_conflict_pairs,
-            "accepted_relevant_entry_ids": sorted(
-                relevant & set(accepted_retrieved[:top_k])
-            ),
+            "accepted_relevant_entry_ids": sorted(relevant & set(accepted_retrieved[:top_k])),
             "rejected_relevant_entry_ids": sorted(
                 (relevant & set(retrieved[:top_k])) - set(accepted_retrieved[:top_k])
             ),
@@ -359,12 +341,8 @@ def run_benchmark(
         for split in sorted(EVALUATION_SPLITS)
     }
     relevant_item_count = sum(len(item["relevant_entry_ids"]) for item in per_case)
-    accepted_relevant_item_count = sum(
-        len(item["accepted_relevant_entry_ids"]) for item in per_case
-    )
-    accepted_item_count = sum(
-        len(item["accepted_retrieved_entry_ids"][:top_k]) for item in per_case
-    )
+    accepted_relevant_item_count = sum(len(item["accepted_relevant_entry_ids"]) for item in per_case)
+    accepted_item_count = sum(len(item["accepted_retrieved_entry_ids"][:top_k]) for item in per_case)
     evidence_gate = {
         "policy": "deterministic-condition-audit-v1",
         "evaluated_cases": len(per_case),
@@ -373,18 +351,18 @@ def run_benchmark(
         "relevant_preservation_rate": round(
             accepted_relevant_item_count / relevant_item_count,
             4,
-        ) if relevant_item_count else 0.0,
+        )
+        if relevant_item_count
+        else 0.0,
         "accepted_precision_at_k": round(
             accepted_relevant_item_count / accepted_item_count,
             4,
-        ) if accepted_item_count else 0.0,
-        "rejected_relevant_case_ids": [
-            item["id"] for item in per_case if item["rejected_relevant_entry_ids"]
-        ],
+        )
+        if accepted_item_count
+        else 0.0,
+        "rejected_relevant_case_ids": [item["id"] for item in per_case if item["rejected_relevant_entry_ids"]],
     }
-    selected_relevant_item_count = sum(
-        len(item["selected_relevant_entry_ids"]) for item in per_case
-    )
+    selected_relevant_item_count = sum(len(item["selected_relevant_entry_ids"]) for item in per_case)
     evidence_selection = {
         "policy": evidence_selection_policy,
         "evaluated_cases": len(per_case),
@@ -393,53 +371,39 @@ def run_benchmark(
         "relevant_preservation_rate": round(
             selected_relevant_item_count / relevant_item_count,
             4,
-        ) if relevant_item_count else 0.0,
-        "selected_duplicate_pair_count": sum(
-            item["selected_duplicate_pair_count"] for item in per_case
-        ),
-        "selected_conflict_pair_count": sum(
-            item["selected_conflict_pair_count"] for item in per_case
-        ),
-        "cases_with_empty_selection": [
-            item["id"] for item in per_case if not item["selected_retrieved_entry_ids"]
-        ],
+        )
+        if relevant_item_count
+        else 0.0,
+        "selected_duplicate_pair_count": sum(item["selected_duplicate_pair_count"] for item in per_case),
+        "selected_conflict_pair_count": sum(item["selected_conflict_pair_count"] for item in per_case),
+        "cases_with_empty_selection": [item["id"] for item in per_case if not item["selected_retrieved_entry_ids"]],
         "rejected_low_precision_count": sum(
-            item["evidence_selection_trace"]["rejected_low_precision_count"]
-            for item in per_case
+            item["evidence_selection_trace"]["rejected_low_precision_count"] for item in per_case
         ),
         "rejected_duplicate_count": sum(
-            item["evidence_selection_trace"]["rejected_duplicate_count"]
-            for item in per_case
+            item["evidence_selection_trace"]["rejected_duplicate_count"] for item in per_case
         ),
         "rejected_conflict_count": sum(
-            item["evidence_selection_trace"]["rejected_conflict_count"]
-            for item in per_case
+            item["evidence_selection_trace"]["rejected_conflict_count"] for item in per_case
         ),
     }
     all_approved = [case for case in cases if case.get("review_status") == "approved"]
     approved_by_split = {
-        split: [
-            case for case in all_approved
-            if str(case.get("evaluation_split", "calibration")) == split
-        ]
+        split: [case for case in all_approved if str(case.get("evaluation_split", "calibration")) == split]
         for split in EVALUATION_SPLITS
     }
-    calibration_ready = (
-        len(approved_by_split["calibration"]) >= CALIBRATION_MIN_CASES
-        and CATEGORIES.issubset({
-            str(case.get("category", "")) for case in approved_by_split["calibration"]
-        })
-    )
+    calibration_ready = len(approved_by_split["calibration"]) >= CALIBRATION_MIN_CASES and CATEGORIES.issubset({
+        str(case.get("category", "")) for case in approved_by_split["calibration"]
+    })
     holdout_ready = (
         len(approved_by_split["holdout"]) >= HOLDOUT_MIN_CASES
-        and CATEGORIES.issubset({
-            str(case.get("category", "")) for case in approved_by_split["holdout"]
-        })
+        and CATEGORIES.issubset({str(case.get("category", "")) for case in approved_by_split["holdout"]})
         and len({
             str(case.get("batch_id", "")).strip()
             for case in approved_by_split["holdout"]
             if str(case.get("batch_id", "")).strip()
-        }) >= 1
+        })
+        >= 1
     )
     fixed_set_ready = calibration_ready
     evidence_gate_ready = (
@@ -621,16 +585,18 @@ def main() -> int:
         if args.evaluation_split == "holdout" and not args.batch_id.strip():
             raise ValueError("holdout seed requires a non-empty --batch-id")
         excluded_queries = {
-            str(case.get("query", "")).strip()
-            for case in existing
-            if str(case.get("query", "")).strip()
+            str(case.get("query", "")).strip() for case in existing if str(case.get("query", "")).strip()
         }
-        excluded_entry_ids = {
-            str(entry_id)
-            for case in existing
-            if str(case.get("evaluation_split", "calibration")) == "calibration"
-            for entry_id in case.get("relevant_entry_ids", [])
-        } if args.evaluation_split == "holdout" else set()
+        excluded_entry_ids = (
+            {
+                str(entry_id)
+                for case in existing
+                if str(case.get("evaluation_split", "calibration")) == "calibration"
+                for entry_id in case.get("relevant_entry_ids", [])
+            }
+            if args.evaluation_split == "holdout"
+            else set()
+        )
         cases = seed_cases(
             library,
             limit=max(1, args.limit),

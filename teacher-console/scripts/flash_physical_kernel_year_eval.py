@@ -18,7 +18,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
 for path in (CONSOLE, CONSOLE / "providers", Path(__file__).resolve().parent):
@@ -27,7 +26,6 @@ for path in (CONSOLE, CONSOLE / "providers", Path(__file__).resolve().parent):
 import core_analysis  # noqa: E402
 import core_first_year_eval as year_eval  # noqa: E402
 import openai_compatible_agent_adapter as api_adapter  # noqa: E402
-
 
 PHYSICAL_KERNEL_SCHEMA: dict[str, Any] = {
     "type": "object",
@@ -322,8 +320,7 @@ def main() -> int:
         "official_answer_opened": False,
         "structural_success_count": sum(item["status"] == "completed" for item in rows),
         "flash_90s_pass_count": sum(
-            item["status"] == "completed" and item.get("flash_seconds", 9999) <= 90
-            for item in rows
+            item["status"] == "completed" and item.get("flash_seconds", 9999) <= 90 for item in rows
         ),
         "questions": rows,
     }

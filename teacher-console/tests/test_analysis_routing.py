@@ -6,7 +6,6 @@ import sys
 import unittest
 from pathlib import Path
 
-
 CONSOLE_ROOT = Path(__file__).resolve().parents[1]
 if str(CONSOLE_ROOT) not in sys.path:
     sys.path.insert(0, str(CONSOLE_ROOT))
@@ -15,10 +14,7 @@ import analysis_routing
 import w3_rendering
 import w3r_contract
 
-
-W3R_FIXTURE = (
-    CONSOLE_ROOT / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
-)
+W3R_FIXTURE = CONSOLE_ROOT / "tests" / "fixtures" / "w3r" / "verified-multi-target.json"
 
 
 def config(mode="gray", ids=None):
@@ -35,9 +31,7 @@ def config(mode="gray", ids=None):
 
 def verified_w3r_report():
     source = json.loads(W3R_FIXTURE.read_text(encoding="utf-8"))
-    built = w3r_contract.build_w3r_brief(
-        source["problem"], source["blueprint"], source["proof_package"]
-    )
+    built = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])
     brief = built["brief"]
     render = w3_rendering.render_w3r(brief)
     return {
@@ -122,18 +116,14 @@ class AnalysisRoutingTest(unittest.TestCase):
             config=config("default"),
         )
         self.assertEqual(complex_default["route"], "w3")
-        self.assertEqual(
-            complex_default["reason"], "deterministic-complexity-screen"
-        )
+        self.assertEqual(complex_default["reason"], "deterministic-complexity-screen")
         simple_default = analysis_routing.decide(
             "质量为 m、速度为 v，求动能。",
             entry_id="outside-prior-gray-cohort",
             config=config("default"),
         )
         self.assertEqual(simple_default["route"], "w2")
-        self.assertEqual(
-            simple_default["reason"], "deterministic-low-risk-screen"
-        )
+        self.assertEqual(simple_default["reason"], "deterministic-low-risk-screen")
 
     def test_w3_failure_policy_is_explicit_and_validated(self):
         raw = config("default")
@@ -154,9 +144,7 @@ class AnalysisRoutingTest(unittest.TestCase):
         self.assertIn("w3_failure_policy", invalid["config_errors"][0])
 
     def test_readiness_rejects_warning_or_budget_overrun(self):
-        decision = {
-            "limits": {"max_agent_calls": 2, "max_teacher_focus": 2}
-        }
+        decision = {"limits": {"max_agent_calls": 2, "max_teacher_focus": 2}}
         request = {
             "status": "completed",
             "stages": [{}, {}, {}],
@@ -207,17 +195,11 @@ class AnalysisRoutingTest(unittest.TestCase):
 
     def test_w3r_invalid_shadow_or_outside_gray_stays_legacy(self):
         report = verified_w3r_report()
-        invalid = analysis_routing.select_renderer(
-            report, entry_id="e1", config={"mode": "gray"}
-        )
+        invalid = analysis_routing.select_renderer(report, entry_id="e1", config={"mode": "gray"})
         self.assertEqual(invalid["selected_renderer"], "legacy")
-        shadow = analysis_routing.select_renderer(
-            report, entry_id="e1", config=w3r_config("shadow")
-        )
+        shadow = analysis_routing.select_renderer(report, entry_id="e1", config=w3r_config("shadow"))
         self.assertEqual(shadow["reason"], "w3r-shadow-only")
-        outside = analysis_routing.select_renderer(
-            report, entry_id="e2", config=w3r_config(ids=["e1"])
-        )
+        outside = analysis_routing.select_renderer(report, entry_id="e2", config=w3r_config(ids=["e1"]))
         self.assertEqual(outside["reason"], "w3r-outside-gray-cohort")
 
     def test_w3r_migrated_config_normalizes_without_errors(self):
@@ -260,49 +242,31 @@ class AnalysisRoutingTest(unittest.TestCase):
         report = verified_w3r_report()
         insufficient = w3r_config(ids=["e1"])
         insufficient["evidence"]["teacher_reviewed_case_count"] = 1
-        selected = analysis_routing.select_renderer(
-            report, entry_id="e1", config=insufficient
-        )
+        selected = analysis_routing.select_renderer(report, entry_id="e1", config=insufficient)
         self.assertEqual(selected["selected_renderer"], "legacy")
-        self.assertEqual(
-            selected["reason"], "w3r-rollout-evidence-insufficient"
-        )
+        self.assertEqual(selected["reason"], "w3r-rollout-evidence-insufficient")
 
-        selected = analysis_routing.select_renderer(
-            report, entry_id="e1", config=w3r_config(ids=["e1"])
-        )
+        selected = analysis_routing.select_renderer(report, entry_id="e1", config=w3r_config(ids=["e1"]))
         self.assertEqual(selected["selected_renderer"], "w3r")
         self.assertFalse(selected["legacy_fallback_used"])
 
         tampered = copy.deepcopy(report)
         tampered["claim_evidence_shadow"]["aggregation"]["status"] = "PROVISIONAL"
-        rejected = analysis_routing.select_renderer(
-            tampered, entry_id="e1", config=w3r_config(ids=["e1"])
-        )
+        rejected = analysis_routing.select_renderer(tampered, entry_id="e1", config=w3r_config(ids=["e1"]))
         self.assertEqual(rejected["selected_renderer"], "legacy")
-        self.assertIn(
-            "w3r-proof-package-not-verified", rejected["readiness_errors"]
-        )
+        self.assertIn("w3r-proof-package-not-verified", rejected["readiness_errors"])
 
         drifted = copy.deepcopy(report)
-        drifted["w3r_shadow"]["render_result"]["student_solution_md"] = (
-            drifted["w3r_shadow"]["render_result"]["student_solution_md"].replace(
-                r"t=\pi m/(qB)", r"t=2\pi m/(qB)"
-            )
-        )
-        rejected = analysis_routing.select_renderer(
-            drifted, entry_id="e1", config=w3r_config(ids=["e1"])
-        )
+        drifted["w3r_shadow"]["render_result"]["student_solution_md"] = drifted["w3r_shadow"]["render_result"][
+            "student_solution_md"
+        ].replace(r"t=\pi m/(qB)", r"t=2\pi m/(qB)")
+        rejected = analysis_routing.select_renderer(drifted, entry_id="e1", config=w3r_config(ids=["e1"]))
         self.assertEqual(rejected["selected_renderer"], "legacy")
-        self.assertIn(
-            "w3r-render-gate-report-stale", rejected["readiness_errors"]
-        )
+        self.assertIn("w3r-render-gate-report-stale", rejected["readiness_errors"])
 
     def test_w3r_default_requires_fresh_holdout_and_teacher_non_regression(self):
         report = verified_w3r_report()
-        blocked = analysis_routing.select_renderer(
-            report, entry_id="e1", config=w3r_config("default")
-        )
+        blocked = analysis_routing.select_renderer(report, entry_id="e1", config=w3r_config("default"))
         self.assertEqual(blocked["selected_renderer"], "legacy")
         self.assertIn(
             "w3r-fresh-holdout-cases-insufficient",
@@ -318,12 +282,8 @@ class AnalysisRoutingTest(unittest.TestCase):
     def test_w3r_materialization_is_private_and_rollback_is_renderer_only(self):
         report = verified_w3r_report()
         gray = w3r_config(ids=["e1"])
-        selected = analysis_routing.select_renderer(
-            report, entry_id="e1", config=gray
-        )
-        files = analysis_routing.candidate_files(
-            report, entry_id="e1", w3r_config=gray, selection=selected
-        )
+        selected = analysis_routing.select_renderer(report, entry_id="e1", config=gray)
+        files = analysis_routing.candidate_files(report, entry_id="e1", w3r_config=gray, selection=selected)
         student = files["student-solution.md"]
         teacher = files["teacher-solution.md"]
         self.assertEqual(files["solution.md"], teacher)
@@ -332,9 +292,7 @@ class AnalysisRoutingTest(unittest.TestCase):
         self.assertNotIn("sha256:", student)
         self.assertIn("教师审计（不公开）", teacher)
 
-        rolled_back = analysis_routing.select_renderer(
-            report, entry_id="e1", config=w3r_config("off")
-        )
+        rolled_back = analysis_routing.select_renderer(report, entry_id="e1", config=w3r_config("off"))
         legacy_files = analysis_routing.candidate_files(
             report,
             entry_id="e1",

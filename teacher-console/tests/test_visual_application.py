@@ -44,14 +44,12 @@ class _StubGateway:
         routing_tier="auto",
         model_id=None,
     ):
-        self.calls.append(
-            {
-                "allow_remote": allow_remote,
-                "routing_tier": routing_tier,
-                "model_id": model_id,
-                "fingerprint": source_fingerprint,
-            }
-        )
+        self.calls.append({
+            "allow_remote": allow_remote,
+            "routing_tier": routing_tier,
+            "model_id": model_id,
+            "fingerprint": source_fingerprint,
+        })
         if self.error is not None:
             raise self.error
         return self.extraction
@@ -100,18 +98,14 @@ class VisualApplicationTest(unittest.TestCase):
         kb.write_text(self.entry / "problem.md", "# 题目\n\n测试题干。")
 
     def _extraction(self):
-        fp = "sha256:" + source_review.input_digest(
-            self.entry, self.record, kb.load_json(self.entry / "ocr.json", {})
-        )
+        fp = "sha256:" + source_review.input_digest(self.entry, self.record, kb.load_json(self.entry / "ocr.json", {}))
         identity = {"model_id": "mimo-v2.5-flash", "provider": "openai-compatible"}
         raw = {
             "schema": "wuli.visual-facts.v1",
             "source_fingerprint": fp,
             "reviewed_text": "Reviewed text",
             "printed_facts": ["fact"],
-            "diagram_facts": [
-                {"id": "v1", "kind": "region", "statement": "s", "confidence": 0.9}
-            ],
+            "diagram_facts": [{"id": "v1", "kind": "region", "statement": "s", "confidence": 0.9}],
             "handwriting": [],
             "uncertainties": [],
             "model_identity": identity,

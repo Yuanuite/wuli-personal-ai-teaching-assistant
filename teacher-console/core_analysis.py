@@ -18,7 +18,6 @@ from typing import Any
 import physics_quality
 import teaching_method_policy
 
-
 CORE_CONTRACT = "wuli.core-solve.v1"
 ROUTING_POLICY = "wuli-core-first-routing-v1"
 ROUTING_MODES = {"core-first", "legacy-adaptive"}
@@ -114,16 +113,22 @@ def _target_items(problem: str) -> list[tuple[str, str]]:
     if len(matches) < 2:
         return [("Q1", problem.strip()[-500:])]
     chinese_numbers = {
-        "一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
-        "六": 6, "七": 7, "八": 8, "九": 9, "十": 10,
+        "一": 1,
+        "二": 2,
+        "三": 3,
+        "四": 4,
+        "五": 5,
+        "六": 6,
+        "七": 7,
+        "八": 8,
+        "九": 9,
+        "十": 10,
     }
     current_top = ""
     candidates: list[tuple[str, str, bool, bool]] = []
     for index, item in enumerate(matches):
         raw_label = str(item.group("paren") or item.group("line") or "").strip()
-        fragment = problem[
-            item.end() : matches[index + 1].start() if index + 1 < len(matches) else None
-        ].strip()[:500]
+        fragment = problem[item.end() : matches[index + 1].start() if index + 1 < len(matches) else None].strip()[:500]
         lowered = raw_label.lower()
         if re.fullmatch(r"[ivx]{1,4}", lowered):
             target_id = f"Q{current_top or '1'}{lowered}"
@@ -133,9 +138,7 @@ def _target_items(problem: str) -> list[tuple[str, str]]:
             current_top = str(number)
             target_id = f"Q{current_top}"
             is_roman = False
-        demanded = bool(
-            re.search(r"求|试|证明|确定|计算|写出|判断|说明|表示|为何|多少", fragment)
-        )
+        demanded = bool(re.search(r"求|试|证明|确定|计算|写出|判断|说明|表示|为何|多少", fragment))
         candidates.append((target_id, fragment, is_roman, demanded))
     selected: list[tuple[str, str]] = []
     for index, (target_id, fragment, is_roman, demanded) in enumerate(candidates):
@@ -177,8 +180,7 @@ def build_target_brief(
         "schema_version": 1,
         "method_profile": profile,
         "targets": [
-            {"id": target_id, "prompt_hint": fragment or "完成题目要求"}
-            for target_id, fragment in target_items
+            {"id": target_id, "prompt_hint": fragment or "完成题目要求"} for target_id, fragment in target_items
         ],
         "risk_signals": risk_signals,
         "enhancements": {
@@ -187,9 +189,7 @@ def build_target_brief(
             "stage_state_sidecar": "multi-stage" in risk_signals or has_physics_model,
         },
     }
-    brief["digest"] = hashlib.sha256(
-        json.dumps(brief, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
+    brief["digest"] = hashlib.sha256(json.dumps(brief, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     return brief
 
 
@@ -261,10 +261,8 @@ def normalize_payload(
             raise ValueError("target must be an object")
         target = {
             "id": _text(item.get("id"), "target.id", maximum=20),
-                "final_answer": _text(item.get("final_answer"), "target.final_answer", maximum=800),
-            "key_relations": _texts(
-                item.get("key_relations"), "target.key_relations", maximum_items=4
-            ),
+            "final_answer": _text(item.get("final_answer"), "target.final_answer", maximum=800),
+            "key_relations": _texts(item.get("key_relations"), "target.key_relations", maximum_items=4),
         }
         lowered = target["final_answer"].lower()
         if any(marker in lowered for marker in UNRESOLVED_MARKERS):
@@ -273,9 +271,7 @@ def normalize_payload(
     if [item["id"] for item in targets] != expected_ids:
         raise ValueError("targets do not exactly match Target Brief order")
 
-    method_text = "\n".join(
-        line for target in targets for line in target["key_relations"]
-    )
+    method_text = "\n".join(line for target in targets for line in target["key_relations"])
     method_errors = teaching_method_policy.method_errors(method_text, brief["method_profile"])
     if method_errors:
         raise ValueError("; ".join(method_errors))
@@ -287,9 +283,7 @@ def normalize_payload(
             problem,
         )
         if physics_report["status"] == "fail":
-            details = "; ".join(
-                f"{item['code']}@{item['target_id']}" for item in physics_report["reason_codes"]
-            )
+            details = "; ".join(f"{item['code']}@{item['target_id']}" for item in physics_report["reason_codes"])
             raise ValueError(f"physics quality gate rejected: {details}")
 
     return {
@@ -302,9 +296,7 @@ def normalize_payload(
 
 def _student_markdown(core: dict[str, Any]) -> str:
     targets = core["targets"]
-    quick = "\n".join(
-        f"- **{target['id']}**：{target['final_answer']}" for target in targets
-    )
+    quick = "\n".join(f"- **{target['id']}**：{target['final_answer']}" for target in targets)
     # The deterministic renderer caps main headings at five while retaining all
     # targets and derivations inside those groups.
     groups: list[list[dict[str, Any]]] = [[item] for item in targets[:4]]
@@ -343,7 +335,12 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
     physics_report = None
     if problem is not None:
         physics_report = physics_quality.physics_quality_report(
-            {"status": core["status"], "message": core["message"], "target_brief_digest": core["target_brief_digest"], "targets": core["targets"]},
+            {
+                "status": core["status"],
+                "message": core["message"],
+                "target_brief_digest": core["target_brief_digest"],
+                "targets": core["targets"],
+            },
             brief,
             problem,
         )
@@ -409,9 +406,7 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         target = staging / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
-    digest = hashlib.sha256(
-        json.dumps(core, ensure_ascii=False, sort_keys=True).encode("utf-8")
-    ).hexdigest()
+    digest = hashlib.sha256(json.dumps(core, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     return {
         "contract": CORE_CONTRACT,
         "payload_digest": digest,

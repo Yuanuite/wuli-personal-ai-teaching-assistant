@@ -45,9 +45,7 @@ def diagnose_replay(
     cases = manifest.get("cases")
     if manifest.get("schema_version") != 2 or not isinstance(cases, list):
         raise ValueError("replay manifest must use frozen schema version 2")
-    if not cases or any(
-        item.get("evaluation_split") != "replay" for item in cases
-    ):
+    if not cases or any(item.get("evaluation_split") != "replay" for item in cases):
         raise ValueError("diagnostic replay accepts replay-only cases")
     if truth_lock.get("case_count") != len(cases):
         raise ValueError("truth lock case count does not match manifest")
@@ -56,16 +54,8 @@ def diagnose_replay(
     if paired_result.get("errors"):
         raise ValueError("legacy paired replay contains blocking errors")
 
-    locked = {
-        str(item.get("entry_id", "")): item
-        for item in truth_lock.get("cases", [])
-        if isinstance(item, dict)
-    }
-    paired = {
-        str(item.get("entry_id", "")): item
-        for item in paired_result.get("pairs", [])
-        if isinstance(item, dict)
-    }
+    locked = {str(item.get("entry_id", "")): item for item in truth_lock.get("cases", []) if isinstance(item, dict)}
+    paired = {str(item.get("entry_id", "")): item for item in paired_result.get("pairs", []) if isinstance(item, dict)}
     rows = []
     for case in cases:
         entry_id = str(case.get("entry_id", ""))
@@ -74,9 +64,7 @@ def diagnose_replay(
         entry = library / "entries" / entry_id
         answer = entry / "student-solution.md"
         canonical_before = _digest(answer)
-        reference_digest_current = (
-            canonical_before == case.get("reference_digest")
-        )
+        reference_digest_current = canonical_before == case.get("reference_digest")
         shadow = _load(entry / "w3-shadow-report.json")
         report = shadow.get("report")
         if shadow.get("status") != "completed" or not isinstance(report, dict):
@@ -90,9 +78,7 @@ def diagnose_replay(
             "blueprint": blueprint,
             "solver_a": solver,
         }
-        input_fingerprint = claim_ledger.stable_fingerprint(
-            "ce504-legacy-replay-v1", projection_input
-        )
+        input_fingerprint = claim_ledger.stable_fingerprint("ce504-legacy-replay-v1", projection_input)
         snapshot = solution_reasoning.project_claim_ledger(
             solver,
             blueprint,
@@ -122,36 +108,25 @@ def diagnose_replay(
             expected_obligation_ids=obligation_ids,
         )
         if evidence["result_status"] == "VERIFIED":
-            raise ValueError(
-                f"legacy projection without certificates was mis-promoted: {entry_id}"
-            )
+            raise ValueError(f"legacy projection without certificates was mis-promoted: {entry_id}")
         active = claim_ledger.active_claims(snapshot["claims"])
         rows.append({
             "entry_id": entry_id,
-            "legacy_claim_evidence_present": (
-                "claim_evidence_shadow" in report
-            ),
+            "legacy_claim_evidence_present": ("claim_evidence_shadow" in report),
             "claim_count": len(active),
             "target_count": len(target_ids),
             "obligation_count": len(obligation_ids),
             "semantic_required_claim_count": sum(
-                isinstance(item["check_spec"], dict)
-                and item["check_spec"].get("type") == "semantic-required"
+                isinstance(item["check_spec"], dict) and item["check_spec"].get("type") == "semantic-required"
                 for item in active.values()
             ),
             "projected_status_without_certificates": evidence["result_status"],
-            "critical_certificate_coverage": evidence[
-                "critical_certificate_coverage"
-            ],
+            "critical_certificate_coverage": evidence["critical_certificate_coverage"],
             "projection_replayable": True,
             "canonical_unchanged": canonical_before == _digest(answer),
             "reference_digest_current": reference_digest_current,
-            "w2_correct_target_count": int(
-                paired[entry_id]["w2_correct_target_count"]
-            ),
-            "w3_correct_target_count": int(
-                paired[entry_id]["w3_correct_target_count"]
-            ),
+            "w2_correct_target_count": int(paired[entry_id]["w2_correct_target_count"]),
+            "w3_correct_target_count": int(paired[entry_id]["w3_correct_target_count"]),
         })
 
     fault_outcomes = correctness_faults.run_fault_suite(fault_cases)
@@ -165,52 +140,35 @@ def diagnose_replay(
         "target_count": projected_targets,
         "obligation_count": sum(item["obligation_count"] for item in rows),
         "projected_claim_count": sum(item["claim_count"] for item in rows),
-        "semantic_required_claim_count": sum(
-            item["semantic_required_claim_count"] for item in rows
-        ),
+        "semantic_required_claim_count": sum(item["semantic_required_claim_count"] for item in rows),
         "projected_case_count": len(rows),
         "projection_replay_rate": round(
             sum(item["projection_replayable"] for item in rows) / len(rows),
             6,
         ),
         "provisional_without_certificate_count": sum(
-            item["projected_status_without_certificates"] == "PROVISIONAL"
-            for item in rows
+            item["projected_status_without_certificates"] == "PROVISIONAL" for item in rows
         ),
-        "legacy_claim_evidence_report_count": sum(
-            item["legacy_claim_evidence_present"] for item in rows
-        ),
-        "canonical_mutation_count": sum(
-            not item["canonical_unchanged"] for item in rows
-        ),
-        "reference_digest_mismatch_count": sum(
-            not item["reference_digest_current"] for item in rows
-        ),
+        "legacy_claim_evidence_report_count": sum(item["legacy_claim_evidence_present"] for item in rows),
+        "canonical_mutation_count": sum(not item["canonical_unchanged"] for item in rows),
+        "reference_digest_mismatch_count": sum(not item["reference_digest_current"] for item in rows),
         "w2_correct_target_count": w2_correct,
         "w3_correct_target_count": w3_correct,
         "known_w3_gain_target_count": w3_correct - w2_correct,
         "known_w3_gain_case_count": sum(
-            item["w3_correct_target_count"] > item["w2_correct_target_count"]
-            for item in rows
+            item["w3_correct_target_count"] > item["w2_correct_target_count"] for item in rows
         ),
         "fault_case_count": len(fault_outcomes),
         "fault_detected_count": fault_detected,
-        "fault_detection_rate": round(
-            fault_detected / len(fault_outcomes), 6
-        ),
-        "false_promotion_count": sum(
-            item["false_promotion"] for item in fault_outcomes
-        ),
+        "fault_detection_rate": round(fault_detected / len(fault_outcomes), 6),
+        "false_promotion_count": sum(item["false_promotion"] for item in fault_outcomes),
     }
     gates = {
         "truth_lock_intact": projected_targets == locked_targets,
         "all_legacy_cases_projected": len(rows) == len(cases),
-        "projection_replayable": all(
-            item["projection_replayable"] for item in rows
-        ),
+        "projection_replayable": all(item["projection_replayable"] for item in rows),
         "legacy_outputs_not_auto_trusted": all(
-            item["projected_status_without_certificates"] != "VERIFIED"
-            for item in rows
+            item["projected_status_without_certificates"] != "VERIFIED" for item in rows
         ),
         "all_declared_faults_detected": fault_detected == len(fault_outcomes),
         "zero_false_promotion": metrics["false_promotion_count"] == 0,
@@ -226,12 +184,8 @@ def diagnose_replay(
         "gates": gates,
         "legacy_result_gates": legacy_result.get("gates", {}),
         "readiness": {
-            "historical_scores_reusable_without_refresh": (
-                metrics["reference_digest_mismatch_count"] == 0
-            ),
-            "reference_refresh_required": (
-                metrics["reference_digest_mismatch_count"] > 0
-            ),
+            "historical_scores_reusable_without_refresh": (metrics["reference_digest_mismatch_count"] == 0),
+            "reference_refresh_required": (metrics["reference_digest_mismatch_count"] > 0),
         },
         "cases": rows,
         "limitations": [
@@ -250,26 +204,14 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         f"- 生成时间：`{report['generated_at']}`",
         f"- 实验：`{report['experiment_id']}`",
-        f"- 旧题 / 冻结目标：{metrics['case_count']} / "
-        f"{metrics['target_count']}",
-        f"- 当前 Claim 投影：{metrics['projected_claim_count']}；义务："
-        f"{metrics['obligation_count']}",
+        f"- 旧题 / 冻结目标：{metrics['case_count']} / {metrics['target_count']}",
+        f"- 当前 Claim 投影：{metrics['projected_claim_count']}；义务：{metrics['obligation_count']}",
         f"- 投影可重放率：{metrics['projection_replay_rate']:.1%}",
-        f"- 无证书时 PROVISIONAL："
-        f"{metrics['provisional_without_certificate_count']}/"
-        f"{metrics['case_count']}",
-        f"- 旧报告自带 Claim Evidence："
-        f"{metrics['legacy_claim_evidence_report_count']}/"
-        f"{metrics['case_count']}",
-        f"- 当前答案摘要与旧 manifest 不一致："
-        f"{metrics['reference_digest_mismatch_count']}/"
-        f"{metrics['case_count']}",
-        f"- 历史 W2 / W3 目标正确数："
-        f"{metrics['w2_correct_target_count']}/"
-        f"{metrics['w3_correct_target_count']}",
-        f"- 已知 W3 增益目标 / 题："
-        f"{metrics['known_w3_gain_target_count']} / "
-        f"{metrics['known_w3_gain_case_count']}",
+        f"- 无证书时 PROVISIONAL：{metrics['provisional_without_certificate_count']}/{metrics['case_count']}",
+        f"- 旧报告自带 Claim Evidence：{metrics['legacy_claim_evidence_report_count']}/{metrics['case_count']}",
+        f"- 当前答案摘要与旧 manifest 不一致：{metrics['reference_digest_mismatch_count']}/{metrics['case_count']}",
+        f"- 历史 W2 / W3 目标正确数：{metrics['w2_correct_target_count']}/{metrics['w3_correct_target_count']}",
+        f"- 已知 W3 增益目标 / 题：{metrics['known_w3_gain_target_count']} / {metrics['known_w3_gain_case_count']}",
         f"- 当前故障集检出：{metrics['fault_detected_count']}/"
         f"{metrics['fault_case_count']}；错误晋升："
         f"{metrics['false_promotion_count']}",

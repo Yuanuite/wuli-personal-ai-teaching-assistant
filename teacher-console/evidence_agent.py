@@ -21,19 +21,12 @@ from log import TraceContext, get_logger
 logger = get_logger("evidence_agent")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-LIBRARY_SCRIPTS = (
-    PROJECT_ROOT
-    / ".claude"
-    / "skills"
-    / "manage-student-error-library"
-    / "scripts"
-)
+LIBRARY_SCRIPTS = PROJECT_ROOT / ".claude" / "skills" / "manage-student-error-library" / "scripts"
 if str(LIBRARY_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(LIBRARY_SCRIPTS))
 
 import kb  # noqa: E402
 import knowledge_store  # noqa: E402
-
 
 REFLECTION_CONTRACT = "wuli.evidence-reflection.v3"
 FUSION_POLICY = "single-route-bypass"
@@ -176,39 +169,27 @@ def reflection_output_contract() -> dict[str, Any]:
 
 
 def _terms(text: str) -> set[str]:
-    return {
-        token
-        for token in kb.tokenize(str(text or ""))
-        if len(token) > 1 or re.fullmatch(r"[a-z0-9.]+", token)
-    }
+    return {token for token in kb.tokenize(str(text or "")) if len(token) > 1 or re.fullmatch(r"[a-z0-9.]+", token)}
 
 
 def _candidate_score(need: dict[str, Any], unit: dict[str, Any]) -> tuple[float, str]:
     query_terms = _terms(
-        " ".join(
-            [
-                need["question"],
-                *need["required_facets"],
-                *need["forbidden_conflicts"],
-            ]
-        )
+        " ".join([
+            need["question"],
+            *need["required_facets"],
+            *need["forbidden_conflicts"],
+        ])
     )
     unit_terms = _terms(
-        " ".join(
-            [
-                unit["text"],
-                *unit["physics_facets"],
-                *unit["applicability"],
-                *unit["exceptions"],
-            ]
-        )
+        " ".join([
+            unit["text"],
+            *unit["physics_facets"],
+            *unit["applicability"],
+            *unit["exceptions"],
+        ])
     )
     overlap = len(query_terms & unit_terms)
-    facet_hits = sum(
-        1
-        for facet in need["required_facets"]
-        if _terms(facet) & unit_terms
-    )
+    facet_hits = sum(1 for facet in need["required_facets"] if _terms(facet) & unit_terms)
     purpose_match = unit["unit_kind"] in PURPOSE_UNIT_KINDS[need["purpose"]]
     authority = evidence_contract.AUTHORITY_RANK[unit["authority_level"]]
     score = overlap + 2.5 * facet_hits + (2.0 if purpose_match else 0.0) + authority * 0.1
@@ -236,10 +217,7 @@ def retrieve_single_route_candidates(
             "candidates": [],
             "queries": [],
         }
-    units = [
-        evidence_contract.normalize_evidence_unit(item)
-        for item in projection.get("units", [])
-    ]
+    units = [evidence_contract.normalize_evidence_unit(item) for item in projection.get("units", [])]
     selected: dict[str, dict[str, Any]] = {}
     queries: list[dict[str, Any]] = []
     bounded_top_k = max(1, min(int(top_k_per_need), 20))
@@ -252,22 +230,20 @@ def retrieve_single_route_candidates(
             ranked.append((score, unit["evidence_id"], explanation, unit))
         ranked.sort(key=lambda item: (-item[0], item[1]))
         picked = ranked[:bounded_top_k]
-        queries.append(
-            {
-                "query_id": f"query-{need['need_id']}-1",
-                "need_id": need["need_id"],
-                "route": "evidence-unit-lexical",
-                "candidate_evidence_ids": [item[1] for item in picked],
-                "scores": [
-                    {
-                        "evidence_id": item[1],
-                        "score": round(item[0], 4),
-                        "scoring": item[2],
-                    }
-                    for item in picked
-                ],
-            }
-        )
+        queries.append({
+            "query_id": f"query-{need['need_id']}-1",
+            "need_id": need["need_id"],
+            "route": "evidence-unit-lexical",
+            "candidate_evidence_ids": [item[1] for item in picked],
+            "scores": [
+                {
+                    "evidence_id": item[1],
+                    "score": round(item[0], 4),
+                    "scoring": item[2],
+                }
+                for item in picked
+            ],
+        })
         for _, evidence_id, _, unit in picked:
             selected[evidence_id] = unit
     ordered = sorted(
@@ -285,12 +261,8 @@ def retrieve_single_route_candidates(
     )
     allowed = {item["evidence_id"] for item in ordered}
     for query in queries:
-        query["candidate_evidence_ids"] = [
-            item for item in query["candidate_evidence_ids"] if item in allowed
-        ]
-        query["scores"] = [
-            item for item in query["scores"] if item["evidence_id"] in allowed
-        ]
+        query["candidate_evidence_ids"] = [item for item in query["candidate_evidence_ids"] if item in allowed]
+        query["scores"] = [item for item in query["scores"] if item["evidence_id"] in allowed]
     return {
         "status": "ready",
         "route": FUSION_POLICY,
@@ -348,8 +320,7 @@ def build_shadow_task(
         "entry_dir": str(entry),
         "working_dir": str(entry),
         "prompt": (
-            "读取当前题目、冻结蓝图、RetrievalNeed 与单路候选池，"
-            "按输出契约完成一次证据语义验收。不得继续检索。"
+            "读取当前题目、冻结蓝图、RetrievalNeed 与单路候选池，按输出契约完成一次证据语义验收。不得继续检索。"
         ),
         "allowed_paths": [],
         "input_paths": ["problem.md"],
@@ -366,10 +337,7 @@ def build_shadow_task(
             ".agent-context/evidence-blueprint.json": blueprint,
             ".agent-context/evidence-needs.json": {
                 "schema": evidence_contract.RETRIEVAL_NEED_SCHEMA,
-                "items": [
-                    evidence_contract.normalize_retrieval_need(item)
-                    for item in retrieval_needs
-                ],
+                "items": [evidence_contract.normalize_retrieval_need(item) for item in retrieval_needs],
             },
             ".agent-context/evidence-candidates.json": candidate_pool,
             ".agent-context/question-snapshot.json": {"problem": problem},
@@ -404,9 +372,7 @@ def normalize_reflection(
 
     needs = [evidence_contract.normalize_retrieval_need(item) for item in retrieval_needs]
     need_by_id = {item["need_id"]: item for item in needs}
-    allowed_ids = {
-        item["evidence_id"] for item in candidate_pool.get("candidates", [])
-    }
+    allowed_ids = {item["evidence_id"] for item in candidate_pool.get("candidates", [])}
     rows = payload.get("coverage")
     if not isinstance(rows, list):
         raise ValueError("evidence reflection coverage must be an array")
@@ -432,11 +398,7 @@ def normalize_reflection(
             if not evidence_id or evidence_id in evidence_ids:
                 raise ValueError("evidence bindings require unique evidence ids")
             binding_facets = list(
-                dict.fromkeys(
-                    str(item).strip()
-                    for item in binding.get("covered_facets", [])
-                    if str(item).strip()
-                )
+                dict.fromkeys(str(item).strip() for item in binding.get("covered_facets", []) if str(item).strip())
             )
             if not binding_facets:
                 raise ValueError("each evidence binding must cover at least one facet")
@@ -444,13 +406,11 @@ def normalize_reflection(
                 raise ValueError("evidence binding invents a facet outside RetrievalNeed")
             evidence_ids.append(evidence_id)
             bound_facets.update(binding_facets)
-            bindings.append(
-                {
-                    "evidence_id": evidence_id,
-                    "covered_facets": binding_facets,
-                    "reason": str(binding.get("reason") or "").strip()[:1000],
-                }
-            )
+            bindings.append({
+                "evidence_id": evidence_id,
+                "covered_facets": binding_facets,
+                "reason": str(binding.get("reason") or "").strip()[:1000],
+            })
         if set(evidence_ids) - allowed_ids:
             raise ValueError("evidence reflection references evidence outside candidate pool")
         facets = list(dict.fromkeys(str(item).strip() for item in raw.get("covered_facets", []) if str(item).strip()))
@@ -465,18 +425,14 @@ def normalize_reflection(
         for conflict_raw in conflicts_raw:
             if not isinstance(conflict_raw, dict):
                 raise ValueError("hard conflict must be an object")
-            conflict_evidence_id = str(
-                conflict_raw.get("evidence_id") or ""
-            ).strip()
+            conflict_evidence_id = str(conflict_raw.get("evidence_id") or "").strip()
             conflict_text = str(conflict_raw.get("conflict") or "").strip()[:1000]
             if conflict_evidence_id not in evidence_ids or not conflict_text:
                 raise ValueError("hard conflict must bind selected evidence")
-            conflicts.append(
-                {
-                    "evidence_id": conflict_evidence_id,
-                    "conflict": conflict_text,
-                }
-            )
+            conflicts.append({
+                "evidence_id": conflict_evidence_id,
+                "conflict": conflict_text,
+            })
         condition_verdict = str(raw.get("condition_verdict") or "").strip()
         if condition_verdict not in {"compatible", "incompatible", "uncertain"}:
             raise ValueError("evidence reflection condition_verdict is invalid")
@@ -490,39 +446,32 @@ def normalize_reflection(
                 raise ValueError("forbidden conflict check must be an object")
             conflict = str(check.get("conflict") or "").strip()
             verdict = str(check.get("verdict") or "").strip()
-            if (
-                conflict not in need_by_id[need_id]["forbidden_conflicts"]
-                or conflict in checked_conflicts
-            ):
+            if conflict not in need_by_id[need_id]["forbidden_conflicts"] or conflict in checked_conflicts:
                 raise ValueError("forbidden conflict checks must bind each declared conflict")
             if verdict not in {"present", "absent", "uncertain"}:
                 raise ValueError("forbidden conflict verdict is invalid")
             checked_conflicts.add(conflict)
-            checks.append(
-                {
-                    "conflict": conflict,
-                    "verdict": verdict,
-                    "reason": str(check.get("reason") or "").strip()[:1000],
-                }
-            )
+            checks.append({
+                "conflict": conflict,
+                "verdict": verdict,
+                "reason": str(check.get("reason") or "").strip()[:1000],
+            })
         if checked_conflicts != set(need_by_id[need_id]["forbidden_conflicts"]):
             raise ValueError("forbidden conflict checks must cover every declared conflict")
         not_required = bool(raw.get("not_required"))
         if not_required and need_by_id[need_id]["criticality"] == "required":
             raise ValueError("required RetrievalNeed cannot be marked not_required")
-        normalized.append(
-            {
-                "need_id": need_id,
-                "evidence_ids": evidence_ids,
-                "evidence_bindings": bindings,
-                "covered_facets": facets,
-                "hard_conflicts": conflicts,
-                "condition_verdict": condition_verdict,
-                "forbidden_conflict_checks": checks,
-                "not_required": not_required,
-                "reason": str(raw.get("reason") or "").strip()[:1000],
-            }
-        )
+        normalized.append({
+            "need_id": need_id,
+            "evidence_ids": evidence_ids,
+            "evidence_bindings": bindings,
+            "covered_facets": facets,
+            "hard_conflicts": conflicts,
+            "condition_verdict": condition_verdict,
+            "forbidden_conflict_checks": checks,
+            "not_required": not_required,
+            "reason": str(raw.get("reason") or "").strip()[:1000],
+        })
     if seen != set(need_by_id):
         raise ValueError("evidence reflection must contain each known need exactly once")
     return {
@@ -587,10 +536,7 @@ def _matches_diagnostic_target(text: str, need: dict[str, Any]) -> bool:
         if target in text or text in target:
             return True
         target_terms = _terms(target)
-        if (
-            target_terms
-            and len(text_terms & target_terms) / len(target_terms) >= 0.6
-        ):
+        if target_terms and len(text_terms & target_terms) / len(target_terms) >= 0.6:
             return True
     return False
 
@@ -628,44 +574,34 @@ def build_evidence_agent_run(
     required = [item for item in needs if item["criticality"] == "required"]
     if not required:
         logger.info("stage=evidence_build status=not_needed need_count=%d", len(needs))
-        return evidence_contract.normalize_evidence_agent_run(
-            {
-                **common,
-                "status": "not_needed",
-                "evidence_set": [],
-                "coverage": _empty_coverage(needs),
-                "usage_ledger": {"entries": []},
-                "retrieval_trace": [],
-                "insufficient_evidence": None,
-            }
-        )
+        return evidence_contract.normalize_evidence_agent_run({
+            **common,
+            "status": "not_needed",
+            "evidence_set": [],
+            "coverage": _empty_coverage(needs),
+            "usage_ledger": {"entries": []},
+            "retrieval_trace": [],
+            "insufficient_evidence": None,
+        })
     if candidate_pool.get("status") != "ready" or not reflection or reflection.get("status") != "completed":
-        reason = (
-            candidate_pool.get("reason")
-            or (reflection or {}).get("message")
-            or "semantic-reflection-unavailable"
-        )
+        reason = candidate_pool.get("reason") or (reflection or {}).get("message") or "semantic-reflection-unavailable"
         logger.warning("stage=evidence_build status=unavailable reason=%s", str(reason)[:200])
-        return evidence_contract.normalize_evidence_agent_run(
-            {
-                **common,
-                "status": "unavailable",
-                "evidence_set": [],
-                "coverage": _empty_coverage(needs),
-                "usage_ledger": {"entries": []},
-                "retrieval_trace": [],
-                "insufficient_evidence": str(reason)[:2000],
-            }
-        )
+        return evidence_contract.normalize_evidence_agent_run({
+            **common,
+            "status": "unavailable",
+            "evidence_set": [],
+            "coverage": _empty_coverage(needs),
+            "usage_ledger": {"entries": []},
+            "retrieval_trace": [],
+            "insufficient_evidence": str(reason)[:2000],
+        })
 
     normalized_reflection = normalize_reflection(
         reflection,
         retrieval_needs=needs,
         candidate_pool=candidate_pool,
     )
-    candidate_by_id = {
-        item["evidence_id"]: item for item in candidate_pool["candidates"]
-    }
+    candidate_by_id = {item["evidence_id"]: item for item in candidate_pool["candidates"]}
     need_by_id = {item["need_id"]: item for item in needs}
     coverage = []
     selected_ids: set[str] = set()
@@ -673,43 +609,23 @@ def build_evidence_agent_run(
     for row in normalized_reflection["coverage"]:
         need = need_by_id[row["need_id"]]
         evidence_ids = row["evidence_ids"]
-        missing = [
-            facet
-            for facet in need["required_facets"]
-            if facet not in row["covered_facets"]
-        ]
+        missing = [facet for facet in need["required_facets"] if facet not in row["covered_facets"]]
         below_authority = [
             evidence_id
             for evidence_id in evidence_ids
-            if evidence_contract.AUTHORITY_RANK[
-                candidate_by_id[evidence_id]["authority_level"]
-            ]
+            if evidence_contract.AUTHORITY_RANK[candidate_by_id[evidence_id]["authority_level"]]
             < evidence_contract.AUTHORITY_RANK[need["minimum_authority"]]
         ]
         model_conflicts = [
-            item for item in row["hard_conflicts"]
-            if not _matches_diagnostic_target(item["conflict"], need)
+            item for item in row["hard_conflicts"] if not _matches_diagnostic_target(item["conflict"], need)
         ]
-        ignored_diagnostic_conflicts = (
-            len(row["hard_conflicts"]) - len(model_conflicts)
-        )
-        conflicts = [
-            f"{item['evidence_id']}:{item['conflict']}"
-            for item in model_conflicts
-        ]
-        forbidden_present = any(
-            item["verdict"] != "absent"
-            for item in row["forbidden_conflict_checks"]
-        )
+        ignored_diagnostic_conflicts = len(row["hard_conflicts"]) - len(model_conflicts)
+        conflicts = [f"{item['evidence_id']}:{item['conflict']}" for item in model_conflicts]
+        forbidden_present = any(item["verdict"] != "absent" for item in row["forbidden_conflict_checks"])
         diagnostic_only_incompatibility = (
-            ignored_diagnostic_conflicts > 0
-            and not model_conflicts
-            and not forbidden_present
+            ignored_diagnostic_conflicts > 0 and not model_conflicts and not forbidden_present
         )
-        if (
-            row["condition_verdict"] != "compatible"
-            and not diagnostic_only_incompatibility
-        ):
+        if row["condition_verdict"] != "compatible" and not diagnostic_only_incompatibility:
             conflicts.append(f"condition-{row['condition_verdict']}")
         conflicts.extend(
             f"forbidden-conflict-{item['verdict']}:{item['conflict']}"
@@ -718,9 +634,7 @@ def build_evidence_agent_run(
         )
         conflicts.extend(_explicit_problem_conflicts(problem, need))
         if below_authority:
-            conflicts.append(
-                "authority-below-minimum:" + ",".join(sorted(below_authority))
-            )
+            conflicts.append("authority-below-minimum:" + ",".join(sorted(below_authority)))
         if row["not_required"] and need["criticality"] == "optional":
             status = "not_required"
             evidence_ids = []
@@ -739,20 +653,16 @@ def build_evidence_agent_run(
             # Rejected candidates remain visible in retrieval_trace and the
             # conflict reason, but must not enter the accepted Evidence Set.
             evidence_ids = []
-        coverage.append(
-            {
-                "need_id": need["need_id"],
-                "status": status,
-                "evidence_ids": evidence_ids,
-                "covered_facets": row["covered_facets"],
-                "missing_facets": missing,
-                "hard_conflicts": conflicts,
-            }
-        )
+        coverage.append({
+            "need_id": need["need_id"],
+            "status": status,
+            "evidence_ids": evidence_ids,
+            "covered_facets": row["covered_facets"],
+            "missing_facets": missing,
+            "hard_conflicts": conflicts,
+        })
 
-    required_rows = [
-        row for row in coverage if need_by_id[row["need_id"]]["criticality"] == "required"
-    ]
+    required_rows = [row for row in coverage if need_by_id[row["need_id"]]["criticality"] == "required"]
     sufficient = all(row["status"] == "covered" for row in required_rows)
     logger.info(
         "stage=evidence_build status=%s required_count=%d covered_count=%d",
@@ -760,9 +670,7 @@ def build_evidence_agent_run(
         len(required_rows),
         sum(1 for row in required_rows if row["status"] == "covered"),
     )
-    evidence_set = [
-        candidate_by_id[evidence_id] for evidence_id in sorted(selected_ids)
-    ]
+    evidence_set = [candidate_by_id[evidence_id] for evidence_id in sorted(selected_ids)]
     ledger = {
         "entries": [
             {
@@ -775,42 +683,26 @@ def build_evidence_agent_run(
             for (evidence_id, usage), need_ids in sorted(usages.items())
         ]
     }
-    candidate_ids = [
-        item["evidence_id"] for item in candidate_pool.get("candidates", [])
-    ]
-    newly_covered = [
-        row["need_id"] for row in coverage if row["status"] == "covered"
-    ]
-    gap_text = "; ".join(
-        f"{row['need_id']}:{row['status']}"
-        for row in required_rows
-        if row["status"] != "covered"
-    )
-    return evidence_contract.normalize_evidence_agent_run(
-        {
-            **common,
-            "status": "sufficient" if sufficient else "insufficient",
-            "evidence_set": evidence_set,
-            "coverage": coverage,
-            "usage_ledger": ledger,
-            "retrieval_trace": [
-                {
-                    "round": 1,
-                    "query_ids": [
-                        item["query_id"] for item in candidate_pool.get("queries", [])
-                    ],
-                    "candidate_evidence_ids": candidate_ids,
-                    "newly_covered_need_ids": newly_covered,
-                    "stop_reason": (
-                        "all-required-needs-covered"
-                        if sufficient
-                        else "single-route-shadow-budget-exhausted"
-                    ),
-                }
-            ],
-            "insufficient_evidence": None if sufficient else gap_text,
-        }
-    )
+    candidate_ids = [item["evidence_id"] for item in candidate_pool.get("candidates", [])]
+    newly_covered = [row["need_id"] for row in coverage if row["status"] == "covered"]
+    gap_text = "; ".join(f"{row['need_id']}:{row['status']}" for row in required_rows if row["status"] != "covered")
+    return evidence_contract.normalize_evidence_agent_run({
+        **common,
+        "status": "sufficient" if sufficient else "insufficient",
+        "evidence_set": evidence_set,
+        "coverage": coverage,
+        "usage_ledger": ledger,
+        "retrieval_trace": [
+            {
+                "round": 1,
+                "query_ids": [item["query_id"] for item in candidate_pool.get("queries", [])],
+                "candidate_evidence_ids": candidate_ids,
+                "newly_covered_need_ids": newly_covered,
+                "stop_reason": ("all-required-needs-covered" if sufficient else "single-route-shadow-budget-exhausted"),
+            }
+        ],
+        "insufficient_evidence": None if sufficient else gap_text,
+    })
 
 
 def load_projection_and_candidates(
@@ -828,20 +720,11 @@ def load_projection_and_candidates(
         limit=2000,
     )
     if projection_overlay and projection.get("status") == "ready":
-        overlay_units = [
-            evidence_contract.normalize_evidence_unit(item)
-            for item in projection_overlay
-        ]
-        existing_ids = {
-            item["evidence_id"] for item in projection.get("units", [])
-        }
-        collisions = existing_ids & {
-            item["evidence_id"] for item in overlay_units
-        }
+        overlay_units = [evidence_contract.normalize_evidence_unit(item) for item in projection_overlay]
+        existing_ids = {item["evidence_id"] for item in projection.get("units", [])}
+        collisions = existing_ids & {item["evidence_id"] for item in overlay_units}
         if collisions:
-            raise ValueError(
-                f"projection overlay collides with Knowledge Store: {sorted(collisions)}"
-            )
+            raise ValueError(f"projection overlay collides with Knowledge Store: {sorted(collisions)}")
         projection = {
             **projection,
             "overlay_unit_count": len(overlay_units),
@@ -857,11 +740,7 @@ def load_projection_and_candidates(
             **projection,
             "unit_count_before_source_filter": len(projection.get("units", [])),
             "source_kind_filter": sorted(allowed),
-            "units": [
-                item
-                for item in projection.get("units", [])
-                if item.get("source_kind") in allowed
-            ],
+            "units": [item for item in projection.get("units", []) if item.get("source_kind") in allowed],
         }
         projection["unit_count"] = len(projection["units"])
     return projection, retrieve_single_route_candidates(
@@ -898,12 +777,8 @@ def run_shadow(
         source_kinds=source_kinds,
         projection_overlay=projection_overlay,
     )
-    normalized_needs = [
-        evidence_contract.normalize_retrieval_need(item) for item in retrieval_needs
-    ]
-    required = [
-        item for item in normalized_needs if item["criticality"] == "required"
-    ]
+    normalized_needs = [evidence_contract.normalize_retrieval_need(item) for item in retrieval_needs]
+    required = [item for item in normalized_needs if item["criticality"] == "required"]
     gateway_result: dict[str, Any] | None = None
     reflection = None
     if projection.get("status") == "ready" and required:
@@ -935,9 +810,7 @@ def run_shadow(
             reflection = {
                 "status": "unsupported",
                 "message": str(
-                    gateway_result.get("failure_type")
-                    or gateway_result.get("message")
-                    or "agent-gateway-failed"
+                    gateway_result.get("failure_type") or gateway_result.get("message") or "agent-gateway-failed"
                 ),
                 "coverage": None,
             }

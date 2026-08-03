@@ -55,9 +55,7 @@ def evaluate_case(case_id: str, brief_payload: Any) -> dict[str, Any]:
             "latex_block_count": student.count("$$") // 2,
             "gate_status": gate["status"],
             "metrics": gate["metrics"],
-            "violation_codes": [
-                str(item.get("code", "")) for item in gate["violations"]
-            ],
+            "violation_codes": [str(item.get("code", "")) for item in gate["violations"]],
             "render_attempts": candidate["attempt"],
             "elapsed_seconds": elapsed,
             "model_call_count": 0,
@@ -89,30 +87,18 @@ def benchmark(cases: list[tuple[str, Any]]) -> dict[str, Any]:
         "case_count": len(rows),
         "cases": rows,
         "gates": {
-            "final_answer_fidelity_100": hard_pass and all(
-                row["candidate"]["metrics"]["final_answer_fidelity"] == 1.0
-                for row in rows
-            ),
-            "claim_support_coverage_100": hard_pass and all(
-                row["candidate"]["metrics"]["claim_support_coverage"] == 1.0
-                for row in rows
-            ),
-            "condition_retention_100": hard_pass and all(
-                row["candidate"]["metrics"]["condition_retention"] == 1.0
-                for row in rows
-            ),
-            "target_coverage_100": hard_pass and all(
-                row["candidate"]["metrics"]["target_coverage"] == 1.0
-                for row in rows
-            ),
-            "latex_validity_100": hard_pass and all(
-                row["candidate"]["metrics"]["latex_validity"] == 1.0
-                for row in rows
-            ),
-            "unsupported_claim_rate_zero": hard_pass and all(
-                row["candidate"]["metrics"]["unsupported_claim_rate"] == 0.0
-                for row in rows
-            ),
+            "final_answer_fidelity_100": hard_pass
+            and all(row["candidate"]["metrics"]["final_answer_fidelity"] == 1.0 for row in rows),
+            "claim_support_coverage_100": hard_pass
+            and all(row["candidate"]["metrics"]["claim_support_coverage"] == 1.0 for row in rows),
+            "condition_retention_100": hard_pass
+            and all(row["candidate"]["metrics"]["condition_retention"] == 1.0 for row in rows),
+            "target_coverage_100": hard_pass
+            and all(row["candidate"]["metrics"]["target_coverage"] == 1.0 for row in rows),
+            "latex_validity_100": hard_pass
+            and all(row["candidate"]["metrics"]["latex_validity"] == 1.0 for row in rows),
+            "unsupported_claim_rate_zero": hard_pass
+            and all(row["candidate"]["metrics"]["unsupported_claim_rate"] == 0.0 for row in rows),
             "shadow_candidate_eligible": hard_pass,
             "production_default_eligible": False,
         },
@@ -140,9 +126,7 @@ def build_blind_packet(
         packet_cases.append({
             "case_id": case_id,
             "versions": {"A": versions["A"], "B": versions["B"]},
-            "target_ids": [
-                item["target_id"] for item in brief["question_targets"]
-            ],
+            "target_ids": [item["target_id"] for item in brief["question_targets"]],
             "review_requirements": {
                 "preferred_version": "A, B, or tie",
                 "target_fidelity": "check every target_id",
@@ -188,18 +172,15 @@ def score_blind_reviews(
     """Validate complete teacher reviews and unblind aggregate preferences."""
     if not isinstance(packet, dict) or packet.get("blinded") is not True:
         raise ValueError("blind review packet is invalid")
-    if (
-        not isinstance(private_key, dict)
-        or private_key.get("packet_fingerprint")
-        != w3r_contract.stable_fingerprint(packet)
+    if not isinstance(private_key, dict) or private_key.get("packet_fingerprint") != w3r_contract.stable_fingerprint(
+        packet
     ):
         raise ValueError("blind review key is not bound to this packet")
     review_rows = reviews.get("cases", []) if isinstance(reviews, dict) else []
-    review_by_id = {
-        item.get("case_id"): item for item in review_rows if isinstance(item, dict)
-    }
+    review_by_id = {item.get("case_id"): item for item in review_rows if isinstance(item, dict)}
     key_by_id = {
-        item["case_id"]: item for item in private_key.get("cases", [])
+        item["case_id"]: item
+        for item in private_key.get("cases", [])
         if isinstance(item, dict) and isinstance(item.get("case_id"), str)
     }
     errors = []
@@ -262,13 +243,9 @@ def score_blind_reviews(
         "candidate_wins": candidate_wins,
         "baseline_wins": baseline_wins,
         "ties": ties,
-        "teacher_readability_preference": round(
-            candidate_wins / decided, 4
-        ) if decided else 0.5,
-        "candidate_edit_rate": round(candidate_edits / reviewed, 4)
-        if reviewed else 0.0,
-        "baseline_edit_rate": round(baseline_edits / reviewed, 4)
-        if reviewed else 0.0,
+        "teacher_readability_preference": round(candidate_wins / decided, 4) if decided else 0.5,
+        "candidate_edit_rate": round(candidate_edits / reviewed, 4) if reviewed else 0.0,
+        "baseline_edit_rate": round(baseline_edits / reviewed, 4) if reviewed else 0.0,
         "teacher_edit_rate_non_regression": candidate_edits <= baseline_edits,
         "errors": [],
     }
@@ -284,26 +261,22 @@ def rollout_evidence(
     cases = report.get("cases", [])
     metrics = [row.get("candidate", {}).get("metrics", {}) for row in cases]
     completed_review = (
-        review_score
-        if isinstance(review_score, dict)
-        and review_score.get("status") == "completed"
-        else {}
+        review_score if isinstance(review_score, dict) and review_score.get("status") == "completed" else {}
     )
 
     def minimum(field: str, fallback: float) -> float:
         values = [item.get(field) for item in metrics]
-        return min(values) if values and all(
-            isinstance(value, (int, float)) and not isinstance(value, bool)
-            for value in values
-        ) else fallback
+        return (
+            min(values)
+            if values and all(isinstance(value, (int, float)) and not isinstance(value, bool) for value in values)
+            else fallback
+        )
 
     target_count = sum(int(row.get("target_count", 0)) for row in cases)
     evidence = {
         "report_digest": w3r_contract.stable_fingerprint(report),
         "paired_case_count": len(cases),
-        "teacher_reviewed_case_count": int(
-            completed_review.get("reviewed_case_count", 0)
-        ),
+        "teacher_reviewed_case_count": int(completed_review.get("reviewed_case_count", 0)),
         "fresh_holdout_case_count": len(cases) if fresh_holdout else 0,
         "fresh_holdout_target_count": target_count if fresh_holdout else 0,
         "final_answer_fidelity": minimum("final_answer_fidelity", 0.0),
@@ -315,12 +288,8 @@ def rollout_evidence(
             [item.get("unsupported_claim_rate", 1.0) for item in metrics],
             default=1.0,
         ),
-        "teacher_readability_preference": float(
-            completed_review.get("teacher_readability_preference", 0.0)
-        ),
-        "teacher_edit_rate_non_regression": bool(
-            completed_review.get("teacher_edit_rate_non_regression", False)
-        ),
+        "teacher_readability_preference": float(completed_review.get("teacher_readability_preference", 0.0)),
+        "teacher_edit_rate_non_regression": bool(completed_review.get("teacher_edit_rate_non_regression", False)),
     }
     return evidence
 
@@ -356,9 +325,7 @@ def load_case(path: Path) -> tuple[str, dict[str, Any]]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if payload.get("schema") == w3r_contract.BRIEF_SCHEMA:
         return path.stem, payload
-    built = w3r_contract.build_w3r_brief(
-        payload["problem"], payload["blueprint"], payload["proof_package"]
-    )
+    built = w3r_contract.build_w3r_brief(payload["problem"], payload["blueprint"], payload["proof_package"])
     if built.get("status") != "completed":
         raise ValueError(f"{path}: {built.get('violations')}")
     return path.stem, built["brief"]
@@ -415,7 +382,8 @@ def main() -> int:
                 ),
                 ensure_ascii=False,
                 indent=2,
-            ) + "\n",
+            )
+            + "\n",
             encoding="utf-8",
         )
     return 0 if report["gates"]["shadow_candidate_eligible"] else 1

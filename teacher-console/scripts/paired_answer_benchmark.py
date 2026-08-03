@@ -82,9 +82,7 @@ def compare(candidate: str, reference: str) -> dict[str, Any]:
     if expected_options:
         if not actual_options:
             actual_options = {
-                label
-                for label, verdict in analysis_artifacts._option_verdicts(candidate[:2400]).items()
-                if verdict
+                label for label, verdict in analysis_artifacts._option_verdicts(candidate[:2400]).items() if verdict
             }
         option_match = actual_options == expected_options
     else:
@@ -100,14 +98,10 @@ def compare(candidate: str, reference: str) -> dict[str, Any]:
     return {
         "option_verdict_match": option_match,
         "expected_option_count": len(expected_options),
-        "formula_recall": (
-            round(len(retained) / len(expected_formulae), 4) if expected_formulae else None
-        ),
+        "formula_recall": (round(len(retained) / len(expected_formulae), 4) if expected_formulae else None),
         "reference_formula_count": len(expected_formulae),
         "candidate_formula_count": len(actual_formulae),
-        "semantic_change_ratio": round(
-            semantic["changed_lines"] / max(semantic["total_lines"], 1), 4
-        ),
+        "semantic_change_ratio": round(semantic["changed_lines"] / max(semantic["total_lines"], 1), 4),
         "critical_correction": semantic["critical_correction"],
         "candidate_chars": len(candidate),
         "reference_chars": len(reference),
@@ -179,10 +173,7 @@ def refresh_references(library: Path, experiment: Path) -> dict[str, int]:
         entry = library / "entries" / str(case.get("entry_id", ""))
         record = load_json(entry / "record.json")
         solution = entry / "student-solution.md"
-        if (
-            record.get("answer_review", {}).get("status") != "passed"
-            or not solution.is_file()
-        ):
+        if record.get("answer_review", {}).get("status") != "passed" or not solution.is_file():
             skipped += 1
             continue
         difficulty = record.get("difficulty_assessment", {})
@@ -287,11 +278,7 @@ def evaluate(library: Path, experiment: Path) -> dict[str, Any]:
         provenance = {}
         artifact_dir = experiment / "artifacts" / entry_id
         candidate_paths = {
-            cohort: (
-                artifact_dir / "direct.md"
-                if cohort == "direct"
-                else web_candidate_path(artifact_dir, cohort)
-            )
+            cohort: (artifact_dir / "direct.md" if cohort == "direct" else web_candidate_path(artifact_dir, cohort))
             for cohort in REPORT_COHORTS
         }
         for cohort in REPORT_COHORTS:
@@ -338,9 +325,7 @@ def evaluate(library: Path, experiment: Path) -> dict[str, Any]:
             "web_candidate": available.get("web-candidate", False),
             "pair_ready": pair_ready,
             "three_way_ready": three_way_ready,
-            "comparison_ready": (
-                three_way_ready and direct_input_status == "complete" and not stale_reference
-            ),
+            "comparison_ready": (three_way_ready and direct_input_status == "complete" and not stale_reference),
             "direct_provenance": provenance.get("direct", "missing"),
             "web_no_rag_provenance": provenance.get("web-no-rag", "missing"),
             "web_current_provenance": provenance.get("web-current", "missing"),

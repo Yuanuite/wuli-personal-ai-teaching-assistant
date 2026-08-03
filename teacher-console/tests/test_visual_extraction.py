@@ -54,11 +54,7 @@ def make_model_output(overrides=None):
 
 
 def make_response(content):
-    return {
-        "choices": [
-            {"message": {"role": "assistant", "content": content}}
-        ]
-    }
+    return {"choices": [{"message": {"role": "assistant", "content": content}}]}
 
 
 class FakeResponse:
@@ -166,7 +162,10 @@ class TestExtractVisualFacts(unittest.TestCase):
         self.assertNotIn("extra", result["visual_facts"])
 
     def test_uncertainty_and_low_confidence_gate_needs_source_review(self):
-        output = make_model_output({"uncertainties": ["uncertain"], "diagram_facts": [{"id": "d1", "kind": "region", "statement": "s", "confidence": 0.4}]})
+        output = make_model_output({
+            "uncertainties": ["uncertain"],
+            "diagram_facts": [{"id": "d1", "kind": "region", "statement": "s", "confidence": 0.4}],
+        })
 
         def resolver(kind, routing_tier="auto"):
             return self.config
@@ -250,6 +249,7 @@ class TestExtractVisualFacts(unittest.TestCase):
             make_config(traits={"vision": False}),
         ]
         for bad in bad_configs:
+
             def resolver(kind, routing_tier="auto"):
                 return bad
 
@@ -335,6 +335,7 @@ class TestExtractVisualFacts(unittest.TestCase):
             json.dumps({"choices": [{"message": {}}]}),
         ]
         for bad in bad_responses:
+
             def resolver(kind, routing_tier="auto"):
                 return self.config
 
@@ -392,6 +393,7 @@ class TestExtractVisualFacts(unittest.TestCase):
 
     def test_input_remains_unchanged(self):
         import copy
+
         original = copy.deepcopy(self.review_payload)
 
         def resolver(kind, routing_tier="auto"):

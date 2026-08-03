@@ -21,9 +21,7 @@ def _root_path_issues(
     issues: list[str] = []
     for claim_id, claim in claims.items():
         if not claim["depends_on"] and claim["kind"] != "premise":
-            issues.append(
-                f"non-premise root {claim_id} has no dependency path to approved facts"
-            )
+            issues.append(f"non-premise root {claim_id} has no dependency path to approved facts")
         if claim["kind"] == "premise" and claim["depends_on"]:
             issues.append(f"premise {claim_id} must not depend on derived Claims")
     return issues
@@ -98,22 +96,12 @@ def aggregate_proof(
         )
         for item in (hypotheses or [])
     ]
-    active_challenges = [
-        item
-        for item in normalized_challenges
-        if item["status"] in {"candidate", "open"}
-    ]
-    active_hypotheses = [
-        item
-        for item in normalized_hypotheses
-        if item["status"] not in {"rejected", "superseded"}
-    ]
+    active_challenges = [item for item in normalized_challenges if item["status"] in {"candidate", "open"}]
+    active_hypotheses = [item for item in normalized_hypotheses if item["status"] not in {"rejected", "superseded"}]
     path_issues = _root_path_issues(trusted)
     issues: list[str] = list(path_issues)
     if evidence["result_status"] != "VERIFIED":
-        issues.append(
-            f"claim evidence graph is {evidence['result_status']}"
-        )
+        issues.append(f"claim evidence graph is {evidence['result_status']}")
     if interface_status != "pass":
         issues.append(f"stage interface report is {interface_status}")
     if active_challenges:
@@ -125,7 +113,8 @@ def aggregate_proof(
         evidence["result_status"] == "UNRESOLVED"
         or interface_status == "conflict"
         or any(
-            item["trigger"] in {
+            item["trigger"]
+            in {
                 "verification-conflict",
                 "interface-mismatch",
             }
