@@ -9,7 +9,7 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from typing import Callable, cast
 
 from agent_outcome import build_agent_request_outcome
 from log import logger
@@ -273,12 +273,12 @@ class AgentJobManager:
 
     def _adaptive_limit_locked(self, record: dict) -> int:
         if not self.adaptive_config.get("enabled", True):
-            return self.max_workers
+            return int(self.max_workers)
         state = self._adaptive_state_locked(record)
         return min(
             int(state["limit"]),
             int(self.adaptive_config["max_limit"]),
-            self.kind_limits.get(str(record.get("kind", "")), self.max_workers),
+            self.kind_limits.get(str(record.get("kind", "")), int(self.max_workers)),
         )
 
     @staticmethod
@@ -504,7 +504,7 @@ class AgentJobManager:
         path = self._path(job_id)
         if not path.is_file():
             raise FileNotFoundError(job_id)
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict, json.loads(path.read_text(encoding="utf-8")))
 
     def latest_for_entry(self, entry_id: str) -> dict | None:
         records = []
