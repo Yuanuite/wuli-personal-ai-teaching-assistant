@@ -20,6 +20,7 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 CONSOLE_DIR = Path(__file__).resolve().parent
@@ -2455,7 +2456,7 @@ class Handler(SimpleHTTPRequestHandler):
             kb.write_json(entry / "record.json", record)
             with LIBRARY_INDEX_LOCK:
                 kb.rebuild_index(LIBRARY)
-            result = {"status": "renamed", "title": new_title}
+            result: dict[str, Any] = {"status": "renamed", "title": new_title}
         elif action == "approve-source":
             problem = str(data.get("problem", ""))
             if len(problem.strip()) < 30:

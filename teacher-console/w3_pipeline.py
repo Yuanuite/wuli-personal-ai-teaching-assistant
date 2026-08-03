@@ -514,17 +514,14 @@ def run_claim_evidence_shadow(
             logger.warning("stage=w3_shadow interface_status=downgraded_to_conflict")
         else:
             interface_report["semantic_verification"] = interface_audit
-    aggregation_args = {
-        "expected_target_ids": target_ids,
-        "expected_obligation_ids": obligation_ids,
-        "interface_report": interface_report,
-        "risks": risks,
-        "generator_identities": generator_identities,
-    }
     aggregation = proof_aggregation.aggregate_proof(
         snapshot["claims"],
         certificates,
-        **aggregation_args,
+        expected_target_ids=target_ids,
+        expected_obligation_ids=obligation_ids,
+        interface_report=interface_report,
+        risks=risks,
+        generator_identities=generator_identities,
     )
     logger.info(
         "stage=w3_shadow aggregation_status=%s verified_count=%d",
@@ -544,8 +541,12 @@ def run_claim_evidence_shadow(
             aggregation = proof_aggregation.aggregate_proof(
                 snapshot["claims"],
                 certificates,
+                expected_target_ids=target_ids,
+                expected_obligation_ids=obligation_ids,
+                interface_report=interface_report,
                 challenges=challenges,
-                **aggregation_args,
+                risks=risks,
+                generator_identities=generator_identities,
             )
         loop = _loop_snapshot(aggregation, certificates, challenges)
         logger.info(
