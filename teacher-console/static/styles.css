@@ -60,6 +60,7 @@ button { cursor: pointer; }
 
 .route-preview { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 .route-preview.route-blocked { color: #b45309; }
+.route-execution-plan { margin: 2px 0 0; font-size: 11px; line-height: 1.5; color: var(--muted); }
 .brand-row { display: flex; align-items: center; gap: 12px; }
 .topbar h1 { margin: 1px 0 0; font-family: Georgia, "Songti SC", serif; font-size: 21px; font-weight: 600; letter-spacing: .02em; }
 .eyebrow { margin: 0; font-size: 8px; letter-spacing: .18em; color: var(--green); font-weight: 700; }
@@ -266,6 +267,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .active-job-copy strong, .active-job-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .active-job-copy strong { font-size: 10px; }
 .active-job-copy small { font-size: 8px; }
+#timeout-summary { margin-top: 3px; font-size: 9px; line-height: 1.55; color: var(--red); white-space: normal; overflow: visible; text-overflow: clip; }
 @keyframes job-spin { to { transform: rotate(360deg); } }
 
 .progress { display: grid; grid-template-columns: repeat(7, 1fr); list-style: none; padding: 0; margin: 3px 0 0; counter-reset: steps; }

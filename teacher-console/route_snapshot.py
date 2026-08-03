@@ -14,6 +14,26 @@ from datetime import datetime
 from pathlib import Path
 
 ROUTE_SNAPSHOT_SCHEMA = "wuli.route-snapshot.v1"
+ROUTE_EXECUTION_PLAN_SCHEMA = "wuli.route-execution-plan.v1"
+
+# Expected stage sequences per planned solver route (A2.1).
+CORE_FIRST_STAGES = (
+    "structured-generation",
+    "core-gate",
+    "physics-quality-gate",
+    "deterministic-teaching-render",
+    "render-fidelity-gate",
+    "authoritative-review",
+)
+W3_STAGES = (
+    "decompose",
+    "solver-a",
+    "claim-verifier",
+    "proof-aggregation",
+    "renderer-selection",
+    "render",
+    "authoritative-review",
+)
 
 
 def now_iso() -> str:
@@ -84,9 +104,51 @@ def route_snapshot_summary(snapshot: dict) -> dict:
     }
 
 
+def build_route_execution_plan(
+    *,
+    library: Path,
+    core_config: dict | None = None,
+    w3r_config: dict | None = None,
+) -> dict:
+    """Express the planned solver route and renderer mode explicitly (A2.1).
+
+    Never collapses to a single "deep analysis" boolean: ``core + w3r off``,
+    ``w3 + w3r shadow`` and ``w3 + legacy renderer`` are distinct plans.
+    ``w3r_config`` is expected to be already normalized (invalid configs fail
+    closed to ``off`` by ``analysis_routing.normalize_w3r_config``).
+    """
+    core_config = core_config if isinstance(core_config, dict) else {}
+    w3r_config = w3r_config if isinstance(w3r_config, dict) else {}
+    solver_route = "w3" if str(core_config.get("mode", "")).strip() == "legacy-adaptive" else "core"
+    w3r_mode = str(w3r_config.get("mode", "off")).strip() or "off"
+    if w3r_mode not in {"shadow", "gray", "default"}:
+        w3r_mode = "off"
+    if solver_route == "w3" and w3r_mode == "shadow":
+        renderer_mode = "w3r-shadow"
+    elif w3r_mode in {"gray", "default"} and solver_route == "w3":
+        renderer_mode = "w3r"
+    else:
+        renderer_mode = "legacy"
+    expected_stages = list(W3_STAGES if solver_route == "w3" else CORE_FIRST_STAGES)
+    return {
+        "schema": ROUTE_EXECUTION_PLAN_SCHEMA,
+        "planned_solver_route": solver_route,
+        "planned_renderer_mode": renderer_mode,
+        "w3r_mode": w3r_mode,
+        "expected_stages": expected_stages,
+        "config_digest": route_config_digest(library),
+        "canonical_write_policy": "promote-after-teacher-review",
+        "created_at": now_iso(),
+    }
+
+
 __all__ = [
     "ROUTE_SNAPSHOT_SCHEMA",
+    "ROUTE_EXECUTION_PLAN_SCHEMA",
+    "CORE_FIRST_STAGES",
+    "W3_STAGES",
     "build_route_snapshot",
+    "build_route_execution_plan",
     "route_config_digest",
     "route_snapshot_is_stale",
     "route_snapshot_summary",

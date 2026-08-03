@@ -174,6 +174,44 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("validation_errors", script)
         self.assertIn("required_env", script)
 
+    def test_w3_w3r_route_plan_and_timeout_summary_contract(self):
+        # A3.1/A3.2/A3.3 (w3-w3r-route-deadline-repair-work-tree): the teacher
+        # UI must expose the planned solver route / W3R mode / renderer /
+        # expected stages truthfully (core-first must not read as a W3
+        # failure), and failed jobs carrying timeout_summary must distinguish
+        # provider soft timeout from Gateway hard kill without claiming
+        # fallback, confirmed token consumption, or stderr/path leaks.
+        html = (STATIC / "index.html").read_text(encoding="utf-8")
+        script = (STATIC / "app.js").read_text(encoding="utf-8")
+        css = (STATIC / "styles.css").read_text(encoding="utf-8")
+        self.assertIn('id="route-execution-plan"', html)
+        self.assertIn('id="timeout-summary"', html)
+        self.assertIn("route_execution_plan", script)
+        self.assertIn("wuli.route-execution-plan.v1", script)
+        self.assertIn("计划解析路线：Core（W3 未运行）", script)
+        self.assertIn("计划解析路线：W3 · W3R off", script)
+        self.assertIn("W3 已验证 + W3R", script)
+        self.assertIn('"core-gate": "Core 门控"', script)
+        self.assertIn('"proof-aggregation": "证明汇总"', script)
+        self.assertIn("timeout_summary", script)
+        self.assertIn("wuli.timeout-summary.v1", script)
+        self.assertIn(
+            "provider soft timeout：adapter 在 HTTP 期限超时并形成脱敏 envelope（未到 Gateway 硬杀）",
+            script,
+        )
+        self.assertIn(
+            "Gateway hard deadline：child 进程在 attempt 硬期限被终止，未返回结构化 envelope",
+            script,
+        )
+        self.assertIn("child 未输出任何内容", script)
+        self.assertIn("usage 不可得（provider 未返回用量）", script)
+        self.assertIn("W3/W3R 未运行（core-first 路由）", script)
+        self.assertIn("canonical 未修改、未自动重试、可重新提交", script)
+        self.assertIn("未确认消耗 token", script)
+        self.assertIn("请勿盲目调高超时时间", script)
+        self.assertIn(".route-execution-plan", css)
+        self.assertIn("#timeout-summary", css)
+
     def test_particle_renderers_are_registered(self):
         simulator = ROOT / ".claude" / "skills" / "build-physics-simulator"
         builder = (simulator / "scripts" / "build_simulator.py").read_text(encoding="utf-8")

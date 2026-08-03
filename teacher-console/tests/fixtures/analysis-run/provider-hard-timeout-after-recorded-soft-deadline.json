@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "contract": "wuli.provider-hard-timeout-fixture.v1",
+  "redacted": true,
+  "source_job_id": "63f9d8080ce94014873b2b44d7e932b7",
+  "source_entry": "20260802-screenshot-2026-08-02-at-17-55-28-830117d9",
+  "notes": "脱敏复现：记录值正确但 child 绑定错误的时序缺陷（A0.1）。不含题干、prompt、reasoning、Key 或绝对路径。",
+  "route": {
+    "actual": "core-first",
+    "solver": "core",
+    "model": "deepseek-v4-flash-api",
+    "provider": "openai-compatible",
+    "w3": "not-run",
+    "w3r": "off"
+  },
+  "deadline": {
+    "task_deadline": 90.0,
+    "attempt_deadline": 90.0,
+    "recorded_http_soft_deadline": 76.5,
+    "child_http_timeout_observed": 300,
+    "binding_bug": "deadline_budget 注入晚于 child 环境构造，soft 封顶被跳过，child 使用 adapter 默认 300 秒"
+  },
+  "attempt": {
+    "provider": "openai-compatible",
+    "status": "failed",
+    "duration_seconds": 90.008,
+    "timeout_layer": "attempt_hard",
+    "child_stdout_empty": true,
+    "adapter_stdout_length": 0,
+    "structured_timeout_envelope": false,
+    "usage": {"measurement": "unavailable"}
+  },
+  "stages": [
+    {"name": "structured-generation", "status": "failed"},
+    {"name": "authoritative-review", "status": "not-run"}
+  ],
+  "canonical": {"changed_files": [], "digest_unchanged": true}
+}

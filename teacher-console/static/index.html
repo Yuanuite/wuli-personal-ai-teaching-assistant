@@ -226,6 +226,7 @@
               <span class="active-job-copy">
                 <strong id="active-job-title">后台任务处理中</strong>
                 <small id="active-job-detail"></small>
+                <small id="timeout-summary" class="hidden"></small>
               </span>
             </div>
             <span id="state-badge" class="state-badge"></span>
@@ -280,6 +281,7 @@
               <h3>解析生成与复核</h3>
               <p id="agent-message" class="muted"></p>
               <p id="route-preview" class="route-preview muted">本次解析路由：尚未加载…</p>
+              <p id="route-execution-plan" class="route-execution-plan muted" hidden></p>
             </div>
             <button id="run-analysis" class="primary">运行解析流程</button>
           </div>

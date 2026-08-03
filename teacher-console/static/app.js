@@ -20,6 +20,7 @@ const state = {
   jobDismissTimer: null,
   modelSettings: null,
   runtimeSettings: null,
+  lastRoutePlan: null,
   retrievalReview: {
     cases: [],
     candidates: [],
@@ -2102,6 +2103,42 @@ function jobFailureReason(job) {
   return job.reason || job.message || "任务失败，请检查 Agent 状态后重试";
 }
 
+// A3.2/A3.3: failed jobs may carry a data-only timeout summary. The copy
+// distinguishes provider soft timeout from Gateway hard kill, never claims a
+// fallback or confirmed token consumption, and keeps the safe-stop meaning
+// (canonical untouched, no auto retry, resubmit allowed). No stderr/paths.
+function timeoutSummaryText(job) {
+  const summary = job?.result?.timeout_summary || job?.timeout_summary;
+  if (!summary || summary.schema !== "wuli.timeout-summary.v1") return "";
+  const layer = summary.timeout_layer === "http_soft"
+    ? "provider soft timeout：adapter 在 HTTP 期限超时并形成脱敏 envelope（未到 Gateway 硬杀）"
+    : "Gateway hard deadline：child 进程在 attempt 硬期限被终止，未返回结构化 envelope";
+  const childNote = summary.timeout_layer === "attempt_hard" && summary.child_stdout_empty
+    ? "；child 未输出任何内容"
+    : "";
+  const route = state.lastRoutePlan?.planned_solver_route === "w3"
+    ? `实际路线按 route_execution_plan：W3 · W3R ${state.lastRoutePlan.w3r_mode || "off"}`
+    : "W3/W3R 未运行（core-first 路由）";
+  return [
+    `${layer}${childNote}`,
+    `usage 不可得（provider 未返回用量）；${route}`,
+    "canonical 未修改、未自动重试、可重新提交；未确认消耗 token，请勿盲目调高超时时间",
+  ].join("；");
+}
+
+function renderTimeoutSummary(job) {
+  const target = $("timeout-summary");
+  if (!target) return;
+  const text = job ? timeoutSummaryText(job) : "";
+  if (text) {
+    target.textContent = text;
+    target.classList.remove("hidden");
+  } else {
+    target.classList.add("hidden");
+    target.textContent = "";
+  }
+}
+
 function jobApiUrl(job) {
   const supplied = String(job?.url || "");
   if (/^\/api\/jobs\/[A-Za-z0-9._~-]+(?:\?.*)?$/.test(supplied)) return supplied;
@@ -2154,7 +2191,9 @@ function renderActiveJob() {
   $("active-job-title").textContent = titles[status] || `${action} · ${status}`;
   if (status === "failed") {
     $("active-job-detail").textContent = jobFailureReason(job);
+    renderTimeoutSummary(job);
   } else {
+    renderTimeoutSummary(null);
     const providerValue = job.provider || job.agent || selectedAgentLabel();
     const provider = typeof providerValue === "object"
       ? (providerValue.name || providerValue.selected || "本地 Agent")
@@ -2260,7 +2299,9 @@ async function pollActiveJob(jobId, entryId) {
       }
     }, 5200);
   } else {
-    toast(`${jobActionLabel(finished.action)}失败：${jobFailureReason(finished)}`, true);
+    const failureNote = timeoutSummaryText(finished);
+    const layerHint = failureNote ? `；${failureNote.split("；")[0]}` : "";
+    toast(`${jobActionLabel(finished.action)}失败：${jobFailureReason(finished)}${layerHint}`, true);
   }
   renderActiveJob();
 }
@@ -2296,6 +2337,7 @@ async function refreshRoutePreview() {
     if (result.status === "blocked" || !result.resolved_model_id) {
       target.textContent = `本次解析路由：不可用（${result.error || "未通过任务级资格验证"}）`;
       target.classList.add("route-blocked");
+      renderRouteExecutionPlan(null);
       return;
     }
     const qual = result.qualification || {};
@@ -2308,9 +2350,61 @@ async function refreshRoutePreview() {
       : "";
     target.textContent = `本次解析路由：${result.resolved_model_id}（${result.provider}）· ${qualText}${deadlineText}`;
     target.classList.remove("route-blocked");
+    renderRouteExecutionPlan(result.route_execution_plan || null);
   } catch {
     target.textContent = "本次解析路由：加载失败（服务未连接）";
+    renderRouteExecutionPlan(null);
   }
+}
+
+// A3.1: expose the planned solver route, W3R mode, renderer and expected
+// stages truthfully. core-first must never read as a W3 failure, and a
+// w3+shadow plan must read as "W3 已验证 + W3R shadow".
+const ROUTE_PLAN_STAGE_LABELS = {
+  "structured-generation": "结构化生成",
+  "core-gate": "Core 门控",
+  "physics-quality-gate": "物理质量门",
+  "deterministic-teaching-render": "确定性教学渲染",
+  "render-fidelity-gate": "渲染保真门",
+  "authoritative-review": "权威复核",
+  decompose: "拆解",
+  "solver-a": "求解 A",
+  "claim-verifier": "断言验证",
+  "proof-aggregation": "证明汇总",
+  "renderer-selection": "渲染器选择",
+  render: "渲染",
+};
+
+function routePlanSummary(plan) {
+  const solver = plan.planned_solver_route === "w3" ? "W3" : "Core";
+  const mode = ["off", "shadow", "gray", "default"].includes(plan.w3r_mode) ? plan.w3r_mode : "off";
+  const renderer = ["legacy", "w3r-shadow", "w3r"].includes(plan.planned_renderer_mode)
+    ? plan.planned_renderer_mode
+    : "legacy";
+  if (solver === "W3") {
+    return mode === "off"
+      ? `计划解析路线：W3 · W3R off · 渲染器 ${renderer}`
+      : `计划解析路线：W3 · 状态：W3 已验证 + W3R ${mode} · 渲染器 ${renderer}`;
+  }
+  // core-first: W3R never runs without W3, so the truthful mode is off even
+  // if the w3r config nominally names a mode.
+  return `计划解析路线：Core（W3 未运行） · W3R off · 渲染器 ${renderer}`;
+}
+
+function renderRouteExecutionPlan(plan) {
+  state.lastRoutePlan = plan && plan.schema === "wuli.route-execution-plan.v1" ? plan : null;
+  const planTarget = $("route-execution-plan");
+  if (!planTarget) return;
+  if (!state.lastRoutePlan) {
+    planTarget.classList.add("hidden");
+    planTarget.textContent = "";
+    return;
+  }
+  const stages = (plan.expected_stages || [])
+    .map(stage => ROUTE_PLAN_STAGE_LABELS[stage] || stage)
+    .join(" → ");
+  planTarget.textContent = `${routePlanSummary(plan)} · 预期阶段：${stages}`;
+  planTarget.classList.remove("hidden");
 }
 
 async function visualizationAction(action, body, button, busyLabel, success) {

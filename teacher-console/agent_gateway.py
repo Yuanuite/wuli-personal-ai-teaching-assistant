@@ -97,6 +97,28 @@ def classify_agent_failure(result: dict) -> str:
         or ("response_format" in text and "'allof' is not permitted" in text)
     ):
         return "structured_output_schema_invalid"
+    # Structured signals are authoritative over text heuristics: the redacted
+    # envelope JSON on stderr carries keys like "timeout_layer" whose name
+    # would otherwise trip the textual timeout check before truncation is
+    # classified (A1.3 regression fix). The top-level dict may itself be an
+    # attempt (attempt-level classify) or a result carrying attempts.
+    for container in (result, *[a for a in attempts if isinstance(a, dict)]):
+        adapter_failure = str(container.get("adapter_failure_type", "")).strip()
+        if adapter_failure == "output_truncated":
+            return "output_truncated"
+        if adapter_failure == "provider_timeout":
+            return "provider_timeout"
+        if str(container.get("finish_reason", "")).lower() == "length":
+            return "output_truncated"
+        content_chars = container.get("content_chars")
+        reasoning_chars = container.get("reasoning_chars")
+        if (
+            isinstance(content_chars, int)
+            and content_chars == 0
+            and isinstance(reasoning_chars, int)
+            and reasoning_chars > 0
+        ):
+            return "output_truncated"
     if "timeout" in text or "timed out" in text or "超时" in text:
         return "provider_timeout"
     if "rate limit" in text or "rate_limit" in text or "429" in text or "限流" in text:
@@ -111,22 +133,8 @@ def classify_agent_failure(result: dict) -> str:
     }
     if any(marker in text for marker in budget_markers):
         return "provider_budget_exceeded"
-    # Truncation: the provider finished before JSON completed. Detection is
-    # both textual (finish_reason=length / reached max_tokens / reasoning-only
-    # completion) and structured (the adapter failure envelope).
-    for attempt in attempts:
-        if isinstance(attempt, dict):
-            if str(attempt.get("finish_reason", "")).lower() == "length":
-                return "output_truncated"
-            content_chars = attempt.get("content_chars")
-            reasoning_chars = attempt.get("reasoning_chars")
-            if (
-                isinstance(content_chars, int)
-                and content_chars == 0
-                and isinstance(reasoning_chars, int)
-                and reasoning_chars > 0
-            ):
-                return "output_truncated"
+    # Textual truncation markers for non-structured providers (codex/claude
+    # CLI); structured attempts were already classified above.
     truncation_markers = {
         "truncated",
         "截断",
@@ -394,18 +402,20 @@ class AgentGateway:
                 value = str(config.get(key, "")).strip()
                 if value:
                     env[target] = value
-            # A2.4: the adapter's HTTP timeout must never exceed the frozen
+            # A2.4/A1.2: the adapter's HTTP timeout must never exceed the frozen
             # soft deadline, otherwise it could silently run past the attempt
             # hard deadline and get killed without a structured envelope.
+            # effective_http_timeout is the single computation of that cap.
             budget = task.get("deadline_budget") if isinstance(task, dict) else None
-            soft = float(budget.get("http_soft_deadline") or 0) if isinstance(budget, dict) else 0.0
-            if soft > 0:
+            if isinstance(budget, dict) and float(budget.get("http_soft_deadline") or 0) > 0:
+                from deadline_budget import effective_http_timeout  # noqa: E402
+
                 try:
                     current = float(env.get("TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS") or 0)
                 except (TypeError, ValueError):
                     current = 0.0
                 env["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"] = str(
-                    int(min(current, soft) if current > 0 else soft)
+                    int(effective_http_timeout(budget, current if current > 0 else None))
                 )
             api_key = str(config.get("api_key", "")).strip()
             if api_key:
@@ -1305,6 +1315,32 @@ class AgentGateway:
             result["failure_type"] = classify_agent_failure(result)
             logger.info("gateway task=%s status=failed reason=contract errors=%d", route_id, len(contract_errors))
             return result
+        # A1.1 (w3-w3r work-tree): freeze the three-layer deadline budget BEFORE
+        # building the child environment. _task_environ reads
+        # task["deadline_budget"] to cap the adapter HTTP timeout at the soft
+        # deadline, so the recorded budget equals what the child actually
+        # receives instead of silently diverging (300s adapter default).
+        task_timeout = max(10, min(int(task.get("timeout_seconds", 1800)), 1800))
+        base_environment = self._base_environment()
+        configured_timeout_value = (
+            str(model_config.get("timeout_seconds", "")).strip()
+            or base_environment.get("TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "600")
+        )
+        try:
+            configured_timeout = int(configured_timeout_value)
+        except ValueError:
+            configured_timeout = 600
+        from deadline_budget import budget_is_valid, build_deadline_budget  # noqa: E402
+
+        budget = build_deadline_budget(
+            task_deadline=task_timeout,
+            configured_attempt=configured_timeout,
+            task_deadline_source="task.timeout_seconds",
+        )
+        budget_problems = budget_is_valid(budget)
+        timeout = budget.attempt_deadline
+        task["deadline_budget"] = budget.to_dict()
+        task_deadline = time.monotonic() + task_timeout
         task_environ = self._task_environ(task)
         requested = task_environ.get("TEACHER_CONSOLE_AGENT_PROVIDER", "auto").strip() or "auto"
         candidates = [item for item in self._ordered(self.providers(environ=task_environ), requested) if item.available]
@@ -1335,30 +1371,6 @@ class AgentGateway:
         workspace_parent = Path(task.get("workspace_root") or entry.parent.parent / ".cache" / "agent-workspaces")
         workspace_parent.mkdir(parents=True, exist_ok=True)
         attempts: list[dict] = []
-        task_timeout = max(10, min(int(task.get("timeout_seconds", 1800)), 1800))
-        configured_timeout_value = (
-            str(model_config.get("timeout_seconds", "")).strip()
-            or task_environ.get("TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS", "600")
-        )
-        try:
-            configured_timeout = int(configured_timeout_value)
-        except ValueError:
-            configured_timeout = 600
-        timeout = min(task_timeout, max(30, min(configured_timeout, 1800)))
-        # A2.1/A2.4: freeze the three-layer deadline budget. The subprocess
-        # hard deadline is the attempt deadline; the adapter HTTP timeout is
-        # capped at the soft deadline via the child environment.
-        from deadline_budget import budget_is_valid, build_deadline_budget  # noqa: E402
-
-        budget = build_deadline_budget(
-            task_deadline=task_timeout,
-            configured_attempt=configured_timeout,
-            task_deadline_source="task.timeout_seconds",
-        )
-        budget_problems = budget_is_valid(budget)
-        timeout = budget.attempt_deadline
-        task["deadline_budget"] = budget.to_dict()
-        task_deadline = time.monotonic() + task_timeout
         costly_failover_seconds = self._costly_failover_seconds(task_environ)
         budget_guard: dict[str, Any] | None = None
         with tempfile.TemporaryDirectory(prefix=f"{task['id']}-", dir=workspace_parent) as workspace_name:
@@ -1418,6 +1430,8 @@ class AgentGateway:
                     )
                 except subprocess.TimeoutExpired as exc:
                     attempt_duration = round(time.monotonic() - t_start, 3)
+                    child_stdout = getattr(exc, "stdout", None)
+                    child_stdout_empty = child_stdout in (None, b"", "")
                     attempt = {
                         "provider": provider.name,
                         "status": "failed",
@@ -1425,9 +1439,22 @@ class AgentGateway:
                         "started_at": attempt_started_at,
                         "duration_seconds": attempt_duration,
                         "timeout_seconds": round(attempt_timeout, 3),
+                        # A1.4 (w3-w3r work-tree): the hard kill must be
+                        # distinguished from a provider-returned soft timeout,
+                        # and must never fabricate token usage.
+                        "timeout_layer": "attempt_hard",
+                        "child_stdout_empty": child_stdout_empty,
                     }
                     attempt["failure_type"] = classify_agent_failure(attempt)
                     attempt["budget_guard"] = "stopped-before-costly-failover"
+                    from deadline_budget import provider_deadline_binding  # noqa: E402
+
+                    attempt["deadline_binding"] = provider_deadline_binding(
+                        budget,
+                        effective_timeout=attempt_timeout,
+                        timeout_layer="attempt_hard",
+                        provider=provider.name,
+                    )
                     attempts.append(attempt)
                     budget_guard = {
                         "status": "stopped",
@@ -1529,6 +1556,7 @@ class AgentGateway:
                         "reasoning_chars",
                         "request_count",
                         "request_preflight",
+                        "timeout_layer",
                     ):
                         if envelope.get(key) is not None:
                             attempt[key] = envelope[key]
@@ -1649,6 +1677,20 @@ class AgentGateway:
             "attempts": attempts,
             **model_metadata,
         }
+        # A3.2 (w3-w3r work-tree): attach a data-only timeout summary so the
+        # teacher can distinguish a provider soft timeout from a Gateway hard
+        # kill, and can see that W3/W3R did not run. The copy is rendered by
+        # the frontend, never fabricated here.
+        for attempt in attempts:
+            if attempt.get("timeout_layer"):
+                result["timeout_summary"] = {
+                    "schema": "wuli.timeout-summary.v1",
+                    "timeout_layer": attempt.get("timeout_layer"),
+                    "child_stdout_empty": bool(attempt.get("child_stdout_empty")),
+                    "usage_measurement": "unavailable",
+                    "deadline_binding": attempt.get("deadline_binding"),
+                }
+                break
         aggregated_usage = _aggregate_usage(attempts)
         if aggregated_usage:
             result["usage"] = aggregated_usage

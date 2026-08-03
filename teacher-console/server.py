@@ -284,6 +284,7 @@ def gateway_routing_fields(gateway: dict) -> dict:
         "budget_guard",
         "deadline_budget",
         "deadline_budget_problems",
+        "timeout_summary",
         "outcome",
         "materialization",
         "resumed_from_checkpoint",
@@ -2531,9 +2532,13 @@ class Handler(SimpleHTTPRequestHandler):
                 }
                 return self.json_response(result, status=200)
             from deadline_budget import build_deadline_budget
+            from route_snapshot import build_route_execution_plan
 
             core_config = kb.load_json(
                 LIBRARY / "config" / "analysis-production-routing.json", {}
+            )
+            w3r_config, _ = analysis_routing.normalize_w3r_config(
+                kb.load_json(LIBRARY / "config" / "w3r-production-routing.json", {})
             )
             task_deadline = float(core_config.get("max_latency_seconds", 90))
             budget = build_deadline_budget(task_deadline=task_deadline)
@@ -2547,6 +2552,13 @@ class Handler(SimpleHTTPRequestHandler):
                 "qualification": analysis_qualification_public(str(config.get("id", ""))),
                 "deadline_budget": budget.to_dict(),
                 "route_config_digest": route_config_digest(LIBRARY),
+                # A2.1/A3.1: the planned solver route and renderer mode are
+                # explicit so the teacher never infers W3/W3R from button copy.
+                "route_execution_plan": build_route_execution_plan(
+                    library=LIBRARY,
+                    core_config=core_config,
+                    w3r_config=w3r_config,
+                ),
             }
         elif action == "build-diagram":
             tier = normalize_routing_tier(data.get("routing_tier"))

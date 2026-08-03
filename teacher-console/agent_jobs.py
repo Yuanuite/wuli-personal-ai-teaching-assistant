@@ -583,6 +583,7 @@ class AgentJobManager:
                 "evidence_context",
                 "failure_repair",
                 "budget_guard",
+                "timeout_summary",
             }
             value["result"] = {key: result[key] for key in public_keys if key in result}
         return value

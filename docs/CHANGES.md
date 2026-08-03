@@ -1,5 +1,35 @@
 # 变更记录
 
+## 2026-08-03：W3/W3R 实测路由与 Deadline 传播异常修复（wuli-w3-w3r-route-deadline-repair-v1）
+
+- Deadline 传播修复（T1/A1.1/A1.2）：`agent_gateway.run()` 现把三层 deadline
+  budget 冻结在 `_task_environ(task)` **之前**，child 环境实际收到
+  `effective_http_timeout ≤ http_soft_deadline`（单点计算，不再三处复制
+  min 规则）；作业记录值与 child 执行值一致，不再出现"记录 76.5s 实际 300s"
+  的分叉。A4.1 六项 child env 绑定单测覆盖模型超时大于/小于/缺失/非法与
+  deadline 缺失五类。
+- 失败证据层（T2/A1.3/A1.4）：adapter envelope 增加 `timeout_layer=http_soft`
+  （TimeoutError 与 URLError 包装的 timeout 统一分类，不误判 connection
+  refused）；Gateway hard kill 记录 `timeout_layer=attempt_hard`、
+  `child_stdout_empty` 与 `wuli.provider-deadline-binding.v1`（A0.3）绑定摘要，
+  不虚构 token usage。教师端按层渲染文案（A3.2/A3.3）。
+- 实际路由证明（T3/T4/T5/A2.1/A3.1）：route-preview 现返回
+  `wuli.route-execution-plan.v1`（planned solver、W3R mode、renderer、预期阶段、
+  config digest），`core+w3r off` / `w3+w3r shadow` / `w3+legacy` 是显式不同计划；
+  前端显示"Core（W3 未运行）"而非把按钮文案当路线；A4.4 四者一致性
+  （preview/snapshot/stages/renderer）测试通过。
+- 真实验证（A5.1 已批准）：deadline 绑定 canary 经真实 Gateway + deepseek
+  6.9s 完成，deadline 有序不变式成立（76.5+2≤90≤90），物理门禁接受真实输出。
+  A5.2 legacy W3 真实 shadow 执行到 `decompose` 阶段（59s provider_timeout）
+  → 如实记录 `failed-stage`；A5.3 W3R 重放 → `not-run-unverified`。
+- 纠偏（A0.2）：旧 A2.4 验收从"传播已通过"修正为
+  `deadline-model=passed / deadline-propagation=failed`（修复后 passed）。
+- G1 决策：临时授权 legacy 实验（仅临时库验证，生产保持 core-first；W3R 保持
+  off）；W3/W3R 默认放量仍待 rollout evidence 与维护者批准。
+- 新增隔离 E2E 场景（A4.5）：`analysis-core-hard-timeout-route-visible` /
+  `analysis-w3-soft-timeout-stage-visible` / `analysis-w3-verified-w3r-shadow` /
+  `analysis-w3r-off-not-run`。
+
 ## 2026-08-03：Core–W3/W3R 复杂题质量恢复（wuli-core-w3-w3r-quality-recovery-v1）
 
 - 物理质量门禁（A0.2/A1.2/T1）：新增 `wuli.physics-quality-gate.v1`

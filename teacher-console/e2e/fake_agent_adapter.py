@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import math
 import sys
+import time
 from pathlib import Path
 
 
@@ -25,7 +26,18 @@ def w3_stage_payload(task: dict, problem: str) -> dict | None:
         "message": "fake W3 blueprint",
         "question_targets": [{
             "id": "q1",
-            "prompt": "求全部可能结果并核对首次事件",
+            "prompt": (
+                # A4.5 (w3-w3r work-tree): the W3R brief projection requires
+                # final answers of enumerate_all targets to declare
+                # complete=true, which the legacy-projection proof package does
+                # not carry. The [w3r-ready] marker switches the deterministic
+                # fixture to a single-value target so the W3R shadow render can
+                # complete; every pre-existing scenario (no marker) keeps the
+                # original enumerate_all prompt byte-for-byte.
+                "求粒子进入磁场时的速度大小"
+                if "[w3r-ready]" in problem
+                else "求全部可能结果并核对首次事件"
+            ),
             "answer_type": "value",
         }],
         "physical_stages": [{
@@ -312,6 +324,19 @@ def main() -> int:
     task = json.load(sys.stdin)
     entry = Path(task["entry_dir"])
     problem = (entry / "problem.md").read_text(encoding="utf-8")
+    # A4.5 (w3-w3r work-tree): additive hard-kill fixture. The [e2e-hang]
+    # marker makes a core-solve child ignore its deadlines entirely, so the
+    # Gateway must hard-kill it and record timeout_layer=attempt_hard with an
+    # empty child stdout (never any fabricated token usage). source.clean and
+    # the W3 stages are untouched: the marker only affects the compact core
+    # solve contract.
+    if (
+        "[e2e-hang]" in problem
+        and isinstance(task.get("output_contract"), dict)
+        and task["output_contract"].get("name") == "wuli.core-solve.v1"
+    ):
+        time.sleep(600)
+        return 0
     stage_payload = w3_stage_payload(task, problem)
     if stage_payload is not None:
         stage_payload["model"] = (

@@ -513,12 +513,12 @@ reasoning-only 截断作业报告同时给出 `diagnosed_failure_type=output_tru
 
 ## 依赖与降级
 
-- Agent Gateway：CLI 只在修改前失败时自动切换 provider；内容校验失败、输出截断或未形成修改时，上层会把当前错误与同类历史模式放入新的隔离候选区，最多纠正一次。候选越权、canonical 并发变化、provider 故障或构建失败不会自动重试。实际运行失败会暂时熔断该 provider，单项默认超时 300 秒；主动 probe 不发送学生材料。作业记录位于私有 `.cache/agent-jobs/`，服务重启后重新提交失败任务。Scheduler 默认各任务类型上限为 4、全局上限为 6，同题并发始终阻断。
+- Agent Gateway：CLI 只在修改前失败时自动切换 provider；内容校验失败、输出截断或未形成修改时，上层会把当前错误与同类历史模式放入新的隔离候选区，最多纠正一次。候选越权、canonical 并发变化、provider 故障或构建失败不会自动重试。实际运行失败会暂时熔断该 provider；child HTTP 期限由三层 deadline budget 封顶（`http_soft_deadline ≤ attempt_deadline ≤ task_deadline`），不再是 300 秒默认。主动 probe 不发送学生材料。作业记录位于私有 `.cache/agent-jobs/`，服务重启后重新提交失败任务。Scheduler 默认各任务类型上限为 4、全局上限为 6，同题并发始终阻断。
 - 服务单实例：同一知识库不能同时启动两个教师工作台；关闭时若有 Agent 正在运行，终端会等待它安全结束后再释放锁。
 - 自定义 provider 环境：默认只传基础运行变量与该 provider 的认证变量；额外变量通过 `TEACHER_CONSOLE_AGENT_ENV_ALLOWLIST` 显式加入。
 - 推理位置：Codex/Claude 是本机启动的 CLI，但底层推理可能远程执行；查看 health 中的 `execution_locality` 和 `data_locality`，不要把“本机进程”等同于“数据不离机”。
 - 远程模型 API：需要在 `student-error-library/config.json` 中设置 `privacy.allow_remote_agent=true`。密钥可放环境变量，也可通过设置页保存到已忽略的本地模型注册表，禁止写入示例配置、公开站、日志或可提交文件。
-- OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求，默认 300 秒；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。
+- OpenAI-compatible 超时：`TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS` 控制单次 HTTP 请求的**上限**，Gateway 会在冻结 budget 后把 child 实际超时封顶到 `http_soft_deadline`（`deadline_budget.effective_http_timeout` 为唯一计算路径）；`TEACHER_CONSOLE_AGENT_ATTEMPT_TIMEOUT_SECONDS` 控制 Gateway 对单个 provider 的总等待时间。超时失败按层记录：adapter soft timeout（`timeout_layer=http_soft`）与 Gateway hard kill（`timeout_layer=attempt_hard`）在 job 结果与 `timeout_summary` 中可区分。
 - OCR：优先 Apple Vision 本地识别；失败时保留可复核条目，不丢弃原图。远程 OCR 必须先取得授权。
 - 视觉复核：边车失败、返回不确定项或无可用边车时生成教师复核单；绝不以 OCR 置信度代替复核。
 - PDF：本地交付优先使用 `pandoc+xelatex` 生成 `带答案错题.pdf`；失败时降级到 Python `reportlab`。两条链路都不可用时继续交付 Markdown，并在 manifest 的 `pdf` 字段记录跳过原因。

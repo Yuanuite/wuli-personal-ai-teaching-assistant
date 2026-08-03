@@ -53,6 +53,12 @@ SCENARIOS = (
     "analysis-qualified-route.e2e.mjs",
     "analysis-soft-timeout.e2e.mjs",
     "analysis-route-preview.e2e.mjs",
+    # Wave 4 A4.5: real-route + deadline-layer visibility through the page
+    # (docs/w3-w3r-route-deadline-repair-work-tree.md)
+    "analysis-core-hard-timeout-route-visible.e2e.mjs",
+    "analysis-w3-soft-timeout-stage-visible.e2e.mjs",
+    "analysis-w3-verified-w3r-shadow.e2e.mjs",
+    "analysis-w3r-off-not-run.e2e.mjs",
 )
 
 # Scenarios that need the controlled mock vision endpoint (one mode each).
@@ -226,6 +232,108 @@ def configure_slow_test_model(library: Path, base_url: str) -> None:
     })
 
 
+def configure_slow_explicit_test_model(library: Path, base_url: str) -> None:
+    """Register the hanging openai-compatible mock WITHOUT re-pointing the default.
+
+    Unlike ``configure_slow_test_model`` (analysis-soft-timeout), this helper
+    only adds the ``e2e-mock-slow`` model (passed probe + qualification record)
+    to the registry. The scenario selects it explicitly via ``model_id`` on the
+    analyze call, so ``defaults.analysis.generate`` keeps the deterministic
+    ``e2e-claude-solver`` and the route preview keeps resolving the solver that
+    the rest of the suite depends on (A4.5 analysis-w3-soft-timeout-stage-visible).
+
+    The model is appended through a direct registry edit (not
+    ``save_model_registry_settings``), which rebuilds model entries and would
+    silently drop the existing ``analysis_qualification`` records that the
+    route preview depends on.
+    """
+    model_registry.LIBRARY = library
+    registry_path = library / "config" / "model-registry.json"
+    registry = kb.load_json(registry_path, {"schema_version": 1, "defaults": {}, "models": []})
+    registry.setdefault("defaults", {})
+    registry.setdefault("models", [])
+    if not any(
+        isinstance(item, dict) and str(item.get("id", "")) == "e2e-mock-slow"
+        for item in registry["models"]
+    ):
+        registry["models"].append({
+            "id": "e2e-mock-slow",
+            "display_name": "E2E 挂起 Mock（显式选择）",
+            "provider": "openai-compatible",
+            "base_url": base_url,
+            "model": "e2e-slow-model",
+            "capabilities": ["analysis.generate"],
+            "api_key": "e2e-mock-key",
+            "timeout_seconds": "8",
+            "model_tier": "standard",
+        })
+    kb.write_json(registry_path, registry)
+    model_registry.update_model_probe_result("e2e-mock-slow", {
+        "live_probe": {
+            "status": "passed",
+            "provider": "openai-compatible",
+            "reason": "deterministic E2E slow mock endpoint",
+        },
+    })
+    # The model is only ever selected explicitly, but keeping a qualification
+    # record makes the registry state identical to configure_slow_test_model.
+    model_registry.record_analysis_qualification("e2e-mock-slow", {
+        "provider": "openai-compatible",
+        "sample_set_version": "e2e-fixture-v1",
+        "sample_count": 3,
+        "structural_success_count": 3,
+        "gate_success_count": 3,
+        "p50_latency_ms": 4000,
+        "p95_latency_ms": 12000,
+        "usage": {"completion_tokens": 5000},
+        "conclusion": "qualified",
+    })
+
+
+def configure_hang_test_model(library: Path) -> None:
+    """Register a probed deterministic model whose child process never returns.
+
+    ``e2e-hang-solver`` is a claude-provider identity, so E2EAgentGateway keeps
+    routing it through the deterministic fake adapter. The adapter sleeps past
+    the attempt deadline whenever the problem carries the ``[e2e-hang]`` marker
+    (core-solve tasks only — an additive fake-adapter mode). The Gateway then
+    hard-kills the child and records ``timeout_layer=attempt_hard`` with the
+    ``timeout_summary`` contract (A4.3/A4.5
+    analysis-core-hard-timeout-route-visible). The slow openai-compatible mock
+    cannot produce that layer: the adapter always soft-times-out first at its
+    HTTP deadline (http_soft < attempt), and the current server only emits
+    ``timeout_summary`` for the hard-kill branch.
+
+    Like ``configure_slow_explicit_test_model``, the model is appended via a
+    direct registry edit so the solver's qualification record survives.
+    """
+    model_registry.LIBRARY = library
+    registry_path = library / "config" / "model-registry.json"
+    registry = kb.load_json(registry_path, {"schema_version": 1, "defaults": {}, "models": []})
+    registry.setdefault("defaults", {})
+    registry.setdefault("models", [])
+    if not any(
+        isinstance(item, dict) and str(item.get("id", "")) == "e2e-hang-solver"
+        for item in registry["models"]
+    ):
+        registry["models"].append({
+            "id": "e2e-hang-solver",
+            "display_name": "E2E 挂起求解器",
+            "provider": "claude",
+            "model": "e2e-hang-model",
+            "capabilities": ["analysis.generate"],
+            "model_tier": "standard",
+        })
+    kb.write_json(registry_path, registry)
+    model_registry.update_model_probe_result("e2e-hang-solver", {
+        "live_probe": {
+            "status": "passed",
+            "provider": "claude",
+            "reason": "deterministic E2E hang double",
+        },
+    })
+
+
 def configure_visual_test_models(library: Path, base_url: str) -> None:
     """Register a probed local mock vision model (controlled visual adapter).
 
@@ -371,6 +479,19 @@ def main() -> int:
                 slow_server, slow_url = slow_mock_server.serve_slow_mock()
                 mock_server = slow_server
                 configure_slow_test_model(library, slow_url)
+            elif script_name == "analysis-w3-soft-timeout-stage-visible.e2e.mjs":
+                # A4.5 scenario 2: the same hanging endpoint, but the scenario
+                # selects e2e-mock-slow explicitly on the W3 analyze call so
+                # the decompose stage soft-times-out with its real stage name.
+                slow_server, slow_url = slow_mock_server.serve_slow_mock()
+                mock_server = slow_server
+                configure_slow_explicit_test_model(library, slow_url)
+            elif script_name == "analysis-core-hard-timeout-route-visible.e2e.mjs":
+                # A4.5 scenario 1: a deterministic child that never returns, so
+                # the Gateway hard-kill path (timeout_layer=attempt_hard +
+                # timeout_summary) is exercised end to end. See
+                # configure_hang_test_model for why the slow mock cannot.
+                configure_hang_test_model(library)
             # Recompute the start-time identity snapshot against the temp
             # library AFTER the test models are registered; the module-import
             # snapshot referenced the real project library and would otherwise

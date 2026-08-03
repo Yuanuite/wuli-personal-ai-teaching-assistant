@@ -242,6 +242,14 @@ manifest，历史分数因此必须刷新。详见
 W3。只有显式切换为 `legacy-adaptive` 或运行 W3 shadow 命令才执行下文 W3 阶段。
 Claim Evidence 与受控认知环仍保持默认关闭的私有影子层。
 
+2026-08-03（w3-w3r-route-deadline-repair）实际路线核实：route-preview 现返回
+`wuli.route-execution-plan.v1`（planned solver / W3R mode / renderer / 预期阶段 /
+config digest），core 与 W3 是显式不同计划，教师端不再从按钮文案推断路线。
+真实 provider 的 W3 shadow 实测（合成题，solver=deepseek-v4-flash-api、
+verifier=deepseek-v4-pro-api）执行到 `decompose` 阶段后 provider_timeout，
+如实记录 `failed-stage`；W3R 仅消费 VERIFIED Proof，未 VERIFIED 时
+`not-run-unverified`。W3/W3R 默认放量仍需 rollout evidence 与维护者批准。
+
 ## 影子门禁与命令
 
 冻结评测集：

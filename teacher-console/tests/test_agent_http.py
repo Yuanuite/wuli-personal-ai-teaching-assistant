@@ -436,6 +436,221 @@ class AgentHttpTest(unittest.TestCase):
         self.assertEqual(snapshot.get("resolved_model_id"), preview["resolved_model_id"])
         self.assertEqual(snapshot.get("provider"), preview["provider"])
 
+    def test_route_preview_exposes_execution_plan_and_matches_job_digest(self):
+        # A2.1/A4.4: the preview carries an explicit RouteExecutionPlan whose
+        # config digest must equal the queued job's route snapshot digest, so
+        # planned route, snapshot, stages and renderer are cross-checkable.
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {"analysis.generate": "preview-solver"},
+                "models": [
+                    {
+                        "id": "preview-solver",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "preview-solver-model",
+                        "capabilities": ["analysis.generate"],
+                        "api_key": "local-test-key",
+                    }
+                ],
+            },
+        )
+        model_registry.update_model_probe_result(
+            "preview-solver",
+            {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
+        )
+        model_registry.record_analysis_qualification(
+            "preview-solver",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "http-preview-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 5000,
+                "p95_latency_ms": 15000,
+                "usage": {"completion_tokens": 5000},
+                "conclusion": "qualified",
+            },
+        )
+        status, preview = self.request_json(
+            f"/api/entries/{self.entry.name}/route-preview",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 200)
+        plan = preview.get("route_execution_plan") or {}
+        self.assertEqual(plan["schema"], "wuli.route-execution-plan.v1")
+        # No analysis-production-routing.json in this temp library -> core-first.
+        self.assertEqual(plan["planned_solver_route"], "core")
+        self.assertEqual(plan["w3r_mode"], "off")
+        self.assertEqual(plan["planned_renderer_mode"], "legacy")
+        self.assertIn("core-gate", plan["expected_stages"])
+        self.assertIn("physics-quality-gate", plan["expected_stages"])
+        self.assertNotIn("solver-a", plan["expected_stages"])
+        # Four-way consistency: preview digest == queued job snapshot digest.
+        status, queued = self.request_json(
+            f"/api/entries/{self.entry.name}/analyze",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 202)
+        snapshot = queued["job"].get("route_snapshot") or {}
+        self.assertEqual(plan["config_digest"], snapshot.get("config_digest"))
+
+    def test_route_preview_plans_w3_and_w3r_shadow_for_legacy_config(self):
+        # A2.3/A2.4: legacy-adaptive + W3R shadow must be a distinct plan
+        # (w3 + w3r-shadow), never collapsed into a "deep analysis" boolean.
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {"analysis.generate": "preview-solver"},
+                "models": [
+                    {
+                        "id": "preview-solver",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "preview-solver-model",
+                        "capabilities": ["analysis.generate"],
+                        "api_key": "local-test-key",
+                    }
+                ],
+            },
+        )
+        model_registry.update_model_probe_result(
+            "preview-solver",
+            {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
+        )
+        model_registry.record_analysis_qualification(
+            "preview-solver",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "http-preview-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 5000,
+                "p95_latency_ms": 15000,
+                "usage": {"completion_tokens": 5000},
+                "conclusion": "qualified",
+            },
+        )
+        kb.write_json(
+            self.library / "config" / "analysis-production-routing.json",
+            {
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "legacy-adaptive",
+                "max_latency_seconds": 90,
+            },
+        )
+        kb.write_json(
+            self.library / "config" / "w3r-production-routing.json",
+            {
+                "schema_version": 1,
+                "policy_version": "wuli-w3r-routing-v1",
+                "mode": "shadow",
+                "gray_entry_ids": [],
+                "evidence": {
+                    "report_digest": "",
+                    "paired_case_count": 0,
+                    "teacher_reviewed_case_count": 0,
+                    "fresh_holdout_case_count": 0,
+                    "fresh_holdout_target_count": 0,
+                    "final_answer_fidelity": 0.0,
+                    "claim_support_coverage": 0.0,
+                    "condition_retention": 0.0,
+                    "target_coverage": 0.0,
+                    "latex_validity": 0.0,
+                    "unsupported_claim_rate": 1.0,
+                    "teacher_readability_preference": 0.0,
+                    "teacher_edit_rate_non_regression": False,
+                },
+            },
+        )
+        status, preview = self.request_json(
+            f"/api/entries/{self.entry.name}/route-preview",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 200)
+        plan = preview.get("route_execution_plan") or {}
+        self.assertEqual(plan["planned_solver_route"], "w3")
+        self.assertEqual(plan["w3r_mode"], "shadow")
+        self.assertEqual(plan["planned_renderer_mode"], "w3r-shadow")
+        self.assertIn("solver-a", plan["expected_stages"])
+        self.assertIn("proof-aggregation", plan["expected_stages"])
+
+    def test_route_preview_w3r_off_with_legacy_renderer_when_core_first(self):
+        # A3.1: even with a shadow W3R config, core-first must render "legacy"
+        # (W3R cannot consume a non-W3 candidate) and never claim W3R.
+        kb.write_json(
+            self.library / "config" / "model-registry.json",
+            {
+                "schema_version": 1,
+                "defaults": {"analysis.generate": "preview-solver"},
+                "models": [
+                    {
+                        "id": "preview-solver",
+                        "provider": "openai-compatible",
+                        "base_url": "http://127.0.0.1:8000/v1",
+                        "model": "preview-solver-model",
+                        "capabilities": ["analysis.generate"],
+                        "api_key": "local-test-key",
+                    }
+                ],
+            },
+        )
+        model_registry.update_model_probe_result(
+            "preview-solver",
+            {"live_probe": {"status": "passed", "provider": "openai-compatible", "reason": ""}},
+        )
+        model_registry.record_analysis_qualification(
+            "preview-solver",
+            {
+                "provider": "openai-compatible",
+                "sample_set_version": "http-preview-v1",
+                "sample_count": 3,
+                "structural_success_count": 3,
+                "gate_success_count": 3,
+                "p50_latency_ms": 5000,
+                "p95_latency_ms": 15000,
+                "usage": {"completion_tokens": 5000},
+                "conclusion": "qualified",
+            },
+        )
+        kb.write_json(
+            self.library / "config" / "analysis-production-routing.json",
+            {
+                "schema_version": 1,
+                "policy_version": "wuli-core-first-routing-v1",
+                "mode": "core-first",
+                "max_latency_seconds": 90,
+            },
+        )
+        kb.write_json(
+            self.library / "config" / "w3r-production-routing.json",
+            {
+                "schema_version": 1,
+                "policy_version": "wuli-w3r-routing-v1",
+                "mode": "shadow",
+                "gray_entry_ids": [],
+                "evidence": {},
+            },
+        )
+        status, preview = self.request_json(
+            f"/api/entries/{self.entry.name}/route-preview",
+            method="POST",
+            body={"routing_tier": "economy"},
+        )
+        self.assertEqual(status, 200)
+        plan = preview.get("route_execution_plan") or {}
+        self.assertEqual(plan["planned_solver_route"], "core")
+        self.assertEqual(plan["planned_renderer_mode"], "legacy")
+
     def test_w3_shadow_fake_adapter_covers_claim_outcomes_without_canonical_write(self):
         canonical = "# 已批准解析\n\n此内容不得被影子链路修改。\n"
         kb.write_text(self.entry / "student-solution.md", canonical)

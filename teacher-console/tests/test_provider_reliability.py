@@ -24,6 +24,7 @@ for path in (CONSOLE, SCRIPTS):
 from providers.openai_compatible_agent_adapter import (  # noqa: E402
     _AdapterFailure,
     _emit_failure_envelope,
+    _urlerror_timeout_signature,
     call_chat_completion,
 )
 
@@ -144,8 +145,41 @@ class StageProgressTest(unittest.TestCase):
         self.assertEqual(envelope["failure_type"], "provider_timeout")
         self.assertEqual(envelope["finish_reason"], "timeout")
         self.assertEqual(envelope["phase"], "single")
+        self.assertEqual(envelope["timeout_layer"], "http_soft")
         for forbidden in ("sk-", "reasoning_content", "Authorization"):
             self.assertNotIn(forbidden, envelope_line.lower())
+
+
+class UrlerrorTimeoutSignatureTest(unittest.TestCase):
+    """A4.2 (w3-w3r work-tree): URLError-wrapped timeouts classify uniformly."""
+
+    def test_timeout_error_instance_is_timeout(self):
+        import socket
+
+        self.assertTrue(_urlerror_timeout_signature(TimeoutError("timed out")))
+        self.assertTrue(_urlerror_timeout_signature(socket.timeout("timed out")))
+
+    def test_timeout_message_is_timeout(self):
+        self.assertTrue(_urlerror_timeout_signature("timed out"))
+        self.assertTrue(_urlerror_timeout_signature("read timeout"))
+        self.assertTrue(_urlerror_timeout_signature("[Errno 60] Operation timed out"))
+
+    def test_other_urlerror_reasons_are_not_timeout(self):
+        self.assertFalse(_urlerror_timeout_signature("Connection refused"))
+        self.assertFalse(_urlerror_timeout_signature("[Errno 61] Connection refused"))
+        self.assertFalse(_urlerror_timeout_signature("404 Not Found"))
+
+    def test_refused_connection_classifies_execution_failed_not_timeout(self):
+        # A refused connection is NOT a timeout: the adapter must keep the
+        # provider_execution_failed classification (no over-classification).
+        result = _run_adapter("http://127.0.0.1:1/v1", env_extra={"TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS": "3"})
+        self.assertNotEqual(result.returncode, 0)
+        envelope_line = next(
+            line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line
+        )
+        envelope = json.loads(envelope_line.split("WULI_AGENT_FAILURE_ENVELOPE:", 1)[1])
+        self.assertEqual(envelope["failure_type"], "provider_execution_failed")
+        self.assertEqual(envelope["timeout_layer"], "")
 
 
 class AdapterUnitTest(unittest.TestCase):

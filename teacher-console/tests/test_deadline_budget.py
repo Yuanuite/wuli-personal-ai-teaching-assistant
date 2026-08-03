@@ -13,9 +13,14 @@ for path in (CONSOLE,):
         sys.path.insert(0, str(path))
 
 from deadline_budget import (  # noqa: E402
+    PROVIDER_DEADLINE_BINDING_SCHEMA,
+    TIMEOUT_LAYER_ATTEMPT_HARD,
+    TIMEOUT_LAYER_HTTP_SOFT,
+    budget_from_dict,
     budget_is_valid,
     build_deadline_budget,
     effective_http_timeout,
+    provider_deadline_binding,
 )
 
 
@@ -70,6 +75,55 @@ class DeadlineBudgetTest(unittest.TestCase):
         self.assertEqual(budget.task_deadline, 90)
         self.assertLess(budget.http_soft_deadline, 90)
         self.assertGreater(budget.http_soft_deadline, 0)
+
+
+class ProviderDeadlineBindingTest(unittest.TestCase):
+    """A0.3 (w3-w3r work-tree): the child-binding contract."""
+
+    def test_binding_accepts_budget_dict_and_marks_http_soft(self):
+        budget = build_deadline_budget(task_deadline=90)
+        binding = provider_deadline_binding(
+            budget.to_dict(),
+            effective_timeout=budget.http_soft_deadline,
+            timeout_layer=TIMEOUT_LAYER_HTTP_SOFT,
+            provider="openai-compatible",
+            model_id="mock",
+        )
+        self.assertEqual(binding["schema"], PROVIDER_DEADLINE_BINDING_SCHEMA)
+        self.assertEqual(binding["timeout_layer"], TIMEOUT_LAYER_HTTP_SOFT)
+        self.assertEqual(binding["effective_timeout"], budget.http_soft_deadline)
+        self.assertEqual(binding["http_soft_deadline"], budget.http_soft_deadline)
+
+    def test_binding_expresses_recorded_correct_child_wrong(self):
+        # The state the failure fixture captures: the recorded budget says
+        # 76.5s soft, but the child actually ran with the 300s adapter default.
+        budget = build_deadline_budget(task_deadline=90)
+        binding = provider_deadline_binding(
+            budget.to_dict(),
+            effective_timeout=300,
+            timeout_layer=TIMEOUT_LAYER_ATTEMPT_HARD,
+        )
+        self.assertEqual(binding["timeout_layer"], TIMEOUT_LAYER_ATTEMPT_HARD)
+        self.assertGreater(binding["effective_timeout"], binding["http_soft_deadline"])
+        self.assertLessEqual(binding["attempt_deadline"], binding["task_deadline"])
+
+    def test_budget_from_dict_roundtrip(self):
+        budget = build_deadline_budget(task_deadline=90, configured_attempt=40)
+        rebuilt = budget_from_dict(budget.to_dict())
+        self.assertIsNotNone(rebuilt)
+        self.assertEqual(rebuilt.attempt_deadline, budget.attempt_deadline)
+        self.assertEqual(rebuilt.http_soft_deadline, budget.http_soft_deadline)
+
+    def test_budget_from_dict_rejects_malformed(self):
+        self.assertIsNone(budget_from_dict(None))
+        self.assertIsNone(budget_from_dict({"task_deadline": "x"}))
+
+    def test_effective_timeout_accepts_dict_single_path(self):
+        budget = build_deadline_budget(task_deadline=90)
+        self.assertEqual(effective_http_timeout(budget.to_dict(), 300), budget.http_soft_deadline)
+        self.assertEqual(effective_http_timeout(budget.to_dict(), None), budget.http_soft_deadline)
+        self.assertEqual(effective_http_timeout(None, 12), 12)
+        self.assertEqual(effective_http_timeout(None, None), 0.0)
 
 
 if __name__ == "__main__":

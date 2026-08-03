@@ -260,6 +260,31 @@ class AgentGatewayTest(unittest.TestCase):
             "candidate_no_change",
         )
 
+    def test_classifier_uses_structured_truncation_over_envelope_text(self):
+        # A1.3 regression: the redacted envelope JSON on stderr carries a
+        # "timeout_layer" key whose name must not misclassify truncation as
+        # provider_timeout. Structured signals are authoritative.
+        attempt = {
+            "status": "failed",
+            "adapter_failure_type": "output_truncated",
+            "finish_reason": "length",
+            "content_chars": 0,
+            "reasoning_chars": 500,
+            "stderr": 'WULI_AGENT_FAILURE_ENVELOPE:{"failure_type": "output_truncated", "timeout_layer": ""}',
+        }
+        self.assertEqual(classify_agent_failure(attempt), "output_truncated")
+        self.assertEqual(
+            classify_agent_failure({"status": "failed", "attempts": [attempt]}),
+            "output_truncated",
+        )
+        # A genuine soft-timeout envelope still classifies as provider_timeout.
+        timeout_attempt = {
+            "status": "failed",
+            "adapter_failure_type": "provider_timeout",
+            "timeout_layer": "http_soft",
+        }
+        self.assertEqual(classify_agent_failure(timeout_attempt), "provider_timeout")
+
     def test_schema_rejection_does_not_count_as_material_inference_spend(self):
         self.assertFalse(
             AgentGateway._attempt_consumed_material_budget(
@@ -768,6 +793,164 @@ class AgentGatewayTest(unittest.TestCase):
         )
         result = gateway.run(self.task())
         self.assertEqual(result["status"], "completed")
+
+
+class ProviderDeadlineBindingTest(unittest.TestCase):
+    """A4.1/A4.3 (w3-w3r work-tree): child env binding + hard-kill diagnostics.
+
+    The recorded deadline budget must equal what the child environment
+    actually receives, and a Gateway hard kill must be auditable as
+    ``timeout_layer=attempt_hard`` without fabricating usage.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp.name)
+        self.entry = self.root / "library" / "entries" / "entry-1"
+        self.entry.mkdir(parents=True)
+        (self.entry / "solution.md").write_text("old solution", encoding="utf-8")
+        (self.entry / "record.json").write_text('{"protected":true}\n', encoding="utf-8")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def task(self, **updates):
+        value = {
+            "schema_version": 1,
+            "id": "task-1",
+            "kind": "answer.revise",
+            "entry_id": self.entry.name,
+            "entry_dir": str(self.entry),
+            "working_dir": str(self.entry),
+            "prompt": f"edit {self.entry}",
+            "allowed_paths": ["solution.md"],
+            "input_paths": ["solution.md", "record.json"],
+            "denied_paths": ["record.json"],
+            "requires_change": True,
+            "workspace_root": str(self.root / "workspaces"),
+            "allow_remote": True,
+        }
+        value.update(updates)
+        return value
+
+    @staticmethod
+    def which(name):
+        return f"/fake/{name}" if name in {"codex", "claude", "adapter"} else None
+
+    def openai_config(self, **updates):
+        config = {
+            "id": "picked",
+            "display_name": "测试模型",
+            "provider": "openai-compatible",
+            "base_url": "http://127.0.0.1:9000/v1",
+            "model": "picked-model",
+            "api_key": "picked-key",
+            "model_tier": "custom",
+        }
+        config.update(updates)
+        return config
+
+    def run_gateway(self, task, runner):
+        return AgentGateway(environ={}, which=self.which, run=runner).run(task)
+
+    def test_child_http_timeout_is_capped_at_soft_deadline(self):
+        captured = {}
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            captured["env"] = dict(env or {})
+            captured["task_deadline_budget"] = json.loads(input or "{}").get("deadline_budget")
+            payload = {"status": "completed", "message": "ok", "files": {"solution.md": "done"}}
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        result = self.run_gateway(
+            self.task(timeout_seconds=60, model_config=self.openai_config(timeout_seconds="300")),
+            runner,
+        )
+        self.assertEqual(result["status"], "completed")
+        soft = result["deadline_budget"]["http_soft_deadline"]
+        child_timeout = float(captured["env"]["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"])
+        self.assertLessEqual(child_timeout, soft)
+        # The child task carries the same frozen budget as the recorded one.
+        self.assertEqual(
+            captured["task_deadline_budget"]["http_soft_deadline"],
+            result["deadline_budget"]["http_soft_deadline"],
+        )
+
+    def test_child_timeout_respects_model_timeout_smaller_than_soft(self):
+        captured = {}
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            captured["env"] = dict(env or {})
+            payload = {"status": "completed", "message": "ok", "files": {"solution.md": "done"}}
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        result = self.run_gateway(
+            self.task(timeout_seconds=120, model_config=self.openai_config(timeout_seconds="10")),
+            runner,
+        )
+        soft = result["deadline_budget"]["http_soft_deadline"]
+        self.assertEqual(float(captured["env"]["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"]), 10.0)
+        self.assertGreater(soft, 10.0)
+
+    def test_child_timeout_defaults_to_soft_when_model_timeout_missing(self):
+        captured = {}
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            captured["env"] = dict(env or {})
+            payload = {"status": "completed", "message": "ok", "files": {"solution.md": "done"}}
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        result = self.run_gateway(
+            self.task(timeout_seconds=60, model_config=self.openai_config()),
+            runner,
+        )
+        soft = result["deadline_budget"]["http_soft_deadline"]
+        self.assertEqual(float(captured["env"]["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"]), soft)
+
+    def test_child_timeout_invalid_model_value_falls_back_to_soft(self):
+        captured = {}
+
+        def runner(command, cwd=None, input=None, env=None, **_kwargs):
+            captured["env"] = dict(env or {})
+            payload = {"status": "completed", "message": "ok", "files": {"solution.md": "done"}}
+            return subprocess.CompletedProcess(command, 0, stdout=json.dumps(payload), stderr="")
+
+        result = self.run_gateway(
+            self.task(timeout_seconds=60, model_config=self.openai_config(timeout_seconds="abc")),
+            runner,
+        )
+        soft = result["deadline_budget"]["http_soft_deadline"]
+        self.assertLessEqual(float(captured["env"]["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"]), soft)
+
+    def test_env_builder_without_budget_leaves_timeout_uncapped(self):
+        gateway = AgentGateway(environ={}, which=self.which, run=lambda *a, **k: None)
+        env = gateway._task_environ(self.task(model_config=self.openai_config(timeout_seconds="300")))
+        self.assertEqual(env["TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS"], "300")
+
+    def test_hard_kill_is_marked_attempt_hard_with_binding_and_empty_stdout(self):
+        called = []
+
+        def runner(command, **_kwargs):
+            called.append(command)
+            raise subprocess.TimeoutExpired(command, 30)
+
+        result = self.run_gateway(self.task(timeout_seconds=60, model_config=self.openai_config()), runner)
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_type"], "provider_timeout")
+        self.assertEqual(len(result["attempts"]), 1)
+        attempt = result["attempts"][0]
+        self.assertEqual(attempt["timeout_layer"], "attempt_hard")
+        self.assertTrue(attempt["child_stdout_empty"])
+        binding = attempt["deadline_binding"]
+        self.assertEqual(binding["schema"], "wuli.provider-deadline-binding.v1")
+        self.assertEqual(binding["timeout_layer"], "attempt_hard")
+        # The child was killed at the attempt hard deadline; the soft HTTP
+        # deadline is strictly smaller so the ordered invariant holds.
+        self.assertAlmostEqual(binding["effective_timeout"], binding["attempt_deadline"], places=2)
+        self.assertLess(binding["http_soft_deadline"], binding["attempt_deadline"])
+        self.assertEqual(result["budget_guard"]["reason"], "provider-timeout-consumed-budget")
+        # Hard kill must not fabricate token usage.
+        self.assertNotIn("token_usage", attempt)
 
 
 class AgentJobManagerTest(unittest.TestCase):

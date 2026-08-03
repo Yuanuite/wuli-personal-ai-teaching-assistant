@@ -76,6 +76,7 @@ class _AdapterFailure(Exception):
         request_preflight: dict | None = None,
         phase: str = "",
         stage_progress: list | None = None,
+        timeout_layer: str = "",
     ):
         super().__init__(message)
         self.failure_type = failure_type
@@ -88,6 +89,7 @@ class _AdapterFailure(Exception):
         self.request_preflight = dict(request_preflight or {})
         self.phase = phase
         self.stage_progress = list(stage_progress or [])
+        self.timeout_layer = timeout_layer
 
 
 def _emit_failure_envelope(exc: _AdapterFailure) -> None:
@@ -107,12 +109,26 @@ def _emit_failure_envelope(exc: _AdapterFailure) -> None:
         "request_preflight": exc.request_preflight,
         "phase": exc.phase,
         "stage_progress": exc.stage_progress,
+        "timeout_layer": exc.timeout_layer,
         "message": str(exc.message)[:500],
     }
     print(
         f"{FAILURE_ENVELOPE_MARKER}{json.dumps(envelope, ensure_ascii=False)}",
         file=sys.stderr,
     )
+
+
+def _urlerror_timeout_signature(reason: object) -> bool:
+    """True when a URLError ``reason`` is a network timeout (A1.3).
+
+    ``urllib`` may wrap ``socket.timeout``/``TimeoutError`` or a ``timed out``
+    message inside ``urllib.error.URLError``; all forms are the same provider
+    soft timeout.
+    """
+    if isinstance(reason, TimeoutError):
+        return True
+    text = str(reason).lower()
+    return "timed out" in text or "timeout" in text
 
 
 def endpoint(base: str) -> str:
@@ -635,6 +651,7 @@ def call_chat_completion(
             "provider_timeout",
             message=f"request timed out after {timeout}s (HTTP soft deadline)",
             finish_reason="timeout",
+            timeout_layer="http_soft",
         ) from exc
     choice = payload["choices"][0]
     if choice.get("finish_reason") == "length":
@@ -848,10 +865,24 @@ def main() -> int:
         )
         return 1
     except (urllib.error.URLError, KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        # A1.3 (w3-w3r work-tree): a URLError wrapping a socket/connect timeout
+        # is still a provider soft timeout and must produce the same structured
+        # envelope as the direct TimeoutError path.
+        failure_type = "provider_execution_failed"
+        finish_reason = ""
+        timeout_layer = ""
+        if isinstance(exc, urllib.error.URLError):
+            reason = exc.reason
+            if _urlerror_timeout_signature(reason):
+                failure_type = "provider_timeout"
+                finish_reason = "timeout"
+                timeout_layer = "http_soft"
         _emit_failure_envelope(
             _AdapterFailure(
-                "provider_execution_failed",
+                failure_type,
                 message=str(exc),
+                finish_reason=finish_reason,
+                timeout_layer=timeout_layer,
                 usage=usage if "usage" in dir() else {},
                 request_preflight=result_preflight.get("request_preflight", {}),
             )

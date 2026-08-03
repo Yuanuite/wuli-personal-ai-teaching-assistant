@@ -102,6 +102,24 @@ JSON adapter 失败时会向 stderr 输出脱敏的结构化 envelope
   期限预算与路由配置摘要；预览与随后入队 job 的 route snapshot 身份一致，
   配置变化时预览失效不猜测。
 
+### Deadline 绑定与超时分层（w3-w3r 修复，2026-08-03）
+
+- **冻结顺序**：三层 deadline budget 在 `_task_environ(task)` **之前**冻结，
+  child 环境因此必然携带 `effective_http_timeout ≤ http_soft_deadline`
+  （`deadline_budget.effective_http_timeout` 是唯一计算路径，禁止 Gateway、
+  adapter 或测试各自复制 min 规则）。作业记录的预算与 child 实际执行值一致，
+  不会出现“记录 76.5s、child 300s”的分叉。
+- **超时分层**：adapter envelope 携带 `timeout_layer=http_soft`
+  （`TimeoutError` 与 `URLError(reason=timeout)` 统一分类；connection refused
+  等非超时保持 `provider_execution_failed`）。Gateway hard kill 记录
+  `timeout_layer=attempt_hard`、`child_stdout_empty` 与
+  `wuli.provider-deadline-binding.v1`（A0.3）绑定摘要，绝不虚构 token usage。
+  失败的作业结果与公开 job API 均携带 `timeout_summary`，前端按层渲染文案。
+- **实际路线证明**：route-preview 返回 `wuli.route-execution-plan.v1`
+  （planned solver、W3R mode、renderer、预期阶段、config digest）。
+  `core + w3r off`、`w3 + w3r shadow`、`w3 + legacy renderer` 是显式不同计划；
+  教师端显示真实路线，不再从按钮文案推断 W3/W3R。
+
 每个终态作业还写入统一的 `outcome`。该结构由 `teacher-console/agent_outcome.py` 单点生成，只记录 provider、模型、结构化失败、provider 报告的 Token、尝试次数、阶段耗时、预算保护、检查点恢复和 evidence 预算，不保存 prompt、stdout、stderr 或学生正文。`usage.measurement` 明确区分 `provider-reported` 与 `unavailable`；系统不会把字符估算伪装成 provider 实测 Token。批量基准优先读取 `outcome`，旧作业继续兼容原有字段。
 
 同一个知识库只允许一个教师工作台服务持有 OS 文件锁；同题事务锁覆盖同步页面写入、canonical 摘要复查、候选提升和生命周期后处理。服务停止时会等待已经运行的 Agent 作业安全结束后再释放实例锁，不让旧 worker 与新服务同时提升。

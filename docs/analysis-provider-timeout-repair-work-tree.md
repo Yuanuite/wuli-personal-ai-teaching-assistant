@@ -213,6 +213,7 @@ stateDiagram-v2
 - 允许修改：`agent_gateway.py`、provider adapter、route/job outcome；provider 细节仍只在 Gateway/adapter。
 - 验证：慢响应先形成脱敏结构化 timeout envelope，再由 Gateway 留出清理时间完成安全终态。
 - 终态：`completed | deadline-propagation-failed`。
+- **A0.2 纠偏（w3-w3r-route-deadline-repair-work-tree，2026-08-03）**：原验收只证明 job 记录了预算，未证明 child 实际收到 soft deadline——实测作业 `63f9d808...` 记录 soft 76.5s 而 child 用 adapter 默认 300s。`deadline-model=passed`、`deadline-propagation=failed`。修复（A1.1：budget 在 `_task_environ` 前冻结；A4.1：child env 捕获断言 ≤ soft）后重新判定 `deadline-propagation=passed`。
 
 ### Wave 3：加固 OpenAI-compatible 结构化执行
 
