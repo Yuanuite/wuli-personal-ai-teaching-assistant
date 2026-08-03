@@ -275,10 +275,12 @@ class AgentJobManager:
         if not self.adaptive_config.get("enabled", True):
             return int(self.max_workers)
         state = self._adaptive_state_locked(record)
-        return min(
-            int(state["limit"]),
-            int(self.adaptive_config["max_limit"]),
-            self.kind_limits.get(str(record.get("kind", "")), int(self.max_workers)),
+        return int(
+            min(
+                int(state["limit"]),
+                int(self.adaptive_config["max_limit"]),
+                self.kind_limits.get(str(record.get("kind", "")), int(self.max_workers)),
+            )
         )
 
     @staticmethod

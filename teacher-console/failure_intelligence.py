@@ -279,8 +279,10 @@ def run_with_failure_repair(
         return initial
 
     retried = run_once(task_with_repair_evidence(task, evidence), validator)
-    initial_attempts = initial.get("attempts") if isinstance(initial.get("attempts"), list) else []
-    retry_attempts = retried.get("attempts") if isinstance(retried.get("attempts"), list) else []
+    initial_attempts_value = initial.get("attempts")
+    initial_attempts: list = initial_attempts_value if isinstance(initial_attempts_value, list) else []
+    retry_attempts_value = retried.get("attempts")
+    retry_attempts: list = retry_attempts_value if isinstance(retry_attempts_value, list) else []
     retried["attempts"] = list(initial_attempts) + list(retry_attempts)
     final_failure = (
         "" if retried.get("status") == "completed" else str(retried.get("failure_type") or "provider_failed")

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import socket
 import sys
 import time
 import unicodedata
@@ -119,6 +120,12 @@ def _emit_failure_envelope(exc: _AdapterFailure) -> None:
     )
 
 
+# Python 3.9 keeps ``socket.timeout`` distinct from ``TimeoutError`` (they only
+# became aliases in 3.10); both must be treated as a network timeout so an HTTP
+# soft deadline emits the structured failure envelope instead of a raw traceback.
+_TIMEOUT_EXCEPTIONS = (TimeoutError, socket.timeout)
+
+
 def _urlerror_timeout_signature(reason: object) -> bool:
     """True when a URLError ``reason`` is a network timeout (A1.3).
 
@@ -126,7 +133,7 @@ def _urlerror_timeout_signature(reason: object) -> bool:
     message inside ``urllib.error.URLError``; all forms are the same provider
     soft timeout.
     """
-    if isinstance(reason, TimeoutError):
+    if isinstance(reason, _TIMEOUT_EXCEPTIONS):
         return True
     text = str(reason).lower()
     return "timed out" in text or "timeout" in text
@@ -233,9 +240,15 @@ def normalized_usage(payload: dict) -> dict:
         if isinstance(value, int) and value >= 0:
             result[target] = value
     if "total_tokens" not in result:
+        prompt_value = result.get("prompt_tokens")
+        if prompt_value is None:
+            prompt_value = result.get("input_tokens")
+        completion_value = result.get("completion_tokens")
+        if completion_value is None:
+            completion_value = result.get("output_tokens")
         parts: list[int] = [
-            result.get("prompt_tokens", result.get("input_tokens")),
-            result.get("completion_tokens", result.get("output_tokens")),
+            prompt_value if isinstance(prompt_value, int) else 0,
+            completion_value if isinstance(completion_value, int) else 0,
         ]
         if all(isinstance(value, int) for value in parts):
             result["total_tokens"] = sum(parts)
@@ -595,7 +608,7 @@ def call_chat_completion(
     try:
         with urllib.request.urlopen(request, timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except TimeoutError as exc:
+    except _TIMEOUT_EXCEPTIONS as exc:
         raise _AdapterFailure(
             "provider_timeout",
             message=f"request timed out after {timeout}s (HTTP soft deadline)",

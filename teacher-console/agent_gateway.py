@@ -1287,7 +1287,7 @@ class AgentGateway:
         input_paths = [str(item) for item in task["input_paths"]]
         contract_errors = self._path_policy_errors(allowed, denied)
         if contract_errors:
-            result = {
+            contract_result = {
                 "status": "failed",
                 "provider": None,
                 "routing_tier": routing_tier,
@@ -1299,9 +1299,9 @@ class AgentGateway:
                 "attempts": [],
                 **model_metadata,
             }
-            result["failure_type"] = classify_agent_failure(result)
+            contract_result["failure_type"] = classify_agent_failure(contract_result)
             logger.info("gateway task=%s status=failed reason=contract errors=%d", route_id, len(contract_errors))
-            return result
+            return contract_result
         # A1.1 (w3-w3r work-tree): freeze the three-layer deadline budget BEFORE
         # building the child environment. _task_environ reads
         # task["deadline_budget"] to cap the adapter HTTP timeout at the soft

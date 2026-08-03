@@ -187,7 +187,7 @@ def model_registry_public(*, kind: str = "") -> dict:
 
 def model_registry_settings() -> dict:
     path = _registry_path()
-    registry = kb.load_json(path, {"schema_version": 1, "models": [], "defaults": {}})
+    registry: dict[str, Any] = kb.load_json(path, {"schema_version": 1, "models": [], "defaults": {}})
     if registry.get("schema_version") != 1:
         registry["schema_version"] = 1
     registry.setdefault("defaults", {})
@@ -429,7 +429,8 @@ def record_vision_probe(model_id: str, result: dict) -> dict:
         if not isinstance(raw, dict) or normalize_model_id(raw.get("id")) != model_id:
             continue
         found = True
-        probe = raw.get("probe") if isinstance(raw.get("probe"), dict) else {}
+        probe_dict = raw.get("probe")
+        probe: dict[str, Any] = probe_dict if isinstance(probe_dict, dict) else {}
         probe["vision"] = {
             "status": "passed" if result.get("status") == "passed" else "failed",
             "schema": str(result.get("schema", "")).strip(),

@@ -1656,7 +1656,7 @@ def select_evidence_results(
             })
             continue
         chosen = dict(candidate)
-        new_slots: list[str] = sorted(
+        new_slot_names: list[str] = sorted(
             set(chosen.get("evidence_coverage", {}).get("covered_slots", []))
             - covered_slots
         )
@@ -1665,7 +1665,7 @@ def select_evidence_results(
             "precision_score": float(
                 chosen.get("evidence_audit", {}).get("precision_score", 0.0)
             ),
-            "new_slots": new_slots,
+            "new_slots": new_slot_names,
             "reason": "accepted-highest-utility-compatible",
         }
         selected_advanced.append(chosen)
@@ -1675,7 +1675,7 @@ def select_evidence_results(
         selection_steps.append({
             "title": str(chosen.get("title", ""))[:120],
             "decision": "selected",
-            "new_slots": new_slots,
+            "new_slots": new_slot_names,
         })
     return {
         "selected_results": selected_advanced,
@@ -1798,8 +1798,8 @@ def _retrieve_routes(
         diagnostics.append({
             "id": route["id"],
             "label": route["label"],
-            "document_kinds": list(route["kinds"]),
-            "weight": float(route["weight"]),
+            "document_kinds": list(cast(list, route["kinds"])),
+            "weight": float(cast(float, route["weight"])),
             "candidate_count": len(ranked_route),
             "top_entry_ids": [entry_id for entry_id, _ in ranked_route[:top_k]],
         })
@@ -2420,7 +2420,7 @@ def build_agent_evidence(
                     )
             steps.append(normalized_step)
         return steps
-    payload = {
+    payload: dict[str, Any] = {
         **base,
         "references": references,
         "evidence_set": {
@@ -2626,7 +2626,7 @@ def build_blueprint_evidence(
         if len(json.dumps(candidate, ensure_ascii=False)) > max(400, budget - 1000):
             break
         references.append(reference)
-    payload = {
+    payload: dict[str, Any] = {
         **base,
         "references": references,
         "retrieval_plan": {

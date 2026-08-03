@@ -1682,7 +1682,7 @@ def build_report(job: dict, entry_dir: Path, library: Path, *, job_id: str | Non
         "terminal": terminal,
         "redactions": list(REDACTED_CATEGORIES),
     }
-    verification_summary: dict[str, Any] = report["verification_summary"]
+    verification_summary = report["verification_summary"]
     verification_summary["exit_code"] = evaluate_exit(report, count_problems)
     verification_summary["exit_reason"] = _exit_reason(report, count_problems)
     return report
