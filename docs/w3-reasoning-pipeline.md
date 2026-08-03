@@ -1,5 +1,8 @@
 # 统一核心求解与旧 W3 回滚链
 
+> **状态：W3 已于 2026-08-02 默认进入生产路由。本文档保留为契约参考。**
+> 当前实现见 `teacher-console/w3_pipeline.py`、`teacher-console/w3r_contract.py`。
+
 > 2026-08-02 起，生产默认已从 W2/W3 分流切换为 `wuli.core-solve.v1` 统一核心求解。
 > 本文后半部保留旧 W3 契约，作为显式回滚与历史评测说明，不再描述默认生产路径。
 
@@ -230,7 +233,7 @@ W3R 忠实性均通过。最后一次增量运行分别约 190 秒和 387 秒，
 现有证据包括 14 类故障注入全部检出且错误晋升为 0、认知环开/关同条件消融，以及
 5 道旧题 113 个 Claim 的只读诊断投影。旧题回放发现 1 题当前答案摘要已偏离旧
 manifest，历史分数因此必须刷新。详见
-[`技术执行计划书.md`](技术执行计划书.md)、
+[`技术执行计划书.md`](archive/2026-08-03/技术执行计划书.md)、
 [`reports/correctness-evidence-metrics-v1.md`](reports/correctness-evidence-metrics-v1.md)、
 [`reports/correctness-cognitive-loop-ablation-v1.md`](reports/correctness-cognitive-loop-ablation-v1.md)
 和
@@ -454,4 +457,4 @@ Claim Evidence 启用时，Solver 与 claim verifier 都只允许使用 `claude`
 - `docs/reports/w3r-shadow-benchmark-v1.md`
 - `docs/reports/w3r-blind-review-packet-v1.json`
 - `docs/reports/w3r-rollout-readiness-v1.md`
-- `docs/构建-W3R-非求解教学渲染与忠实性门禁-原子执行.md`
+- `docs/archive/2026-08-03/构建-W3R-非求解教学渲染与忠实性门禁-原子执行.md`

@@ -274,8 +274,10 @@ class AgentHttpTest(unittest.TestCase):
             )
         self.assertEqual(status, 200)
         ingested = next(item for item in report["results"] if item["status"] == "ingested")
-        self.assertEqual(ingested["source_clean"]["status"], "not-started")
+        self.assertEqual(ingested["source_clean"]["status"], "degraded")
+        self.assertEqual(ingested["source_clean"]["mode"], "manual-review-required")
         self.assertIn("测试模型不可用", ingested["source_clean"]["errors"][0])
+        self.assertIn("人工复核", ingested["source_clean"]["message"])
 
     def test_entry_api_exposes_complete_review_safe_claim_evidence(self):
         kb.write_json(

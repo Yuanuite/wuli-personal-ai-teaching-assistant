@@ -1,0 +1,152 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "provisional",
+  "problem_profile": {
+    "summary": "Use deepseek-v4-flash for W3 candidate-generation atoms while preserving independent verification and non-solving W3R rendering.",
+    "process_shape": "hybrid",
+    "epistemic_families": ["engineering", "physics", "teaching"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "approved-problem",
+      "wuli.solution-reasoning.v2.1",
+      "wuli.w3r-brief.v1",
+      "wuli.w3r-render-result.v1"
+    ],
+    "assumptions": [
+      "Deepseek-v4-flash remains probe-passed and privacy-authorized",
+      "teacher approval remains outside every model task"
+    ],
+    "constraints": [
+      "W3R cannot solve or retrieve solution evidence",
+      "a solver cannot be its own sole independent verifier",
+      "production promotion is evidence-bound"
+    ],
+    "excluded_scope": [
+      "automatic approval",
+      "automatic publication",
+      "Gold or Evidence promotion by a model"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "Flash executes W3 candidate decomposition and solving through an auditable route.",
+      "success_criteria": ["Every model stage records provider, model, contract, input fingerprint and usage."],
+      "priority": "critical",
+      "required_evidence": ["w3-stage-trace"],
+      "approval": "system"
+    },
+    {
+      "id": "T2",
+      "description": "No Flash-generated conclusion becomes verified through self-approval.",
+      "success_criteria": ["Critical claims have deterministic or different-model certificates."],
+      "priority": "critical",
+      "required_evidence": ["proof-package", "independence-check"],
+      "approval": "domain-expert"
+    },
+    {
+      "id": "T3",
+      "description": "W3R improves presentation without changing the frozen W3 meaning.",
+      "success_criteria": ["All W3R fidelity gates pass and unsupported claim rate is zero."],
+      "priority": "critical",
+      "required_evidence": ["render-gate-report", "teacher-blind-review", "fresh-holdout"],
+      "approval": "human-owner"
+    }
+  ],
+  "process_model": {
+    "kind": "hybrid",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "W3 candidate generated",
+        "state_in": ["approved-problem", "retrieval-evidence-set"],
+        "state_out": ["solution-candidate"],
+        "invariants": ["No approval state changes"],
+        "entry_conditions": ["Flash route is available"],
+        "exit_conditions": ["Solution contract validates"]
+      },
+      {
+        "id": "P2",
+        "label": "Proof package decided",
+        "state_in": ["solution-candidate"],
+        "state_out": ["verified-or-provisional-proof-package"],
+        "invariants": ["No same-model sole self-verification"],
+        "entry_conditions": ["Deterministic checks complete"],
+        "exit_conditions": ["Proof aggregator terminates"]
+      },
+      {
+        "id": "P3",
+        "label": "W3R candidate reviewed",
+        "state_in": ["verified-proof-package"],
+        "state_out": ["reviewed-render-candidate"],
+        "invariants": ["No new claim or changed condition"],
+        "entry_conditions": ["W3R preflight passes"],
+        "exit_conditions": ["Render gate and teacher review complete"]
+      }
+    ],
+    "transitions": [
+      {"from": "P1", "to": "P2", "trigger": "solution-contract-pass", "carried_state": ["solution-candidate"], "rollback_to": "P1"},
+      {"from": "P2", "to": "P3", "trigger": "proof-verified", "carried_state": ["verified-proof-package"], "rollback_to": "P2"}
+    ]
+  },
+  "atomic_tasks": [
+    {"id": "A1", "verb": "decompose", "description": "Generate the W3 blueprint with Flash.", "target_ids": ["T1"], "process_node_ids": ["P1"], "depends_on": [], "input_artifacts": ["approved-problem"], "output_artifact": "w3-blueprint", "output_contract": "wuli.problem-decomposition.v1", "verifier_route": "deterministic-obligation-gate", "assigned_role": "Deepseek-v4-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "A2", "verb": "solve", "description": "Generate the structured W3 solution with Flash.", "target_ids": ["T1"], "process_node_ids": ["P1"], "depends_on": ["A1"], "input_artifacts": ["w3-blueprint", "retrieval-evidence-set"], "output_artifact": "solution-candidate", "output_contract": "wuli.solution-reasoning.v2.1", "verifier_route": "solution-schema-and-interface-check", "assigned_role": "Deepseek-v4-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "A3", "verb": "verify", "description": "Verify claims through deterministic checks and a different model identity where semantic review is required.", "target_ids": ["T2"], "process_node_ids": ["P2"], "depends_on": ["A2"], "input_artifacts": ["solution-candidate"], "output_artifact": "claim-certificates", "output_contract": "wuli.claim-verify.v2", "verifier_route": "different-model-identity-required", "assigned_role": "independent-verifier", "max_attempts": 1, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "A4", "verb": "aggregate", "description": "Aggregate claims and certificates into a proof package.", "target_ids": ["T2"], "process_node_ids": ["P2"], "depends_on": ["A3"], "input_artifacts": ["solution-candidate", "claim-certificates"], "output_artifact": "proof-package", "output_contract": "wuli.proof-package.v1", "verifier_route": "deterministic-proof-aggregator", "assigned_role": "system", "max_attempts": 1, "terminal_states": ["passed", "provisional", "failed"]},
+    {"id": "A5", "verb": "project", "description": "Project a verified proof package into the non-solving W3R brief.", "target_ids": ["T3"], "process_node_ids": ["P3"], "depends_on": ["A4"], "input_artifacts": ["proof-package"], "output_artifact": "w3r-brief", "output_contract": "wuli.w3r-brief.v1", "verifier_route": "w3r-preflight", "assigned_role": "system", "max_attempts": 1, "terminal_states": ["passed", "needs_render_material", "failed"]},
+    {"id": "A6", "verb": "render", "description": "Render teaching prose without solving.", "target_ids": ["T3"], "process_node_ids": ["P3"], "depends_on": ["A5"], "input_artifacts": ["w3r-brief"], "output_artifact": "w3r-render-candidate", "output_contract": "wuli.w3r-render-result.v1", "verifier_route": "deterministic-render-gate", "assigned_role": "deterministic-renderer; deepseek-v4-flash shadow-only later", "max_attempts": 2, "terminal_states": ["passed", "rejected", "needs_render_material"]},
+    {"id": "A7", "verb": "review", "description": "Run paired evaluation, blind teacher review and fresh holdout before routing promotion.", "target_ids": ["T3"], "process_node_ids": ["P3"], "depends_on": ["A6"], "input_artifacts": ["w3r-render-candidate", "legacy-render-baseline"], "output_artifact": "w3r-rollout-evidence", "output_contract": "wuli.w3r-rollout-evidence.v1", "verifier_route": "evidence-bound-readiness-check", "assigned_role": "teacher-and-system", "max_attempts": 1, "terminal_states": ["passed", "failed", "blocked"]}
+  ],
+  "state_transfers": [
+    {"id": "S1", "producer_task_id": "A1", "consumer_task_id": "A2", "artifact": "w3-blueprint", "contract": "wuli.problem-decomposition.v1", "preconditions": ["A1 passed", "deterministic obligation gate passed"], "invalidation_rule": "Invalidate when approved-problem or mandatory source obligations change."},
+    {"id": "S2", "producer_task_id": "A2", "consumer_task_id": "A3", "artifact": "solution-candidate", "contract": "wuli.solution-reasoning.v2.1", "preconditions": ["A2 passed"], "invalidation_rule": "Invalidate when approved-problem, evidence-set, blueprint or model identity changes."},
+    {"id": "S3", "producer_task_id": "A3", "consumer_task_id": "A4", "artifact": "claim-certificates", "contract": "wuli.claim-verify.v2", "preconditions": ["A3 terminated without unsupported critical claims"], "invalidation_rule": "Invalidate when a claim, claim version, verifier identity or verification input fingerprint changes."},
+    {"id": "S4", "producer_task_id": "A4", "consumer_task_id": "A5", "artifact": "proof-package", "contract": "wuli.proof-package.v1", "preconditions": ["Proof status is VERIFIED"], "invalidation_rule": "Invalidate when any claim, certificate or obligation changes."},
+    {"id": "S5", "producer_task_id": "A5", "consumer_task_id": "A6", "artifact": "w3r-brief", "contract": "wuli.w3r-brief.v1", "preconditions": ["W3R preflight passed"], "invalidation_rule": "Invalidate when proof-package fingerprint changes; retry must reuse the identical brief fingerprint."},
+    {"id": "S6", "producer_task_id": "A6", "consumer_task_id": "A7", "artifact": "w3r-render-candidate", "contract": "wuli.w3r-render-result.v1", "preconditions": ["Render gate passed"], "invalidation_rule": "Invalidate when the brief, renderer identity, render output or gate report changes."}
+  ],
+  "verification_obligations": [
+    {"id": "V1", "target_ids": ["T1"], "task_ids": ["A1", "A2"], "claim": "Flash calls are auditable and contract-bound.", "required_evidence": ["w3-stage-trace"], "method": "Compare stage route, model identity, contract and fingerprints.", "decision_rule": "Every generated stage has a complete trace and valid output contract.", "defeaters": ["missing model identity", "unversioned contract"], "fallback": "provisional", "risk": "high"},
+    {"id": "V2", "target_ids": ["T2"], "task_ids": ["A3", "A4"], "claim": "The solver did not self-approve its critical conclusions.", "required_evidence": ["claim-certificates", "independence-check"], "method": "Compare generator and verifier model identities and deterministic certificate coverage.", "decision_rule": "Critical claims have a valid independent path and all obligations are closed.", "defeaters": ["same-model sole certificate", "shared missing obligation"], "fallback": "provisional", "risk": "critical"},
+    {"id": "V3", "target_ids": ["T3"], "task_ids": ["A5", "A6", "A7"], "claim": "W3R preserves answer meaning and improves teachability.", "required_evidence": ["render-gate-report", "teacher-blind-review", "fresh-holdout"], "method": "Run fidelity gates, paired blind review and untouched holdout scoring.", "decision_rule": "All hard fidelity metrics equal 1.0, unsupported claim rate is zero, readability preference exceeds 0.5 and edit rate does not regress.", "defeaters": ["answer drift", "condition loss", "development-set leakage"], "fallback": "blocked", "risk": "critical"}
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A1"], "parallel": false},
+      {"id": "W2", "task_ids": ["A2"], "parallel": false},
+      {"id": "W3", "task_ids": ["A3"], "parallel": false},
+      {"id": "W4", "task_ids": ["A4"], "parallel": false},
+      {"id": "W5", "task_ids": ["A5"], "parallel": false},
+      {"id": "W6", "task_ids": ["A6"], "parallel": false},
+      {"id": "W7", "task_ids": ["A7"], "parallel": false}
+    ],
+    "max_concurrency": 2,
+    "allocation_notes": ["Claim batches may run with bounded concurrency, but no consumer starts before its producer passes."]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": ["retry-task", "revise-input", "invalidate-impact-cone", "mark-provisional", "stop"],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked"]
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3"],
+    "required_obligation_ids": ["V1", "V2", "V3"],
+    "acceptance_rule": "All critical obligations pass and each target has accepted evidence bound to the current fingerprints.",
+    "conflict_policy": "Use deterministic or independent decisive tests; never majority vote.",
+    "unresolved_policy": "Preserve conditions, mark provisional and stop production promotion.",
+    "final_artifact": "w3r-production-routing-decision",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": [
+    "Flash scored 1/8 strict correctness and 0/8 teaching approval on the 2026-07-31 CPhO blind evaluation.",
+    "The current W3R teacher blind review and fresh holdout gates are not complete.",
+    "A stage-specific internal model routing contract has not yet replaced the coarse analysis.generate default."
+  ]
+}

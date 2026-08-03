@@ -1,0 +1,87 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "使用唯一锚点替换合同恢复物理图质量提升执行",
+    "process_shape": "hybrid",
+    "epistemic_families": ["engineering", "procedural", "physics"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": ["docs/reports/diagram-quality-baseline-v1.json", "teacher-console/physics_diagram.py", "teacher-console/tests/test_physics_diagram.py", "docs/reports/diagram-quality-flash-a1-audit-v1.json"],
+    "assumptions": ["Flash 只填写锚点替换候选", "Codex 拥有候选提升与最终审核权"],
+    "constraints": ["锚点必须在冻结快照中唯一", "候选只在隔离副本应用", "禁止流程图 fallback", "每项最多两次 Flash 调用"],
+    "excluded_scope": ["MiMo 视觉事实生成", "答案推导", "动态仿真", "教师批准"]
+  },
+  "targets": [
+    {"id": "T1", "description": "轨迹几何具有显式合同和确定性渲染", "success_criteria": ["line/polyline/smooth/circular-arc 分离", "退化圆弧失败关闭"], "priority": "critical", "required_evidence": ["geometry-tests", "replay-report"], "approval": "domain-expert"},
+    {"id": "T2", "description": "排版可读且视觉层级稳定", "success_criteria": ["关键标签不严重碰撞或越界", "场纹理不压过轨迹"], "priority": "high", "required_evidence": ["layout-tests", "png-review"], "approval": "human-owner"},
+    {"id": "T3", "description": "周期、阶段和三维方向获得教学表达", "success_criteria": ["周期场与三维题触发对应义务"], "priority": "high", "required_evidence": ["teaching-gate-tests", "replay-report"], "approval": "domain-expert"},
+    {"id": "T4", "description": "生产安全和职责边界不回归", "success_criteria": ["全量测试通过", "默认无流程图", "SVG 安全与事实覆盖通过"], "priority": "critical", "required_evidence": ["regression-report", "graphify-impact-report"], "approval": "system"}
+  ],
+  "process_model": {
+    "kind": "hybrid",
+    "nodes": [
+      {"id": "P1", "label": "锚点候选", "state_in": ["frozen-source"], "state_out": ["anchored-edit-proposal"], "invariants": ["canonical 未修改"], "entry_conditions": ["输入指纹固定"], "exit_conditions": ["所有锚点唯一"]},
+      {"id": "P2", "label": "隔离应用", "state_in": ["anchored-edit-proposal"], "state_out": ["tested-candidate"], "invariants": ["只改允许文件"], "entry_conditions": ["Codex 内容审核通过"], "exit_conditions": ["局部测试通过"]},
+      {"id": "P3", "label": "回放终审", "state_in": ["tested-candidate"], "state_out": ["audited-quality-result-v2"], "invariants": ["正式条目不被测试覆盖"], "entry_conditions": ["全量测试通过"], "exit_conditions": ["PNG 与验证账本完成"]}
+    ],
+    "transitions": [
+      {"from": "P1", "to": "P2", "trigger": "anchors-and-content-pass", "carried_state": ["anchored-edit-proposal"], "rollback_to": "P1"},
+      {"from": "P2", "to": "P3", "trigger": "regression-pass", "carried_state": ["tested-candidate"], "rollback_to": "P1"},
+      {"from": "P3", "to": "P1", "trigger": "visual-defect", "carried_state": ["smallest-impact-cone"], "rollback_to": "P1"}
+    ]
+  },
+  "atomic_tasks": [
+    {"id": "R1", "verb": "model", "description": "Flash 以锚点替换形式增加几何类型合同", "target_ids": ["T1", "T4"], "process_node_ids": ["P1"], "depends_on": [], "input_artifacts": ["frozen-source", "baseline-v1"], "output_artifact": "geometry-anchored-edit", "output_contract": "wuli.flash-anchored-edit.v1", "verifier_route": "unique-anchor-and-schema-review", "assigned_role": "deepseek-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "R2", "verb": "render", "description": "Flash 以锚点替换形式实现直线、折线、平滑曲线和三点圆弧", "target_ids": ["T1", "T4"], "process_node_ids": ["P1", "P2"], "depends_on": ["R1"], "input_artifacts": ["accepted-geometry-contract"], "output_artifact": "renderer-anchored-edit", "output_contract": "wuli.flash-anchored-edit.v1", "verifier_route": "geometry-tests-and-code-review", "assigned_role": "deepseek-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "R3", "verb": "layout", "description": "Flash 以锚点替换形式实现标签避碰、纹理和箭头尺度规则", "target_ids": ["T2", "T4"], "process_node_ids": ["P1", "P2"], "depends_on": ["R2"], "input_artifacts": ["accepted-renderer"], "output_artifact": "layout-anchored-edit", "output_contract": "wuli.flash-anchored-edit.v1", "verifier_route": "layout-tests-and-png-review", "assigned_role": "deepseek-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "R4", "verb": "verify", "description": "Flash 以锚点替换形式增加周期、阶段和三维教学义务", "target_ids": ["T3", "T4"], "process_node_ids": ["P1", "P2"], "depends_on": ["R3"], "input_artifacts": ["accepted-layout"], "output_artifact": "teaching-anchored-edit", "output_contract": "wuli.flash-anchored-edit.v1", "verifier_route": "physics-fixtures-and-code-review", "assigned_role": "deepseek-flash", "max_attempts": 2, "terminal_states": ["passed", "failed", "unsupported"]},
+    {"id": "R5", "verb": "test", "description": "运行局部、全量、安全与默认无流程图回归", "target_ids": ["T1", "T2", "T3", "T4"], "process_node_ids": ["P2"], "depends_on": ["R4"], "input_artifacts": ["accepted-code-candidate"], "output_artifact": "regression-report-v2", "output_contract": "wuli.diagram-quality-tests.v2", "verifier_route": "python-unittest", "assigned_role": "deterministic-test-runner", "max_attempts": 1, "terminal_states": ["passed", "failed"]},
+    {"id": "R6", "verb": "audit", "description": "隔离回放两题并由 Codex 审核 PNG 与门控账本", "target_ids": ["T1", "T2", "T3", "T4"], "process_node_ids": ["P3"], "depends_on": ["R5"], "input_artifacts": ["regression-report-v2", "approved-visual-facts"], "output_artifact": "audited-quality-result-v2", "output_contract": "wuli.diagram-quality-audit.v2", "verifier_route": "gateway-replay-png-and-graphify", "assigned_role": "codex-reviewer", "max_attempts": 1, "terminal_states": ["passed", "provisional", "failed"]}
+  ],
+  "state_transfers": [
+    {"id": "S1", "producer_task_id": "R1", "consumer_task_id": "R2", "artifact": "accepted-geometry-contract", "contract": "accepted-code-candidate.v1", "preconditions": ["R1 anchors, review and tests passed"], "invalidation_rule": "Invalidate when path schema changes"},
+    {"id": "S2", "producer_task_id": "R2", "consumer_task_id": "R3", "artifact": "accepted-renderer", "contract": "accepted-code-candidate.v1", "preconditions": ["R2 passed"], "invalidation_rule": "Invalidate when geometry rendering changes"},
+    {"id": "S3", "producer_task_id": "R3", "consumer_task_id": "R4", "artifact": "accepted-layout", "contract": "accepted-code-candidate.v1", "preconditions": ["R3 passed"], "invalidation_rule": "Invalidate when canvas or labels change"},
+    {"id": "S4", "producer_task_id": "R4", "consumer_task_id": "R5", "artifact": "accepted-code-candidate", "contract": "accepted-code-candidate.v1", "preconditions": ["R4 passed"], "invalidation_rule": "Invalidate on source change"},
+    {"id": "S5", "producer_task_id": "R5", "consumer_task_id": "R6", "artifact": "regression-report-v2", "contract": "wuli.diagram-quality-tests.v2", "preconditions": ["R5 passed"], "invalidation_rule": "Invalidate on source, fixture or renderer change"}
+  ],
+  "verification_obligations": [
+    {"id": "V1", "target_ids": ["T1"], "task_ids": ["R1", "R2", "R5", "R6"], "claim": "几何合同与 SVG 轨迹一致", "required_evidence": ["geometry-tests", "replay-report"], "method": "检查点数、退化、圆心半径和 sweep，并核对 PNG", "decision_rule": "关键轨迹类型匹配且退化输入失败关闭", "defeaters": ["模型误选 geometry", "圆弧 sweep 错误"], "fallback": "failed", "risk": "critical"},
+    {"id": "V2", "target_ids": ["T2"], "task_ids": ["R3", "R5", "R6"], "claim": "排版可读", "required_evidence": ["layout-tests", "png-review"], "method": "边界与近似碰撞检查后人工看图", "decision_rule": "无关键越界或严重碰撞", "defeaters": ["字体宽度估计偏差"], "fallback": "provisional", "risk": "high"},
+    {"id": "V3", "target_ids": ["T3"], "task_ids": ["R4", "R5", "R6"], "claim": "核心教学信号获得视觉表达", "required_evidence": ["teaching-gate-tests", "replay-report"], "method": "从题干与 facts 提取周期/三维/阶段信号并核对 scene", "decision_rule": "核心信号绘制或明确 provisional", "defeaters": ["关键词误触发", "二维图冒充三维"], "fallback": "provisional", "risk": "high"},
+    {"id": "V4", "target_ids": ["T4"], "task_ids": ["R1", "R2", "R3", "R4", "R5", "R6"], "claim": "安全与职责边界不回归", "required_evidence": ["regression-report-v2", "graphify-impact-report"], "method": "全量测试、SVG 安全、默认无流程图和图谱影响检查", "decision_rule": "全部关键检查通过", "defeaters": ["W3 绕过门控", "旧 scene 漂移"], "fallback": "failed", "risk": "critical"}
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["R1"], "parallel": false},
+      {"id": "W2", "task_ids": ["R2"], "parallel": false},
+      {"id": "W3", "task_ids": ["R3"], "parallel": false},
+      {"id": "W4", "task_ids": ["R4"], "parallel": false},
+      {"id": "W5", "task_ids": ["R5"], "parallel": false},
+      {"id": "W6", "task_ids": ["R6"], "parallel": false}
+    ],
+    "max_concurrency": 1,
+    "allocation_notes": ["R1-R4 串行修改同一接口", "每轮 Flash 输出先过唯一锚点检查，再由 Codex 审核"]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": ["retry-task", "revise-input", "invalidate-impact-cone", "mark-provisional", "stop"],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked"]
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3", "T4"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4"],
+    "acceptance_rule": "V1 与 V4 必须通过；V2/V3 未通过时只可 provisional",
+    "conflict_policy": "确定性失败或实际 PNG 裁决，不使用多数票",
+    "unresolved_policy": "保留缺陷与回跳任务",
+    "final_artifact": "audited-quality-result-v2",
+    "approval_authority": "codex-reviewer"
+  },
+  "unresolved": ["字体包围盒仍是近似", "两题不能覆盖所有物理图型", "二维 SVG 不能替代三维仿真"]
+}

@@ -156,6 +156,7 @@ output/<题目名称>/
 | `scout` | 识别项目风险与高收益下一步 |
 | `neat-freak` | 同步文档、整理知识与审计规范 |
 | `darwin-skill` | 对 Skill 做质量评分和迭代建议 |
+| `complex-process-decomposer` | 将复杂过程拆成过程模型、原子任务 DAG、验证义务、有限反馈与结果汇总计划 |
 
 两个核心 Skill 通过同一个 `physics-model.json` 协作，但字段所有权不同，详见 [`docs/architecture.md`](docs/architecture.md)。AI 接手修改时先看 [`docs/ai-editing-map.md`](docs/ai-editing-map.md) 选择最小上下文；涉及功能归位、复杂度删减或变更影响分析时，再按 [`docs/architecture-governance.md`](docs/architecture-governance.md) 用 graphify 做结构证据检查。阶段性能力变化见 [`docs/CHANGES.md`](docs/CHANGES.md)。
 
@@ -184,7 +185,8 @@ docs/                      文档入口、架构、API、Gateway、运维、竞�
 E2E 只在维护者手动运行 `npm run test:e2e`，或 GitHub Actions 执行 CI 时启动；它为每个场景创建临时知识库，
 使用确定性假 Agent，并在结束后清理，不会形成正式错题条目。
 
-当前 3 条可执行场景覆盖基础交付、交互可视化和公开脱敏发布。HTTP、UI、生命周期门禁、生产仿真构建、
+当前 4 条可执行场景覆盖基础交付、交互可视化、公开脱敏发布，以及默认关闭的断言级正确性证据影子链路。
+HTTP、UI、生命周期门禁、生产仿真构建、
 `evaluator.py` 与 `pipeline_quality_eval.py` 都会进入断言；后二者是结果判定与质量诊断工具，不负责点击 UI
 或调用 API。运行方法和场景边界见 [`teacher-console/e2e/README.md`](teacher-console/e2e/README.md)。
 

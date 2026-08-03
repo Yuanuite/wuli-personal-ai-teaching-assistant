@@ -1,8 +1,10 @@
 # RAG 完成 Work-tree
 
-这份文档是从当前 W3 影子状态走到生产完成的唯一执行视图。检索原理、实验细节和
-历史指标分别留在 `evolve-roadmap.md` 与 `w3-reasoning-pipeline.md`；本文只回答：
-现在完成了什么、还差什么、下一批五道题到达后按什么顺序执行，以及何时才算完成。
+> **状态：已完成（2026-08-02 W3 已默认进入生产路由）**
+> 本文档保留为 W3 治理参考。当前实现见 `teacher-console/w3_pipeline.py`、`teacher-console/analysis_routing.py`。
+
+这份文档记录 W3 从影子状态走到生产完成的唯一执行视图。检索原理、实验细节和
+历史指标分别留在 `evolve-roadmap.md` 与 `w3-reasoning-pipeline.md`。
 
 ## 完成定义
 
@@ -25,31 +27,27 @@ RAG 最终闭环
 ├─ W0 基线与评价口径                              ✅ 完成
 ├─ W1 精度门禁与独立检索 holdout                  ✅ 完成
 ├─ W2 evidence-set-v2 证据集选择                  ✅ 完成
-├─ W3 自适应拆解、定向召回、验证与仲裁             ✅ 影子实现完成
+├─ W3 自适应拆解、定向召回、验证与仲裁             ✅ 生产默认启用
 ├─ W4 泛化与生产门禁
 │  ├─ W4-1 新鲜真值先冻结机制                     ✅ 机制完成
 │  ├─ W4-2 旧题同条件 W2/W3 成对回放              ✅ 诊断完成
-│  ├─ WAIT-5 五道从未进入旧 W3 manifest 的复核题   ⏸ 当前等待
-│  ├─ W4-3 新鲜独立 holdout                       ⬜ 待五题到达
-│  ├─ W4-4 小范围生产灰度                         ⬜ 待 W4-3 通过
-│  └─ W4-5 默认启用与回滚验收                     ⬜ 待灰度通过
+│  ├─ WAIT-5 五道从未进入旧 W3 manifest 的复核题   ✅ 完成
+│  ├─ W4-3 新鲜独立 holdout                       ✅ 通过
+│  ├─ W4-4 小范围生产灰度                         ✅ 通过
+│  └─ W4-5 默认启用与回滚验收                     ✅ 通过
 └─ W5 教师反馈慢循环                              ♻ 持续运营
 ```
 
 ## 当前停点
 
-截至 2026-07-27：
+截至 2026-07-29，W4-5 已完成：
 
-- 已复核历史题：14 道；
-- 从未进入旧 W3 manifest 的新鲜题：0 道；
-- W4-1 需求：至少 5 道、合计至少 12 个目标；
-- 当前缺口：5 道；
-- W4-2 回放：W2 为 14/15，W3 为 15/15，W2 可交付性 3/5；
-- 回放中的唯一准确率差异曾参与教师真值修订，因此
-  `production_evidence=false`，不能作为上线依据。
-
-等待期间不要生成 fresh manifest，不要把旧题改名后复用，也不要在看到 W2/W3
-输出后补写目标真值。
+- 新鲜独立 holdout：5 题、15 目标，W2/W3 均为 100%，独立性完整；
+- 首批生产灰度：3 题、9 目标，全部正确；
+- 官方竞赛补充灰度：3 道有效题、8 原子目标，全部正确；
+- `wuli-analysis-adaptive-v1` 已设为 `mode=default`；
+- `default → off → default` 回滚演练通过，W2 接管有效；
+- 下一阶段为 W5 教师反馈慢循环，只读观察不自动调整策略。
 
 ## 五题到达后的不可倒置流程
 
@@ -188,6 +186,14 @@ W4-3 通过后才实施生产开关，不直接全量替换 W2：
 完成后，W5 继续积累教师闭环并生成只读慢循环报告；任何自动调整证据预算、模型路由
 或检索策略仍需满足自己的更高样本门槛，不因 W3 上线而自动获权。
 
+### W5 整卷观察：2021 IPhO 理论题
+
+2026-07-29 完成官方英文 T1–T3 的解答隔离整卷作答：三道候选先冻结、再解锁官方解答，
+独立阅卷得到 30/30 分、36/36 小问 full-credit，无 needs-review。逐题有效作答、失败重试、
+独立阅卷时间和可得 token 已固化；详见
+[`reports/w5-ipho-2021-theory-closed-book.md`](reports/w5-ipho-2021-theory-closed-book.md)。
+该批次是 W5 只读观察，不反向改写 fresh holdout，也不自动调整生产路由。
+
 ## 一票否决
 
 出现任一情况就不能宣称完成：
@@ -200,3 +206,110 @@ W4-3 通过后才实施生产开关，不直接全量替换 W2：
 - `needs-review` 被当作正确；
 - 独立集真值被本轮输出修订后仍用于生产门禁；
 - 没有可用 W2 回退或没有验证回滚。
+
+## 完整解题 pipeline + RAG执行图
+```mermaid
+flowchart TD
+    A["教师已复核题干"] --> B["确定性复杂度初筛"]
+
+    B -->|简单题| C["W2：全局召回与证据选集"]
+    C --> C1["analysis.generate v2<br/>完整学生版/教师版解析"]
+    C1 --> C2["W2 答案候选校验<br/>结构 / 高中方法 / 基础 LaTeX"]
+    C2 -->|通过| T["统一教师审核包"]
+    C2 -->|失败| W["重新生成或人工编辑"]
+
+    B -->|复杂题| D["problem.decompose"]
+
+    D -->|蓝图无效| C
+    D -->|蓝图有效| E["双层蓝图"]
+
+    E --> E1["物理过程图<br/>physical_stages"]
+    E1 --> E1a["阶段节点<br/>状态 / 条件 / 事件"]
+    E1 --> E1b["阶段边<br/>stage_transitions"]
+
+    E --> E2["推理过程图<br/>reasoning_steps"]
+    E2 --> E2a["推理节点<br/>operation / decisive_relations"]
+    E2 --> E2b["依赖边<br/>depends_on"]
+
+    E --> E3["题目目标<br/>question_targets"]
+    E --> E4["检索需求<br/>retrieval_needs"]
+    E --> E5["验证义务<br/>verification_obligations"]
+
+    E1a --> X["stage_step_links<br/>物理阶段 ↔ 推理步骤"]
+    E1b --> X
+    E2a --> X
+    E2b --> X
+    E3 --> X
+    E5 --> X
+
+    X --> OD["物理义务发现 Gate<br/>量词 / 顺序 / 边界 / 分支 / 适用域"]
+    OD --> OD1["默认义务 shadow 建议<br/>只记录，不进主门禁"]
+    OD --> OD2["目标/义务覆盖检查"]
+
+    OD2 --> F["最多 3 路定向召回"]
+    E4 --> F
+
+    F --> G["W1 精度门禁"]
+    G --> H["W2 去重、冲突处理与证据选集"]
+
+    H --> I["Solver A：结构化求解"]
+    X --> I
+    I --> J["确定性结构检查<br/>目标覆盖 / 依赖合法 / 输出契约"]
+
+    J --> K{"目标风险是否值得审计？"}
+
+    K -->|低风险| CB["Claim Builder<br/>生成可验证 Claim"]
+    K -->|正预期收益| L["目标级风险审计器"]
+
+    E --> M{"挑战题或极高风险？"}
+    M -->|是| N["Solver B：独立盲解<br/>只读目标子图，不读历史答案"]
+    M -->|否| L
+
+    X --> N
+    N --> L
+
+    L -->|通过| CB
+    L -->|发现缺失| O["补 Claim / 补边界 / 补目标证据"]
+    O --> L
+
+    L -->|结论冲突| Q["solution.adjudicate<br/>按决定性关系仲裁"]
+    Q -->|形成推荐结论| CB
+    Q -->|仍无法确认| R["内部风险状态<br/>PROVISIONAL / UNRESOLVED"]
+
+    CB --> CL["Claim Ledger<br/>版本化证明 DAG"]
+    CL --> VC["Verification Certificates<br/>算术 / 量纲 / 区间 / 事件顺序 / 语义复算"]
+    VC --> PA["Proof Aggregator<br/>组合检查与最终状态"]
+
+    PA --> Pcert{"W3 Proof Certificate<br/>是否 verified？"}
+    Pcert -->|否| R
+    Pcert -->|是| PP["W3 Proof Package<br/>已验证结论 + Claim + 条件 + 义务"]
+
+    PP --> SK["Proof Skeleton<br/>可讲解证明骨架"]
+    SK --> SK1["物理线索<br/>阶段 / 状态传递 / 边界事件"]
+    SK --> SK2["推理线索<br/>公式 / 依赖 / 关键代入"]
+    SK --> SK3["教学线索<br/>必须展开步骤 / 易错点 / LaTeX 符号"]
+
+    SK1 --> BR["build_w3r_brief<br/>瘦身输入，不含原始争论日志"]
+    SK2 --> BR
+    SK3 --> BR
+
+    BR --> RENDER["answer.render：W3R 非求解教学渲染<br/>不得改答案 / 不得新增 Claim"]
+    RENDER --> RG["Render Gate<br/>LaTeX / 长度 / 章节 / target 覆盖 / Claim 忠实性"]
+
+    RG -->|通过| FINAL["完整答案产物<br/>student-solution.md / teacher-solution.md / solution.md"]
+    RG -->|表达失败| RETRY{"重渲染次数未超限？"}
+    RETRY -->|是| RENDER
+    RETRY -->|否| NR["needs-render-review<br/>保留 W3 证据，不生成低质最终答案"]
+
+    RG -->|证据缺口| O
+
+    R --> S["生成精简审核焦点"]
+    NR --> S
+    FINAL --> T
+    S --> T
+
+    T --> U["教师审核"]
+    U -->|确认| V["批准当前答案摘要"]
+    U -->|修改后确认| V
+    U -->|退回| W
+```

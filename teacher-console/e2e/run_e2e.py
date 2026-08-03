@@ -43,18 +43,18 @@ SCENARIOS = (
     "static-diagram-collaboration.e2e.mjs",
     "runtime-route-rollback.e2e.mjs",
     # Wave E2/E3: analysis-run observability
-    # (docs/analysis-run-observability-w3-pipeline-work-tree.md)
+    # (docs/archive/2026-08-03/analysis-run-observability-w3-pipeline-work-tree.md)
     "analysis-core-report.e2e.mjs",
     "analysis-core-truncated.e2e.mjs",
     "analysis-w3-report.e2e.mjs",
     "analysis-w3-backjump.e2e.mjs",
     # Wave 5: provider qualification + deadline budget + route preview
-    # (docs/analysis-provider-timeout-repair-work-tree.md, A2.2/A2.4/A4.1)
+    # (docs/archive/2026-08-03/analysis-provider-timeout-repair-work-tree.md, A2.2/A2.4/A4.1)
     "analysis-qualified-route.e2e.mjs",
     "analysis-soft-timeout.e2e.mjs",
     "analysis-route-preview.e2e.mjs",
     # Wave 4 A4.5: real-route + deadline-layer visibility through the page
-    # (docs/w3-w3r-route-deadline-repair-work-tree.md)
+    # (docs/archive/2026-08-03/w3-w3r-route-deadline-repair-work-tree.md)
     "analysis-core-hard-timeout-route-visible.e2e.mjs",
     "analysis-w3-soft-timeout-stage-visible.e2e.mjs",
     "analysis-w3-verified-w3r-shadow.e2e.mjs",

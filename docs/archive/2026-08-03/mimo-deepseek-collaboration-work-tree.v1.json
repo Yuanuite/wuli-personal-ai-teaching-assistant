@@ -1,0 +1,95 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "Refactor the teacher-console into an auditable MiMo vision to DeepSeek API reasoning and SVG collaboration pipeline.",
+    "process_shape": "hybrid",
+    "epistemic_families": ["engineering", "procedural", "physics"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": ["approved source image", "model registry", "teacher lifecycle gates"],
+    "assumptions": ["mimo-v2.5-flash and deepseek-v4-flash-api are probe-passed"],
+    "constraints": ["MiMo does not solve", "DeepSeek does not approve", "model failure is fail-closed"],
+    "excluded_scope": ["automatic approval", "automatic publication", "direct model-authored simulator HTML"]
+  },
+  "targets": [
+    {"id": "T1", "description": "Every source image is converted into versioned visual facts by MiMo.", "success_criteria": ["Trace identifies mimo-v2.5-flash", "Uncertainty blocks source approval"], "priority": "critical", "required_evidence": ["visual-facts", "source-review-report"], "approval": "human-owner"},
+    {"id": "T2", "description": "Reasoning and editable generation tasks use DeepSeek V4 Flash API without silent fallback.", "success_criteria": ["Trace identifies deepseek-v4-flash-api and openai-compatible provider"], "priority": "critical", "required_evidence": ["agent-stage-trace"], "approval": "system"},
+    {"id": "T3", "description": "Static SVG generation demonstrably consumes both MiMo facts and DeepSeek output.", "success_criteria": ["SVG trace binds both input and output fingerprints", "Unsafe SVG is rejected"], "priority": "critical", "required_evidence": ["svg-provenance", "svg-gate-report"], "approval": "domain-expert"},
+    {"id": "T4", "description": "The teacher lifecycle preserves every approval and privacy gate.", "success_criteria": ["Isolated E2E stops at needs-answer-review", "No model can approve or finish"], "priority": "critical", "required_evidence": ["isolated-e2e-report"], "approval": "human-owner"}
+  ],
+  "process_model": {
+    "kind": "hybrid",
+    "nodes": [
+      {"id": "P1", "label": "Visual facts frozen", "state_in": ["source image"], "state_out": ["visual-facts"], "invariants": ["No solving"], "entry_conditions": ["MiMo route available"], "exit_conditions": ["Visual Facts Gate decided"]},
+      {"id": "P2", "label": "Reasoning candidate generated", "state_in": ["approved problem", "visual-facts"], "state_out": ["answer candidate"], "invariants": ["No approval mutation"], "entry_conditions": ["DeepSeek API route available"], "exit_conditions": ["Answer contract validates"]},
+      {"id": "P3", "label": "SVG candidate generated", "state_in": ["visual-facts", "answer candidate"], "state_out": ["validated SVG candidate"], "invariants": ["No unsafe SVG features"], "entry_conditions": ["Both fingerprints present"], "exit_conditions": ["SVG Gate decided"]},
+      {"id": "P4", "label": "Teacher checkpoint reached", "state_in": ["answer candidate", "validated SVG candidate"], "state_out": ["needs-answer-review"], "invariants": ["No automatic approval"], "entry_conditions": ["Candidate validation passed"], "exit_conditions": ["Teacher reviews or requests revision"]}
+    ],
+    "transitions": [
+      {"from": "P1", "to": "P2", "trigger": "source-approved", "carried_state": ["visual-facts"], "rollback_to": "P1"},
+      {"from": "P2", "to": "P3", "trigger": "answer-contract-pass", "carried_state": ["answer candidate"], "rollback_to": "P2"},
+      {"from": "P3", "to": "P4", "trigger": "svg-gate-pass", "carried_state": ["validated SVG candidate"], "rollback_to": "P3"}
+    ]
+  },
+  "atomic_tasks": [
+    {"id": "A1", "verb": "freeze", "description": "Freeze current routing and lifecycle baselines.", "target_ids": ["T4"], "process_node_ids": ["P1"], "depends_on": [], "input_artifacts": ["model-registry", "existing tests"], "output_artifact": "baseline-lock", "output_contract": "wuli.collaboration-baseline.v1", "verifier_route": "fingerprint-check", "assigned_role": "system", "max_attempts": 1, "terminal_states": ["passed", "failed"]},
+    {"id": "A2", "verb": "define", "description": "Define the immutable wuli.visual-facts.v1 artifact and its separate wuli.visual-facts-gate-result.v1 decision.", "target_ids": ["T1"], "process_node_ids": ["P1"], "depends_on": ["A1"], "input_artifacts": ["source-review-contract", "human-gate-review"], "output_artifact": "visual-facts-contract-and-gate", "output_contract": "wuli.visual-facts.v1 + wuli.visual-facts-gate-result.v1", "verifier_route": "schema-gate-and-idempotence-tests", "assigned_role": "deepseek-v4-flash-api", "max_attempts": 2, "terminal_states": ["passed", "failed", "gate-dispute"]},
+    {"id": "A3", "verb": "integrate", "description": "Route source visual extraction through the MiMo registry identity.", "target_ids": ["T1", "T4"], "process_node_ids": ["P1"], "depends_on": ["A2"], "input_artifacts": ["visual-facts-contract", "model-registry"], "output_artifact": "vision-integration-patch", "output_contract": "code-patch.v1", "verifier_route": "source-review-and-privacy-tests", "assigned_role": "deepseek-v4-flash-api", "max_attempts": 2, "terminal_states": ["passed", "failed"]},
+    {"id": "A4", "verb": "route", "description": "Make DeepSeek API the explicit generation route and reject silent fallback.", "target_ids": ["T2", "T4"], "process_node_ids": ["P2"], "depends_on": ["A1"], "input_artifacts": ["model-registry", "gateway-contract"], "output_artifact": "generation-routing-patch", "output_contract": "code-patch.v1", "verifier_route": "registry-and-gateway-tests", "assigned_role": "deepseek-v4-flash-api", "max_attempts": 2, "terminal_states": ["passed", "failed"]},
+    {"id": "A5", "verb": "compose", "description": "Replace MiMo-direct SVG generation with MiMo facts to DeepSeek SVG composition.", "target_ids": ["T3"], "process_node_ids": ["P3"], "depends_on": ["A3", "A4"], "input_artifacts": ["visual-facts-contract", "generation-routing-patch"], "output_artifact": "svg-collaboration-patch", "output_contract": "code-patch.v1", "verifier_route": "svg-provenance-and-safety-tests", "assigned_role": "deepseek-v4-flash-api", "max_attempts": 2, "terminal_states": ["passed", "failed"]},
+    {"id": "A6", "verb": "bind", "description": "Bind visualization.model to DeepSeek structured physics-model generation while retaining simulator ownership.", "target_ids": ["T2", "T4"], "process_node_ids": ["P2"], "depends_on": ["A4"], "input_artifacts": ["generation-routing-patch", "visualization-contract"], "output_artifact": "visualization-routing-patch", "output_contract": "code-patch.v1", "verifier_route": "visualization-contract-tests", "assigned_role": "deepseek-v4-flash-api", "max_attempts": 2, "terminal_states": ["passed", "failed"]},
+    {"id": "A7", "verb": "test", "description": "Run deterministic unit, privacy, failure-injection and integration tests.", "target_ids": ["T1", "T2", "T3", "T4"], "process_node_ids": ["P1", "P2", "P3", "P4"], "depends_on": ["A5", "A6"], "input_artifacts": ["all code patches"], "output_artifact": "collaboration-test-report", "output_contract": "wuli.collaboration-test-report.v1", "verifier_route": "local-test-runner", "assigned_role": "system", "max_attempts": 2, "terminal_states": ["passed", "failed"]},
+    {"id": "A8", "verb": "replay", "description": "Replay the teacher workflow in an isolated temporary library and stop at answer review.", "target_ids": ["T4"], "process_node_ids": ["P4"], "depends_on": ["A7"], "input_artifacts": ["collaboration-test-report", "non-private fixture"], "output_artifact": "isolated-e2e-report", "output_contract": "wuli.collaboration-e2e.v1", "verifier_route": "lifecycle-state-check", "assigned_role": "system", "max_attempts": 1, "terminal_states": ["passed", "failed", "blocked"]}
+  ],
+  "state_transfers": [
+    {"id": "S1", "producer_task_id": "A1", "consumer_task_id": "A2", "artifact": "baseline-lock", "contract": "wuli.collaboration-baseline.v1", "preconditions": ["A1 passed"], "invalidation_rule": "Invalidate when registry or scoped source files change."},
+    {"id": "S2", "producer_task_id": "A2", "consumer_task_id": "A3", "artifact": "visual-facts-contract-and-gate", "contract": "wuli.visual-facts.v1 + wuli.visual-facts-gate-result.v1", "preconditions": ["Schema, gate, route-separation and idempotence tests pass"], "invalidation_rule": "Invalidate when visual facts fields, fingerprint rules, confidence threshold or gate result fields change."},
+    {"id": "S3", "producer_task_id": "A1", "consumer_task_id": "A4", "artifact": "baseline-lock", "contract": "wuli.collaboration-baseline.v1", "preconditions": ["A1 passed"], "invalidation_rule": "Invalidate when registry or gateway routing changes."},
+    {"id": "S4", "producer_task_id": "A3", "consumer_task_id": "A5", "artifact": "vision-integration-patch", "contract": "code-patch.v1", "preconditions": ["Vision and privacy tests pass"], "invalidation_rule": "Invalidate when vision adapter or source-review contract changes."},
+    {"id": "S5", "producer_task_id": "A4", "consumer_task_id": "A5", "artifact": "generation-routing-patch", "contract": "code-patch.v1", "preconditions": ["Registry and gateway tests pass"], "invalidation_rule": "Invalidate when DeepSeek model identity or route changes."},
+    {"id": "S6", "producer_task_id": "A4", "consumer_task_id": "A6", "artifact": "generation-routing-patch", "contract": "code-patch.v1", "preconditions": ["Registry and gateway tests pass"], "invalidation_rule": "Invalidate when visualization task route changes."},
+    {"id": "S7", "producer_task_id": "A5", "consumer_task_id": "A7", "artifact": "svg-collaboration-patch", "contract": "code-patch.v1", "preconditions": ["SVG tests pass"], "invalidation_rule": "Invalidate when SVG inputs, generator or gate changes."},
+    {"id": "S8", "producer_task_id": "A6", "consumer_task_id": "A7", "artifact": "visualization-routing-patch", "contract": "code-patch.v1", "preconditions": ["Visualization tests pass"], "invalidation_rule": "Invalidate when physics-model contract or simulator interface changes."},
+    {"id": "S9", "producer_task_id": "A7", "consumer_task_id": "A8", "artifact": "collaboration-test-report", "contract": "wuli.collaboration-test-report.v1", "preconditions": ["All critical tests pass"], "invalidation_rule": "Invalidate when any scoped implementation file changes."}
+  ],
+  "verification_obligations": [
+    {"id": "V1", "target_ids": ["T1"], "task_ids": ["A2", "A3"], "claim": "MiMo is the only runtime source of visual facts, uncertainty is preserved, and gate status is separate from the evidence artifact.", "required_evidence": ["visual-facts", "visual-facts-gate-result", "source-review-tests", "gateway-trace"], "method": "Inspect artifact identity shape, independent runtime trace, ambiguity fixtures, low-confidence fixtures and idempotence.", "decision_rule": "Every visual trace names MiMo; uncertainties remain in the artifact; uncertainty or low confidence produces needs-source-review without destroying evidence.", "defeaters": ["OCR-only approval", "DeepSeek repairs missing visual facts", "model route hard-coded as domain schema", "normalization treated as approval"], "fallback": "blocked", "risk": "critical"},
+    {"id": "V2", "target_ids": ["T2"], "task_ids": ["A4", "A6"], "claim": "All authorized generation tasks use DeepSeek V4 Flash API.", "required_evidence": ["agent-stage-trace"], "method": "Resolve each task and compare exact model ID/provider.", "decision_rule": "All required routes equal deepseek-v4-flash-api/openai-compatible and no fallback notice exists.", "defeaters": ["tier override", "silent provider fallback"], "fallback": "blocked", "risk": "critical"},
+    {"id": "V3", "target_ids": ["T3"], "task_ids": ["A5"], "claim": "SVG is a true two-model artifact and is safe to render.", "required_evidence": ["svg-provenance", "svg-gate-report"], "method": "Bind both fingerprints and inject unsafe SVG variants.", "decision_rule": "Both fingerprints match and every unsafe variant is rejected.", "defeaters": ["MiMo-direct SVG", "unbound visual facts", "scriptable SVG"], "fallback": "provisional", "risk": "critical"},
+    {"id": "V4", "target_ids": ["T4"], "task_ids": ["A1", "A3", "A4", "A6", "A7", "A8"], "claim": "Privacy and teacher approval boundaries remain unchanged.", "required_evidence": ["privacy-tests", "isolated-e2e-report"], "method": "Run remote-gate failures and lifecycle replay.", "decision_rule": "Unauthorized calls fail closed and E2E stops at needs-answer-review.", "defeaters": ["automatic approval", "canonical mutation after failed provider"], "fallback": "blocked", "risk": "critical"}
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A1"], "parallel": false},
+      {"id": "W2", "task_ids": ["A2", "A4"], "parallel": true},
+      {"id": "W3", "task_ids": ["A3", "A6"], "parallel": true},
+      {"id": "W4", "task_ids": ["A5"], "parallel": false},
+      {"id": "W5", "task_ids": ["A7"], "parallel": false},
+      {"id": "W6", "task_ids": ["A8"], "parallel": false}
+    ],
+    "max_concurrency": 2,
+    "allocation_notes": ["DeepSeek produces bounded candidates; deterministic tests decide promotion."]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": ["retry-task", "revise-input", "invalidate-impact-cone", "open-gate-dispute", "reviewer-repair", "mark-provisional", "stop"],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked", "gate-dispute"],
+    "gate_dispute_policy": "After generation attempts are exhausted, distinguish candidate defects from verifier/specification contradictions. Human-approved reviewer-repair may change only deterministic tests or contract glue, must preserve the candidate and record before/after test evidence."
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3", "T4"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4"],
+    "acceptance_rule": "Every critical obligation passes and current fingerprints bind all transferred artifacts.",
+    "conflict_policy": "Use deterministic interface and failure-injection evidence; never majority vote.",
+    "unresolved_policy": "Stop at the affected teacher checkpoint and preserve canonical state.",
+    "final_artifact": "mimo-deepseek-collaboration-acceptance",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": []
+}

@@ -2033,7 +2033,7 @@ function renderPublication() {
     empty.classList.remove("hidden");
   }
 
-  $("publish-publication").disabled = !prepared || !checkbox.checked;
+  $("publish-publication").disabled = !prepared || !checkbox.checked || !imageReady;
   const localLink = $("publication-local-link");
   if (published) {
     localLink.href = publication.local_site_url;
@@ -2451,7 +2451,9 @@ function setupUpload() {
       const id = report.work_orders?.[0]?.entry_id;
       const uploaded = report.results?.find(item => item.entry_id === id);
       const sourceClean = uploaded?.source_clean;
-      toast(sourceClean?.status === "queued" ? "OCR 已完成，正在自动整理题干" : "题目已上传，等待题干复核");
+      toast(sourceClean?.status === "queued" ? "OCR 已完成，正在自动整理题干"
+        : sourceClean?.status === "degraded" ? (sourceClean.message || "Agent 不可用，已降级到人工复核")
+        : "题目已上传，等待题干复核");
       state.file = null;
       $("upload-file").classList.add("hidden"); input.value = ""; document.querySelector(".upload-card").open = false;
       await loadEntries(id);

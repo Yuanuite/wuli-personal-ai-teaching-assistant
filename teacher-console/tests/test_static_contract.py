@@ -175,7 +175,7 @@ class StaticWorkbenchContractTest(unittest.TestCase):
         self.assertIn("required_env", script)
 
     def test_w3_w3r_route_plan_and_timeout_summary_contract(self):
-        # A3.1/A3.2/A3.3 (w3-w3r-route-deadline-repair-work-tree): the teacher
+        # A3.1/A3.2/A3.3 (docs/archive/2026-08-03/w3-w3r-route-deadline-repair-work-tree.md): the teacher
         # UI must expose the planned solver route / W3R mode / renderer /
         # expected stages truthfully (core-first must not read as a W3
         # failure), and failed jobs carrying timeout_summary must distinguish

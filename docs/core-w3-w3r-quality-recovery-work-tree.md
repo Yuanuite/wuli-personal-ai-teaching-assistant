@@ -1,5 +1,8 @@
 # Core–W3/W3R 复杂题质量恢复原子 Work-Tree
 
+> **状态：部分完成（G1 灰度仍为后续批准项）**
+> 核心代码已实现：`teacher-console/w3r_contract.py`、`teacher-console/w3_rendering.py`。G1 灰度部署待批准。
+
 > 状态：已执行（A0.1/A0.2/A1.2/A2.1/A3.1 完成；A1.1/A1.3/A1.4/G1 与 A5.x 灰度仍为后续批准项）
 > 日期：2026-08-03
 > 版本：v1

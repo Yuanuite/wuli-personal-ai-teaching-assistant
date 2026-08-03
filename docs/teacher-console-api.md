@@ -137,6 +137,12 @@ POST /api/entries/<entry-id>/<action>
 | `prepare-publication` | 无 | 从已交付白名单产物生成学生端草稿并执行安全扫描 |
 | `publish-publication` | `privacy_confirmed: true`、`reviewer`、`note` | 将已复核草稿复制到本地 `student-site/` |
 
+**可视化前置条件**：`build-visualization` 要求 `answer_review.status` 必须为 `passed` 且未过期。未满足时返回 `409 {"status": "blocked", "detail": "请先完成答案复核后再请求可视化生成"}`。
+
+**发布前置条件**：`publish-publication` 要求 `publication-images.json` 的 `status` 必须为 `passed`（题图裁剪/遮挡已确认），且 `publication-draft/` 目录已生成。未满足时返回 `409 {"status": "blocked", "detail": "请先完成图片裁剪/遮挡确认"}` 或 `409 {"status": "blocked", "detail": "请先生成发布草稿并预览"}`。
+
+**source.clean 降级**：Agent 不可用时，`source_clean` 返回 `{"status": "degraded", "mode": "manual-review-required", "message": "Agent 不可用，已降级到人工复核。请直接进入题干复核。"}`。教师应直接进入题干人工复核。
+
 教师批准与隐私确认必须来自实际页面使用者或明确的人工操作。Agent 可以生成和返修，但不得代填批准或绕过 `409 blocked`。
 
 `GET /api/entries/<entry-id>` 的 `w3_shadow.claim_evidence` 是教师安全视图：包含完整暂定

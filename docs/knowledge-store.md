@@ -23,6 +23,7 @@ student-error-library/indexes/wuli-memory.db
 | `teaching_memory` | `record.json` + `physics-model.json` | 知识点、错因、难度、二级结论和是否可视化 |
 | `scheduler_benchmark` | 全库级 `scheduler.benchmark` Candidate Archive 事件 | Agent 调度、provider、耗时、失败类型和 token 用量基准 |
 | `evolve_observation` | 全库级 `evolve.observation.*` Candidate Archive 事件 | RAG 效果观察和后续慢循环只读报告 |
+| `evidence_unit` | 教师批准解析、批准物理模型中的结构化教学项、带条件技巧库 | Evidence Agent Phase-B shadow 投影；不参与当前生产 `query()` 排序 |
 
 ## 手动命令
 
@@ -86,7 +87,7 @@ Candidate Archive 追加后写入 freshness dirty marker；查询会明确返回
 
 观察报告由 `teacher-console/scripts/rag_effectiveness_report.py` 生成。它把作业记录中的耗时/用量与 Candidate Archive 中的 Evaluator、教师返修和最终批准关联起来；默认只读，显式 `--record` 才沉淀为 `evolve.observation.rag`。报告属于观察性证据，不能单独证明 RAG 导致结果变好。
 
-确定性 evidence 预算先用只读预检验证，不直接上线语义压缩。教师按 [`evidence-budget-eval.example.jsonl`](evidence-budget-eval.example.jsonl) 建立至少 20 条 `approved` 样本，为每条查询标注必须保留的历史事实，然后运行：
+确定性 evidence 预算先用只读预检验证，不直接上线语义压缩。教师按 [`evidence-budget-eval.example.jsonl`](../student-error-library/config/evidence-budget-eval.example.jsonl) 建立至少 20 条 `approved` 样本，为每条查询标注必须保留的历史事实，然后运行：
 
 ```bash
 python3 teacher-console/scripts/evidence_budget_benchmark.py \
@@ -191,6 +192,40 @@ W3 的 `build_blueprint_evidence()` 不再把整道复杂题压成一次查询�
 目标覆盖或新候选时继续，连续两路无增益即停止。多路候选最后只调用一次
 `evidence-set-v2`，因此查询数可以自适应增加，但证据字符预算、精度门禁、去重和
 冲突处理不会放宽。该策略目前只用于 W3 影子报告。
+
+### Evidence Unit shadow 投影
+
+`wuli-evidence-unit-shadow-v1` 在显式 Knowledge Store rebuild 时生成独立
+`evidence_unit` 表，当前不接入 `query()` 或 W3 生产路由。独立
+`evidence_agent_shadow.py` 可通过只读连接把它送入 Agent Gateway 影子任务。投影只接受：
+
+- 当前答案摘要仍有效的教师批准解析中的“最短主线”“带适用条件的二级结论”
+  “易错点”和“教师审计”；
+- 当前可视化批准仍有效的 `physics-model.json` 中带条件结构化教学项；
+- 带 `conditions` 与 `forbidden` 的本地教师维护技巧库。
+
+每条 Evidence Unit 固定保存：
+
+```text
+evidence_id
++ unit_kind
++ source_kind / authority_level
++ source_locator（库内相对路径、章节、行号）
++ text
++ physics_facets
++ applicability
++ exceptions
++ content_hash
+```
+
+适用性优先于权威等级；Routing Summary 不允许进入 Evidence Set。未批准答案、批准摘要
+已经失效的答案和当前条目均可在读取投影时排除。投影读取使用只读连接；索引 stale、
+表缺失或投影版本不一致时返回 `unavailable`。
+
+该投影是 fail-soft 的派生能力：单条来源不合格只增加
+`evidence_unit_projection_errors`，不得阻断原有 Knowledge Store 重建。2026-07-30
+首次正式派生索引重建生成 257 条 shadow Evidence Unit，投影错误为 0；生产 baseline
+检索指标保持不变。
 
 ## 和 RAG / Evolve 的关系
 

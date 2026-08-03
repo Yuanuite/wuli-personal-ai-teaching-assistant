@@ -86,7 +86,7 @@ HTTP action → persistent job → Agent Gateway → temporary candidate workspa
 - 每次 Agent 请求归一化为 `AgentRequestOutcome`，统一记录阶段、provider、尝试次数、错误分类、回退状态、隐私安全摘要与可用的 token/时延指标，供作业结果、候选档案和离线评测复用；
 - `analysis.generate`、`answer.revise` 与 `visualization.model` 可从本地 Knowledge Store 获得经过裁剪、限量且排除当前条目的历史证据；证据构造使用确定性的字符预算、逐段裁剪和内容哈希，检索失败不阻塞任务，证据不得覆盖当前教师复核内容，也不会成为新的 canonical 真源；
 - `wuli-core-first-routing-v1` 是解析生成的默认路由策略。复杂度只产生可选增强信号，不再把题目分到 W2/W3 两套求解器。`student-error-library/config/analysis-production-routing.json` 可切为 `legacy-adaptive` 恢复旧 `wuli-analysis-adaptive-v1`；旧 W2/W3 代码与配置暂时保留但不在默认链执行，详见 [`w3-reasoning-pipeline.md`](w3-reasoning-pipeline.md)；
-- 默认关闭的 Claim Evidence 影子层可把 Solver 关系投影为版本化断言 DAG，为算术、量纲、区间、事件顺序和隔离语义复算生成证书，再做跨阶段接口检查、依赖定向回跳、受控假设搜索与确定性汇总。假设始终留在探索平面，冲突或缺证只会得到 `PROVISIONAL/UNRESOLVED`；完整账本仅供教师端读取，不修改 canonical 答案、批准或学生端产物。执行真源见 [`技术执行计划书.md`](技术执行计划书.md)，解题 loop 的原子任务、状态传递、反馈回路和熔断边界见 [`解题loop.md`](解题loop.md)；
+- 默认关闭的 Claim Evidence 影子层可把 Solver 关系投影为版本化断言 DAG，为算术、量纲、区间、事件顺序和隔离语义复算生成证书，再做跨阶段接口检查、依赖定向回跳、受控假设搜索与确定性汇总。假设始终留在探索平面，冲突或缺证只会得到 `PROVISIONAL/UNRESOLVED`；完整账本仅供教师端读取，不修改 canonical 答案、批准或学生端产物。执行真源见 [`技术执行计划书.md`](archive/2026-08-03/技术执行计划书.md)，解题 loop 的原子任务、状态传递、反馈回路和熔断边界见 [`解题loop.md`](archive/2026-08-03/解题loop.md)；
 - `.agent-context/` 按任务和成本档位提供最小只读规则：答案任务以答案模板与职责边界为主，深度档才附完整知识库 Skill；可视化任务附仿真 Skill 与模型 Schema；
 - 候选修改仅限任务白名单，答案候选由知识库验证器检查，可视化候选由仿真模型构建器检查；
 - canonical 条目在排队期间变化、候选越权、删除文件或验证失败时均不提升；

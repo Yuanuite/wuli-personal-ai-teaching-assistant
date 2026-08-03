@@ -1,5 +1,13 @@
 # 变更记录
 
+## 2026-08-03：教师端门禁收敛与隐私防护加固
+
+- 可视化前置门禁（visualization-answer-dependency）：`build-visualization` 现要求 `answer_review.status = "passed"`，否则返回 `409 blocked`。
+- 公开发布多阶段门禁（publication-gate-chain）：`publish-publication` 要求 `publication-images.json.status = "passed"` 及 `publication-draft/` 目录存在，否则返回 `409 blocked`。
+- source.clean 降级信号（source-clean-degradation）：Agent 不可用时返回 `status="degraded", mode="manual-review-required"`，保留 OCR 草稿并明确转移到人工复核。
+- 前端同步：发布按钮增加题图批准检查，上传 toast 识别降级状态并显示提示。
+- 测试更新：`test_agent_http.py` 断言更新，`test_folder_and_visualization.py` 新增 3 个门禁测试。
+
 ## 2026-08-03：W3/W3R 实测路由与 Deadline 传播异常修复（wuli-w3-w3r-route-deadline-repair-v1）
 
 - Deadline 传播修复（T1/A1.1/A1.2）：`agent_gateway.run()` 现把三层 deadline

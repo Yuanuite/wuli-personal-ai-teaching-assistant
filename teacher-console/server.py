@@ -2438,8 +2438,10 @@ class Handler(SimpleHTTPRequestHandler):
                 )
             except Exception as exc:  # noqa: BLE001 - upload must degrade to human review
                 item["source_clean"] = {
-                    "status": "not-started",
+                    "status": "degraded",
+                    "mode": "manual-review-required",
                     "errors": [f"自动整理题干未启动：{str(exc)[:500]}"],
+                    "message": "Agent 不可用，已降级到人工复核。请直接进入题干复核。",
                 }
         self.json_response(report)
 
@@ -2603,7 +2605,14 @@ class Handler(SimpleHTTPRequestHandler):
             )
         elif action == "build-visualization":
             current_state = process_uploads.pipeline_state(entry)
-            if current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
+            answer_review = current_state.get("answer_review", {})
+            if answer_review.get("status") != "passed":
+                result = {
+                    "status": "blocked",
+                    "errors": ["请先完成答案复核后再请求可视化生成"],
+                    "state": current_state,
+                }
+            elif current_state["state"] in {"needs-source-review", "needs-analysis-and-answer", "needs-answer-review"}:
                 result = {
                     "status": "blocked",
                     "errors": ["请先生成并批准解析，再构建动态可视化"],
@@ -2670,8 +2679,14 @@ class Handler(SimpleHTTPRequestHandler):
             if data.get("privacy_confirmed") is not True:
                 result = {"status": "blocked", "errors": ["请先确认公开页面不包含学生隐私或教师内部材料"]}
             else:
-                with PUBLICATION_LOCK:
-                    result = public_site.publish_prepared(LIBRARY, entry.name, reviewer, note, PUBLIC_SITE)
+                pub_images = read_json(entry / "publication-images.json", {})
+                if pub_images.get("status") != "passed":
+                    result = {"status": "blocked", "errors": ["请先完成公开题图裁剪/遮挡确认"]}
+                elif not (entry / "publication-draft").is_dir():
+                    result = {"status": "blocked", "errors": ["请先生成学生端公开预览"]}
+                else:
+                    with PUBLICATION_LOCK:
+                        result = public_site.publish_prepared(LIBRARY, entry.name, reviewer, note, PUBLIC_SITE)
         elif action == "finish":
             with LIBRARY_INDEX_LOCK:
                 result = process_uploads.finish(LIBRARY, entry.name, None, str(data.get("simulator", "auto")))

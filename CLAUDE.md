@@ -22,6 +22,7 @@ student-site/         ← 独立只读公开站；只接收教师确认后的白
 | `grill-me` | 方案/设计逐层追问，达成共识 |
 | `neat-freak` | 会话收尾：文档同步、记忆整理、规范审计 |
 | `darwin-skill` | Skill 自动优化评分（SkillLens 9 维 + SkillOpt） |
+| `complex-process-decomposer` | 将多阶段、状态化或带反馈环的问题拆成可验证、可回跳、可终止的原子任务 Work-Tree |
 
 ## 一句话全流程
 
@@ -51,7 +52,7 @@ Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——
 
 `knowledge_points`、`error_types`、`difficulty`、`grade` 是可编辑的 Agent 建议，不设置独立强制确认门禁；教师实际修改与最终批准才作为稳定教学观测。
 
-OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OCR 错误并从题干提取内容相关标题，再进入人工 source review。网页上点击标题文字可直接改名。
+教师端上传完成 OCR 后会自动排队 `source.clean`（默认 economy 档），让 Agent 修正 OCR 错误并从题干提取内容相关标题，再进入人工 source review；Agent 不可用或排队失败时保留 OCR 草稿并明确降级到人工复核。网页上点击标题文字可直接改名。
 
 ## 深入文档
 
@@ -70,9 +71,10 @@ OCR 之后可先运行 `source.clean`（默认 economy 档）让 Agent 修正 OC
 - `docs/evaluator.md`、`docs/candidate-archive.md`、`docs/knowledge-store.md`：评价报告、候选事件档案与本地 RAG evidence pack。
 - `docs/failure-intelligence.md`：Agent 失败排障策略、自动重试边界与一次性纠正机制。
 - `docs/evolve-roadmap.md`：检索评测、RAG 效果观察与慢循环策略更新的分阶段路线和样本门槛。
-- `docs/w3-reasoning-pipeline.md`：W3 复杂题拆解、定向召回、求解、验证、仲裁与影子报告契约。
-- `docs/rag-completion-work-tree.md`：W3 从影子评测到独立 holdout、生产灰度、默认启用和回滚验收的唯一执行树。
+- `docs/w3-reasoning-pipeline.md`：W3 复杂题拆解、定向召回、求解、验证、仲裁、自适应生产路由与私有审计报告契约。
+- `docs/rag-completion-work-tree.md`：W3 从影子评测到独立 holdout、生产灰度、默认启用和回滚验收的已完成执行树（已完成，保留为治理参考）。
 - `docs/architecture-governance.md`：基于 graphify 的项目治理协议；功能归位、复杂度删减、变更影响分析时必须先读。
+- 已完成的执行计划和被取代的文件已归档至 `docs/archive/2026-08-03/`（包含技术执行计划书、解题loop、构建-Wuli-Evidence-Agent、构建-W3R、particle-field-process-v2、analysis-provider-timeout-repair、visual-diagram-quality-improvement、w3-w3r-route-deadline-repair、analysis-run-observability、w3r-flash-execution-roadmap、create-issues.sh 等）。
 
 ## graphify
 

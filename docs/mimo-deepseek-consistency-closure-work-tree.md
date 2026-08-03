@@ -1,6 +1,6 @@
 # MiMo–DeepSeek 一致性修复收口版原子 Work-Tree
 
-> 状态：已验收（C0-C5.7 与 C6.1-C6.3 完成：干净克隆全链 18/18、70/70 单测、5 条收口 E2E 全通过；visualization E2E 为预存 W3 流 token 计数漂移，作为已知排除项单独报告；最终验收见 docs/reports/mimo-deepseek-consistency-closure-acceptance-v1.md，待维护者签署）
+> 状态：`provisional`（功能门禁已通过；静态图 warning → 单次软 Patch 自动证据与维护者签署待完成；最终验收见 docs/reports/mimo-deepseek-consistency-closure-acceptance-v1.md）
 > 类型：工程 + 流程治理 + 可复现验收
 > 基线提交：`026b104`
 > 计划版本：`wuli-mimo-deepseek-consistency-closure-v1`
@@ -12,15 +12,19 @@
 trait 路由和生产同形视觉探针。最终目标是让 MiMo–DeepSeek 协作在干净克隆、网页、
 CLI 和隔离 E2E 中表现一致，并让静态图协作成为真正可达、可观测、可失败关闭的可选流程。
 
-当前已验证事实：
+收口前已验证事实（以下三项历史缺口已由 C1-C5 关闭，保留用于说明任务来源）：
 
 - `mimo-v2.5-flash` 使用无隐私合成图片的真实视觉请求已经通过；
 - `core-first` 默认解析路径保持一次核心求解；
 - 运行身份、trait fail-closed 和视觉请求契约已有单元测试；
 - 隔离 lifecycle E2E 可以到达 `delivered`；
-- 当前提交不是自包含提交，教师端依赖若干未跟踪模块；
-- `source.clean` 仍可能重复上传原图；
-- `route_snapshot`、静态图网页/CLI 动作、MiMo 图后软评审和五条收口 E2E 尚未形成完整证据。
+- 基线提交不是自包含提交，教师端曾依赖若干未跟踪模块；
+- 基线的 `source.clean` 曾可能重复上传原图；
+- 基线缺少 `route_snapshot`、静态图网页/CLI 动作、MiMo 图后软评审和五条收口 E2E 的完整证据。
+
+2026-08-02 复核补充：上述运行缺口已经关闭；真实 MiMo 合成静态图软评审返回
+`passed`。但静态图 E2E 目前只断言 `soft_review` 字段存在，mock 端点没有覆盖
+`suggestions` 成功契约及 warning → 单次软 Patch 分支，因此自动验收仍保留一项证据缺口。
 
 排除范围：
 
@@ -625,7 +629,8 @@ git diff --check
 graphify update .
 ```
 
-其中 `--strict` 和新增 E2E scenario 是本计划要求实现的目标接口，不是当前已经存在的命令。
+其中 `--strict` 和新增 E2E scenario 均已实现；验收必须继续把 missing/skipped 计为失败，
+并单独断言静态图软评审的成功、告警和单次 Patch 分支，不能只检查字段存在。
 真实 MiMo 冒烟只允许使用仓库合成图，并将结果写入临时验收报告；不得上传学生原图。
 
 ## 12. 最终完成条件

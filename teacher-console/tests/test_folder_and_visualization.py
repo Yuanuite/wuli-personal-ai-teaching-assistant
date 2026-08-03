@@ -366,6 +366,60 @@ class FolderAndVisualizationTest(unittest.TestCase):
         self.assertEqual(result["status"], "cleared")
         self.assertEqual(kb.load_json(self.entry / "visualization-conversation.json", {})["messages"], [])
 
+    def test_build_visualization_blocked_without_approved_answer(self):
+        # The entry has answer_review.status = "not-ready" (never approved).
+        # build-visualization must block until the answer is approved.
+        handler = object.__new__(teacher_console_server.Handler)
+        handler.json_response = mock.MagicMock()
+        with mock.patch.object(
+            teacher_console_server, "job_manager",
+            return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
+        ):
+            handler.handle_entry_action(self.entry, "build-visualization", {})
+        handler.json_response.assert_called_once()
+        result = handler.json_response.call_args[0][0]
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("答案复核", result["errors"][0])
+
+    def test_publish_publication_blocked_without_image_approval(self):
+        # No publication-images.json exists (status != "passed").
+        # publish-publication must block until images are reviewed.
+        handler = object.__new__(teacher_console_server.Handler)
+        handler.json_response = mock.MagicMock()
+        with mock.patch.object(
+            teacher_console_server, "job_manager",
+            return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
+        ):
+            handler.handle_entry_action(
+                self.entry, "publish-publication",
+                {"privacy_confirmed": True, "reviewer": "teacher"},
+            )
+        handler.json_response.assert_called_once()
+        result = handler.json_response.call_args[0][0]
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("题图", result["errors"][0])
+
+    def test_publish_publication_blocked_without_draft(self):
+        # publication-images.json is "passed" but publication-draft/ doesn't exist.
+        kb.write_json(
+            self.entry / "publication-images.json",
+            {"status": "passed", "pages": []},
+        )
+        handler = object.__new__(teacher_console_server.Handler)
+        handler.json_response = mock.MagicMock()
+        with mock.patch.object(
+            teacher_console_server, "job_manager",
+            return_value=mock.MagicMock(active_for_entry=mock.MagicMock(return_value=None)),
+        ):
+            handler.handle_entry_action(
+                self.entry, "publish-publication",
+                {"privacy_confirmed": True, "reviewer": "teacher"},
+            )
+        handler.json_response.assert_called_once()
+        result = handler.json_response.call_args[0][0]
+        self.assertEqual(result["status"], "blocked")
+        self.assertIn("公开预览", result["errors"][0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,6 +1,6 @@
 # MiMo–DeepSeek 一致性收口最终验收（C6.3）
 
-> 状态：`accepted`（5 条收口 E2E 与干净克隆全链通过；visualization E2E 为预存 W3 流 token 计数漂移，作为已知排除项单独报告）
+> 状态：`provisional`（功能门禁、真实 MiMo 合成图调用和干净克隆全链通过；静态图 warning → 单次软 Patch 的自动证据及维护者签署尚未完成）
 > 计划版本：`wuli-mimo-deepseek-consistency-closure-v1`
 > 基线提交：`026b104` → 收口提交：`b1277a1`、`d3bf060`、`55f1aab`、`0cffbea`
 > 验收日期：2026-08-02
@@ -15,8 +15,8 @@
 | C-T4 | 调用可审计 | ✅ | 私有 `visual-extract-request.json` 账本（schema/模型/provider/耗时/输入输出指纹/失败分类，脱敏无 key/data URL）；`test_visual_application` 断言脱敏 |
 | C-T5 | 路由不可漂移 | ✅ | `wuli.route-snapshot.v1` 入队冻结、执行前 digest 校验失败关闭；job public 含快照；`test_route_snapshot` 4 项 + `test_agent_http` route_snapshot 断言；runtime-route-rollback E2E 验证 stale 可见、死端点失败关闭 |
 | C-T6 | 静态图入口可达 | ✅ | `POST /api/entries/<id>/build-diagram` + `entry_action.py build-diagram` 共用 `diagram_application.build_diagram()`；static-diagram-collaboration E2E 通过（网页+CLI 同服务）|
-| C-T7 | MiMo 图后复核真实 | ✅ | `diagram_visual_review.py`（wuli.diagram-visual-review.v1）13 项测试；只输出可读性/遮挡/层次建议，越界字段丢弃；build_diagram 软评审非阻断（无 vision 路由/raster 不可用降级 blocked/unavailable）|
-| C-T8 | Patch 严格有界 | ✅ | 硬门 JSON-Patch 至多一次（既有 `run_physics_diagram_gateway`）；软补丁至多一次且重跑硬门；软评审无建议时 skipped |
+| C-T7 | MiMo 图后复核真实 | ✅ | `diagram_visual_review.py` 契约测试通过；2026-08-02 使用无隐私合成静态图真实调用 `mimo-v2.5-flash`，返回 `passed` 与零建议；软评审不拥有物理真源或批准权限 |
+| C-T8 | Patch 严格有界 | ⚠️ | 硬门 JSON-Patch 至多一次已有测试；代码将软补丁限制为一次，但现有静态图 E2E 的 mock 返回 visual-facts 契约，场景可在 `web_soft_review=failed` 时整体通过，尚未执行 warning → 单次软 Patch → 全硬门复验分支 |
 | C-T9 | E2E 对称且失败关闭 | ✅ | 5 条收口 E2E 全通过（visual-web-clear / visual-cli-clear / visual-blurred-fail-closed / static-diagram-collaboration / runtime-route-rollback）；lifecycle/publication/claim-evidence 亦通过；仅写临时库与 test-results |
 | C-T10 | 测试不假绿 | ✅ | `run_tests.py --strict`（missing/skipped 计失败）+ `--exclude`；`--all --strict` 70/70；干净克隆 18/18 |
 | C-T11 | 文档行为一致 | ✅ | teacher-console-api（build-diagram/route_snapshot/账本）、agent-gateway（trait/路由快照）、visual-review-integration（registry 默认/探针/薄 CLI）、operator-runbook（--strict/entry_action/探针）、CHANGES 同步；graphify 无新职责倒置 |
@@ -39,9 +39,11 @@ git archive HEAD → 解包临时目录
 
 ## 4. 外部服务状态
 
-- 真实 MiMo 冒烟未在本轮执行（仅受控 mock 端点验证协议）；`wuli.vision-probe.v1`
-  与 `run_diagram_visual_review` 使用与生产同一 endpoint/图片/JSON 契约，且
-  `vision_probe=failed` 会排除出视觉路由——外部端点不可用时自动失败关闭到人工复核。
+- 2026-08-02 已使用仓库外临时生成的无隐私合成 SVG/PNG 执行真实 MiMo 静态图软评审；
+  运行身份为 `mimo-v2.5-flash` / 上游 `mimo-v2.5`，结果为 `passed`、零建议。
+- `wuli.vision-probe.v1` 与 `run_diagram_visual_review` 使用生产同形 endpoint/图片/JSON
+  契约；`vision_probe=failed` 会排除出视觉路由，外部端点不可用时失败关闭到人工复核。
+- 此真实零建议结果不能替代 warning → 软 Patch 集成测试。
 
 ## 5. 维护者人工检查项（最终批准前）
 

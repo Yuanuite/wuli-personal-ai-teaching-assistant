@@ -125,7 +125,7 @@ python3 -B teacher-console/scripts/w3r_shadow_benchmark.py \
 断言级正确性证据链的只读诊断命令：
 
 解题 loop 的原子任务、Challenge 回跳、有限联想和熔断边界见
-[`解题loop.md`](解题loop.md)；下面命令只读，不会修改 canonical 答案、审批或学生端产物。
+[`解题loop.md`](archive/2026-08-03/解题loop.md)；下面命令只读，不会修改 canonical 答案、审批或学生端产物。
 
 ```bash
 # 同题、同模型、同证据、固定种子的认知环 off/on 消融；不调用外部 provider
@@ -143,7 +143,7 @@ python3 -B teacher-console/scripts/w3_shadow_benchmark.py \
 
 `correctness_evidence_benchmark.py` 还需要由隔离 claim-evidence E2E 生成的
 `claim-evidence-summary.json`，用于联合计算证书覆盖、故障检出、回跳和重复率。完整命令与固定结果
-见 [`技术执行计划书.md`](技术执行计划书.md) 和
+见 [`技术执行计划书.md`](archive/2026-08-03/技术执行计划书.md) 和
 [`reports/correctness-evidence-metrics-v1.md`](reports/correctness-evidence-metrics-v1.md)。
 开发时可为单独进程设置 `TEACHER_CONSOLE_CLAIM_EVIDENCE_SHADOW=1` 查看私有账本，
 但该变量默认关闭、不是生产资格开关，也不会替代教师答案批准。
@@ -159,7 +159,7 @@ python3 teacher-console/scripts/retrieval_benchmark.py \
   --library student-error-library run --include-draft --format markdown
 ```
 
-草稿位于 `student-error-library/evals/retrieval-cases.jsonl`。启动教师端后，点击顶栏“检索评测”：左侧逐条选择查询，右侧会显示带原题图、题干摘要、知识点和错因标签的可勾选题目卡；核对 `query`，勾选所有真正相关的题，再“批准并看下一条”。网页保存和命令行工具共用同一 JSONL，卡片不会展示教师版解析，也不会向学生站发布评测数据。不要批量直接改状态；少于 30 条 approved 时，工具拒绝 `--record` 和检索后端升级结论。格式示例见 [`retrieval-eval.example.jsonl`](retrieval-eval.example.jsonl)。
+草稿位于 `student-error-library/evals/retrieval-cases.jsonl`。启动教师端后，点击顶栏“检索评测”：左侧逐条选择查询，右侧会显示带原题图、题干摘要、知识点和错因标签的可勾选题目卡；核对 `query`，勾选所有真正相关的题，再“批准并看下一条”。网页保存和命令行工具共用同一 JSONL，卡片不会展示教师版解析，也不会向学生站发布评测数据。不要批量直接改状态；少于 30 条 approved 时，工具拒绝 `--record` 和检索后端升级结论。格式示例见 [`retrieval-eval.example.jsonl`](../student-error-library/config/retrieval-eval.example.jsonl)。
 
 答案生成或检索逻辑变更后，按三层分别验收，不能用一项指标代替另一项：
 
@@ -568,3 +568,31 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 - HTML 能开但没有动画：查看 `runtime_check` 的控制交互和控制台错误。
 - 答案与仿真事件不同：不要手改 HTML；修正 `physics-model.json` 的对应所有者字段，重新校验和构建。
 - 修改解析后检索仍是旧内容：运行 `kb.py rebuild`。正常的 finalize、答案渲染和导出会自动重建。
+
+### 可视化请求返回 409 blocked
+
+**现象**：点击"生成可视化"时返回 `409 {"status": "blocked"}`。
+
+**原因**：答案尚未批准或已过期（`answer_review.status != "passed"`）。
+
+**处置**：先完成答案复核与批准，再重新请求可视化生成。可视化生成完成后需重新复核答案（模型变更会自动失效答案批准）。
+
+### 公开发布返回 409 blocked
+
+**现象**：点击"发布到学生站"时返回 `409 {"status": "blocked"}`。
+
+**原因**：题图脱敏未确认（`publication-images.json.status != "passed"`）或发布草稿未生成（`publication-draft/` 不存在）。
+
+**处置**：
+1. 完成"题图裁剪/遮挡"步骤并确认 → `publication-images.json.status` 变为 `passed`
+2. 生成发布草稿 → `publication-draft/` 目录创建
+3. 预览草稿并勾选隐私确认
+4. 重新发布
+
+### source.clean 返回 degraded
+
+**现象**：上传完成后 `source_clean.status` 显示 `degraded`。
+
+**原因**：Agent provider 不可用或排队失败，已自动降级。
+
+**处置**：OCR 草稿已保留，直接进入题干人工复核即可，无需等待 Agent 恢复。

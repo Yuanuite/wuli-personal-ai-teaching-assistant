@@ -1,0 +1,564 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "在不改写现有正式题库和已批准仿真字节的前提下，建立 particle-field-process.v2，并用兼容适配器验证当前十二个带电粒子模型。",
+    "process_shape": "hybrid",
+    "epistemic_families": ["engineering", "procedural", "physics"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "docs/particle-field-process-v2-contract.md",
+      ".claude/skills/build-physics-simulator/references/physics-model.schema.json",
+      ".claude/skills/build-physics-simulator/scripts/validate_physics_model.py",
+      ".claude/skills/build-physics-simulator/scripts/build_simulator.py",
+      "student-error-library/entries/*/physics-model.json"
+    ],
+    "assumptions": [
+      "当前十二个 physics-model.json 是第一阶段回放全集，而不是未来任意题图的完备样本。",
+      "DeepSeek V4 Flash API 只生成隔离候选，Codex 审核后才允许提升。",
+      "旧模型在教师明确批准迁移前继续走原有 builder 和 renderer。"
+    ],
+    "constraints": [
+      "不得修改正式 student-error-library 条目。",
+      "不得修改教师批准记录、finish 或发布状态。",
+      "不得把不支持的物理过程降级为流程图、自由曲线或无误差界 polyline。",
+      "物理硬门控失败必须 fail-closed。",
+      "每个 Flash 原子任务最多两次尝试，且每次必须使用冻结输入指纹。"
+    ],
+    "excluded_scope": [
+      "其余七个顶层物理模型族的实现。",
+      "旧六类 renderer 的删除。",
+      "自动迁移正式题库。",
+      "自动批准静态 SVG 或交互仿真。"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "建立可独立验证的 particle-field-process.v2 模型合同和 JSON Schema。",
+      "success_criteria": [
+        "二维/三维、单/多粒子、区域、场计划、阶段、事件、状态交接和视图均有强类型合同。",
+        "未知传播规律和无效坐标系被拒绝。"
+      ],
+      "priority": "critical",
+      "required_evidence": ["schema-validation-report", "schema-fault-injection-report"],
+      "approval": "domain-expert"
+    },
+    {
+      "id": "T2",
+      "description": "实现确定性的阶段传播、状态连续性、事件顺序和几何不变量验证。",
+      "success_criteria": [
+        "纯电场、纯磁场、无场和已支持复合场遵守各自局部规律。",
+        "圆心、半径、切线、旋向、能量和最早事件可被确定性检查。"
+      ],
+      "priority": "critical",
+      "required_evidence": ["physics-validator-report", "geometry-compiler-report"],
+      "approval": "domain-expert"
+    },
+    {
+      "id": "T3",
+      "description": "现有六类模型和十二个正式样本保持兼容且可进行只读语义对照。",
+      "success_criteria": [
+        "旧 model_type 继续由旧构建路径处理。",
+        "十二个模型均可在临时目录产生 normalized-v2 对照结果。",
+        "事件、案例、停止条件和关键几何等价。"
+      ],
+      "priority": "critical",
+      "required_evidence": ["legacy-compatibility-report", "twelve-model-replay-report"],
+      "approval": "system"
+    },
+    {
+      "id": "T4",
+      "description": "二维截面和三维投影只从验证后的几何 IR 生成，不再由自由 SVG 猜测圆心和空间关系。",
+      "success_criteria": [
+        "截面基、投影基和物理坐标分离。",
+        "三维螺旋、斜面圆轨道和二维圆弧使用正确视图语义。"
+      ],
+      "priority": "high",
+      "required_evidence": ["view-compiler-tests", "representative-png-review"],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T5",
+      "description": "Agent Gateway、教师批准和交付边界不因新模型而放宽。",
+      "success_criteria": [
+        "DeepSeek 只能写隔离候选。",
+        "失败候选不改变 canonical。",
+        "未支持模型返回 unsupported。"
+      ],
+      "priority": "critical",
+      "required_evidence": ["gateway-regression-report", "lifecycle-boundary-report"],
+      "approval": "human-owner"
+    }
+  ],
+  "process_model": {
+    "kind": "hybrid",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "合同与基线冻结",
+        "state_in": ["approved-architecture-decision", "current-model-corpus"],
+        "state_out": ["contract-v2", "baseline-lock"],
+        "invariants": ["正式题库不变", "旧 builder 可运行"],
+        "entry_conditions": ["模型清单和影响面可读取"],
+        "exit_conditions": ["合同、样本清单和指纹完成"]
+      },
+      {
+        "id": "P2",
+        "label": "隔离实现候选",
+        "state_in": ["contract-v2", "baseline-lock"],
+        "state_out": ["tested-v2-candidate"],
+        "invariants": ["Flash 不改 canonical", "硬门控不降级"],
+        "entry_conditions": ["输入指纹固定"],
+        "exit_conditions": ["局部合同和故障注入通过"]
+      },
+      {
+        "id": "P3",
+        "label": "旧模型语义对照",
+        "state_in": ["tested-v2-candidate", "legacy-model-snapshots"],
+        "state_out": ["twelve-model-replay-report"],
+        "invariants": ["适配结果只写临时目录", "旧交付字节不重建"],
+        "entry_conditions": ["schema、validator、compiler 通过"],
+        "exit_conditions": ["十二题逐题形成等价或冲突记录"]
+      },
+      {
+        "id": "P4",
+        "label": "教师代表题审核",
+        "state_in": ["twelve-model-replay-report", "representative-renders"],
+        "state_out": ["promotion-decision"],
+        "invariants": ["无自动批准"],
+        "entry_conditions": ["所有 critical 自动检查通过"],
+        "exit_conditions": ["教师批准、退回或保持 provisional"]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "contract-and-baseline-pass",
+        "carried_state": ["contract-v2", "baseline-lock"],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "candidate-tests-pass",
+        "carried_state": ["tested-v2-candidate"],
+        "rollback_to": "P2"
+      },
+      {
+        "from": "P3",
+        "to": "P2",
+        "trigger": "semantic-equivalence-conflict",
+        "carried_state": ["smallest-failing-adapter-or-validator"],
+        "rollback_to": "P2"
+      },
+      {
+        "from": "P3",
+        "to": "P4",
+        "trigger": "critical-replay-pass",
+        "carried_state": ["twelve-model-replay-report", "representative-renders"],
+        "rollback_to": "P2"
+      },
+      {
+        "from": "P4",
+        "to": "P2",
+        "trigger": "teacher-requests-revision",
+        "carried_state": ["review-findings"],
+        "rollback_to": "P2"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "A0",
+      "verb": "freeze",
+      "description": "冻结十二个现有模型、六条旧构建路径、相关 schema/validator/renderer 和测试的指纹基线。",
+      "target_ids": ["T3", "T5"],
+      "process_node_ids": ["P1"],
+      "depends_on": [],
+      "input_artifacts": ["current-model-corpus", "current-build-sources"],
+      "output_artifact": "particle-field-v2-baseline-lock",
+      "output_contract": "wuli.particle-field-baseline.v1",
+      "verifier_route": "fingerprint-and-inventory-check",
+      "assigned_role": "codex-reviewer",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed"]
+    },
+    {
+      "id": "A1",
+      "verb": "model",
+      "description": "根据冻结合同实现独立的 particle-field-process.v2 JSON Schema 和正反例夹具，不接入生产分派。",
+      "target_ids": ["T1", "T5"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A0"],
+      "input_artifacts": ["contract-v2", "particle-field-v2-baseline-lock"],
+      "output_artifact": "v2-schema-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "json-schema-and-negative-fixture-tests",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A2",
+      "verb": "validate",
+      "description": "实现 v2 结构、坐标系、引用、状态连续性和局部物理规律校验器及故障注入。",
+      "target_ids": ["T1", "T2", "T5"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["accepted-v2-schema", "physics-validation-obligations"],
+      "output_artifact": "v2-validator-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "deterministic-physics-fault-injection",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A3",
+      "verb": "compile",
+      "description": "实现无场、纯电场和纯磁场传播器以及 line、quadratic、arc3d、helix 几何 IR 编译。",
+      "target_ids": ["T2", "T4"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A2"],
+      "input_artifacts": ["accepted-v2-validator", "analytic-physics-fixtures"],
+      "output_artifact": "geometry-compiler-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "analytic-endpoint-center-radius-tangent-tests",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A4",
+      "verb": "project",
+      "description": "实现正交截面与投影视图编译，确保物理坐标、圆轨道平面和屏幕坐标分离。",
+      "target_ids": ["T4"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A3"],
+      "input_artifacts": ["accepted-geometry-compiler", "view-fixtures"],
+      "output_artifact": "view-compiler-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "cross-section-and-projection-tests",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A5",
+      "verb": "adapt",
+      "description": "实现六类旧模型到 normalized-v2 的只读适配器，保留来源和不可表达字段账本。",
+      "target_ids": ["T3", "T5"],
+      "process_node_ids": ["P2", "P3"],
+      "depends_on": ["A2"],
+      "input_artifacts": ["accepted-v2-validator", "legacy-model-snapshots"],
+      "output_artifact": "legacy-adapter-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "adapter-fixtures-and-loss-ledger-review",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A6",
+      "verb": "render",
+      "description": "把验证后的几何 IR 接入新的确定性二维/三维 renderer，并保持旧 model_type 分派不变。",
+      "target_ids": ["T3", "T4", "T5"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A4", "A5"],
+      "input_artifacts": ["accepted-view-compiler", "accepted-legacy-adapter"],
+      "output_artifact": "v2-renderer-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "builder-dispatch-static-runtime-tests",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A7",
+      "verb": "integrate",
+      "description": "让 visualization.model 能生成 v2 隔离候选，同时保持允许路径、领域 validator 和人工批准边界。",
+      "target_ids": ["T1", "T5"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A2", "A6"],
+      "input_artifacts": ["accepted-v2-schema", "accepted-v2-renderer", "gateway-contract"],
+      "output_artifact": "v2-gateway-integration-candidate",
+      "output_contract": "wuli.flash-anchored-edit.v1",
+      "verifier_route": "gateway-isolation-validator-and-approval-tests",
+      "assigned_role": "deepseek-v4-flash-api",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A8",
+      "verb": "test",
+      "description": "运行 schema、物理、几何、视图、builder、Gateway、安全和旧路径全量回归。",
+      "target_ids": ["T1", "T2", "T3", "T4", "T5"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A7"],
+      "input_artifacts": ["all-accepted-v2-candidates"],
+      "output_artifact": "particle-field-v2-regression-report",
+      "output_contract": "wuli.particle-field-regression.v1",
+      "verifier_route": "deterministic-local-test-runner",
+      "assigned_role": "codex-reviewer",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed"]
+    },
+    {
+      "id": "A9",
+      "verb": "replay",
+      "description": "在独立临时目录对十二个现有模型执行适配、验证、构建和语义差异对照。",
+      "target_ids": ["T2", "T3", "T4", "T5"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A8"],
+      "input_artifacts": ["particle-field-v2-regression-report", "legacy-model-snapshots"],
+      "output_artifact": "twelve-model-replay-report",
+      "output_contract": "wuli.particle-field-replay.v1",
+      "verifier_route": "semantic-diff-runtime-and-screenshot-check",
+      "assigned_role": "codex-reviewer",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "provisional", "failed"]
+    },
+    {
+      "id": "A10",
+      "verb": "review",
+      "description": "教师审核一题二维多阶段和一题三维周期或螺旋代表图，并决定是否允许新题默认使用 v2。",
+      "target_ids": ["T3", "T4", "T5"],
+      "process_node_ids": ["P4"],
+      "depends_on": ["A9"],
+      "input_artifacts": ["twelve-model-replay-report", "representative-renders"],
+      "output_artifact": "particle-field-v2-promotion-decision",
+      "output_contract": "wuli.human-gate-decision.v1",
+      "verifier_route": "teacher-html-review",
+      "assigned_role": "human-owner",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "changes-requested", "provisional"]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S1",
+      "producer_task_id": "A0",
+      "consumer_task_id": "A1",
+      "artifact": "particle-field-v2-baseline-lock",
+      "contract": "wuli.particle-field-baseline.v1",
+      "preconditions": ["A0 passed"],
+      "invalidation_rule": "任一旧模型、旧 builder、validator、renderer 或相关测试指纹变化时失效。"
+    },
+    {
+      "id": "S2",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A2",
+      "artifact": "accepted-v2-schema",
+      "contract": "particle-field-process.v2-schema",
+      "preconditions": ["Schema 正例和反例测试通过", "Codex 合同审核通过"],
+      "invalidation_rule": "合同字段、枚举、required 或 additionalProperties 策略变化时失效。"
+    },
+    {
+      "id": "S3",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A3",
+      "artifact": "accepted-v2-validator",
+      "contract": "wuli.particle-field-validator.v1",
+      "preconditions": ["结构和物理故障注入通过"],
+      "invalidation_rule": "状态、事件、传播规律或容差策略变化时失效。"
+    },
+    {
+      "id": "S4",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A4",
+      "artifact": "accepted-geometry-compiler",
+      "contract": "wuli.particle-geometry-ir.v1",
+      "preconditions": ["端点、圆心、半径、切线和能量测试通过"],
+      "invalidation_rule": "传播器、几何 IR 或数值容差变化时失效。"
+    },
+    {
+      "id": "S5",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A5",
+      "artifact": "accepted-v2-validator",
+      "contract": "wuli.particle-field-validator.v1",
+      "preconditions": ["A2 passed"],
+      "invalidation_rule": "目标 v2 合同变化时全部适配结果失效。"
+    },
+    {
+      "id": "S6",
+      "producer_task_id": "A4",
+      "consumer_task_id": "A6",
+      "artifact": "accepted-view-compiler",
+      "contract": "wuli.particle-view-ir.v1",
+      "preconditions": ["截面和投影测试通过"],
+      "invalidation_rule": "视图基、屏幕映射或几何 IR 变化时失效。"
+    },
+    {
+      "id": "S7",
+      "producer_task_id": "A5",
+      "consumer_task_id": "A6",
+      "artifact": "accepted-legacy-adapter",
+      "contract": "wuli.legacy-particle-adapter.v1",
+      "preconditions": ["六类适配器夹具通过", "损失字段账本非空时被显式保留"],
+      "invalidation_rule": "任一旧模型合同或目标 v2 合同变化时失效。"
+    },
+    {
+      "id": "S8",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A7",
+      "artifact": "accepted-v2-schema",
+      "contract": "particle-field-process.v2-schema",
+      "preconditions": ["A2 validator accepted"],
+      "invalidation_rule": "领域校验入口或 schema 变化时失效。"
+    },
+    {
+      "id": "S9",
+      "producer_task_id": "A6",
+      "consumer_task_id": "A7",
+      "artifact": "accepted-v2-renderer",
+      "contract": "wuli.particle-field-renderer.v1",
+      "preconditions": ["新 renderer 通过静态和 runtime 检查", "旧分派未改变"],
+      "invalidation_rule": "builder 分派、模板或几何 IR 变化时失效。"
+    },
+    {
+      "id": "S10",
+      "producer_task_id": "A7",
+      "consumer_task_id": "A8",
+      "artifact": "all-accepted-v2-candidates",
+      "contract": "accepted-code-candidate.v1",
+      "preconditions": ["Gateway 局部测试通过"],
+      "invalidation_rule": "任一范围内实现文件变化时失效。"
+    },
+    {
+      "id": "S11",
+      "producer_task_id": "A8",
+      "consumer_task_id": "A9",
+      "artifact": "particle-field-v2-regression-report",
+      "contract": "wuli.particle-field-regression.v1",
+      "preconditions": ["所有 critical 自动检查通过"],
+      "invalidation_rule": "代码、测试夹具或旧模型快照变化时失效。"
+    },
+    {
+      "id": "S12",
+      "producer_task_id": "A9",
+      "consumer_task_id": "A10",
+      "artifact": "twelve-model-replay-report",
+      "contract": "wuli.particle-field-replay.v1",
+      "preconditions": ["十二题均有明确 passed、provisional 或 failed 记录"],
+      "invalidation_rule": "任一代表渲染、语义差异或输入指纹变化时失效。"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": ["T1"],
+      "task_ids": ["A1", "A2", "A8"],
+      "claim": "v2 合同可以拒绝结构不完整、引用错误、维度错误和未知传播规律的候选。",
+      "required_evidence": ["schema-validation-report", "schema-fault-injection-report"],
+      "method": "对每个 required、枚举、引用和维度规则至少注入一个最小反例。",
+      "decision_rule": "全部正例通过且全部 critical 反例被拒绝。",
+      "defeaters": ["仅验证 JSON 形状而未验证跨字段引用", "additionalProperties 吞掉拼写错误"],
+      "fallback": "failed",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": ["T2"],
+      "task_ids": ["A2", "A3", "A8", "A9"],
+      "claim": "阶段传播与几何结果满足高中物理不变量和最早事件语义。",
+      "required_evidence": ["physics-validator-report", "geometry-compiler-report", "twelve-model-replay-report"],
+      "method": "使用解析夹具检查电场加速度、磁场速率、圆心半径、切线、能量、状态连续性和事件排序。",
+      "decision_rule": "所有 critical 不变量通过，容差有量纲依据，反向/错误圆心夹具被拒绝。",
+      "defeaters": ["用渲染截图代替物理验证", "用多数模型投票代替解析检查", "切换时刻闭合规则含糊"],
+      "fallback": "failed",
+      "risk": "critical"
+    },
+    {
+      "id": "V3",
+      "target_ids": ["T3"],
+      "task_ids": ["A0", "A5", "A6", "A8", "A9"],
+      "claim": "新能力不破坏旧六类模型，且十二个样本的关键语义可对照。",
+      "required_evidence": ["particle-field-v2-baseline-lock", "legacy-compatibility-report", "twelve-model-replay-report"],
+      "method": "比较旧路径指纹、适配损失账本、事件/案例/停止条件和关键几何摘要。",
+      "decision_rule": "旧路径保持通过；十二题无未解释 critical 差异。",
+      "defeaters": ["原地改写正式模型", "忽略旧专用模型中的计数语义", "重建已批准交付字节"],
+      "fallback": "failed",
+      "risk": "critical"
+    },
+    {
+      "id": "V4",
+      "target_ids": ["T4"],
+      "task_ids": ["A3", "A4", "A6", "A9", "A10"],
+      "claim": "二维截面和三维视图保持正确几何关系且可读。",
+      "required_evidence": ["view-compiler-tests", "representative-png-review"],
+      "method": "先确定性检查截面基、投影、圆心和切线，再由教师查看二维多阶段与三维代表图。",
+      "decision_rule": "物理几何硬检查全部通过；代表图无教师标记的关键误导。",
+      "defeaters": ["屏幕坐标参与洛伦兹力计算", "把螺旋投影误称为截面圆", "标签遮挡关键边界"],
+      "fallback": "provisional",
+      "risk": "high"
+    },
+    {
+      "id": "V5",
+      "target_ids": ["T5"],
+      "task_ids": ["A0", "A1", "A2", "A5", "A6", "A7", "A8", "A9", "A10"],
+      "claim": "模型生成、验证、提升和教师批准的信任边界未被放宽。",
+      "required_evidence": ["gateway-regression-report", "lifecycle-boundary-report"],
+      "method": "注入 provider 失败、非法路径、unsupported 类型、validator 拒绝和未批准候选。",
+      "decision_rule": "失败均保持 canonical 不变，Agent 无批准、finish 或发布能力。",
+      "defeaters": ["静默 fallback", "失败后仍提升候选", "server.py 重新承载 provider 参数"],
+      "fallback": "failed",
+      "risk": "critical"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A0"], "parallel": false},
+      {"id": "W2", "task_ids": ["A1"], "parallel": false},
+      {"id": "W3", "task_ids": ["A2"], "parallel": false},
+      {"id": "W4", "task_ids": ["A3", "A5"], "parallel": true},
+      {"id": "W5", "task_ids": ["A4"], "parallel": false},
+      {"id": "W6", "task_ids": ["A6"], "parallel": false},
+      {"id": "W7", "task_ids": ["A7"], "parallel": false},
+      {"id": "W8", "task_ids": ["A8"], "parallel": false},
+      {"id": "W9", "task_ids": ["A9"], "parallel": false},
+      {"id": "W10", "task_ids": ["A10"], "parallel": false}
+    ],
+    "max_concurrency": 2,
+    "allocation_notes": [
+      "A1-A7 由 DeepSeek V4 Flash API 逐原子任务生成隔离候选；每轮由 Codex 审核后才能成为下一任务输入。",
+      "A3 与 A5 可并行，因为一个只实现新几何编译器，一个只实现旧模型适配器；两者不得修改相同文件。",
+      "A8-A9 由确定性测试和 Codex 物理审核执行，A10 只能由教师决定。"
+    ]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": [
+      "retry-task",
+      "revise-input",
+      "invalidate-impact-cone",
+      "open-gate-dispute",
+      "mark-provisional",
+      "stop"
+    ],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked", "gate-dispute"],
+    "gate_dispute_policy": "候选连续失败后先区分实现缺陷、合同矛盾和门控误判。只有教师同意的 reviewer repair 才能修改合同或门控；不得通过放宽物理不变量让候选通过。"
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3", "T4", "T5"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4", "V5"],
+    "acceptance_rule": "V1、V2、V3、V5 必须通过；V4 必须完成教师代表题审核。任何 critical 差异都阻止 v2 成为新题默认模型。",
+    "conflict_policy": "使用解析物理检查、接口测试和逐题语义差异裁决；不使用多数票。合同与现有题目事实冲突时保留冲突并退回最小影响任务。",
+    "unresolved_policy": "保留 unsupported 和 provisional 状态，不生成替代流程图或猜测轨迹。",
+    "final_artifact": "particle-field-process-v2-promotion-decision",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": [
+    "uniform-crossed-field 的通用解析器不纳入首个 Flash 任务，只有夹具和验证义务准备好后才能启用。",
+    "旧专用模型中的符号计数语义是否能无损归一，需要 A5 逐类输出损失账本。",
+    "当前十二题不能证明未来所有带电粒子题均可支持；新场型仍可返回 unsupported。"
+  ]
+}
