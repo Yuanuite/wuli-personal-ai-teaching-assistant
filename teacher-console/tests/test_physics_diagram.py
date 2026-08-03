@@ -24,7 +24,7 @@ def visual_facts():
         "uncertainties": [],
         "model_identity": {"model_id": "mimo-v2.5-flash", "provider": "openai-compatible"},
     }
-    return normalize_payload(raw, raw["source_fingerprint"])
+    return normalize_payload(raw, str(raw["source_fingerprint"]))
 
 
 def scene_payload():

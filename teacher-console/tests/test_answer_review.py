@@ -145,7 +145,7 @@ class AnswerReviewGateTest(unittest.TestCase):
 
     def test_answer_revision_records_request_when_agent_is_unavailable(self):
         handler = object.__new__(teacher_console_server.Handler)
-        unavailable = {
+        unavailable: dict[str, Any] = {
             "status": "unavailable",
             "provider": None,
             "attempts": [],

@@ -335,7 +335,9 @@ class ModelRegistryTest(unittest.TestCase):
         config = model_registry.model_config_for_trait("vision", model_id="vision-model")
         assert config is not None
         self.assertEqual(config["model"], "vision-model")
-        self.assertEqual(model_registry.model_config_for_trait("vision", routing_tier="auto")["model"], "vision-model")
+        vision_config = model_registry.model_config_for_trait("vision", routing_tier="auto")
+        assert vision_config is not None
+        self.assertEqual(vision_config["model"], "vision-model")
 
     def test_vision_probe_untested_does_not_block_but_reports_honestly(self):
         public = model_registry.model_registry_public()["models"]

@@ -95,7 +95,7 @@ class RouteSnapshotTest(unittest.TestCase):
         )
         self.assertTrue(route_snapshot_is_stale(snapshot, self.library))
         self.assertTrue(route_snapshot_is_stale({"schema": "wrong"}, self.library))
-        self.assertTrue(route_snapshot_is_stale(None, self.library))
+        self.assertTrue(route_snapshot_is_stale(cast(dict, None), self.library))
 
     def test_summary_is_public_safe(self):
         summary = route_snapshot_summary(self._snapshot())
@@ -104,7 +104,7 @@ class RouteSnapshotTest(unittest.TestCase):
         blob = json.dumps(summary, ensure_ascii=False)
         for forbidden in ("api_key", "sk-"):
             self.assertNotIn(forbidden, blob)
-        self.assertEqual(route_snapshot_summary(None), {})
+        self.assertEqual(route_snapshot_summary(cast(dict, None)), {})
 
 
 if __name__ == "__main__":

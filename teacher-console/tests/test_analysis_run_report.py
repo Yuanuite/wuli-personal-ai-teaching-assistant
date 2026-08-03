@@ -419,7 +419,7 @@ def _run_cli(lib: Path, *args: str) -> int:
     out, err = io.StringIO(), io.StringIO()
     with redirect_stdout(out), redirect_stderr(err):
         code = report_mod.main(list(args), library=lib)
-    return code
+    return int(code)
 
 
 class SchemaTest(unittest.TestCase):

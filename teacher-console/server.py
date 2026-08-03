@@ -453,6 +453,28 @@ def archive_agent_result(
         return {"status": "archive-error", "error": str(exc)}
 
 
+def latest_successful_analysis_event(entry: Path, *, exclude_event_id: str = "") -> dict:
+    """Most recent completed ``analysis.generate`` archive event for the entry.
+
+    Work-tree A4: when a regeneration fails the old canonical answer stays in
+    place; the UI must show which successful attempt produced it so a teacher
+    never approves an older version believing it is the new attempt.
+    """
+    try:
+        events = candidate_archive.read_events(entry)
+    except Exception:  # noqa: BLE001 - version provenance must not break the lifecycle
+        return {}
+    for event in reversed(events):
+        if not isinstance(event, dict):
+            continue
+        if event.get("task_type") != "analysis.generate" or event.get("status") != "completed":
+            continue
+        if exclude_event_id and str(event.get("event_id", "")) == exclude_event_id:
+            continue
+        return event
+    return {}
+
+
 def archive_claim_evidence_shadow(entry: Path, request: dict) -> dict:
     """Archive only compact correctness telemetry, never Claim prose or paths."""
     report = request.get("report", {}) if isinstance(request.get("report"), dict) else {}
@@ -3186,6 +3208,28 @@ class Handler(SimpleHTTPRequestHandler):
                 summary="统一核心求解候选",
             )
             request["archive_event_id"] = archive.get("event_id")
+            # Work-tree A4: expose attempt identity vs. the answer version the
+            # teacher is actually looking at. On failure the canonical answer
+            # stays from the previous successful attempt; the UI must say so.
+            current_event_id = str(request.get("archive_event_id", ""))
+            source_event = (
+                {"event_id": current_event_id, "created_at": request["completed_at"], "summary": "统一核心求解候选"}
+                if completed
+                else latest_successful_analysis_event(entry, exclude_event_id=current_event_id)
+            )
+            request["current_answer_version"] = {
+                "source_job_id": str(source_event.get("event_id", "")),
+                "generated_at": str(source_event.get("created_at", "")),
+                "summary": str(source_event.get("summary", "")),
+                "is_latest_attempt": completed,
+                "latest_attempt": {
+                    "job_id": current_event_id,
+                    "status": request["status"],
+                    "failure_type": str(gateway.get("failure_type", "")),
+                    "failure_summary": str(request.get("message", ""))[:500],
+                    "attempted_at": request["completed_at"],
+                },
+            }
             kb.write_json(entry / "analysis-request.json", request)
             pipeline = kb.load_json(
                 entry / "pipeline.json",

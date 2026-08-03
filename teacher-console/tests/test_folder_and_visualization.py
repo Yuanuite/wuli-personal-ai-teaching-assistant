@@ -204,7 +204,7 @@ class FolderAndVisualizationTest(unittest.TestCase):
     def test_visualization_chat_fails_closed_without_agent(self):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
-        unavailable = {
+        unavailable: dict[str, Any] = {
             "status": "unavailable",
             "provider": None,
             "attempts": [],
@@ -273,7 +273,7 @@ class FolderAndVisualizationTest(unittest.TestCase):
         process_uploads.approve_answer(self.library, self.entry.name, "teacher", "checked")
         handler = object.__new__(teacher_console_server.Handler)
         captured = {}
-        unavailable = {
+        unavailable: dict[str, Any] = {
             "status": "unavailable",
             "provider": None,
             "attempts": [],

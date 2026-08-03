@@ -4,6 +4,7 @@ import os
 import sys
 import tempfile
 import unittest
+from typing import cast
 from unittest.mock import patch
 
 # Ensure teacher-console directory is on sys.path
@@ -452,7 +453,7 @@ class TestVisionProbe(unittest.TestCase):
         from urllib.error import HTTPError
 
         def fake_urlopen(req, timeout=None):
-            raise HTTPError(req.full_url, 404, "Not Found", {}, None)
+            raise HTTPError(req.full_url, 404, "Not Found", cast(dict[str, str], {}), None)
 
         result = run_vision_probe(
             self.config,

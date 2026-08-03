@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import cast
 
 ROOT = next(
     parent
@@ -25,6 +26,7 @@ for path in (SCRIPTS, CONSOLE):
 
 import kb
 import source_review
+from agent_gateway import AgentGateway
 from visual_application import OUTCOME_SCHEMA, run_visual_extract
 from visual_facts import evaluate_gate, normalize_payload
 
@@ -123,7 +125,7 @@ class VisualApplicationTest(unittest.TestCase):
             self.entry,
             library=self.library,
             routing_tier="economy",
-            gateway=_StubGateway(extraction=self._extraction()),
+            gateway=cast(AgentGateway, _StubGateway(extraction=self._extraction())),
         )
         self.assertEqual(outcome["schema"], OUTCOME_SCHEMA)
         self.assertEqual(outcome["status"], "completed")
@@ -143,7 +145,7 @@ class VisualApplicationTest(unittest.TestCase):
         outcome = run_visual_extract(
             self.entry,
             library=self.library,
-            gateway=_StubGateway(error=ValueError("没有可用的视觉模型路由")),
+            gateway=cast(AgentGateway, _StubGateway(error=ValueError("没有可用的视觉模型路由"))),
         )
         self.assertEqual(outcome["status"], "failed")
         self.assertEqual(outcome["failure_type"], "visual_extraction_failed")
@@ -156,7 +158,7 @@ class VisualApplicationTest(unittest.TestCase):
 
     def test_privacy_flag_passed_to_gateway(self):
         gateway = _StubGateway(extraction=self._extraction())
-        run_visual_extract(self.entry, library=self.library, gateway=gateway)
+        run_visual_extract(self.entry, library=self.library, gateway=cast(AgentGateway, gateway))
         self.assertTrue(gateway.calls[0]["allow_remote"])
         self.assertEqual(gateway.calls[0]["routing_tier"], "auto")
         self.assertIsNone(gateway.calls[0]["model_id"])

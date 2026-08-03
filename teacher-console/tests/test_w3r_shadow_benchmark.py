@@ -2,6 +2,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
@@ -67,7 +68,7 @@ class W3RShadowBenchmarkTest(unittest.TestCase):
     def test_complete_teacher_review_unblinds_preferences_and_edit_rate(self):
         packet, key = w3r_shadow_benchmark.build_blind_packet(self.cases())
         key_by_id = {item["case_id"]: item for item in key["cases"]}
-        reviews = {"cases": []}
+        reviews: dict[str, Any] = {"cases": []}
         for case in packet["cases"]:
             identity = key_by_id[case["case_id"]]
             reviews["cases"].append({
