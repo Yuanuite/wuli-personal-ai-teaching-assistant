@@ -139,7 +139,7 @@ class CoreCheckpointTest(unittest.TestCase):
             self.entry, fingerprint="fp-1", payload=self.payload("v = \\sqrt{2 g h}"), brief=self.brief
         )
         loaded = core_analysis.load_checkpoint(self.entry, fingerprint="fp-1")
-        self.assertIsNotNone(loaded)
+        assert loaded is not None
         self.assertEqual(loaded["targets"][0]["final_answer"], "v = \\sqrt{2 g h}")
         self.assertIsNone(core_analysis.load_checkpoint(self.entry, fingerprint="fp-other"))
 
