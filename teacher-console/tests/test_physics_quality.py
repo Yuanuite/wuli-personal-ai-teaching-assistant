@@ -134,6 +134,26 @@ GOOD_G3_TARGETS = [
     }
 ]
 
+# Cross-target references (work-tree A1): roman sub-question ids like ``Q4i``
+# are legal answer references, not undefined physics symbols.
+PROBLEM_CROSS = (
+    "质量为 $m$、电荷 $q$ 的粒子以速率 $v$ 进入磁感应强度 $B$ 的匀强磁场，"
+    "做匀速圆周运动，周期 $T$。求：（4）(i) 圆周运动的角速度 $\\omega$；"
+    "(ii) 频率 $f$。"
+)
+CROSS_TARGETS = [
+    {
+        "id": "Q4i",
+        "final_answer": "\\omega = qB/m",
+        "key_relations": ["洛伦兹力提供向心力：qvB = m v^2/R，又 \\omega = v/R，故 \\omega = qB/m。"],
+    },
+    {
+        "id": "Q4ii",
+        "final_answer": "f = \\omega/(2\\pi)，其中 \\omega 为 Q4i 的结果",
+        "key_relations": ["f = 1/T，T = 2\\pi/\\omega。"],
+    },
+]
+
 
 class PhysicsQualityReportTest(unittest.TestCase):
     def report(self, problem, targets):
@@ -176,6 +196,23 @@ class PhysicsQualityReportTest(unittest.TestCase):
     def test_accepts_log_only_answer(self):
         report = self.report(PROBLEM_G3, GOOD_G3_TARGETS)
         self.assertEqual(report["status"], "pass", report["reason_codes"])
+
+    def test_accepts_cross_target_reference(self):
+        report = self.report(PROBLEM_CROSS, CROSS_TARGETS)
+        self.assertEqual(report["status"], "pass", report["reason_codes"])
+        codes = [item["code"] for item in report["reason_codes"]]
+        self.assertNotIn("symbol-undefined", codes)
+
+    def test_accepts_bare_target_prefix_reference(self):
+        # Referencing the bare ``Q4`` form when only ``Q4i``/``Q4ii`` targets
+        # exist must not trip the undefined-symbol obligation.
+        targets = [dict(CROSS_TARGETS[0]), dict(CROSS_TARGETS[1])]
+        targets[1] = dict(targets[1])
+        targets[1]["final_answer"] = "f = \\omega/(2\\pi)，其中 \\omega 取 Q4 小问的结果"
+        report = self.report(PROBLEM_CROSS, targets)
+        codes = [item["code"] for item in report["reason_codes"]]
+        self.assertEqual(report["status"], "pass", report["reason_codes"])
+        self.assertNotIn("symbol-undefined", codes)
 
     def test_obligations_recorded_and_deferred_items_do_not_block(self):
         report = self.report(PROBLEM_G1, GOOD_G1_TARGETS)

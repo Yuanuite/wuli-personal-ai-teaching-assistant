@@ -42,6 +42,15 @@ _RECHECK_MARKERS = ("复核", "验证", "检验", "检查")
 
 _SYMBOL_TOKEN = re.compile(r"([A-Za-zα-ωΑ-Ωε][0-9]|[α-ωΑ-Ωε][A-Za-z]?[0-9])")
 
+# Roman sub-question suffixes that target ids may carry (``Q4i``/``Q4ii``): a
+# ``letter+digit`` token immediately followed by such a suffix is a
+# cross-target reference, not a physics symbol.
+_ROMAN_SUFFIX = re.compile(r"[A-Za-zα-ωΑ-Ωε][0-9][ivxl]+", re.IGNORECASE)
+
+# Context words that mark a ``Q\d``-style token as a question reference
+# (``上一问的结果``) rather than a physics quantity.
+_QUESTION_CONTEXT = ("第", "问", "上问", "小问", "(i)", "(ii)", "（i）", "（ii）")
+
 _GREEK_COMMANDS = {
     "varepsilon": "ε",
     "epsilon": "ε",
@@ -133,14 +142,58 @@ def _log_expression_pairs(text: str) -> set[tuple[str, str]]:
     return pairs
 
 
-def _undefined_symbols(final_answer: str, definitions: str) -> list[str]:
-    """Subscripted tokens in the final answer missing from the definitions text."""
+def _collect_known_target_ids(payload: dict[str, Any]) -> set[str]:
+    """Target ids already normalized in the payload (``Q1``/``Q4i``/``Q4ii``)."""
+    known: set[str] = set()
+    targets = payload.get("targets")
+    if isinstance(targets, list):
+        for target in targets:
+            if isinstance(target, dict):
+                target_id = str(target.get("id", "")).strip()
+                if target_id:
+                    known.add(target_id)
+    return known
+
+
+def _is_question_reference(token: str, text: str) -> bool:
+    r"""Heuristic fallback: ``Q\d`` tokens inside question-numbering context."""
+    if not re.fullmatch(r"[Qq]\d+", token):
+        return False
+    for match in re.finditer(re.escape(token), text):
+        window = text[max(0, match.start() - 8) : match.end() + 8]
+        if any(marker in window for marker in _QUESTION_CONTEXT):
+            return True
+    return False
+
+
+def _undefined_symbols(
+    final_answer: str,
+    definitions: str,
+    known_target_ids: set[str] | None = None,
+) -> list[str]:
+    """Subscripted tokens in the final answer missing from the definitions text.
+
+    Tokens that are (or prefix-match) known target ids are cross-target
+    references like ``Q4i`` and never physics symbols; ``Q4`` inside the
+    normalized text is skipped when the full ``Q4i`` form is a known target id.
+    """
     undefined: list[str] = []
     normalized = _normalize_latex(final_answer)
     normalized_defs = _normalize_latex(definitions)
-    for token in _SYMBOL_TOKEN.findall(normalized):
-        token = token.replace("_", "")
+    known_ids = known_target_ids or set()
+    for match in _SYMBOL_TOKEN.finditer(normalized):
+        token = match.group(1).replace("_", "")
         if not token:
+            continue
+        full_token = normalized[match.start() : match.end()]
+        roman = _ROMAN_SUFFIX.match(normalized, match.start())
+        if roman:
+            full_token = roman.group(0)
+        if full_token in known_ids or token in known_ids:
+            continue
+        if any(known_id.startswith(token) for known_id in known_ids):
+            continue
+        if _is_question_reference(token, normalized):
             continue
         pattern = re.compile(r"(?<![A-Za-zα-ωΑ-Ωε0-9])" + re.escape(token) + r"(?![0-9])")
         if not pattern.search(normalized_defs):
@@ -149,9 +202,15 @@ def _undefined_symbols(final_answer: str, definitions: str) -> list[str]:
     return undefined
 
 
-def _check_symbol_defined(target: dict[str, Any], problem_text: str) -> list[dict[str, str]]:
+def _check_symbol_defined(
+    target: dict[str, Any],
+    problem_text: str,
+    known_target_ids: set[str] | None = None,
+) -> list[dict[str, str]]:
     definitions = problem_text + "\n" + "\n".join(target.get("key_relations", []))
-    undefined = _undefined_symbols(str(target.get("final_answer", "")), definitions)
+    undefined = _undefined_symbols(
+        str(target.get("final_answer", "")), definitions, known_target_ids
+    )
     return [
         {
             "code": "symbol-undefined",
@@ -256,10 +315,11 @@ def physics_quality_report(
     targets = payload.get("targets") or []
     if not isinstance(targets, list):
         targets = []
+    known_target_ids = _collect_known_target_ids(payload)
     for target in targets:
         if not isinstance(target, dict):
             continue
-        reason_codes.extend(_check_symbol_defined(target, problem_text))
+        reason_codes.extend(_check_symbol_defined(target, problem_text, known_target_ids))
         reason_codes.extend(_check_derivation_answer_mismatch(target))
         reason_codes.extend(_check_sign_flip_unjustified(target))
         reason_codes.extend(_check_internal_recheck_conflict(target))
