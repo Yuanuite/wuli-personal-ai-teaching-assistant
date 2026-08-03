@@ -22,6 +22,15 @@
 | `构建-W3R-非求解教学渲染与忠实性门禁-原子执行.md` | W3R 教学渲染与忠实性门禁原子任务 | `teacher-console/w3r_contract.py`、`teacher-console/w3_rendering.py` |
 | `create-issues.sh` | 批量创建 GitHub Issue 的一次性脚本 | 已被 `docs/github-issues.md` 取代 |
 
+## 已归档的过时报告
+
+| 文件 | 原用途 | 归档原因 |
+|---|---|---|
+| `reports/wuli-highlights-2026-07-31.md` | 项目亮点总结 | 带日期的营销材料，已过时 |
+| `reports/wuli-unique-selling-points-2026-07-31.md` | 独特卖点分析 | 带日期的营销材料，已过时 |
+| `reports/deeptutor-comparison-2026-07-31.md` | 竞品对比分析 | 带日期的竞争分析，已过时 |
+| `reports/headroom-assessment-2026-07-24.md` | 技术空间评估 | 带日期的评估快照，已过时 |
+
 ## 同时迁移的配置文件
 
 | 文件 | 原位置 | 新位置 | 原因 |
