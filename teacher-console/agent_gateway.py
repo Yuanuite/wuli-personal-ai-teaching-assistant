@@ -1576,7 +1576,7 @@ class AgentGateway:
 
                 if succeeded:
                     self._promote(entry, staging, changed)
-                    result = {
+                    result: dict[str, Any] = {
                         "status": "completed",
                         "provider": provider.name,
                         "routing_tier": routing_tier,
@@ -1599,7 +1599,7 @@ class AgentGateway:
                         result["materialization"] = materialization
                     return result
                 if changed or canonical_changed:
-                    result = {
+                    result: dict[str, Any] = {
                         "status": "failed",
                         "provider": provider.name,
                         "routing_tier": routing_tier,
@@ -1641,7 +1641,7 @@ class AgentGateway:
             exhausted_message = "选定的 Agent provider 在修改文件前失败；任务已安全停止。"
         else:
             exhausted_message = "所有 Agent provider 均在修改文件前失败；任务已安全停止。"
-        result = {
+        result: dict[str, Any] = {
             "status": "failed",
             "provider": last.get("provider"),
             "routing_tier": routing_tier,
