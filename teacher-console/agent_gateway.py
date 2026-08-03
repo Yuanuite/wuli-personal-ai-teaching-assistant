@@ -1159,17 +1159,17 @@ class AgentGateway:
             self._copy_output_schema(task, staging)
             before = self._snapshot(staging)
             materialization: dict = {}
-            parse_error = ""
+            materializer_error = ""
             try:
                 materialization = materializer(staging, payload)
             except (OSError, TypeError, ValueError, PermissionError, json.JSONDecodeError) as exc:
-                parse_error = str(exc)
+                materializer_error = str(exc)
             after = self._snapshot(staging)
             changed = self._changed(before, after)
             unauthorized = [name for name in changed if not self._allowed(name, allowed, denied)]
             deleted = [name for name in changed if name in before and name not in after]
             validation_errors: list[str] = []
-            succeeded = not parse_error and bool(changed) and not unauthorized and not deleted
+            succeeded = not materializer_error and bool(changed) and not unauthorized and not deleted
             if succeeded and validator:
                 self._restore_paths(entry, staging, hidden)
                 validation_errors = validator(staging, changed)
@@ -1187,9 +1187,9 @@ class AgentGateway:
                 "requires_change": True,
                 "duration_seconds": 0.0,
             }
-            if parse_error:
-                attempt["error"] = parse_error
-                attempt["parse_error"] = True
+            if materializer_error:
+                attempt["error"] = materializer_error
+                attempt["materializer_error"] = True
             if deleted:
                 attempt["error"] = "结构化恢复不得删除文件：" + ", ".join(deleted)
             attempt["failure_type"] = classify_agent_failure(attempt)
