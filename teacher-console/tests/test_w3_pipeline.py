@@ -2,6 +2,7 @@ import sys
 import threading
 import unittest
 from pathlib import Path
+from typing import Any
 
 CONSOLE = Path(__file__).resolve().parents[1]
 if str(CONSOLE) not in sys.path:
@@ -113,7 +114,7 @@ class W3PipelineTest(unittest.TestCase):
         )
 
     def test_claim_evidence_flag_off_preserves_existing_w3_summary(self):
-        arguments = {
+        arguments: dict[str, Any] = {
             "problem": "物体做匀速直线运动，求速度。",
             "stage_runner": lambda name, context: None,
             "evidence_builder": lambda blueprint: {},
@@ -154,7 +155,7 @@ class W3PipelineTest(unittest.TestCase):
                 }
             ],
         }
-        solver = {
+        solver: dict[str, Any] = {
             "status": "completed",
             "message": "ok",
             "targets": [
@@ -308,7 +309,7 @@ class W3PipelineTest(unittest.TestCase):
                 }
             ],
         }
-        solver = {
+        solver: dict[str, Any] = {
             "status": "completed",
             "message": "ok",
             "targets": [
@@ -416,7 +417,7 @@ class W3PipelineTest(unittest.TestCase):
                 }
             ],
         }
-        solver = {
+        solver: dict[str, Any] = {
             "status": "completed",
             "message": "ok",
             "targets": [
@@ -471,9 +472,14 @@ class W3PipelineTest(unittest.TestCase):
 
     def test_simple_problem_stays_on_w2(self):
         called = []
+
+        def _track_runner(name: str, context: Any) -> dict:
+            called.append(name)
+            return {}
+
         result = w3_pipeline.run_shadow(
             "物体做匀速直线运动，求速度。",
-            stage_runner=lambda name, context: called.append(name),
+            stage_runner=_track_runner,
             evidence_builder=lambda blueprint: {},
         )
         self.assertEqual(result["screen"]["decision"], "w2")
@@ -625,7 +631,7 @@ class W3PipelineTest(unittest.TestCase):
             "reasoning_steps": [{"operation": "列半径关系"}],
             "verification_obligations": [{"id": "v1", "target_id": "q1", "risk": "high", "check": "核对首次事件"}],
         }
-        solver = {
+        solver: dict[str, Any] = {
             "status": "completed",
             "targets": [{"id": "q1", "final_answer": "A"}],
             "stage_results": [{"stage_id": "p1", "result": "由 qvB=mv²/R 得 A。"}],
@@ -659,7 +665,7 @@ class W3PipelineTest(unittest.TestCase):
                 },
             ],
         }
-        solver = {
+        solver: dict[str, Any] = {
             "status": "completed",
             "targets": [{"id": "q1", "final_answer": "a_R=a_L cosθ"}],
             "stage_results": [
