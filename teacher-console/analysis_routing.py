@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import analysis_artifacts
 import problem_decomposition
@@ -353,7 +353,7 @@ def normalize_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
         if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
             errors.append(f"{field} must be between {minimum} and {maximum}")
             return default
-        return value
+        return cast(int, value)
 
     if errors:
         return dict(DEFAULT_CONFIG), errors

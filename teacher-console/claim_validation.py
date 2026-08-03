@@ -8,7 +8,7 @@ import json
 import operator
 import re
 from fractions import Fraction
-from typing import Any
+from typing import Any, cast
 
 import claim_ledger
 import correctness_policy
@@ -813,9 +813,12 @@ def _generator_matches(
     if not generator_identity or certificate["verifier_kind"] != "independent-agent":
         return False
     identity = certificate["verifier_identity"]
-    return (
-        identity["model_id"] == str(generator_identity.get("model_id", "")).strip()
-        and identity["provider"] == str(generator_identity.get("provider", "")).strip()
+    return cast(
+        bool,
+        (
+            identity["model_id"] == str(generator_identity.get("model_id", "")).strip()
+            and identity["provider"] == str(generator_identity.get("provider", "")).strip()
+        ),
     )
 
 
