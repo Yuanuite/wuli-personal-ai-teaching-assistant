@@ -1698,7 +1698,9 @@ function renderDifficultyAssessment() {
     const card = document.createElement("label"); card.className = "difficulty-dimension"; card.dataset.dimension = dimension.id;
     const title = document.createElement("strong"); title.textContent = `${dimension.label} · ${dimension.weight}%`;
     const score = document.createElement("input"); score.type = "number"; score.min = "0"; score.max = "5"; score.step = "0.1"; score.value = String(dimension.score); score.setAttribute("aria-label", `${dimension.label}评分（0 至 5，步长 0.1）`);
+    score.addEventListener("change", scheduleDifficultyAutosave);
     const judgment = document.createElement("textarea"); judgment.maxLength = 180; judgment.value = dimension.core_judgment || ""; judgment.setAttribute("aria-label", `${dimension.label}核心判断`);
+    judgment.addEventListener("change", scheduleDifficultyAutosave);
     const evidence = document.createElement("small"); evidence.className = "difficulty-evidence";
     evidence.textContent = (dimension.evidence || []).map(item => item.excerpt || item.text).filter(Boolean).join(" ");
     card.append(title, score, judgment, evidence); container.append(card);
@@ -1720,6 +1722,20 @@ function difficultyAssessmentPayload() {
     })),
   };
 }
+
+const scheduleDifficultyAutosave = debounce(async () => {
+  if (!state.current?.difficulty_assessment?.dimensions?.length) return;
+  try {
+    const result = await api(`/api/entries/${encodeURIComponent(state.current.id)}/save-difficulty-assessment`, {
+      method: "POST",
+      body: { assessment: difficultyAssessmentPayload() },
+    });
+    state.current.difficulty_assessment = result.difficulty_assessment;
+    toast("已保存");
+  } catch (error) {
+    toast(error.message, true);
+  }
+}, 800);
 
 function renderProgress() {
   const progress = $("progress"); progress.replaceChildren();
@@ -2547,6 +2563,8 @@ $("difficulty-assessment-toggle").addEventListener("click", () => {
   $("difficulty-assessment-toggle").classList.toggle("active", willOpen);
   $("difficulty-assessment-toggle").setAttribute("aria-expanded", String(willOpen));
 });
+$("difficulty-summary").addEventListener("change", scheduleDifficultyAutosave);
+$("difficulty-calibration-note").addEventListener("change", scheduleDifficultyAutosave);
 
 const updateProblemPreview = debounce(() => renderMarkdown($("problem-editor").value, $("problem-preview")));
 const updateAnswerPreview = debounce(() => renderMarkdown($("answer-editor").value, $("solution-view")));

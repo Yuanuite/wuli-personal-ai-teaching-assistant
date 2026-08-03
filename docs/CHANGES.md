@@ -1,5 +1,10 @@
 # 变更记录
 
+## 2026-08-03：可视化审批对称失效与难度量表自动保存
+
+- 可视化审批对称失效（viz-review-stale-on-answer-edit）：答案 Markdown 编辑后，若可视化已批准则自动标记为 `stale`，与“可视化生成使答案审批失效”对称。
+- 难度量表自动保存（difficulty-assessment-autosave）：维度评分、核心判断、摘要和校准依据字段编辑后 800ms 自动保存，显示“已保存”toast，无需手动点击保存按钮。
+
 ## 2026-08-03：教师端门禁收敛与隐私防护加固
 
 - 可视化前置门禁（visualization-answer-dependency）：`build-visualization` 现要求 `answer_review.status = "passed"`，否则返回 `409 blocked`。

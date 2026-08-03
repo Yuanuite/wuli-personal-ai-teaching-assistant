@@ -143,6 +143,8 @@ POST /api/entries/<entry-id>/<action>
 
 **source.clean 降级**：Agent 不可用时，`source_clean` 返回 `{"status": "degraded", "mode": "manual-review-required", "message": "Agent 不可用，已降级到人工复核。请直接进入题干复核。"}`。教师应直接进入题干人工复核。
 
+**答案编辑后可视化审批自动失效**：教师编辑答案 Markdown 后，若 `physics-model.json` 已存在且 `visualization-review.status` 为 `passed`，系统自动将其标记为 `stale`，教师需重新复核可视化产物。
+
 教师批准与隐私确认必须来自实际页面使用者或明确的人工操作。Agent 可以生成和返修，但不得代填批准或绕过 `409 blocked`。
 
 `GET /api/entries/<entry-id>` 的 `w3_shadow.claim_evidence` 是教师安全视图：包含完整暂定

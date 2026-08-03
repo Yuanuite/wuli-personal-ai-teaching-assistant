@@ -1635,6 +1635,19 @@ def save_answer_entry(library: Path, entry: Path, data: dict) -> dict:
         }
         kb.write_json(model_path, model)
     marked = mark_answer_needs_review(library, entry, "答案已在教师工作台编辑，等待重新复核")
+    # Invalidate visualization approval when the answer changes after build,
+    # mirroring how model changes invalidate answer review.
+    viz_review_path = entry / "visualization-review.json"
+    if model_path.exists() and viz_review_path.is_file():
+        viz_review = kb.load_json(viz_review_path, {})
+        if viz_review.get("status") == "passed":
+            viz_review["status"] = "stale"
+            viz_review["note"] = "答案已编辑，可视化与答案可能不一致，需要重新复核"
+            viz_review["changed_at"] = marked["review"]["changed_at"]
+            kb.write_json(viz_review_path, viz_review)
+            record = kb.load_json(entry / "record.json", {})
+            record["visualization_review"] = viz_review
+            kb.write_json(entry / "record.json", record)
     assessment = assess_entry_difficulty(entry)
     evaluation = evaluator.evaluate_entry(library, entry.name, write=True)
     semantic_diff = teacher_feedback.semantic_text_diff(before_text, markdown, path=target.name)
