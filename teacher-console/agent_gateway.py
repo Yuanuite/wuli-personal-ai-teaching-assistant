@@ -117,6 +117,16 @@ def classify_agent_failure(result: dict) -> str:
             and reasoning_chars > 0
         ):
             return "output_truncated"
+    # Local deterministic failures are authoritative over text heuristics
+    # (work-tree A2): the provider output decoded but the materializer/domain
+    # gate rejected it, or the adapter output was not parseable at all. Normal
+    # telemetry field names (finish_reason/content_chars) in attempt stdout
+    # must never be read as truncation evidence.
+    for container in (result, *[a for a in attempts if isinstance(a, dict)]):
+        if container.get("materializer_error"):
+            return "materializer_rejected"
+        if container.get("decode_error"):
+            return "adapter_decode_error"
     if "timeout" in text or "timed out" in text or "超时" in text:
         return "provider_timeout"
     if "rate limit" in text or "rate_limit" in text or "429" in text or "限流" in text:
@@ -132,15 +142,12 @@ def classify_agent_failure(result: dict) -> str:
     if any(marker in text for marker in budget_markers):
         return "provider_budget_exceeded"
     # Textual truncation markers for non-structured providers (codex/claude
-    # CLI); structured attempts were already classified above.
+    # CLI); structured attempts were already classified above. Only genuine
+    # truncation phrases count — telemetry field names are not evidence.
     truncation_markers = {
         "truncated",
         "截断",
         "reached max_tokens",
-        "max_tokens",
-        "finish_reason",
-        "content_chars",
-        "reasoning_chars",
         "output token limit",
     }
     if any(marker in text for marker in truncation_markers):
@@ -1458,10 +1465,14 @@ class AgentGateway:
                 attempt_duration = round(time.monotonic() - t_start, 3)
 
                 payload: dict = {}
-                parse_error = ""
+                decode_error = ""
+                materializer_error = ""
                 materialization: dict = {}
                 structured = isinstance(runtime_task.get("output_contract"), dict)
                 if (provider.mode == "json-adapter" or structured) and completed.returncode == 0:
+                    # Work-tree A2: decoding and materialization are separated
+                    # so a domain-gate rejection is never attributed to the
+                    # provider output (formerly both wrote ``parse_error``).
                     try:
                         payload = (
                             self._decode_structured_payload(provider, completed.stdout)
@@ -1470,22 +1481,27 @@ class AgentGateway:
                         )
                         if not isinstance(payload, dict):
                             raise ValueError("provider output is not an object")
-                        if payload.get("status") == "completed":
+                    except (OSError, TypeError, ValueError, PermissionError, json.JSONDecodeError) as exc:
+                        decode_error = str(exc)
+                    if not decode_error and payload.get("status") == "completed":
+                        try:
                             if structured:
                                 if materializer is None:
                                     raise ValueError("structured task has no deterministic materializer")
                                 materialization = materializer(staging, payload)
                             else:
                                 self._apply_proposals(staging, payload, allowed, denied)
-                    except (OSError, TypeError, ValueError, PermissionError, json.JSONDecodeError) as exc:
-                        parse_error = str(exc)
+                        except (OSError, TypeError, ValueError, PermissionError, json.JSONDecodeError) as exc:
+                            materializer_error = str(exc)
 
                 after = self._snapshot(staging)
                 changed = self._changed(before, after)
                 unauthorized = [name for name in changed if not self._allowed(name, allowed, denied)]
                 deleted = [name for name in changed if name in before and name not in after]
                 provider_output_ok = (provider.mode != "json-adapter" and not structured) or (
-                    not parse_error and payload.get("status") == "completed"
+                    not decode_error
+                    and not materializer_error
+                    and payload.get("status") == "completed"
                 )
                 changed_enough = not task.get("requires_change") or bool(changed)
                 succeeded = (
@@ -1517,9 +1533,13 @@ class AgentGateway:
                     "started_at": attempt_started_at,
                     "duration_seconds": attempt_duration,
                 }
-                if parse_error:
-                    attempt["error"] = str(parse_error)
-                    attempt["parse_error"] = True
+                if decode_error:
+                    attempt["error"] = str(decode_error)
+                    attempt["parse_error"] = True  # backward-compatible alias
+                    attempt["decode_error"] = True
+                if materializer_error:
+                    attempt["error"] = str(materializer_error)
+                    attempt["materializer_error"] = True
                 if materialization:
                     attempt["materialization"] = materialization
                 if deleted:

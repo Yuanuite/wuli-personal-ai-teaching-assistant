@@ -19,7 +19,7 @@ from collections import Counter, defaultdict
 from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pdf_export
 
@@ -343,7 +343,7 @@ def vision_ocr(image: Path, cache_dir: Path) -> dict[str, Any]:
         if executable.exists():
             result = run_process([str(executable), str(image)])
             if result.returncode == 0:
-                return json.loads(result.stdout)
+                return cast(dict, json.loads(result.stdout))
             errors.append(result.stderr.strip() or "Objective-C Vision OCR failed")
 
     swift = shutil.which("swift")
@@ -355,7 +355,7 @@ def vision_ocr(image: Path, cache_dir: Path) -> dict[str, Any]:
         env["CLANG_MODULE_CACHE_PATH"] = str(module_cache)
         result = run_process([swift, str(VISION_SCRIPT), str(image)], env=env)
         if result.returncode == 0:
-            return json.loads(result.stdout)
+            return cast(dict, json.loads(result.stdout))
         errors.append(result.stderr.strip() or "Swift Vision OCR failed")
     raise RuntimeError("; ".join(error for error in errors if error) or "Apple Vision OCR is unavailable")
 

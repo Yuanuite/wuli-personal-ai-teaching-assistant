@@ -11,7 +11,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)(?:\{width=\d+%\})?")
 _PANDOC_IMAGE_RE = re.compile(r"(!\[[^\]]*\]\([^)\s]+\))(?!\{width=)")
