@@ -287,5 +287,75 @@ class AnalysisArtifactsTest(unittest.TestCase):
         self.assertNotEqual(changed_fingerprint, evidence_fingerprint)
 
 
+class StageRecordsTest(unittest.TestCase):
+    """Work-tree A3: stage telemetry must reflect the real blocking stage."""
+
+    def test_stage_records_provider_ok_materializer_failed(self):
+        gateway = {
+            "status": "failed",
+            "failure_type": "materializer_rejected",
+            "attempts": [
+                {
+                    "status": "failed",
+                    "finish_reason": "stop",
+                    "materializer_error": True,
+                    "error": "physics quality gate rejected: symbol-undefined@Q4ii",
+                    "failure_type": "materializer_rejected",
+                }
+            ],
+        }
+        stages = {stage["name"]: stage["status"] for stage in analysis_artifacts.stage_records(gateway)}
+        self.assertEqual(stages["structured-generation"], "completed")
+        self.assertEqual(stages["core-materialization"], "rejected")
+        self.assertEqual(stages["physics-quality-gate"], "failed")
+        self.assertEqual(stages["canonical-promotion"], "not-run")
+
+    def test_stage_records_materializer_failed_without_gate_marker(self):
+        gateway = {
+            "status": "failed",
+            "attempts": [
+                {
+                    "status": "failed",
+                    "materializer_error": True,
+                    "error": "render fidelity gate missing final_answer",
+                }
+            ],
+        }
+        stages = {stage["name"]: stage["status"] for stage in analysis_artifacts.stage_records(gateway)}
+        self.assertEqual(stages["structured-generation"], "completed")
+        self.assertEqual(stages["core-materialization"], "rejected")
+        self.assertEqual(stages["physics-quality-gate"], "not-run")
+
+    def test_stage_records_provider_decode_failed(self):
+        gateway = {
+            "status": "failed",
+            "attempts": [
+                {
+                    "status": "failed",
+                    "decode_error": True,
+                    "error": "Expecting value: line 1 column 1 (char 0)",
+                }
+            ],
+        }
+        stages = {stage["name"]: stage["status"] for stage in analysis_artifacts.stage_records(gateway)}
+        self.assertEqual(stages["structured-generation"], "failed")
+        self.assertNotIn("core-materialization", stages)
+
+    def test_stage_records_completed_keeps_materialized_stages(self):
+        gateway = {
+            "status": "completed",
+            "attempts": [{"status": "completed"}],
+            "materialization": {
+                "stages": [
+                    {"name": "physics-quality-gate", "status": "passed"},
+                    {"name": "render-fidelity-gate", "status": "passed"},
+                ]
+            },
+        }
+        stages = {stage["name"]: stage["status"] for stage in analysis_artifacts.stage_records(gateway)}
+        self.assertEqual(stages["structured-generation"], "completed")
+        self.assertEqual(stages["physics-quality-gate"], "passed")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,7 @@ import sqlite3
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import candidate_archive
 import kb
@@ -1260,9 +1260,9 @@ def _teaching_intent_query(query: str) -> tuple[str, list[str], list[str]]:
     for trigger, aliases in TEACHING_QUERY_EXPANSIONS:
         if trigger in query:
             additions.extend(alias for alias in aliases if alias not in normalized and alias not in additions)
-    for trigger, aliases in TEACHING_INTENT_EXPANSIONS:
-        if trigger in query:
-            additions.extend(alias for alias in aliases if alias not in normalized and alias not in additions)
+    for intent_trigger, intent_aliases in TEACHING_INTENT_EXPANSIONS:
+        if intent_trigger in query:
+            additions.extend(alias for alias in intent_aliases if alias not in normalized and alias not in additions)
     normalized = " ".join(normalized.split()).strip() or query.strip()
     return " ".join([normalized, *additions]).strip(), removed, additions
 
@@ -1300,8 +1300,8 @@ def _query_plan(
             {
                 "id": str(route["id"]),
                 "label": str(route["label"]),
-                "document_kinds": list(route["kinds"]),
-                "weight": float(route["weight"]),
+                "document_kinds": list(cast(list, route["kinds"])),
+                "weight": float(cast(float, route["weight"])),
             }
             for route in RETRIEVAL_ROUTES
         ],
@@ -1597,17 +1597,17 @@ def select_evidence_results(
         }
 
     remaining = list(accepted)
-    selected: list[dict[str, Any]] = []
+    selected_advanced: list[dict[str, Any]] = []
     selection_steps: list[dict[str, Any]] = []
     rejected_duplicate_count = 0
     rejected_conflict_count = 0
     covered_slots: set[str] = set()
-    while remaining and len(selected) < limit:
+    while remaining and len(selected_advanced) < limit:
         ranked: list[tuple[float, int, dict[str, Any], list[str]]] = []
         for result in remaining:
             conflicts = [
                 conflict
-                for chosen in selected
+                for chosen in selected_advanced
                 for conflict in _evidence_results_conflict(chosen, result)
             ]
             new_slots = set(
@@ -1634,7 +1634,7 @@ def select_evidence_results(
         duplicate = next(
             (
                 chosen
-                for chosen in selected
+                for chosen in selected_advanced
                 if _evidence_results_duplicate(chosen, candidate)
             ),
             None,
@@ -1656,7 +1656,7 @@ def select_evidence_results(
             })
             continue
         chosen = dict(candidate)
-        new_slots = sorted(
+        new_slots: list[str] = sorted(
             set(chosen.get("evidence_coverage", {}).get("covered_slots", []))
             - covered_slots
         )
@@ -1668,7 +1668,7 @@ def select_evidence_results(
             "new_slots": new_slots,
             "reason": "accepted-highest-utility-compatible",
         }
-        selected.append(chosen)
+        selected_advanced.append(chosen)
         covered_slots.update(
             chosen.get("evidence_coverage", {}).get("covered_slots", [])
         )
@@ -1678,11 +1678,11 @@ def select_evidence_results(
             "new_slots": new_slots,
         })
     return {
-        "selected_results": selected,
+        "selected_results": selected_advanced,
         "trace": {
             "policy": selection_policy,
             "candidate_count": len(results),
-            "selected_count": len(selected),
+            "selected_count": len(selected_advanced),
             "rejected_low_precision_count": rejected_low_precision,
             "rejected_duplicate_count": rejected_duplicate_count,
             "rejected_conflict_count": rejected_conflict_count,
@@ -1779,7 +1779,7 @@ def _retrieve_routes(
             connection,
             fts=fts,
             retrieval_text=retrieval_text,
-            kinds=tuple(route["kinds"]),
+            kinds=tuple(cast(list, route["kinds"])),
             limit=route_limit,
             use_fts=use_fts,
         )
@@ -1804,7 +1804,7 @@ def _retrieve_routes(
             "top_entry_ids": [entry_id for entry_id, _ in ranked_route[:top_k]],
         })
         for rank, (entry_id, route_match) in enumerate(ranked_route, 1):
-            contribution = float(route["weight"]) / (RRF_K + rank)
+            contribution = float(cast(float, route["weight"])) / (RRF_K + rank)
             item = fused.setdefault(
                 entry_id,
                 {
@@ -1840,7 +1840,7 @@ def _retrieve_routes(
 
 def _route_id_for_kind(kind: str) -> str:
     for route in RETRIEVAL_ROUTES:
-        if kind in route["kinds"]:
+        if kind in cast(list, route["kinds"]):
             return str(route["id"])
     return "unknown"
 

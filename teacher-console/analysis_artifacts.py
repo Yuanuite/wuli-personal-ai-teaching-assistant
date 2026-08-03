@@ -544,10 +544,15 @@ def stage_records(gateway: dict[str, Any]) -> list[dict[str, Any]]:
     attempts = attempts if isinstance(attempts, list) else []
     last = attempts[-1] if attempts and isinstance(attempts[-1], dict) else {}
     resumed = gateway.get("resumed_from_checkpoint") is True
-    generated = gateway.get("status") == "completed" or isinstance(gateway.get("materialization"), dict)
+    materialization = gateway.get("materialization")
+    generated = gateway.get("status") == "completed" or isinstance(materialization, dict)
+    # Work-tree A3: the provider can succeed while the local materializer or a
+    # domain gate rejects the payload. That failure belongs to the
+    # materialization stages, not to structured-generation.
+    materializer_failed = not generated and bool(last.get("materializer_error"))
     generation: dict[str, Any] = {
         "name": "structured-generation",
-        "status": "reused" if resumed else ("completed" if generated else "failed"),
+        "status": "reused" if resumed else ("completed" if (generated or materializer_failed) else "failed"),
     }
     for source, target in (
         ("provider", "provider"),
@@ -558,13 +563,20 @@ def stage_records(gateway: dict[str, Any]) -> list[dict[str, Any]]:
         value = last.get(source)
         if value not in (None, "", [], {}):
             generation[target] = value
-    materialization = gateway.get("materialization")
     materialized_stages = (
         materialization.get("stages", [])
         if isinstance(materialization, dict) and isinstance(materialization.get("stages"), list)
         else []
     )
-    return [generation, *materialized_stages]
+    if materialized_stages or not materializer_failed:
+        return [generation, *materialized_stages]
+    gate_rejected = "physics quality gate rejected" in str(last.get("error", ""))
+    return [
+        generation,
+        {"name": "core-materialization", "status": "rejected"},
+        {"name": "physics-quality-gate", "status": "failed" if gate_rejected else "not-run"},
+        {"name": "canonical-promotion", "status": "not-run"},
+    ]
 
 
 def input_fingerprint(
