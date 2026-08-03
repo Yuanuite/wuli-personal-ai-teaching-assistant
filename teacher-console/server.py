@@ -20,7 +20,7 @@ from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, Optional, cast
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 CONSOLE_DIR = Path(__file__).resolve().parent
@@ -340,7 +340,7 @@ def run_agent_gateway(
 ) -> dict:
     """Run one scoped task through the Gateway and the bounded repair policy."""
     if materializer is None:
-        run_once = AGENT_GATEWAY.run
+        run_once: Callable[..., dict] = AGENT_GATEWAY.run
     else:
 
         def run_once(current_task, current_validator):
@@ -1052,9 +1052,11 @@ def run_physics_diagram_gateway(
         ),
         bounded_failure_repair=False,
     )
+    initial_attempts = initial.get("attempts")
+    repaired_attempts = repaired.get("attempts")
     repaired["attempts"] = [
-        *(initial.get("attempts") if isinstance(initial.get("attempts"), list) else []),
-        *(repaired.get("attempts") if isinstance(repaired.get("attempts"), list) else []),
+        *(initial_attempts if isinstance(initial_attempts, list) else []),
+        *(repaired_attempts if isinstance(repaired_attempts, list) else []),
     ]
     repaired["diagram_repair"] = {
         "status": "recovered" if repaired.get("status") == "completed" else "exhausted",
@@ -1157,7 +1159,7 @@ def replay_w3_stage_checkpoint(
             **normalized,
             "_runtime_identity": checkpoint.get("runtime_identity", {}),
         }
-    return cast(dict | None, normalized)
+    return cast(Optional[dict], normalized)
 
 
 def summarize_w3_stage_timing(
