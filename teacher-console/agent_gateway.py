@@ -129,7 +129,14 @@ def classify_agent_failure(result: dict) -> str:
             return "adapter_decode_error"
     if "timeout" in text or "timed out" in text or "超时" in text:
         return "provider_timeout"
-    if "rate limit" in text or "rate_limit" in text or "429" in text or "限流" in text:
+    # "429" needs a word boundary: archive/event hashes routinely contain the
+    # substring and would otherwise be misattributed as rate limiting (D1).
+    if (
+        "rate limit" in text
+        or "rate_limit" in text
+        or re.search(r"\b429\b", text)
+        or "限流" in text
+    ):
         return "provider_rate_limited"
     budget_markers = {
         "exceeded usd budget",

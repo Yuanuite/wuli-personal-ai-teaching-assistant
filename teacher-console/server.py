@@ -837,6 +837,8 @@ def core_analysis_task(
     target_brief: dict,
     routing_tier: str = "auto",
     model_config: dict | None = None,
+    *,
+    rich: bool = False,
 ) -> dict:
     """Build the one-call core solver task; rendering remains deterministic."""
     has_visual_facts = (entry / "visual-facts.json").is_file()
@@ -846,12 +848,20 @@ def core_analysis_task(
         if target_brief.get("enhancements", {}).get("targeted_retrieval")
         else None
     )
-    prompt = (
-        f"处理已复核的物理题。{instruction}\n"
-        "只完成一次核心求解：覆盖 Target Brief 中的每个目标，写最终结论、决定性推导、"
-        "适用条件和复算检查。不要生成学生版/教师版 Markdown，不要分解成阶段接口，不要"
-        "模拟第二求解器或仲裁器。visual-facts.json 与 physics-model.json 如存在均为已复核约束。"
-    )
+    if rich:
+        prompt = (
+            f"处理已复核的复杂物理题。{instruction}\n"
+            "只完成一次核心求解：按 rich 契约输出 claims、五段学生版 Markdown、教师审计与"
+            "method_check。不要分解成阶段接口，不要模拟第二求解器或仲裁器。"
+            "visual-facts.json 与 physics-model.json 如存在均为已复核约束。"
+        )
+    else:
+        prompt = (
+            f"处理已复核的物理题。{instruction}\n"
+            "只完成一次核心求解：覆盖 Target Brief 中的每个目标，写最终结论、决定性推导、"
+            "适用条件和复算检查。不要生成学生版/教师版 Markdown，不要分解成阶段接口，不要"
+            "模拟第二求解器或仲裁器。visual-facts.json 与 physics-model.json 如存在均为已复核约束。"
+        )
     task = _agent_task(
         entry,
         "analysis.generate",
@@ -878,7 +888,7 @@ def core_analysis_task(
     # catalogue; removing them keeps the single request compact and focused.
     task["context_files"] = {}
     task.setdefault("context_payloads", {})[".agent-context/target-brief.json"] = target_brief
-    task["output_contract"] = core_analysis.output_contract(target_brief)
+    task["output_contract"] = core_analysis.output_contract(target_brief, rich=rich)
     task["structured_context_paths"] = [
         "problem.md",
         "record.json",
@@ -3121,12 +3131,19 @@ class Handler(SimpleHTTPRequestHandler):
                 has_physics_model=(entry / "physics-model.json").is_file(),
             )
             instruction = str(data.get("instruction", "生成可判分、可复算的核心解答"))
+            # Work-tree D1: complexity branches the core-first contract; complex
+            # problems get the rich five-section solve, simple ones stay compact.
+            complexity = problem_decomposition.complexity_screen(
+                problem, has_physics_model=(entry / "physics-model.json").is_file()
+            )
+            rich = complexity["decision"] == "decompose"
             task = core_analysis_task(
                 entry,
                 instruction,
                 brief,
                 routing_tier,
                 model_config,
+                rich=rich,
             )
             config = core_config or core_analysis.DEFAULT_ROUTING
             task["timeout_seconds"] = int(cast(int, config.get("max_latency_seconds", 90)))
@@ -3141,6 +3158,11 @@ class Handler(SimpleHTTPRequestHandler):
                 "model_id": model_id,
                 "model_display_name": model_config.get("display_name") if model_config else "",
                 "target_brief": brief,
+                "complexity": {
+                    "decision": complexity["decision"],
+                    "score": complexity["score"],
+                    "contract": core_analysis.CORE_RICH_CONTRACT if rich else core_analysis.CORE_CONTRACT,
+                },
             }
             kb.write_json(entry / "analysis-request.json", request)
 

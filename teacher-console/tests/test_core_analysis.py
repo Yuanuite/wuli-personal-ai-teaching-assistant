@@ -160,5 +160,95 @@ class CoreCheckpointTest(unittest.TestCase):
             core_analysis.save_checkpoint(self.entry, fingerprint="fp-1", payload=bad, brief=self.brief)
 
 
+class CoreRichContractTest(unittest.TestCase):
+    """Work-tree D1: complex problems get the rich five-section contract."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.entry = Path(self.temp.name) / "library" / "entries" / "entry"
+        self.entry.mkdir(parents=True)
+        self.problem = "物块从斜面顶端由静止下滑，第一次到达底端后进入水平面。求：（1）底端速度 $v$。"
+        (self.entry / "problem.md").write_text(self.problem, encoding="utf-8")
+        (self.entry / "record.json").write_text(
+            json.dumps({"schema_version": 1, "id": "entry", "title": "原题"}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        self.brief = core_analysis.build_target_brief(self.problem, method_profile="high_school_standard")
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def rich_payload(self, student_solution=None):
+        claims = [
+            {
+                "id": "Q1",
+                "final_answer": "底端速度为 $v=\\sqrt{2gh}$",
+                "key_relations": ["由机械能守恒：1/2 m v^2 = m g h。"],
+            }
+        ]
+        if student_solution is None:
+            student_solution = (
+                "## 答案速览\n\n- **Q1**：底端速度为 $v=\\sqrt{2gh}$\n\n"
+                "## 一眼识别\n\n最短主线是机械能守恒。\n\n"
+                "## 详细解答\n\n### 第 1 步\n\n由机械能守恒：1/2 m v^2 = m g h。因此，底端速度为 $v=\\sqrt{2gh}$。\n\n"
+                "## 易错点\n\n注意斜面光滑假设与题设边界。\n\n"
+                "## 30 秒自测\n\n能否独立复算并检查适用条件？\n"
+            )
+        return {
+            "status": "completed",
+            "message": "rich 求解完成",
+            "target_brief_digest": self.brief["digest"],
+            "claims": claims,
+            "student_solution": student_solution,
+            "teacher_audit": "审计：机械能守恒适用于光滑斜面情形，已核对题设边界、方向与量纲，解法在高中范围内。",
+            "method_check": {"selected_path": "机械能守恒直接求解"},
+        }
+
+    def test_rich_materialize_keeps_five_sections_and_claim_fidelity(self):
+        payload = self.rich_payload()
+        result = core_analysis.materialize(self.entry, payload, self.brief)
+        self.assertEqual(result["contract"], core_analysis.CORE_RICH_CONTRACT)
+        student = (self.entry / "student-solution.md").read_text(encoding="utf-8")
+        for section in core_analysis.CORE_RICH_SECTIONS:
+            self.assertIn(section, student)
+        for claim in payload["claims"]:
+            self.assertIn(claim["final_answer"], student)
+            for relation in claim["key_relations"]:
+                self.assertIn(relation, student)
+        teacher = (self.entry / "teacher-solution.md").read_text(encoding="utf-8")
+        self.assertIn("机械能守恒直接求解", json.loads((self.entry / "record.json").read_text(encoding="utf-8"))["standard_solution_path"]["selected_path"])  # noqa: E501
+        self.assertIn("审计：机械能守恒", teacher)
+        core = json.loads((self.entry / "core-solution.json").read_text(encoding="utf-8"))
+        self.assertEqual(core["contract"], core_analysis.CORE_RICH_CONTRACT)
+
+    def test_rich_missing_section_is_rejected(self):
+        long_filler = (
+            "本题在光滑斜面假设下求解，物块从静止开始下滑，过程完整且足够长；"
+            "此处仅缺少后续章节标题，用于验证章节完整性门禁，因此整段文本必须足够长才能通过长度检查。"
+        )
+        payload = self.rich_payload(
+            student_solution="## 答案速览\n\n底端速度为 $v=\\sqrt{2gh}$，由机械能守恒得到。" + long_filler
+        )
+        with self.assertRaisesRegex(ValueError, "missing section"):
+            core_analysis.normalize_payload(payload, self.brief)
+
+    def test_rich_placeholder_is_rejected(self):
+        payload = self.rich_payload()
+        payload["student_solution"] = payload["student_solution"].replace("## 易错点", "## 易错点\n\nTODO")
+        with self.assertRaisesRegex(ValueError, "placeholder"):
+            core_analysis.normalize_payload(payload, self.brief)
+
+    def test_rich_fidelity_rejects_missing_claim_content(self):
+        payload = self.rich_payload()
+        payload["student_solution"] = payload["student_solution"].replace("1/2 m v^2 = m g h。", "略。")
+        with self.assertRaisesRegex(ValueError, "render fidelity gate rejected"):
+            core_analysis.materialize(self.entry, payload, self.brief)
+
+    def test_complex_problem_enables_independent_verification(self):
+        complex_problem = "粒子第一次进入磁场区域后恰好到达边界，求所有可能的磁感应强度。"
+        brief = core_analysis.build_target_brief(complex_problem, method_profile="high_school_standard")
+        self.assertTrue(brief["enhancements"]["independent_verification"])
+
+
 if __name__ == "__main__":
     unittest.main()

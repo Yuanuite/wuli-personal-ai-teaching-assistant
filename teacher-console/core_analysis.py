@@ -17,9 +17,11 @@ from pathlib import Path
 from typing import Any
 
 import physics_quality
+import problem_decomposition
 import teaching_method_policy
 
 CORE_CONTRACT = "wuli.core-solve.v1"
+CORE_RICH_CONTRACT = "wuli.core-rich.v2"
 ROUTING_POLICY = "wuli-core-first-routing-v1"
 ROUTING_MODES = {"core-first", "legacy-adaptive"}
 DEFAULT_ROUTING = {
@@ -74,6 +76,64 @@ CORE_OUTPUT_SCHEMA: dict[str, Any] = {
         "message",
         "target_brief_digest",
         "targets",
+    ],
+}
+
+# Work-tree D1: rich five-section student markdown for complex problems.
+CORE_RICH_SECTIONS = ("答案速览", "一眼识别", "详细解答", "易错点", "30 秒自测")
+
+CORE_RICH_PLACEHOLDER = re.compile(r"TODO|TBD|待补|占位|……|\.{3,}", re.IGNORECASE)
+
+_CLAIM_PROPERTIES: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "id": {"type": "string"},
+        "final_answer": {"type": "string", "maxLength": 800},
+        "key_relations": {
+            "type": "array",
+            "items": {"type": "string", "maxLength": 600},
+            "minItems": 1,
+            "maxItems": 4,
+        },
+    },
+    "required": ["id", "final_answer", "key_relations"],
+}
+
+CORE_RICH_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "status": {"type": "string", "enum": ["completed", "unsupported"]},
+        "message": {"type": "string"},
+        "target_brief_digest": {"type": ["string", "null"]},
+        "claims": {
+            "type": ["array", "null"],
+            "items": _CLAIM_PROPERTIES,
+            "minItems": 1,
+            "maxItems": 12,
+        },
+        "student_solution": {"type": ["string", "null"], "maxLength": 20000},
+        "teacher_audit": {"type": ["string", "null"], "maxLength": 6000},
+        "method_check": {
+            "type": ["object", "null"],
+            "additionalProperties": False,
+            "properties": {
+                "selected_path": {"type": "string", "maxLength": 500},
+                "discarded_methods": {"type": "array", "items": {"type": "string", "maxLength": 240}, "maxItems": 6},
+                "decisive_relations": {"type": "array", "items": {"type": "string", "maxLength": 360}, "maxItems": 12},
+            },
+            "required": ["selected_path"],
+        },
+    },
+    "required": [
+        "status",
+        "message",
+        "target_brief_digest",
+        "claims",
+        "student_solution",
+        "teacher_audit",
+        "method_check",
     ],
 }
 
@@ -186,7 +246,14 @@ def build_target_brief(
         "risk_signals": risk_signals,
         "enhancements": {
             "targeted_retrieval": bool(risk_signals),
-            "independent_verification": "boundary-or-branch" in risk_signals,
+            # Work-tree D1/D3: complex problems always get independent
+            # verification; simple problems only when a boundary/branch risk
+            # signal is present.
+            "independent_verification": (
+                "boundary-or-branch" in risk_signals
+                or problem_decomposition.complexity_screen(problem, has_physics_model=has_physics_model)["decision"]
+                == "decompose"
+            ),
             "stage_state_sidecar": "multi-stage" in risk_signals or has_physics_model,
         },
     }
@@ -194,7 +261,9 @@ def build_target_brief(
     return brief
 
 
-def output_contract(brief: dict[str, Any]) -> dict[str, Any]:
+def output_contract(brief: dict[str, Any], *, rich: bool = False) -> dict[str, Any]:
+    if rich:
+        return rich_output_contract(brief)
     target_ids = ", ".join(item["id"] for item in brief["targets"])
     profile = brief["method_profile"]
     return {
@@ -209,6 +278,30 @@ def output_contract(brief: dict[str, Any]) -> dict[str, Any]:
             f"方法范围为 {profile}；竞赛官方范围允许微积分时不得强行改写成高中课堂方法。"
             "不要输出方法比较、元数据、教学章节或额外字段。无法确定时返回 unsupported，"
             "target_brief_digest 和 targets 设为 null，不猜答案。"
+        ),
+    }
+
+
+def rich_output_contract(brief: dict[str, Any]) -> dict[str, Any]:
+    """Work-tree D1: complex problems get the rich five-section contract."""
+    target_ids = ", ".join(item["id"] for item in brief["targets"])
+    profile = brief["method_profile"]
+    sections = "、".join(CORE_RICH_SECTIONS)
+    return {
+        "name": CORE_RICH_CONTRACT,
+        "schema": CORE_RICH_OUTPUT_SCHEMA,
+        "instructions": (
+            "只输出符合 JSON Schema 的对象。一次完成物理/数学求解核心，不做阶段接口、"
+            "Claim Ledger、Solver B 或仲裁。claims 必须且只能覆盖 "
+            f"{target_ids}，target_brief_digest 必须原样返回 {brief['digest']}；claims 是判分锚点，"
+            "final_answer 写可直接判分的最终结论且不超过八百字，key_relations 每问最多四条。"
+            f"student_solution 是针对本题的学生版 Markdown，必须包含二级标题章节：{sections}，"
+            "一眼识别必须给出最短主线，详细解答必须使用不超过五个「### 第 N 步」编号标题，"
+            "内容必须针对本题具体条件与结论，禁止占位文案；claims 的每条 final_answer 与 "
+            "key_relations 必须逐字出现在 student_solution 中。teacher_audit 写教师复核要点，"
+            "method_check.selected_path 写最终最短主线。"
+            f"方法范围为 {profile}；竞赛官方范围允许微积分时不得强行改写成高中课堂方法。"
+            "无法确定时返回 unsupported，其余字段设为 null，不猜答案。"
         ),
     }
 
@@ -235,11 +328,92 @@ def _texts(value: Any, field: str, *, maximum_items: int, allow_empty: bool = Fa
     return result[:maximum_items]
 
 
+def _normalize_claims(raw_claims: Any, brief: dict[str, Any], *, field: str) -> list[dict[str, Any]]:
+    expected_ids = [item["id"] for item in brief["targets"]]
+    if not isinstance(raw_claims, list):
+        raise ValueError(f"{field} must be a list")
+    claims: list[dict[str, Any]] = []
+    for item in raw_claims:
+        if not isinstance(item, dict):
+            raise ValueError(f"{field} item must be an object")
+        claim = {
+            "id": _text(item.get("id"), f"{field}.id", maximum=20),
+            "final_answer": _text(item.get("final_answer"), f"{field}.final_answer", maximum=800),
+            "key_relations": _texts(item.get("key_relations"), f"{field}.key_relations", maximum_items=4),
+        }
+        lowered = claim["final_answer"].lower()
+        if any(marker in lowered for marker in UNRESOLVED_MARKERS):
+            raise ValueError(f"{claim['id']} final_answer contains an unresolved marker")
+        claims.append(claim)
+    if [item["id"] for item in claims] != expected_ids:
+        raise ValueError(f"{field} do not exactly match Target Brief order")
+    return claims
+
+
+def _gate_claims(
+    claims: list[dict[str, Any]],
+    brief: dict[str, Any],
+    message: str,
+    *,
+    problem: str | None,
+) -> None:
+    method_text = "\n".join(line for claim in claims for line in claim["key_relations"])
+    method_errors = teaching_method_policy.method_errors(method_text, brief["method_profile"])
+    if method_errors:
+        raise ValueError("; ".join(method_errors))
+
+    if problem is not None:
+        physics_report = physics_quality.physics_quality_report(
+            {"status": "completed", "message": message, "target_brief_digest": brief["digest"], "targets": claims},
+            brief,
+            problem,
+        )
+        if physics_report["status"] == "fail":
+            details = "; ".join(f"{item['code']}@{item['target_id']}" for item in physics_report["reason_codes"])
+            raise ValueError(f"physics quality gate rejected: {details}")
+
+
+def _rich_markdown(value: Any, field: str, *, minimum: int) -> str:
+    text = _text(value, field, maximum=20000)
+    if len(text) < minimum:
+        raise ValueError(f"{field} is too short to be a real solution")
+    if CORE_RICH_PLACEHOLDER.search(text):
+        raise ValueError(f"{field} contains placeholder text")
+    return text
+
+
+def _normalize_rich_method_check(raw: Any) -> dict[str, Any]:
+    if not isinstance(raw, dict):
+        raise ValueError("method_check must be an object")
+    method_check: dict[str, Any] = {
+        "selected_path": _text(raw.get("selected_path"), "method_check.selected_path", maximum=500),
+    }
+    discarded = raw.get("discarded_methods")
+    if discarded is not None:
+        method_check["discarded_methods"] = _texts(
+            discarded, "method_check.discarded_methods", maximum_items=6, allow_empty=True
+        )
+    decisive = raw.get("decisive_relations")
+    if decisive is not None:
+        method_check["decisive_relations"] = _texts(
+            decisive, "method_check.decisive_relations", maximum_items=12, allow_empty=True
+        )
+    return method_check
+
+
+def contract_for_payload(payload: Any) -> str:
+    """Rich payloads carry ``claims``; compact payloads carry ``targets``."""
+    if isinstance(payload, dict) and "claims" in payload:
+        return CORE_RICH_CONTRACT
+    return CORE_CONTRACT
+
+
 def normalize_payload(
     payload: Any,
     brief: dict[str, Any],
     *,
     problem: str | None = None,
+    contract: str | None = None,
 ) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError("core solve output must be an object")
@@ -252,46 +426,37 @@ def normalize_payload(
     if payload.get("target_brief_digest") != brief["digest"]:
         raise ValueError("target_brief_digest does not match the current problem")
 
-    expected_ids = [item["id"] for item in brief["targets"]]
-    raw_targets = payload.get("targets")
-    if not isinstance(raw_targets, list):
-        raise ValueError("targets must be a list")
-    targets: list[dict[str, Any]] = []
-    for item in raw_targets:
-        if not isinstance(item, dict):
-            raise ValueError("target must be an object")
-        target = {
-            "id": _text(item.get("id"), "target.id", maximum=20),
-            "final_answer": _text(item.get("final_answer"), "target.final_answer", maximum=800),
-            "key_relations": _texts(item.get("key_relations"), "target.key_relations", maximum_items=4),
+    rich = (contract or contract_for_payload(payload)) == CORE_RICH_CONTRACT
+    claims = _normalize_claims(
+        payload.get("claims") if rich else payload.get("targets"), brief, field="claims" if rich else "targets"
+    )
+    _gate_claims(claims, brief, message, problem=problem)
+
+    if not rich:
+        return {
+            "status": "completed",
+            "message": message,
+            "target_brief_digest": brief["digest"],
+            "targets": claims,
         }
-        lowered = target["final_answer"].lower()
-        if any(marker in lowered for marker in UNRESOLVED_MARKERS):
-            raise ValueError(f"{target['id']} final_answer contains an unresolved marker")
-        targets.append(target)
-    if [item["id"] for item in targets] != expected_ids:
-        raise ValueError("targets do not exactly match Target Brief order")
 
-    method_text = "\n".join(line for target in targets for line in target["key_relations"])
-    method_errors = teaching_method_policy.method_errors(method_text, brief["method_profile"])
-    if method_errors:
-        raise ValueError("; ".join(method_errors))
-
-    if problem is not None:
-        physics_report = physics_quality.physics_quality_report(
-            {"status": "completed", "message": message, "target_brief_digest": brief["digest"], "targets": targets},
-            brief,
-            problem,
-        )
-        if physics_report["status"] == "fail":
-            details = "; ".join(f"{item['code']}@{item['target_id']}" for item in physics_report["reason_codes"])
-            raise ValueError(f"physics quality gate rejected: {details}")
-
+    student_solution = _rich_markdown(payload.get("student_solution"), "student_solution", minimum=100)
+    missing = [section for section in CORE_RICH_SECTIONS if section not in student_solution]
+    if missing:
+        raise ValueError("student_solution missing section: " + ", ".join(missing))
+    section_errors = teaching_method_policy.method_errors(student_solution, brief["method_profile"])
+    if section_errors:
+        raise ValueError("; ".join(section_errors))
+    teacher_audit = _rich_markdown(payload.get("teacher_audit"), "teacher_audit", minimum=30)
+    method_check = _normalize_rich_method_check(payload.get("method_check"))
     return {
         "status": "completed",
         "message": message,
         "target_brief_digest": brief["digest"],
-        "targets": targets,
+        "claims": claims,
+        "student_solution": student_solution,
+        "teacher_audit": teacher_audit,
+        "method_check": method_check,
     }
 
 
@@ -316,7 +481,7 @@ def save_checkpoint(
     normalized = normalize_payload(payload, brief)
     checkpoint = {
         "schema_version": 1,
-        "contract": CORE_CONTRACT,
+        "contract": contract_for_payload(payload),
         "entry_id": entry.name,
         "input_fingerprint": fingerprint,
         "created_at": datetime.now().astimezone().isoformat(timespec="seconds"),
@@ -344,7 +509,7 @@ def load_checkpoint(entry: Path, *, fingerprint: str) -> dict[str, Any] | None:
         return None
     if not isinstance(checkpoint, dict):
         return None
-    if checkpoint.get("contract") != CORE_CONTRACT:
+    if checkpoint.get("contract") not in {CORE_CONTRACT, CORE_RICH_CONTRACT}:
         return None
     if checkpoint.get("entry_id") != entry.name:
         return None
@@ -391,7 +556,10 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
     problem_path = staging / "problem.md"
     if problem_path.is_file():
         problem = problem_path.read_text(encoding="utf-8")
-    core = normalize_payload(payload, brief, problem=problem)
+    contract = contract_for_payload(payload)
+    rich = contract == CORE_RICH_CONTRACT
+    core = normalize_payload(payload, brief, problem=problem, contract=contract)
+    claims = core["claims"] if rich else core["targets"]
     physics_report = None
     if problem is not None:
         physics_report = physics_quality.physics_quality_report(
@@ -399,7 +567,7 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
                 "status": core["status"],
                 "message": core["message"],
                 "target_brief_digest": core["target_brief_digest"],
-                "targets": core["targets"],
+                "targets": claims,
             },
             brief,
             problem,
@@ -410,31 +578,43 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
     record = json.loads(record_path.read_text(encoding="utf-8"))
     record["standard_solution_path"] = {
         "schema_version": 1,
-        "source": CORE_CONTRACT,
+        "source": contract,
         "method_profile": brief["method_profile"],
-        "selected_path": "逐问建立决定性关系并核对边界",
-        "target_ids": [item["id"] for item in core["targets"]],
+        "selected_path": (
+            str(core["method_check"]["selected_path"]) if rich else "逐问建立决定性关系并核对边界"
+        ),
+        "target_ids": [item["id"] for item in claims],
         "target_brief_digest": brief["digest"],
     }
-    student = _student_markdown(core)
+    if rich:
+        # Work-tree D1: rich markdown comes from the provider verbatim; the
+        # deterministic layer only wraps it and enforces claim fidelity.
+        student = "# 解析（学生版）\n\n" + str(core["student_solution"]).strip() + "\n"
+    else:
+        student = _student_markdown(core)
     # Render fidelity is a real invariant check: every accepted final answer and
     # decisive relation must appear verbatim in the rendered student markdown.
     render_violations = [
-        f"{target['id']}: {expected}"
-        for target in core["targets"]
-        for expected in [target["final_answer"], *target["key_relations"]]
+        f"{claim['id']}: {expected}"
+        for claim in claims
+        for expected in [claim["final_answer"], *claim["key_relations"]]
         if expected not in student
     ]
     if render_violations:
         raise ValueError("render fidelity gate rejected: missing content: " + "; ".join(render_violations[:3]))
     checks = "\n".join(
-        f"- **{target['id']}**：已保留 {len(target['key_relations'])} 条决定性关系，等待权威答案复核。"
-        for target in core["targets"]
+        f"- **{claim['id']}**：已保留 {len(claim['key_relations'])} 条决定性关系，等待权威答案复核。"
+        for claim in claims
     )
+    audit_intro = (
+        f"核心契约：`{contract}`；Target Brief：`{brief['digest']}`。\n\n"
+    )
+    if rich:
+        audit_intro += str(core["teacher_audit"]).strip() + "\n\n"
     teacher = (
         student
         + "\n## 教师审计\n\n"
-        + f"核心契约：`{CORE_CONTRACT}`；Target Brief：`{brief['digest']}`。\n\n"
+        + audit_intro
         + "### 确定性 Core Gate\n\n"
         + checks
         + "\n"
@@ -449,7 +629,7 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
     }
     core_artifact = {
         "schema_version": 1,
-        "contract": CORE_CONTRACT,
+        "contract": contract,
         "method_profile": brief["method_profile"],
         "target_brief": brief,
         "result": core,
@@ -468,7 +648,7 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         target.write_text(content, encoding="utf-8")
     digest = hashlib.sha256(json.dumps(core, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     return {
-        "contract": CORE_CONTRACT,
+        "contract": contract,
         "payload_digest": digest,
         "stages": [
             {"name": "core-gate", "status": "completed"},

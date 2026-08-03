@@ -113,7 +113,7 @@ def _clean_id(value: Any, field: str) -> str:
 def _clean_positive_int(value: Any, field: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 1:
         raise ValueError(f"{field} must be a positive integer")
-    return value
+    return int(value)
 
 
 def _clean_fingerprint(value: Any, field: str) -> str:

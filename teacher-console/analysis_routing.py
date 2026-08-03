@@ -353,7 +353,7 @@ def normalize_config(raw: Any) -> tuple[dict[str, Any], list[str]]:
         if isinstance(value, bool) or not isinstance(value, int) or not minimum <= value <= maximum:
             errors.append(f"{field} must be between {minimum} and {maximum}")
             return default
-        return value
+        return int(value)
 
     if errors:
         return dict(DEFAULT_CONFIG), errors

@@ -215,10 +215,40 @@ def _fake_core_call_count(entry_dir: Path) -> int:
         return 0
 
 
+def _fake_rich_student_markdown(claims):
+    quick = "\n".join(f"- **{claim['id']}**：{claim['final_answer']}" for claim in claims)
+    # The deterministic student gate requires numbered 第 N 步 headings (max
+    # five), so group claims exactly like the compact renderer does.
+    groups = [[item] for item in claims[:4]]
+    if len(claims) > 4:
+        groups.append(claims[4:])
+    blocks = []
+    for index, group in enumerate(groups, 1):
+        lines = [f"### 第 {index} 步"]
+        for claim in group:
+            if len(claims) > 1:
+                lines.append(f"\n#### {claim['id']}")
+            lines.extend(f"\n- {relation}" for relation in claim["key_relations"])
+            lines.append(f"\n因此，{claim['final_answer']}。")
+        blocks.append("\n".join(lines))
+    return (
+        f"## 答案速览\n\n{quick}\n\n"
+        "## 一眼识别\n\n"
+        "- **最短主线**：逐问建立决定性关系，得到结论后检查题设边界。\n\n"
+        "## 详细解答\n\n"
+        + "\n\n".join(blocks)
+        + "\n\n## 易错点\n\n"
+        "- 复核本题的符号、方向、分支与题设边界是否一致。\n\n"
+        "## 30 秒自测\n\n"
+        "能否只用上述决定性关系，独立复算每个最终结论并检查适用条件？\n"
+    )
+
+
 def core_solve_payload(task, problem):
     contract = task.get("output_contract", {})
-    if contract.get("name") != "wuli.core-solve.v1":
+    if contract.get("name") not in ("wuli.core-solve.v1", "wuli.core-rich.v2"):
         return None
+    rich = contract.get("name") == "wuli.core-rich.v2"
     entry_dir = Path(task["entry_dir"])
     brief = json.loads((entry_dir / ".agent-context" / "target-brief.json").read_text(encoding="utf-8"))
     calls = _fake_core_call_count(entry_dir)
@@ -250,23 +280,38 @@ def core_solve_payload(task, problem):
             return f"代入 {first_id} 的结果，得临界磁感应强度 $B^*=3mv_0/(qd)$"
         return final_answer
 
-    return {
+    claims = [
+        {
+            "id": item["id"],
+            "final_answer": target_answer(item),
+            "key_relations": [*derivation, "方向、量纲与题设边界复核通过"],
+        }
+        for item in brief["targets"]
+    ]
+    base = {
         "status": "completed",
         "message": "fake compact core solve",
         "target_brief_digest": brief["digest"],
-        "targets": [
-            {
-                "id": item["id"],
-                "final_answer": target_answer(item),
-                "key_relations": [*derivation, "方向、量纲与题设边界复核通过"],
-            }
-            for item in brief["targets"]
-        ],
         "model": "fake-core-solver",
         "model_tier": "standard",
         "requested_tier": task.get("routing_tier", "auto"),
         "usage": {"prompt_tokens": 80, "completion_tokens": 40, "total_tokens": 120},
     }
+    if rich:
+        base.update(
+            {
+                "claims": claims,
+                "student_solution": _fake_rich_student_markdown(claims),
+                "teacher_audit": "fake 教师审计：核对题设边界与量纲后，本解法为高中范围内的最短主线。",
+                "method_check": {
+                    "selected_path": "逐问建立决定性关系并核对边界",
+                    "decisive_relations": [claim["key_relations"][0] for claim in claims],
+                },
+            }
+        )
+        return base
+    base["targets"] = claims
+    return base
 
 
 task = json.load(sys.stdin)

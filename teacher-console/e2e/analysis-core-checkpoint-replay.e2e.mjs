@@ -47,7 +47,9 @@ try {
   const checkpointFile = path.join(library, ".cache", "core-checkpoints", `${entryId}.json`);
   assert.ok(fs.existsSync(checkpointFile), "gate rejection must leave a replay checkpoint");
   const checkpoint = readJson(checkpointFile);
-  assert.equal(checkpoint.contract, "wuli.core-solve.v1");
+  // D1: the charged-particle problem screens as complex, so the replayed
+  // checkpoint carries the rich five-section contract.
+  assert.equal(checkpoint.contract, "wuli.core-rich.v2");
   assert.equal(checkpoint.entry_id, entryId);
 
   // --- attempt 2: zero-token replay, provider untouched --------------------
