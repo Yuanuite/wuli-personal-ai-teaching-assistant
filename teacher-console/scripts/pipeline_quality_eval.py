@@ -16,6 +16,7 @@ import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 LIBRARY = PROJECT_ROOT / "student-error-library"
@@ -73,7 +74,7 @@ def load_json(path: Path) -> dict:
     if not path.is_file():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return cast(dict, json.loads(path.read_text(encoding="utf-8")))
     except (json.JSONDecodeError, OSError):
         return {}
 

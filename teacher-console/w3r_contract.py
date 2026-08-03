@@ -6,7 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from typing import Any
+from typing import Any, cast
 
 import teaching_method_policy
 
@@ -316,7 +316,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
 
     target_set, claim_set, step_set = set(target_ids), set(claim_ids), set(step_ids)
     for answer in answers:
-        answer_claim_ids = list(answer["claim_ids"])
+        answer_claim_ids = list(cast(list, answer["claim_ids"]))
         if not set(answer_claim_ids).issubset(claim_set):
             raise ValueError("final_answer references an unknown Claim")
         supporting_claims = [item for item in claims if item["claim_id"] in answer_claim_ids]

@@ -11,7 +11,7 @@ import hashlib
 import json
 import re
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, cast
 
 RETRIEVAL_NEED_SCHEMA = "wuli.retrieval-need.v1"
 EVIDENCE_UNIT_SCHEMA = "wuli.evidence-unit.v1"
@@ -314,7 +314,7 @@ def normalize_usage_ledger(payload: dict[str, Any]) -> dict[str, Any]:
         key = (entry["evidence_id"], entry["usage"])
         if key in seen:
             raise ValueError("evidence_usage_ledger contains a duplicate usage entry")
-        seen.add(key)
+        seen.add(cast(tuple[str, str], key))
         if entry["usage"] == "navigation_only" and entry["influenced_claim_ids"]:
             raise ValueError("navigation_only evidence cannot influence a claim")
         if entry["influenced_claim_ids"] and not entry["verification_ids"]:

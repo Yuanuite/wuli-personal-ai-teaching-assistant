@@ -29,6 +29,8 @@ assert SPEC is not None
 report_mod = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(report_mod)
 
+from typing import cast
+
 from route_snapshot import route_config_digest  # noqa: E402
 
 FAILED_JOB_ID = "deadbeefdeadbeefdeadbeefdeadbeef01"

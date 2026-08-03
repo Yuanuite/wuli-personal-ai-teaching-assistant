@@ -306,7 +306,7 @@ def normalize_stage_transition(payload: dict[str, Any]) -> dict[str, Any]:
     for raw in raw_mapping:
         if not isinstance(raw, dict) or set(raw) != _MAPPING_FIELDS:
             raise ValueError("state_mapping item fields are invalid")
-        item = {
+        item: dict[str, Any] = {
             "from_key": _state_key(raw["from_key"], "state_mapping.from_key"),
             "to_key": _state_key(raw["to_key"], "state_mapping.to_key"),
             "transform": _optional_transform(raw["transform"], "state_mapping.transform"),

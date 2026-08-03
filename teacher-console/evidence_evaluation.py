@@ -53,7 +53,7 @@ def normalize_gold_case(payload: dict[str, Any]) -> dict[str, Any]:
     if split == "holdout" and not batch_id:
         raise ValueError("holdout gold case requires a batch_id")
 
-    need = evidence_contract.normalize_retrieval_need(raw.get("retrieval_need"))
+    need = evidence_contract.normalize_retrieval_need(raw.get("retrieval_need") or {})
     required = _ids(raw.get("required_evidence_ids"), "gold_case.required_evidence_ids")
     acceptable = _ids(raw.get("acceptable_evidence_ids"), "gold_case.acceptable_evidence_ids")
     forbidden = _ids(raw.get("forbidden_evidence_ids"), "gold_case.forbidden_evidence_ids")
@@ -140,7 +140,7 @@ def normalize_gold_dataset(payload: dict[str, Any]) -> dict[str, Any]:
         item = _mapping(item_raw, f"gold_dataset.cases[{index}]")
         problem = _text(item.get("problem"), f"gold_dataset.cases[{index}].problem", 12000)
         blueprint = _mapping(item.get("blueprint"), f"gold_dataset.cases[{index}].blueprint")
-        gold_case = normalize_gold_case(item.get("gold_case"))
+        gold_case = normalize_gold_case(item.get("gold_case") or {})
         expected_hash = evidence_contract.stable_fingerprint("question-snapshot-v1", problem)
         if gold_case["question_snapshot_hash"] != expected_hash:
             raise ValueError(f"gold_dataset.cases[{index}] question snapshot hash mismatch")
@@ -309,7 +309,7 @@ def prediction_from_run(case_id: str, execution: dict[str, Any]) -> dict[str, An
     if not isinstance(run, dict):
         raise ValueError("evidence execution does not contain a run")
     trace = run.get("retrieval_trace") or []
-    candidates = []
+    candidates: list[str] = []
     for item in trace:
         if isinstance(item, dict):
             candidates.extend(item.get("candidate_evidence_ids") or [])

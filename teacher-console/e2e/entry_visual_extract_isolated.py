@@ -24,6 +24,7 @@ THIN = CONSOLE / "scripts" / "entry_visual_extract.py"
 sys.path.insert(0, str(CONSOLE))
 sys.path.insert(0, str(SKILL_SCRIPTS))
 
+
 import model_registry  # noqa: E402
 
 

@@ -16,7 +16,7 @@ BLUEPRINT = {
     "physical_stages": [{"id": "p1"}],
     "verification_obligations": [{"id": "v1", "target_id": "q1", "check": "第一次事件", "risk": "critical"}],
 }
-SOLUTION = {
+SOLUTION: dict[str, Any] = {
     "status": "completed",
     "targets": [
         {

@@ -208,9 +208,7 @@ def _check_symbol_defined(
     known_target_ids: set[str] | None = None,
 ) -> list[dict[str, str]]:
     definitions = problem_text + "\n" + "\n".join(target.get("key_relations", []))
-    undefined = _undefined_symbols(
-        str(target.get("final_answer", "")), definitions, known_target_ids
-    )
+    undefined = _undefined_symbols(str(target.get("final_answer", "")), definitions, known_target_ids)
     return [
         {
             "code": "symbol-undefined",

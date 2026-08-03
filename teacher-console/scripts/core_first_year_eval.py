@@ -23,6 +23,8 @@ SKILL_SCRIPTS = ROOT / ".claude" / "skills" / "manage-student-error-library" / "
 for path in (CONSOLE, SKILL_SCRIPTS, CONSOLE / "providers"):
     sys.path.insert(0, str(path))
 
+from typing import cast
+
 import core_analysis  # noqa: E402
 import openai_compatible_agent_adapter as api_adapter  # noqa: E402
 import source_review  # noqa: E402
@@ -49,7 +51,7 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8"))
+    return cast(dict, json.loads(path.read_text(encoding="utf-8")))
 
 
 def load_model(registry: dict, model_id: str) -> dict:
