@@ -1,0 +1,1534 @@
+{
+  "schema": "wuli.evidence-shadow-benchmark.v1",
+  "data_scope": {
+    "model_visible_source_kinds": [
+      "curated_technique"
+    ],
+    "student_entry_evidence_sent": false,
+    "raw_source_assets_sent": false,
+    "provider_data_locality": "provider-dependent",
+    "provider_dependent_data_acknowledged": true
+  },
+  "candidate_policy": "single-route-bypass",
+  "top_k": 5,
+  "paired": {
+    "schema": "wuli.evidence-paired-gold-report.v1",
+    "dataset": {
+      "dataset_id": "wuli-evidence-fresh-holdout",
+      "dataset_version": "2026-07-30-v3",
+      "dataset_fingerprint": "sha256:49b525482c65f507371efcf98a1ea02888338510e59fce2898e4dee6cdd4ed0f",
+      "review_status": "teacher_approved",
+      "case_count": 20
+    },
+    "baseline": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 20,
+        "prediction_count": 20,
+        "required_evidence_total": 11,
+        "required_evidence_candidates": 11,
+        "required_evidence_selected": 11,
+        "selected_evidence_total": 100,
+        "selected_acceptable_total": 11,
+        "selected_forbidden_total": 9,
+        "candidate_forbidden_total": 9,
+        "traceable_selected_total": 100,
+        "status_correct": 11,
+        "sufficient_case_total": 11,
+        "sufficient_case_covered": 11
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 1.0,
+        "evidence_precision": 0.11,
+        "false_friend_admission_count": 9,
+        "candidate_false_friend_count": 9,
+        "traceability_rate": 1.0,
+        "status_accuracy": 0.55,
+        "required_need_coverage": 1.0
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": true,
+        "false_friend_zero_admission": false,
+        "traceability_100": true,
+        "evidence_precision_100": false,
+        "required_need_coverage_100": true,
+        "evidence_set_gate_ready": false
+      },
+      "cases": [
+        {
+          "case_id": "holdout-lorentz-positive-charge",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-0da542351f084b059f89b89a"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-negative-charge",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-parallel-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-0da542351f084b059f89b89a"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-right-hand-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-slanted-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-eef1ded86a99a91d252132b6"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-electric-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-eef1ded86a99a91d252132b6"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-sign-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-position-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-a4acafd42b4332c3ade8b8f8"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-minor-arc-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-specified-arc-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-velocity-angle-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-f77a25f68669afd927711788"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-dimension-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-symmetry-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-same-derivation-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-d1dc406ced943e167e2428f0"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-slider-boundary-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-path-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-drawing-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-4a36df71d3e05cc730ea9aae"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-meter-resistance-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-4a36df71d3e05cc730ea9aae"
+          ],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "evidence_agent": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 20,
+        "prediction_count": 20,
+        "required_evidence_total": 11,
+        "required_evidence_candidates": 11,
+        "required_evidence_selected": 9,
+        "selected_evidence_total": 9,
+        "selected_acceptable_total": 9,
+        "selected_forbidden_total": 0,
+        "candidate_forbidden_total": 9,
+        "traceable_selected_total": 9,
+        "status_correct": 17,
+        "sufficient_case_total": 11,
+        "sufficient_case_covered": 9
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 0.8182,
+        "evidence_precision": 1.0,
+        "false_friend_admission_count": 0,
+        "candidate_false_friend_count": 9,
+        "traceability_rate": 1.0,
+        "status_accuracy": 0.85,
+        "required_need_coverage": 0.8182
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": false,
+        "false_friend_zero_admission": true,
+        "traceability_100": true,
+        "evidence_precision_100": true,
+        "required_need_coverage_100": false,
+        "evidence_set_gate_ready": false
+      },
+      "cases": [
+        {
+          "case_id": "holdout-lorentz-positive-charge",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-negative-charge",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-parallel-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-lorentz-right-hand-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-slanted-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-radial-boundary-electric-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-sign-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [
+            "EU-a4acafd42b4332c3ade8b8f8"
+          ],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-angle-ledger-position-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "unavailable",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-minor-arc-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-specified-arc-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-chord-velocity-angle-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-dimension-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-symmetry-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-sanity-same-derivation-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-slider-boundary-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-path-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [
+            "EU-4a36df71d3e05cc730ea9aae"
+          ],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-drawing-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "holdout-circuit-meter-resistance-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "metric_deltas": {
+      "candidate_required_recall": 0.0,
+      "gold_evidence_retention": -0.1818,
+      "evidence_precision": 0.89,
+      "false_friend_admission_count": -9,
+      "traceability_rate": 0.0,
+      "status_accuracy": 0.3,
+      "required_need_coverage": -0.1818
+    },
+    "gates": {
+      "dataset_teacher_approved": true,
+      "independent_holdout_present": true,
+      "candidate_recall_non_regression": true,
+      "gold_retention_non_regression": false,
+      "status_accuracy_non_regression": true,
+      "false_friend_zero_admission": true,
+      "traceability_100": true,
+      "evidence_precision_100": true,
+      "eligible_for_production": false
+    }
+  },
+  "executions": [
+    {
+      "case_id": "holdout-lorentz-positive-charge",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4429,
+          "output_tokens": 14768,
+          "total_tokens": 19197
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":117682,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"6f261be0-0ef7-49a9-a3b2-237ea9d7ae94\",\"total_cost_usd\":0.41258599999999995,\"usage\":{\"input_tokens\":4429,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":14768,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "洛伦兹力方向判断只是局部步骤"
+          ],
+          "missing_facets": [
+            "分解平行与垂直磁场的速度",
+            "仅垂直分量参与圆周运动",
+            "平行分量保持不变",
+            "合成为螺旋运动"
+          ],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:只给受力方向口诀却替代完整运动方法"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-lorentz-negative-charge",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4260,
+          "output_tokens": 4432,
+          "total_tokens": 8692
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":33848,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"65d8fdd7-be32-48d4-891a-c18fbc7dc9e2\",\"total_cost_usd\":0.157926,\"usage\":{\"input_tokens\":4260,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4432,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-0da542351f084b059f89b89a"
+          ],
+          "covered_facets": [
+            "先按正电荷判断",
+            "负电荷方向反向",
+            "轨迹弯向复核"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-lorentz-parallel-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4163,
+          "output_tokens": 9623,
+          "total_tokens": 13786
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。N1 的候选池中仅 EU-0da542351f084b059f89b89a 通过 applicability 直接支持 required_facets 中的'速度与磁场夹角'，但未覆盖'洛伦兹力是否存在'；该证据的 applicability 要求'速度不与磁场平行'，与当前题条件冲突，condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":69157,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"31050aab-ea20-40f5-9c43-e4a13c54296e\",\"total_cost_usd\":0.281646,\"usage\":{\"input_tokens\":4163,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":9623,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "速度与磁场夹角"
+          ],
+          "missing_facets": [
+            "洛伦兹力是否存在"
+          ],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:速度与磁场平行"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-lorentz-right-hand-conflict",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4357,
+          "output_tokens": 4897,
+          "total_tokens": 9254
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。仅 EU-0da542351f084b059f89b89a 覆盖 N1 全部三个 required_facets；其余候选不覆盖任何 required_facet，未纳入 binding。condition_verdict=compatible，禁止冲突 absent。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":40332,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"c59cb099-d0f8-4373-944e-d60587b307bc\",\"total_cost_usd\":0.173496,\"usage\":{\"input_tokens\":4357,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4897,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-0da542351f084b059f89b89a"
+          ],
+          "covered_facets": [
+            "指出右手定则误用",
+            "先按正电荷使用左手定则",
+            "负电荷方向反向"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-radial-boundary-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4361,
+          "output_tokens": 5160,
+          "total_tokens": 9521
+        },
+        "changed_files": [],
+        "message": "N1 证据语义验收完成。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":37738,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"944b89d5-036a-42d8-8358-2473abdfc3b2\",\"total_cost_usd\":0.17144600000000002,\"usage\":{\"input_tokens\":4361,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":5160,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-eef1ded86a99a91d252132b6"
+          ],
+          "covered_facets": [
+            "圆形磁场边界",
+            "沿半径入射",
+            "速度偏转角等于半径圆心角"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-radial-boundary-slanted-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4557,
+          "output_tokens": 7484,
+          "total_tokens": 12041
+        },
+        "changed_files": [],
+        "message": "N1 的证据语义验收完成：唯一入选候选 EU-eef1ded86a99a91d252132b6 直接覆盖两个 required_facets；其 applicability 要求径向入射而当前题为非径向入射，故 condition_verdict=incompatible；其 exceptions 明确指出斜入射仍直接令两角相等为错误，与题目场景完全一致，forbidden_conflict 判 present；因证据的 exception 与题目做法直接矛盾，hard_conflict 一并报告。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "\"inputTokens\":3183,\"outputTokens\":129,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.019139999999999997,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"canonicalModel\":\"deepseek-v4-flash\",\"provider\":\"firstParty\"},\"Deepseek-v4-flash[1m]\":{\"inputTokens\":4557,\"outputTokens\":7484,\"cacheReadInputTokens\":3712,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.211741,\"contextWindow\":1000000,\"maxOutputTokens\":32000,\"canonicalModel\":\"deepseek-v4-flash["
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "入射方向条件",
+            "圆形边界几何关系"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "EU-eef1ded86a99a91d252132b6:证据的 exceptions 明确列出'斜入射仍直接令两角相等'为禁止错误，而当前题目场景描述'粒子斜着穿过圆形磁场边界，入射速度并不沿边界半径，却准备直接令速度偏转角等于两条边界半径的夹角'正好属于该例外情形，证据的正确用法与题目的错误做法直接冲突。",
+            "condition-incompatible",
+            "forbidden-conflict-present:斜入射仍直接令两角相等"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-radial-boundary-electric-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-d1dc406ced943e167e2428f0",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4662,
+          "output_tokens": 13434,
+          "total_tokens": 18096
+        },
+        "changed_files": [],
+        "message": "N1 证据语义验收完成：候选池 5 条中入选 2 条，全部 3 个 required_facets 均被覆盖。主证据 EU-eef1ded86a99a91d252132b6 直接陈述纯磁场径向边界角结论及其适用条件，并列出与当前题完全匹配的禁止冲突；辅助证据 EU-e2d5218e3eee60c0ad25fb24 从时间公式角度印证纯磁场定半径圆弧特征。当前题同时存在电场与磁场且速率变化，违反两条适用条件且禁止冲突 present，判定 condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "okens\":32000,\"canonicalModel\":\"deepseek-v4-flash[1m]\",\"provider\":\"firstParty\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"{\\\"status\\\":\\\"completed\\\",\\\"message\\\":\\\"N1 证据语义验收完成：候选池 5 条中入选 2 条，全部 3 个 required_facets 均被覆盖。主证据 EU-eef1ded86a99a91d252132b6 直接陈述纯磁场径向边界角结论及其适用条件，并列出与当前题完全匹配的禁止冲突；辅助证据 EU-e2d5218e3eee60c0ad25fb24 从时间公式角度印证纯磁场定半径圆弧特征。当前题同时存在电场与磁场且速率变化，违反"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "区域内受力类型",
+            "速率是否不变",
+            "轨迹是否为定半径圆弧"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "EU-eef1ded86a99a91d252132b6:电场与磁场同时做功时直接套用",
+            "condition-incompatible",
+            "forbidden-conflict-present:电场与磁场同时做功时直接套用"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-angle-ledger-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4367,
+          "output_tokens": 4144,
+          "total_tokens": 8511
+        },
+        "changed_files": [],
+        "message": "Need N1 的 required_facets 全部被 EU-a4acafd42b4332c3ade8b8f8 覆盖；其余候选均无法支持任意 required_facet，未纳入 binding。当前题条件与证据 applicability 完全匹配，condition_verdict=compatible；两条 forbidden_conflict 均 absent。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":39050,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"fa0ee26c-6955-4a12-af7a-c42301edd76f\",\"total_cost_usd\":0.16267600000000002,\"usage\":{\"input_tokens\":4367,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4144,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-a4acafd42b4332c3ade8b8f8"
+          ],
+          "covered_facets": [
+            "逐段方向角增量",
+            "统一正方向",
+            "按时间顺序累加"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-angle-ledger-sign-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4367,
+          "output_tokens": 6859,
+          "total_tokens": 11226
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":61373,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"bbc941bb-a67a-4d62-bc69-25b5fa659498\",\"total_cost_usd\":0.222696,\"usage\":{\"input_tokens\":4367,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":6859,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "统一角度正方向",
+            "带符号角增量",
+            "按时间顺序累计"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "EU-a4acafd42b4332c3ade8b8f8:证据异常项“中途更换角度正方向”与问题中待核对解答“中途改变角度正方向”的行为一致，使用该证据时需注意纠正此错误。"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-angle-ledger-position-conflict",
+      "status": "unavailable",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "failed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": "adapter_protocol_error",
+        "duration_seconds": null,
+        "usage": {},
+        "changed_files": [],
+        "message": "选定的 Agent provider 在修改文件前失败；为避免重复消耗推理预算，任务已安全停止。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "adapter_protocol_error",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":100487,\"num_turns\":2,\"stop_reason\":\"end_turn\",\"session_id\":\"61f7ac51-d58a-4cdc-bd1e-27da120a5a3a\",\"total_cost_usd\":0.337357,\"usage\":{\"input_tokens\":4368,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":11804,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"}"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "missing",
+          "evidence_ids": [],
+          "covered_facets": [],
+          "missing_facets": [
+            "速度方向角",
+            "位置极角",
+            "角度对象一致性"
+          ],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": "adapter_protocol_error"
+    },
+    {
+      "case_id": "holdout-chord-minor-arc-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4273,
+          "output_tokens": 4113,
+          "total_tokens": 8386
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。需要 N1 的全部 required_facets 均由 EU-f77a25f68669afd927711788 直接覆盖；该证据的适用条件与当前题条件一致，无冲突；禁止性冲突 '混淆速度偏转角与位置圆心角' 在当前题上下文中未出现，判为 absent。其余候选证据因适用条件不匹配（涉及磁场、复合场等当前纯几何题不包含的条件）未入选。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":39981,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"a22bf3ff-9a18-49a5-a1d0-ae404962ee33\",\"total_cost_usd\":0.15282099999999998,\"usage\":{\"input_tokens\":4273,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4113,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-f77a25f68669afd927711788"
+          ],
+          "covered_facets": [
+            "弦长",
+            "圆半径",
+            "较小圆心角",
+            "L=2r sin(θ/2)"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-chord-specified-arc-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 3715,
+          "output_tokens": 6058,
+          "total_tokens": 9773
+        },
+        "changed_files": [],
+        "message": "Evidence semantic verification completed for N1.",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":49593,\"num_turns\":2,\"stop_reason\":\"tool_use\",\"session_id\":\"e77b9875-ef06-4759-b08d-1bc487f56c25\",\"total_cost_usd\":0.19164,\"usage\":{\"input_tokens\":3715,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":6058,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"mode"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-f77a25f68669afd927711788"
+          ],
+          "covered_facets": [
+            "指定圆弧",
+            "对应圆心角",
+            "弦长公式"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-chord-velocity-angle-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 3741,
+          "output_tokens": 11132,
+          "total_tokens": 14873
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。Need N1 为 exception_check，当前题明确具有 forbidden_conflict，condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":94869,\"num_turns\":2,\"stop_reason\":\"tool_use\",\"session_id\":\"39040de3-73d7-44b0-9898-17cd026a5a30\",\"total_cost_usd\":0.3167,\"usage\":{\"input_tokens\":3741,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":11132,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"mode"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "位置圆心角",
+            "速度偏转角",
+            "角度对应关系"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:把速度偏转角与位置圆心角混淆后直接代入"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-sanity-dimension-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4254,
+          "output_tokens": 3230,
+          "total_tokens": 7484
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":27127,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"c5ffe596-84cb-4cc5-b4c5-7e377e883cc4\",\"total_cost_usd\":0.127247,\"usage\":{\"input_tokens\":4254,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":3230,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-d1dc406ced943e167e2428f0"
+          ],
+          "covered_facets": [
+            "单位正确",
+            "极端参数趋势",
+            "对称情形恢复熟悉结论"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-sanity-symmetry-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-d1dc406ced943e167e2428f0",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4245,
+          "output_tokens": 5598,
+          "total_tokens": 9843
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":45894,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"9f764f20-62bf-4327-8ac9-ff653b9d134e\",\"total_cost_usd\":0.181472,\"usage\":{\"input_tokens\":4245,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":5598,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-d1dc406ced943e167e2428f0"
+          ],
+          "covered_facets": [
+            "对称参数",
+            "恢复熟悉结论",
+            "独立于原推导"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-sanity-same-derivation-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4243,
+          "output_tokens": 5431,
+          "total_tokens": 9674
+        },
+        "changed_files": [],
+        "message": "语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":50218,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"4e984025-4f9d-4672-b56c-c38bd6e35400\",\"total_cost_usd\":0.180682,\"usage\":{\"input_tokens\":4243,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":5431,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "独立验证",
+            "量纲或极限检查",
+            "验证路径差异"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:只复算同一条推导当作独立验证"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-circuit-slider-boundary-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4175,
+          "output_tokens": 4182,
+          "total_tokens": 8357
+        },
+        "changed_files": [],
+        "message": "Evidence semantic validation completed for N1",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":34675,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"4c074bf3-398c-46c6-9e94-b0458b1ac53c\",\"total_cost_usd\":0.15489599999999998,\"usage\":{\"input_tokens\":4175,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4182,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-4a36df71d3e05cc730ea9aae"
+          ],
+          "covered_facets": [
+            "实际电流通路",
+            "滑片端点",
+            "短路或最大接入电阻"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "holdout-circuit-path-valid",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4299,
+          "output_tokens": 6098,
+          "total_tokens": 10397
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。仅 EU-4a36df71d3e05cc730ea9aae 覆盖了 required_facets 中的'实际电流通路'和'等效电路'，未覆盖'连接节点'。forbidden_conflict 未出现，condition_verdict=compatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":51218,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"57d1aa42-d965-4fb3-b389-d5d963f4aebe\",\"total_cost_usd\":0.197236,\"usage\":{\"input_tokens\":4299,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":6098,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "missing",
+          "evidence_ids": [],
+          "covered_facets": [
+            "实际电流通路",
+            "等效电路"
+          ],
+          "missing_facets": [
+            "连接节点"
+          ],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": "N1:missing"
+    },
+    {
+      "case_id": "holdout-circuit-drawing-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4a36df71d3e05cc730ea9aae"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4198,
+          "output_tokens": 7128,
+          "total_tokens": 11326
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":64825,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"59dc3869-2645-4518-a8ce-081546bd8e9c\",\"total_cost_usd\":0.234856,\"usage\":{\"input_tokens\":4198,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":7128,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "电流通路"
+          ],
+          "missing_facets": [
+            "实际连接节点",
+            "串并联判据"
+          ],
+          "hard_conflicts": [
+            "EU-4a36df71d3e05cc730ea9aae:候选 exceptions 列有'只按图形远近判断串并联'，而当前题解答正犯此错误，构成冲突。",
+            "condition-incompatible",
+            "forbidden-conflict-present:只按图形远近判断串并联"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "holdout-circuit-meter-resistance-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 3711,
+          "output_tokens": 5951,
+          "total_tokens": 9662
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":48542,\"num_turns\":2,\"stop_reason\":\"tool_use\",\"session_id\":\"1fbec3d2-d2d9-4c50-9014-e1c5d3204b57\",\"total_cost_usd\":0.18908999999999998,\"usage\":{\"input_tokens\":3711,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":5951,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"stan"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "电表内阻设定",
+            "元件模型",
+            "端点等效"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:忽略电表内阻设定"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    }
+  ]
+}

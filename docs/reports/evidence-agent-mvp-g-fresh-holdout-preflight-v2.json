@@ -1,0 +1,331 @@
+{
+  "schema": "wuli.evidence-holdout-preflight.v1",
+  "status": "passed",
+  "dataset_fingerprint": "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e",
+  "overlay_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869",
+  "case_count": 21,
+  "revealed_evidence_overlap": [],
+  "required_or_forbidden_target_top5_rate": 1.0,
+  "expected_status_counts": {
+    "sufficient": 16,
+    "insufficient": 5
+  },
+  "cases": [
+    {
+      "case_id": "fresh2-momentum-collision-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-4057ce0ba1a2b7e050192564"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-momentum-explosion-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-4057ce0ba1a2b7e050192564"
+      ],
+      "top5_candidate_ids": [
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-ac99d72f9d43905c375c4d52"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-momentum-boundary-conflict",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-4057ce0ba1a2b7e050192564"
+      ],
+      "top5_candidate_ids": [
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-lenz-field-increase-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-61c464cd60e41b4b9de52a73"
+      ],
+      "top5_candidate_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-lenz-area-decrease-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-61c464cd60e41b4b9de52a73"
+      ],
+      "top5_candidate_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-lenz-open-loop-conflict",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-61c464cd60e41b4b9de52a73"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-transformer-voltage-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-1f17981b20eb71570a5f2385"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-bcf841d2038df8417c913c32"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-transformer-current-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-1f17981b20eb71570a5f2385"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-transformer-loss-conflict",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-1f17981b20eb71570a5f2385"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-interference-coherent-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-0e469416091f17642b095b5d"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-interference-amplitude-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-0e469416091f17642b095b5d"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-0da542351f084b059f89b89a",
+        "EU-0e469416091f17642b095b5d",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-interference-frequency-conflict",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-0e469416091f17642b095b5d"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-relative-interior-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "top5_candidate_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-relative-endpoint-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-relative-acceleration-conflict",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "top5_candidate_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-satellite-speed-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-4e2db04917015f42e21f8de0"
+      ],
+      "top5_candidate_ids": [
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-satellite-period-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-4e2db04917015f42e21f8de0"
+      ],
+      "top5_candidate_ids": [
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-d1dc406ced943e167e2428f0",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-satellite-ellipse-conflict",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-4e2db04917015f42e21f8de0"
+      ],
+      "top5_candidate_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-photo-frequency-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-05e31fa12735f575bd819262"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-photo-intensity-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-05e31fa12735f575bd819262"
+      ],
+      "top5_candidate_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh2-photo-below-threshold-conflict",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-05e31fa12735f575bd819262"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-0da542351f084b059f89b89a",
+        "EU-0e469416091f17642b095b5d",
+        "EU-277d79cd61babffd9055b89c"
+      ],
+      "target_in_top5": true
+    }
+  ],
+  "live_provider_run": false
+}

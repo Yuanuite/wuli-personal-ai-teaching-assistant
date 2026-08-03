@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-08-02T12:10:00+08:00",
+  "dataset": "CPhO 2021 full year, questions 1-8",
+  "model": "deepseek-v4-flash-api",
+  "controlled_variables": {
+    "question_set_same": true,
+    "visual_facts_same": true,
+    "physical_kernel_contract_same": true,
+    "max_output_tokens": 5000,
+    "workers": 2,
+    "official_answer_sent_to_remote_provider": false
+  },
+  "disabled": {
+    "structural_success_count": 8,
+    "question_count": 8,
+    "median_seconds": 19.622,
+    "max_seconds": 26.198,
+    "strict_whole_question_verified_count": 0,
+    "strict_target_verified_count": 7,
+    "strict_target_count": 27
+  },
+  "enabled": {
+    "structural_success_count": 0,
+    "question_count": 8,
+    "median_failure_seconds": 47.305,
+    "max_failure_seconds": 51.305,
+    "completion_tokens_each": 5000,
+    "content_chars_each": 0,
+    "reasoning_chars_min": 15236,
+    "reasoning_chars_max": 22999,
+    "correctness_review_available": false,
+    "failure_type": "reasoning-consumed-output-budget-before-json"
+  },
+  "decision": {
+    "thinking_enabled_compatible_with_compact_contract": false,
+    "thinking_enabled_compatible_with_90s_production_sla": false,
+    "increase_token_limit_without_new_approval": false,
+    "repeat_failed_calls": false,
+    "recommended_mode_for_current_flash": "thinking-disabled-with-fail-closed-physical-gates"
+  }
+}

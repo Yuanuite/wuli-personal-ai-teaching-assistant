@@ -1,0 +1,81 @@
+{
+  "schema": "wuli.w3r-shadow-benchmark.v1",
+  "mode": "shadow",
+  "case_count": 2,
+  "cases": [
+    {
+      "case_id": "verified-multi-target",
+      "brief_fingerprint": "sha256:b323cfef0c8f694ffc74f5322bbd285f15bb5fe8450c9a09030c3e81c2ba4443",
+      "target_count": 2,
+      "paired_input_identical": true,
+      "baseline": {
+        "character_count": 219,
+        "section_count": 7,
+        "latex_block_count": 0
+      },
+      "candidate": {
+        "status": "completed",
+        "character_count": 931,
+        "section_count": 13,
+        "latex_block_count": 3,
+        "gate_status": "pass",
+        "metrics": {
+          "final_answer_fidelity": 1.0,
+          "claim_support_coverage": 1.0,
+          "condition_retention": 1.0,
+          "target_coverage": 1.0,
+          "latex_validity": 1.0,
+          "unsupported_claim_rate": 0.0
+        },
+        "violation_codes": [],
+        "render_attempts": 1,
+        "elapsed_seconds": 0.00442,
+        "model_call_count": 0,
+        "token_count": 0
+      },
+      "production_replaced": false
+    },
+    {
+      "case_id": "verified-condition-matrix",
+      "brief_fingerprint": "sha256:82e298f790c07899d4d163b4b4e09214300368f85c4f668ba8d0cef5c8412dbc",
+      "target_count": 1,
+      "paired_input_identical": true,
+      "baseline": {
+        "character_count": 129,
+        "section_count": 5,
+        "latex_block_count": 0
+      },
+      "candidate": {
+        "status": "completed",
+        "character_count": 770,
+        "section_count": 11,
+        "latex_block_count": 2,
+        "gate_status": "pass",
+        "metrics": {
+          "final_answer_fidelity": 1.0,
+          "claim_support_coverage": 1.0,
+          "condition_retention": 1.0,
+          "target_coverage": 1.0,
+          "latex_validity": 1.0,
+          "unsupported_claim_rate": 0.0
+        },
+        "violation_codes": [],
+        "render_attempts": 1,
+        "elapsed_seconds": 0.003256,
+        "model_call_count": 0,
+        "token_count": 0
+      },
+      "production_replaced": false
+    }
+  ],
+  "gates": {
+    "final_answer_fidelity_100": true,
+    "claim_support_coverage_100": true,
+    "condition_retention_100": true,
+    "target_coverage_100": true,
+    "latex_validity_100": true,
+    "unsupported_claim_rate_zero": true,
+    "shadow_candidate_eligible": true,
+    "production_default_eligible": false
+  }
+}

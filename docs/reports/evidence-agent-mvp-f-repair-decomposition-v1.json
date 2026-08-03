@@ -1,0 +1,376 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "修复 Evidence Agent 独立 holdout 暴露的契约、证据与 provider 协议缺口，同时保持历史 holdout 结论不可覆盖。",
+    "process_shape": "hybrid",
+    "epistemic_families": ["engineering", "empirical", "procedural"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "docs/reports/evidence-agent-mvp-e-holdout-paired-v1.json",
+      "student-error-library/evals/evidence-gold-holdout.json"
+    ],
+    "assumptions": [
+      "教师批准的 holdout 标签保持冻结",
+      "修复后的同批运行只能计作 replay"
+    ],
+    "constraints": [
+      "不改变生产检索或 W3 路由",
+      "不降低 100% facet coverage 与 false-friend zero-admission 门禁",
+      "不选择性覆盖原始 holdout 报告"
+    ],
+    "excluded_scope": [
+      "新增多路召回或 RRF",
+      "创建新的生产资格 holdout",
+      "W3 下游答案非退化评测"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "诊断对象不再被误判为证据适用性 hard conflict",
+      "success_criteria": ["显式 diagnostic target 可被纠错证据覆盖", "真实物理冲突仍失败关闭"],
+      "priority": "critical",
+      "required_evidence": ["contract-regression-tests"],
+      "approval": "system"
+    },
+    {
+      "id": "T2",
+      "description": "电路连接节点 facet 获得 A 级直接证据",
+      "success_criteria": ["新 Evidence Unit 明文包含同节点判据", "派生索引可召回新单元"],
+      "priority": "high",
+      "required_evidence": ["knowledge-store-rebuild-report", "retrieval-test"],
+      "approval": "domain-expert"
+    },
+    {
+      "id": "T3",
+      "description": "Claude 结构化 evidence.build 降低协议失配并保留失败关闭",
+      "success_criteria": ["低 effort 显式传递", "合法单对象或 fenced JSON 可解码", "非唯一或非法 JSON 仍拒绝"],
+      "priority": "high",
+      "required_evidence": ["gateway-regression-tests"],
+      "approval": "system"
+    },
+    {
+      "id": "T4",
+      "description": "修复验证不污染独立 holdout 历史结论",
+      "success_criteria": ["原报告保持不变", "replay 数据明确非 teacher-approved holdout", "生产门禁保持关闭"],
+      "priority": "critical",
+      "required_evidence": ["replay-report", "historical-integrity-test"],
+      "approval": "human-owner"
+    }
+  ],
+  "process_model": {
+    "kind": "stateful",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "独立 holdout 失败已冻结",
+        "state_in": ["teacher-approved-holdout", "single-live-report"],
+        "state_out": ["three-diagnosed-gaps"],
+        "invariants": ["历史报告不可覆盖"],
+        "entry_conditions": ["eligible_for_production=false"],
+        "exit_conditions": ["每个失败绑定一个责任层"]
+      },
+      {
+        "id": "P2",
+        "label": "隔离修复候选",
+        "state_in": ["three-diagnosed-gaps"],
+        "state_out": ["contract-v3-candidate", "curated-unit-candidate", "gateway-candidate"],
+        "invariants": ["生产路由不变"],
+        "entry_conditions": ["影响锥已限定"],
+        "exit_conditions": ["各自单元测试通过"]
+      },
+      {
+        "id": "P3",
+        "label": "非独立 replay 验证",
+        "state_in": ["validated-repair-candidates"],
+        "state_out": ["replay-diagnostic"],
+        "invariants": ["replay 不计入 fresh holdout"],
+        "entry_conditions": ["replay 数据显式降级为 draft/calibration"],
+        "exit_conditions": ["一次 replay 完成或失败"]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "repair-authorized",
+        "carried_state": ["frozen-failure-cases"],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "deterministic-tests-pass",
+        "carried_state": ["repair-fingerprints", "replay-dataset"],
+        "rollback_to": "P2"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "A1",
+      "verb": "classify",
+      "description": "把三条失败分别归因到契约、证据内容和 provider 协议",
+      "target_ids": ["T1", "T2", "T3", "T4"],
+      "process_node_ids": ["P1"],
+      "depends_on": [],
+      "input_artifacts": ["evidence-agent-mvp-e-holdout-paired-v1.json"],
+      "output_artifact": "three-gap-diagnosis",
+      "output_contract": "wuli.evidence-repair-diagnosis.v1",
+      "verifier_route": "report-case-trace-inspection",
+      "assigned_role": "failure-diagnostician",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A2",
+      "verb": "revise",
+      "description": "为 RetrievalNeed 增加显式 diagnostic target 并限定 hard conflict",
+      "target_ids": ["T1"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["three-gap-diagnosis", "reflection-v2-contract"],
+      "output_artifact": "reflection-v3-candidate",
+      "output_contract": "wuli.evidence-reflection.v3",
+      "verifier_route": "contract-unit-tests",
+      "assigned_role": "contract-engineer",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A3",
+      "verb": "author",
+      "description": "新增明确连接节点判据的 A 级电路 Evidence Unit",
+      "target_ids": ["T2"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["three-gap-diagnosis", "secondary-conclusions.json"],
+      "output_artifact": "circuit-node-evidence-unit",
+      "output_contract": "wuli.evidence-unit.v1",
+      "verifier_route": "knowledge-store-rebuild-and-query",
+      "assigned_role": "physics-evidence-curator",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A4",
+      "verb": "harden",
+      "description": "为 evidence.build 设置低 effort 并严格恢复单一 fenced JSON",
+      "target_ids": ["T3"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["three-gap-diagnosis", "agent-gateway-contract"],
+      "output_artifact": "gateway-protocol-candidate",
+      "output_contract": "wuli.gateway-structured-output.v1",
+      "verifier_route": "gateway-unit-tests",
+      "assigned_role": "provider-interface-engineer",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A5",
+      "verb": "build",
+      "description": "构建明确非独立的修复 replay 数据集",
+      "target_ids": ["T4"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A2", "A3", "A4"],
+      "input_artifacts": ["reflection-v3-candidate", "circuit-node-evidence-unit", "gateway-protocol-candidate"],
+      "output_artifact": "mvp-f-replay-dataset",
+      "output_contract": "wuli.evidence-gold-dataset.v1",
+      "verifier_route": "dataset-fingerprint-and-split-check",
+      "assigned_role": "evaluation-builder",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A6",
+      "verb": "test",
+      "description": "运行确定性回归并最多执行一次真实 replay",
+      "target_ids": ["T1", "T2", "T3", "T4"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A5"],
+      "input_artifacts": ["mvp-f-replay-dataset"],
+      "output_artifact": "mvp-f-replay-report",
+      "output_contract": "wuli.evidence-shadow-benchmark.v1",
+      "verifier_route": "paired-replay-gates",
+      "assigned_role": "evaluation-runner",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A7",
+      "verb": "aggregate",
+      "description": "更新 Work-Tree 并保留新的 fresh holdout 阻断项",
+      "target_ids": ["T4"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A6"],
+      "input_artifacts": ["mvp-f-replay-report", "original-holdout-report"],
+      "output_artifact": "mvp-f-repair-summary",
+      "output_contract": "wuli.evidence-repair-summary.v1",
+      "verifier_route": "documentation-and-gate-audit",
+      "assigned_role": "result-aggregator",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S1",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A2",
+      "artifact": "three-gap-diagnosis",
+      "contract": "wuli.evidence-repair-diagnosis.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when original holdout report fingerprint changes"
+    },
+    {
+      "id": "S2",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A3",
+      "artifact": "three-gap-diagnosis",
+      "contract": "wuli.evidence-repair-diagnosis.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when original holdout report fingerprint changes"
+    },
+    {
+      "id": "S3",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A4",
+      "artifact": "three-gap-diagnosis",
+      "contract": "wuli.evidence-repair-diagnosis.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when original holdout report fingerprint changes"
+    },
+    {
+      "id": "S4",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A5",
+      "artifact": "reflection-v3-candidate",
+      "contract": "wuli.evidence-reflection.v3",
+      "preconditions": ["A2 passed"],
+      "invalidation_rule": "Invalidate when RetrievalNeed or reflection contract changes"
+    },
+    {
+      "id": "S5",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A5",
+      "artifact": "circuit-node-evidence-unit",
+      "contract": "wuli.evidence-unit.v1",
+      "preconditions": ["A3 passed"],
+      "invalidation_rule": "Invalidate when curated source content hash changes"
+    },
+    {
+      "id": "S6",
+      "producer_task_id": "A4",
+      "consumer_task_id": "A5",
+      "artifact": "gateway-protocol-candidate",
+      "contract": "wuli.gateway-structured-output.v1",
+      "preconditions": ["A4 passed"],
+      "invalidation_rule": "Invalidate when provider command or decoder changes"
+    },
+    {
+      "id": "S7",
+      "producer_task_id": "A5",
+      "consumer_task_id": "A6",
+      "artifact": "mvp-f-replay-dataset",
+      "contract": "wuli.evidence-gold-dataset.v1",
+      "preconditions": ["A5 passed", "dataset is not teacher_approved holdout"],
+      "invalidation_rule": "Invalidate when any repair artifact fingerprint changes"
+    },
+    {
+      "id": "S8",
+      "producer_task_id": "A6",
+      "consumer_task_id": "A7",
+      "artifact": "mvp-f-replay-report",
+      "contract": "wuli.evidence-shadow-benchmark.v1",
+      "preconditions": ["A6 terminal"],
+      "invalidation_rule": "Invalidate when replay dataset or runtime contract changes"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": ["T1"],
+      "task_ids": ["A2", "A6"],
+      "claim": "纠错证据可覆盖 diagnostic target，真实禁用条件仍阻断",
+      "required_evidence": ["contract-regression-tests", "replay-case-result"],
+      "method": "构造同一证据分别用于诊断错误与违反适用前提的对照测试",
+      "decision_rule": "诊断 case covered 且真实冲突 case conflicted",
+      "defeaters": ["模型可自行声明 diagnostic target"],
+      "fallback": "provisional",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": ["T2"],
+      "task_ids": ["A3", "A6"],
+      "claim": "连接节点 facet 有直接 A 级证据且进入候选池",
+      "required_evidence": ["curated-source-line", "derived-unit", "candidate-pool"],
+      "method": "重建索引后按 source_section 查询并运行 Top-5 预检",
+      "decision_rule": "新单元存在、authority=A、目标 case Top-5 命中",
+      "defeaters": ["仅靠同义推断而无明文节点判据"],
+      "fallback": "failed",
+      "risk": "high"
+    },
+    {
+      "id": "V3",
+      "target_ids": ["T3"],
+      "task_ids": ["A4", "A6"],
+      "claim": "Claude 协议恢复不会接受含多个对象或额外主张的输出",
+      "required_evidence": ["decoder-positive-tests", "decoder-negative-tests", "command-test"],
+      "method": "测试 structured_output、纯 result JSON、单 fenced JSON、双对象和非法 JSON",
+      "decision_rule": "前三类合法输入通过，含糊或非法输入失败关闭",
+      "defeaters": ["宽松正则截取任意子串"],
+      "fallback": "failed",
+      "risk": "high"
+    },
+    {
+      "id": "V4",
+      "target_ids": ["T4"],
+      "task_ids": ["A5", "A6", "A7"],
+      "claim": "修复 replay 不改变原始 holdout 的生产结论",
+      "required_evidence": ["historical-report-hash", "replay-split", "production-gate"],
+      "method": "比较原报告指纹并检查 replay review_status/split/gates",
+      "decision_rule": "原报告不变且 replay eligible_for_production=false",
+      "defeaters": ["复用 teacher_approved holdout 标识"],
+      "fallback": "blocked",
+      "risk": "critical"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A1"], "parallel": false},
+      {"id": "W2", "task_ids": ["A2", "A3", "A4"], "parallel": true},
+      {"id": "W3", "task_ids": ["A5"], "parallel": false},
+      {"id": "W4", "task_ids": ["A6"], "parallel": false},
+      {"id": "W5", "task_ids": ["A7"], "parallel": false}
+    ],
+    "max_concurrency": 1,
+    "allocation_notes": ["用户未授权子 Agent；由当前执行者按独立影响锥顺序完成。"]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": ["retry-task", "revise-input", "invalidate-impact-cone", "mark-provisional", "stop"],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked"]
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3", "T4"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4"],
+    "acceptance_rule": "V1-V4 全部通过；replay 只证明修复回归，不打开生产门禁。",
+    "conflict_policy": "使用逐 case 决定性测试，不以多数票覆盖失败。",
+    "unresolved_policy": "保留 fresh holdout 与 W3 downstream 非退化为阻断项。",
+    "final_artifact": "mvp-f-repair-summary",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": [
+    "修复完成后仍需新的教师批准 fresh holdout",
+    "证据层通过后仍需 W3 下游答案非退化评测"
+  ]
+}

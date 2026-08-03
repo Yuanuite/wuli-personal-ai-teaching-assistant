@@ -1,0 +1,15 @@
+{
+  "report_digest": "sha256:9fb458c48583e129d949b8cf914f6edf291ee0d5219d205fd9772542a49f1c6e",
+  "paired_case_count": 2,
+  "teacher_reviewed_case_count": 0,
+  "fresh_holdout_case_count": 0,
+  "fresh_holdout_target_count": 0,
+  "final_answer_fidelity": 1.0,
+  "claim_support_coverage": 1.0,
+  "condition_retention": 1.0,
+  "target_coverage": 1.0,
+  "latex_validity": 1.0,
+  "unsupported_claim_rate": 0.0,
+  "teacher_readability_preference": 0.0,
+  "teacher_edit_rate_non_regression": false
+}

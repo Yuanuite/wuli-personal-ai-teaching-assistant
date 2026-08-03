@@ -1,0 +1,56 @@
+{
+  "schema": "wuli.evidence-repair-summary.v1",
+  "status": "passed",
+  "generated_at": "2026-07-31T00:11:29+08:00",
+  "source_holdout": {
+    "dataset_fingerprint": "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e",
+    "evidence_snapshot_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869",
+    "report": "docs/reports/evidence-agent-mvp-g-fresh-holdout-v2-paired-v1.json",
+    "historical_result": "failed",
+    "may_be_overwritten_by_replay": false
+  },
+  "repair": {
+    "gap": "corrective-warning-misclassified-as-current-condition-conflict",
+    "result": "closed_in_replay",
+    "contract": "wuli.evidence-reflection.v3",
+    "rule": "diagnostic_targets have corrective scope for every RetrievalNeed purpose; true forbidden present or uncertain remains fail-closed"
+  },
+  "verification": {
+    "deterministic_tests": {
+      "passed": 165,
+      "failed": 0
+    },
+    "replay_dataset": "teacher-console/tests/fixtures/evidence-agent/warning-scope-repair-replay-v1.json",
+    "replay_dataset_fingerprint": "sha256:255c6fed6ed9a558853bf303d8be3aa5c46d69e3708923f373934c01f8141744",
+    "replay_report": "docs/reports/evidence-agent-mvp-g2-warning-scope-repair-replay-v1.json",
+    "replay_case_count": 1,
+    "provider_completed": 1,
+    "provider_failed": 0,
+    "metrics": {
+      "candidate_required_recall": 1.0,
+      "gold_evidence_retention": 1.0,
+      "evidence_precision": 1.0,
+      "false_friend_admission_count": 0,
+      "traceability_rate": 1.0,
+      "status_accuracy": 1.0,
+      "required_need_coverage": 1.0
+    }
+  },
+  "gates": {
+    "replay_is_calibration_only": true,
+    "dataset_teacher_approved": false,
+    "independent_holdout_present": false,
+    "eligible_for_production": false
+  },
+  "unchanged_boundaries": {
+    "production_retrieval_changed": false,
+    "formal_knowledge_store_changed": false,
+    "w3_route_changed": false,
+    "rrf_added": false
+  },
+  "next_required_evidence": [
+    "third unrevealed fresh holdout",
+    "w3 downstream paired non-regression",
+    "complex-question gray route with rollback"
+  ]
+}

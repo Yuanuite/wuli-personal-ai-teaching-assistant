@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-08-02T03:40:00+08:00",
+  "dataset": "CPhO 2021 full year, questions 1-8",
+  "models": {
+    "visual": "mimo-v2.5-flash",
+    "solver": "deepseek-v4-flash-api"
+  },
+  "privacy": {
+    "official_answer_sent_to_remote_provider": false,
+    "candidate_frozen_before_local_review": true,
+    "answer_text_in_report": false
+  },
+  "source": {
+    "question_count": 8,
+    "existing_image_count": 8,
+    "redownload_needed_count": 0,
+    "mimo_gate_pass_count": 6,
+    "prior_human_source_review_fallback_count": 2
+  },
+  "latency_seconds": {
+    "measurement_note": "Per-question latest structurally successful Flash call plus its separately measured fresh MiMo extraction; not one uninterrupted batch.",
+    "flash_median": 6.952,
+    "flash_max": 15.478,
+    "mimo_median": 15.606,
+    "mimo_max": 24.467,
+    "combined_median": 24.444,
+    "combined_max": 30.808,
+    "under_90_seconds_count": 8
+  },
+  "stability": {
+    "uniform_full_year_first_pass_structural_success_count": 6,
+    "uniform_full_year_question_count": 8,
+    "bounded_contract_retest_success_count": 2,
+    "bounded_contract_retest_question_count": 2,
+    "all_questions_have_structurally_valid_frozen_candidate": true,
+    "observed_failure_modes": [
+      "final-answer-length-overflow",
+      "pathological-output-truncation"
+    ]
+  },
+  "correctness": {
+    "authority": "local official standard answer",
+    "strict_whole_question_correct_count": 0,
+    "strict_whole_question_count": 8,
+    "strict_whole_question_accuracy": 0.0,
+    "strict_target_correct_count": 2,
+    "strict_target_count": 27,
+    "strict_target_accuracy": 0.0741,
+    "questions": [
+      {"question": 1, "whole_question_correct": false, "reason_codes": ["OPTICAL_SURFACE_EQUATION_WRONG", "BEAM_RATIO_INCOMPLETE"]},
+      {"question": 2, "whole_question_correct": false, "reason_codes": ["FINAL_RELATION_INCONSISTENT", "PROCESS_STABILITY_WRONG", "HEAT_WRONG"]},
+      {"question": 3, "whole_question_correct": false, "reason_codes": ["COLLISION_MAP_COEFFICIENTS_WRONG"]},
+      {"question": 4, "whole_question_correct": false, "reason_codes": ["INTERACTION_ENERGY_MODEL_WRONG", "STABLE_ORIENTATION_WRONG", "EQUILIBRIUM_SCALING_WRONG"]},
+      {"question": 5, "whole_question_correct": false, "reason_codes": ["THERMAL_SPEED_MODEL_WRONG", "NUMERICAL_CHAIN_WRONG", "FIELD_PROFILE_SIGN_WRONG"]},
+      {"question": 6, "whole_question_correct": false, "reason_codes": ["MAGNETIC_FIELD_DIRECTION_DIMENSION_WRONG", "REACHABILITY_CONDITION_WRONG", "ROTATION_SUBPROBLEMS_UNRESOLVED"]},
+      {"question": 7, "whole_question_correct": false, "reason_codes": ["WHEEL_INERTIA_GEOMETRY_OMITTED", "EFFECTIVE_MASS_WRONG", "NUMERICAL_RESULT_INCONSISTENT"]},
+      {"question": 8, "whole_question_correct": false, "reason_codes": ["VELOCITY_SOLUTION_DIMENSION_WRONG", "NUMERICAL_ENERGY_EFFICIENCY_WRONG"]}
+    ]
+  },
+  "decision": {
+    "sla_met": true,
+    "structural_reliability_met": false,
+    "content_correctness_met": false,
+    "production_default_allowed": false,
+    "primary_bottleneck": "single-pass solver correctness, not image availability or teaching rendering"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema": "wuli.particle-field-baseline.v1",
+  "status": "passed",
+  "captured_at": "2026-08-02",
+  "scope": "A0",
+  "model_count": 12,
+  "legacy_model_types": [
+    "concentric-radial-multi-field",
+    "electric-to-bounded-magnetic",
+    "opposite-circular-magnetic",
+    "piecewise-field-particle-2d",
+    "piecewise-field-particle-3d",
+    "planar-magnetic-multi-particle"
+  ],
+  "source_fingerprints": {
+    ".claude/skills/build-physics-simulator/references/physics-model.schema.json": "e086395bb48ce17dd15efbd37d74c7244eda5a42007ac5753b3672cc3eef9af9",
+    ".claude/skills/build-physics-simulator/scripts/validate_physics_model.py": "e2d69d79c5d9db9494e72dea29b3512f598ed9a231b50ac2136b3f46a24402a9",
+    ".claude/skills/build-physics-simulator/scripts/build_simulator.py": "89d486fd3152e96d5bc79497482f3ef20b600dd637a31525314f6dacdb2a0845",
+    ".claude/skills/build-physics-simulator/assets/guided-charged-particle-template.html": "3a05751c7d04864d7b07480bca88b0dc2996e505734be943507319b750bc34ef",
+    ".claude/skills/build-physics-simulator/assets/field-trajectory-template.html": "fc0f7e4dbd24f454a28d7f7ed486dd154d148bfb83013904c0343b620d65675c",
+    ".claude/skills/build-physics-simulator/assets/planar-magnetic-template.html": "125af711e69a0cefce29f5aad6dabacac7e842fa64ab41fd18eeb45680985478",
+    ".claude/skills/build-physics-simulator/assets/piecewise-particle-2d-template.html": "0eced99a861686777777b69b9c9172fb1d1b2dcba39b8ab9f6679fc78c120b25",
+    ".claude/skills/build-physics-simulator/assets/piecewise-particle-3d-template.html": "21557a33c52730ec6546a873445a2e3297a0bc51436335695a94cbd52c9d258b",
+    "teacher-console/server.py": "8b555fdcbc5ab3a26eb0ebfc7f31c357f7399a1ae9b59b152aad4b636866ed3f",
+    "teacher-console/tests/test_static_contract.py": "0f12c39d68cfb514c392ad0b8e79d3739d686ceac7972d3cddccc3aaf1b6692f",
+    "teacher-console/tests/test_piecewise_particle_simulator.py": "6e9d503c657ef05ab86d2c6936875e2f92e4c8077450a0ebf2077de7bbf031d6",
+    "teacher-console/tests/test_piecewise_particle_3d_simulator.py": "a1c63a83fee62aec915b74c20cd8a7ef684140ca004f934da53b0bd6ceb8485c"
+  },
+  "model_fingerprints": {
+    "student-error-library/entries/20260717-带电粒子在同心圆复合场中的运动-e2b68d14/physics-model.json": "dea1805947971a6f4dccc2d74bb0dcd0bdc6cc7b15ca265c0c0cd6a06786e369",
+    "student-error-library/entries/20260719-1c51e11ccabc05dc7426a289d589330d-17002f79/physics-model.json": "3a4bfb07c37c6bacb9c9f8af6da0ce5dead9de40807aaa07730d28c920bfe432",
+    "student-error-library/entries/20260719-screenshot-2026-07-18-at-23-18-10-be559ead/physics-model.json": "e7de4b0f1bee1b3b3a7bff9e988b55689ded62f9b0c61bfe785edd9a4ea42573",
+    "student-error-library/entries/20260720-bcb60960ecc0f33af64aa7b44de0498d-ba675619/physics-model.json": "a0c58783c1b9518f2fc5c010522090c988c39fc2f04ad898e884e68587a8ab68",
+    "student-error-library/entries/20260722-7-22物理练习题-p1-4fdec96f/physics-model.json": "edeff6a349ccb1e44badbf6cfa153778cb1883ea15c7237292832f45a40030c9",
+    "student-error-library/entries/20260722-7-22物理练习题-p2-3be516e0/physics-model.json": "25863e7df7b660dc2d2d6a420a35193bde67d8128d99ad531e5aa5e9e8f35740",
+    "student-error-library/entries/20260722-7-22物理练习题-p3-f5a4ce56/physics-model.json": "085116b8e7f1edf078a277cbf4dabc68531a82ef5be683e19a44ae4e82da1d3c",
+    "student-error-library/entries/20260722-7-22物理练习题-p4-c37fe64e/physics-model.json": "8af26ae5d0c338f6af147243599526c9a670b48a0be5bbe48cb648dcdc9615f9",
+    "student-error-library/entries/20260722-7-22物理练习题-p5-4f1275b3/physics-model.json": "4301a60eca4ab5a62b06e6ff8b9d85d5367c084a4b345d3cd2bd8e2defdb43bd",
+    "student-error-library/entries/20260722-7-22物理练习题-p6-ff717b43/physics-model.json": "e54e0ba44bc6d866a75b00f5d8cc04e721554024fb30d400e8a80df9c05d8e67",
+    "student-error-library/entries/20260722-7-22物理练习题-p7-9490fbce/physics-model.json": "30ee9069b9b2396c070b55e8bb79430e3f11166e4188b6465f260021484fb1f9",
+    "student-error-library/entries/20260722-7-22物理练习题-p8-5924df18/physics-model.json": "2f96b2d7ff11c5f8baa4fc3b7104e391e55cf3815ec3aae84f5bf770f767b179"
+  },
+  "invariants": [
+    "旧六类 model_type 继续由现有 renderer 构建。",
+    "正式 physics-model.json 与批准记录不在实现任务允许路径内。",
+    "所有适配和十二题回放只写独立临时目录。",
+    "新类型失败时返回 unsupported，不使用流程图或自由曲线 fallback。"
+  ],
+  "invalidation_rule": "任一 source_fingerprints 或 model_fingerprints 值变化时，A1 及其下游候选必须停止并重新冻结基线。"
+}

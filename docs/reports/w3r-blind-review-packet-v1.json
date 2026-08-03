@@ -1,0 +1,48 @@
+{
+  "schema": "wuli.w3r-blind-review-packet.v1",
+  "blinded": true,
+  "review_sequence": [
+    "lock preferred_version and edit_required_versions from A/B only",
+    "open the separately held private key",
+    "check candidate Claim/span mappings and submit approval"
+  ],
+  "cases": [
+    {
+      "case_id": "verified-multi-target",
+      "versions": {
+        "A": "## 答案速览\n\n- （1）t=\\pi m/(qB)\n- （2）v_x>0 或 v_x<0 两个方向分支均需保留\n\n## 详细解答\n\n### 第 1 步\n\n粒子在匀强磁场中做匀速圆周运动。\n\n### 第 2 步\n\n首次返回同一边界对应半个回旋周期。\n\n### 第 3 步\n\n按初速度相对正方向分类检查圆心所在侧。\n\n### 第 4 步\n\nt=\\pi m/(qB)\n\n### 第 5 步\n\nv_x>0 或 v_x<0 两个方向分支均需保留\n",
+        "B": "## 答案速览\n\n- （1）t=\\pi m/(qB)\n- （2）v_x>0 或 v_x<0 两个方向分支均需保留\n\n## 一眼识别\n\n- **最短主线**：粒子在匀强磁场中做匀速圆周运动。 → 首次返回同一边界对应半个回旋周期。 → 按初速度相对正方向分类检查圆心所在侧。\n\n## 建模与符号\n\n- 本解答沿用题干符号：$m$、$q$、$B$、$t$、$v_x$。\n\n## 详细解答\n\n## 分阶段详细推导\n\n### 第 1 步\n\n**对应目标**：【q1】 【q2】\n\n粒子在匀强磁场中做匀速圆周运动。\n\n$$qvB=\\frac{mv^2}{R}$$\n- 成立条件：只受洛伦兹力\n\n### 第 2 步\n\n**对应目标**：【q1】\n\n首次返回同一边界对应半个回旋周期。\n\n$$t=\\frac{T}{2}$$\n- 成立条件：该事件是首次返回边界\n\n### 第 3 步\n\n**对应目标**：【q2】\n\n按初速度相对正方向分类检查圆心所在侧。\n- 成立条件：向右为正\n- 成立条件：排除 v_x=0 的退化情形\n\n### 第 4 步\n\n**对应目标**：【q1】\n\nt=\\pi m/(qB)\n\n$$t=\\frac{\\pi m}{qB}$$\n- 成立条件：q>0，且该事件是首次返回边界\n\n### 第 5 步\n\n**对应目标**：【q2】\n\nv_x>0 或 v_x<0 两个方向分支均需保留\n- 成立条件：向右为正\n- 成立条件：排除 v_x=0 的退化情形\n\n## 结果与适用条件\n\n- **q1**：t=\\pi m/(qB)\n  - 适用条件：只受洛伦兹力\n  - 适用条件：该事件是首次返回边界\n  - 适用条件：q>0，且该事件是首次返回边界\n- **q2**：v_x>0 或 v_x<0 两个方向分支均需保留\n  - 适用条件：只受洛伦兹力\n  - 适用条件：向右为正\n  - 适用条件：排除 v_x=0 的退化情形\n  - 完整性：以上已按题意枚举全部可行结果。\n\n## 易错点\n\n- **q1**：核对首次返回而非再次返回。\n- **q2**：核对向右为正并枚举全部方向。\n\n## 30 秒自测\n\n遮住答案后，能否沿最短主线复述每个目标的结论及适用条件？"
+      },
+      "target_ids": [
+        "q1",
+        "q2"
+      ],
+      "review_requirements": {
+        "preferred_version": "A, B, or tie",
+        "target_fidelity": "check every target_id",
+        "conditions_checked": true,
+        "claim_spans_checked_after_preference_lock": true,
+        "edit_required_versions": "subset of A and B",
+        "approved": true
+      }
+    },
+    {
+      "case_id": "verified-condition-matrix",
+      "versions": {
+        "A": "## 答案速览\n\n- （1）v=\\sqrt{2as}\n\n## 一眼识别\n\n- **最短主线**：在第一段内由静止释放条件建立运动关系。 → 在 x=0 的分段接口按同一时刻连接两段状态。 → v=\\sqrt{2as}\n\n## 建模与符号\n\n- 本解答沿用题干符号：$v$、$a$、$s$。\n\n## 详细解答\n\n## 分阶段详细推导\n\n### 第 1 步\n\n**对应目标**：【q1】\n\n在第一段内由静止释放条件建立运动关系。\n\n$$v^2=2as$$\n- 成立条件：仅适用于从静止释放后的第一段，不能外推为任意全过程关系\n- 成立条件：采用地面参考系，向上为正\n\n### 第 2 步\n\n**对应目标**：【q1】\n\n在 x=0 的分段接口按同一时刻连接两段状态。\n- 成立条件：x=0 为第一段与第二段的接口\n- 成立条件：该事件是首次进入第二段\n\n### 第 3 步\n\n**对应目标**：【q1】\n\nv=\\sqrt{2as}\n\n$$v=\\sqrt{2as}$$\n- 成立条件：速度单位为 m/s，量纲为 L/T\n- 成立条件：当 s→0 时 v→0\n\n## 结果与适用条件\n\n- **q1**：v=\\sqrt{2as}\n  - 适用条件：仅适用于从静止释放后的第一段，不能外推为任意全过程关系\n  - 适用条件：采用地面参考系，向上为正\n  - 适用条件：x=0 为第一段与第二段的接口\n  - 适用条件：该事件是首次进入第二段\n  - 适用条件：速度单位为 m/s，量纲为 L/T\n  - 适用条件：当 s→0 时 v→0\n\n## 易错点\n\n- **q1**：区分释放瞬时关系与全过程关系。\n- **q1**：核对分段接口、参考系、方向、单位与极限情况。\n\n## 30 秒自测\n\n遮住答案后，能否沿最短主线复述每个目标的结论及适用条件？",
+        "B": "## 答案速览\n\n- （1）v=\\sqrt{2as}\n\n## 详细解答\n\n### 第 1 步\n\n在第一段内由静止释放条件建立运动关系。\n\n### 第 2 步\n\n在 x=0 的分段接口按同一时刻连接两段状态。\n\n### 第 3 步\n\nv=\\sqrt{2as}\n"
+      },
+      "target_ids": [
+        "q1"
+      ],
+      "review_requirements": {
+        "preferred_version": "A, B, or tie",
+        "target_fidelity": "check every target_id",
+        "conditions_checked": true,
+        "claim_spans_checked_after_preference_lock": true,
+        "edit_required_versions": "subset of A and B",
+        "approved": true
+      }
+    }
+  ]
+}

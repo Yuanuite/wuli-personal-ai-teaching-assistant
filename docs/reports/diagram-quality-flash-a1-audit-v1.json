@@ -1,0 +1,60 @@
+{
+  "schema": "wuli.diagram-quality-audit.v1",
+  "status": "failed",
+  "work_tree": "docs/visual-diagram-quality-improvement-work-tree.v1.json",
+  "baseline": "docs/reports/diagram-quality-baseline-v1.json",
+  "failed_task": "A1",
+  "decision": "reject-and-stop-impact-cone",
+  "attempts": [
+    {
+      "id": "A1-attempt-1",
+      "provider_model": "deepseek-v4-flash-api",
+      "transport_status": "completed",
+      "audit_status": "rejected",
+      "reasons": [
+        "补丁虚构了当前代码中不存在的 PathPrimitive、PathKind 和 GeometryType",
+        "unified diff 的上下文无法应用到真实 physics_diagram.py",
+        "违反最小影响锥和真实接口约束"
+      ]
+    },
+    {
+      "id": "A1-attempt-2",
+      "provider_model": "deepseek-v4-flash-api",
+      "transport_status": "candidate_no_change",
+      "audit_status": "rejected",
+      "reasons": [
+        "返回内容与第一次不可应用补丁相同",
+        "触发 no-progress fuse"
+      ]
+    },
+    {
+      "id": "A1R-global-round-2",
+      "provider_model": "deepseek-v4-flash-api",
+      "transport_status": "candidate_no_change",
+      "audit_status": "rejected",
+      "reasons": [
+        "缩小到真实 SCENE_OUTPUT_SCHEMA 与 normalize_scene 锚点后仍未形成候选工件",
+        "达到 max_global_rounds=2"
+      ]
+    }
+  ],
+  "accepted_findings": [
+    "物理用途 kind 与几何类型 geometry 应分离",
+    "circular-arc 应由起点、弧上点、终点和尺度无关退化判据约束",
+    "几何合同必须先于渲染器修改"
+  ],
+  "rejected_artifacts": [
+    "/private/tmp/wuli-flash-diagram-quality-a1-20260801/flash-proposal.json"
+  ],
+  "canonical_changes_applied": [],
+  "downstream_tasks": {
+    "A2": "not-run",
+    "A3": "not-run",
+    "A4": "not-run",
+    "A5": "not-run",
+    "A6": "not-run",
+    "A7": "not-run"
+  },
+  "safety_result": "No rejected Flash patch was applied to canonical source.",
+  "smallest_next_probe": "建立 wuli.flash-anchored-edit.v1，以真实 anchor_before/anchor_after/replacement 取代自由 unified diff，并作为新的 Work-Tree 版本重新授权执行。"
+}

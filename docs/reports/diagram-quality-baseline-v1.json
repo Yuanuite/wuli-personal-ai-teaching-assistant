@@ -1,0 +1,30 @@
+{
+  "schema": "wuli.diagram-quality-baseline.v1",
+  "status": "passed",
+  "recorded_at": "2026-08-01",
+  "source_fingerprints": {
+    "physics_diagram.py": "sha256:0b336fcecea5515dac930e4394012b35a552860d949b590fd0b30060bf35c9fe",
+    "test_physics_diagram.py": "sha256:21f4bdb1be298d37e0b7a4ba89b6c1554537aa3e98018531fe88556ee000501b"
+  },
+  "cases": [
+    {
+      "entry_id": "20260722-7-22物理练习题-p1-4fdec96f",
+      "scene_fingerprint": "sha256:faf72c27fb12b8eef1de96920266aa72667ee418ef06b18dee30af30bc955b08",
+      "png_fingerprint": "sha256:9551009adf3c1477a943e07bf864c2ab763fe02047e36bb0c1dcfa449aebfad6",
+      "human_scores": {"readability": 6.5, "teaching_help": 7.0, "aesthetics": 5.5, "overall": 6.3},
+      "defects": ["圆周轨迹仍由一般平滑路径近似", "极板交界附近标签拥挤", "场纹理视觉权重偏高"]
+    },
+    {
+      "entry_id": "20260722-7-22物理练习题-p2-3be516e0",
+      "scene_fingerprint": "sha256:4cf221667a36e5abf41a57ae34208394304eceb4f8f29aae5989e8b641382a99",
+      "png_fingerprint": "sha256:8b00b088a283df648f8544c6b70e3978ad62759f3de3444da533078b4d364e7f",
+      "human_scores": {"readability": 6.0, "teaching_help": 5.5, "aesthetics": 5.5, "overall": 5.7},
+      "defects": ["三维运动主要仍以二维投影表达", "B-t 与 E-t 周期信息没有形成清晰视觉对应", "箭头和标签局部争抢注意力"]
+    }
+  ],
+  "invariants": [
+    "默认链路不调用 logic-flowchart",
+    "MiMo facts 与 DeepSeek scene 身份均进入 provenance",
+    "正式知识库不被回放测试覆盖"
+  ]
+}

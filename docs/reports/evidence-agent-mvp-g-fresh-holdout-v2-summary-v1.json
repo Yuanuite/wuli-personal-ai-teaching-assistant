@@ -1,0 +1,71 @@
+{
+  "schema": "wuli.evidence-fresh-holdout-summary.v1",
+  "status": "failed",
+  "generated_at": "2026-07-31T00:01:21+08:00",
+  "approval": {
+    "dataset": "student-error-library/evals/evidence-gold-holdout-v2.json",
+    "review": "student-error-library/evals/evidence-gold-holdout-v2-review.json",
+    "overlay": "student-error-library/evals/evidence-gold-holdout-v2-overlay.json",
+    "dataset_fingerprint": "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e",
+    "evidence_snapshot_fingerprint": "sha256:91e2b444a069eac84a2f25dd653781f11ca03935d88092183dd57524868be869",
+    "teacher_approved_cases": 21,
+    "teacher_approved_evidence_units": 7
+  },
+  "live_paired": {
+    "report": "docs/reports/evidence-agent-mvp-g-fresh-holdout-v2-paired-v1.json",
+    "run_policy": "single_frozen_run_no_selective_retry",
+    "case_count": 21,
+    "provider_completed": 21,
+    "provider_failed": 0,
+    "baseline_metrics": {
+      "candidate_required_recall": 1.0,
+      "gold_evidence_retention": 1.0,
+      "evidence_precision": 0.1524,
+      "false_friend_admission_count": 5,
+      "traceability_rate": 1.0,
+      "status_accuracy": 0.7619,
+      "required_need_coverage": 1.0
+    },
+    "evidence_agent_metrics": {
+      "candidate_required_recall": 1.0,
+      "gold_evidence_retention": 0.9375,
+      "evidence_precision": 1.0,
+      "false_friend_admission_count": 0,
+      "traceability_rate": 1.0,
+      "status_accuracy": 0.9524,
+      "required_need_coverage": 0.9375
+    }
+  },
+  "failure": {
+    "case_id": "fresh2-relative-endpoint-valid",
+    "expected_status": "sufficient",
+    "predicted_status": "insufficient",
+    "missing_required_evidence_id": "EU-9bf2d5d1e1066b1b510c0a31",
+    "observed_hard_conflict": "forbidden-conflict-uncertain:求得的垂直时刻不在区间内却不检查端点",
+    "diagnosis": "The reflection treated a warning about failing to check interval endpoints as a conflict with a question that explicitly asks how to check the endpoints.",
+    "failure_class": "corrective-warning-misclassified-as-current-condition-conflict"
+  },
+  "gates": {
+    "dataset_teacher_approved": true,
+    "independent_holdout_present": true,
+    "candidate_recall_non_regression": true,
+    "gold_retention_non_regression": false,
+    "status_accuracy_non_regression": true,
+    "false_friend_zero_admission": true,
+    "traceability_100": true,
+    "evidence_precision_100": true,
+    "eligible_for_production": false
+  },
+  "constraints": {
+    "report_may_be_overwritten": false,
+    "same_holdout_may_be_rerun_for_production_evidence": false,
+    "production_route_changed": false,
+    "formal_knowledge_store_changed": false
+  },
+  "next_required_evidence": [
+    "bounded repair for corrective-warning conflict classification",
+    "repair replay marked calibration-only",
+    "third unrevealed fresh holdout",
+    "w3 downstream paired non-regression"
+  ]
+}

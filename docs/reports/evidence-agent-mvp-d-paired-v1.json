@@ -1,0 +1,682 @@
+{
+  "schema": "wuli.evidence-shadow-benchmark.v1",
+  "data_scope": {
+    "model_visible_source_kinds": [
+      "curated_technique"
+    ],
+    "student_entry_evidence_sent": false,
+    "raw_source_assets_sent": false,
+    "provider_data_locality": "provider-dependent",
+    "provider_dependent_data_acknowledged": true
+  },
+  "candidate_policy": "single-route-bypass",
+  "top_k": 5,
+  "paired": {
+    "schema": "wuli.evidence-paired-gold-report.v1",
+    "dataset": {
+      "dataset_id": "wuli-evidence-curated-calibration",
+      "dataset_version": "2026-07-30-v1",
+      "dataset_fingerprint": "sha256:13f95f9534387a02bd1e9e17c981a788d8c7498f01079e39297797b3d2fe429f",
+      "review_status": "teacher_approved",
+      "case_count": 8
+    },
+    "baseline": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 8,
+        "prediction_count": 8,
+        "required_evidence_total": 6,
+        "required_evidence_candidates": 6,
+        "required_evidence_selected": 6,
+        "selected_evidence_total": 40,
+        "selected_acceptable_total": 6,
+        "selected_forbidden_total": 2,
+        "candidate_forbidden_total": 2,
+        "traceable_selected_total": 40,
+        "status_correct": 6,
+        "sufficient_case_total": 6,
+        "sufficient_case_covered": 6
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 1.0,
+        "evidence_precision": 0.15,
+        "false_friend_admission_count": 2,
+        "candidate_false_friend_count": 2,
+        "traceability_rate": 1.0,
+        "status_accuracy": 0.75,
+        "required_need_coverage": 1.0
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": true,
+        "false_friend_zero_admission": false,
+        "traceability_100": true,
+        "evidence_precision_100": false,
+        "required_need_coverage_100": true,
+        "evidence_set_gate_ready": false
+      },
+      "cases": [
+        {
+          "case_id": "curated-velocity-selector-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-velocity-selector-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-277d79cd61babffd9055b89c"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-magnetic-arc-time-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-magnetic-arc-time-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-e2d5218e3eee60c0ad25fb24"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-field-work-sign",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-graph-dimension-check",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-deadline-before-entry",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-projectile-common-time",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "evidence_agent": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 8,
+        "prediction_count": 8,
+        "required_evidence_total": 6,
+        "required_evidence_candidates": 6,
+        "required_evidence_selected": 6,
+        "selected_evidence_total": 6,
+        "selected_acceptable_total": 6,
+        "selected_forbidden_total": 0,
+        "candidate_forbidden_total": 2,
+        "traceable_selected_total": 6,
+        "status_correct": 8,
+        "sufficient_case_total": 6,
+        "sufficient_case_covered": 6
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 1.0,
+        "evidence_precision": 1.0,
+        "false_friend_admission_count": 0,
+        "candidate_false_friend_count": 2,
+        "traceability_rate": 1.0,
+        "status_accuracy": 1.0,
+        "required_need_coverage": 1.0
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": true,
+        "false_friend_zero_admission": true,
+        "traceability_100": true,
+        "evidence_precision_100": true,
+        "required_need_coverage_100": true,
+        "evidence_set_gate_ready": true
+      },
+      "cases": [
+        {
+          "case_id": "curated-velocity-selector-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-velocity-selector-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-magnetic-arc-time-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-magnetic-arc-time-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-field-work-sign",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-graph-dimension-check",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-deadline-before-entry",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "curated-projectile-common-time",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "metric_deltas": {
+      "candidate_required_recall": 0.0,
+      "gold_evidence_retention": 0.0,
+      "evidence_precision": 0.85,
+      "false_friend_admission_count": -2,
+      "traceability_rate": 0.0,
+      "status_accuracy": 0.25,
+      "required_need_coverage": 0.0
+    },
+    "gates": {
+      "dataset_teacher_approved": true,
+      "independent_holdout_present": false,
+      "candidate_recall_non_regression": true,
+      "gold_retention_non_regression": true,
+      "status_accuracy_non_regression": true,
+      "false_friend_zero_admission": true,
+      "traceability_100": true,
+      "evidence_precision_100": true,
+      "eligible_for_production": false
+    }
+  },
+  "executions": [
+    {
+      "case_id": "curated-velocity-selector-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-931521d992cb01e737e183a2",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4475,
+          "output_tokens": 6226,
+          "total_tokens": 10701
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。Need N1 的三项 required_facets 均由 EU-277d79cd61babffd9055b89c 直接覆盖；其余四项候选不覆盖任何 required_facet，不予绑定。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":51151,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"2bb74d14-bb1d-4652-af14-43f4301ccc9f\",\"total_cost_usd\":0.203496,\"usage\":{\"input_tokens\":4475,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":6226,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-277d79cd61babffd9055b89c"
+          ],
+          "covered_facets": [
+            "电场力与洛伦兹力反向",
+            "两力大小相等",
+            "匀速直线通过"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "curated-velocity-selector-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4392,
+          "output_tokens": 6446,
+          "total_tokens": 10838
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成，详见 coverage 逐项报告。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":58201,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"ebc8cbbd-65a4-4e3b-b09c-7f496df3ee19\",\"total_cost_usd\":0.214871,\"usage\":{\"input_tokens\":4392,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":6446,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "速度选择器平衡条件",
+            "受力方向兼容"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:电场力与洛伦兹力同向",
+            "explicit-current-problem-conflict:电场力与洛伦兹力同向"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "curated-magnetic-arc-time-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4262,
+          "output_tokens": 5869,
+          "total_tokens": 10131
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成：N1 的三项 required_facets 均由 EU-e2d5218e3eee60c0ad25fb24 直接支持，无硬冲突，条件兼容，禁止冲突 absent。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":49214,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"56fb958e-7b6c-46eb-82c0-03bb3bf61e0e\",\"total_cost_usd\":0.193106,\"usage\":{\"input_tokens\":4262,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":5869,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-e2d5218e3eee60c0ad25fb24"
+          ],
+          "covered_facets": [
+            "圆弧时间公式",
+            "偏转角使用弧度",
+            "区域内只有匀强磁场"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "curated-magnetic-arc-time-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4241,
+          "output_tokens": 7103,
+          "total_tokens": 11344
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。Need N1 (不同 B 区域的圆弧时间能否使用单一 B 合并) 仅候选 EU-e2d5218e3eee60c0ad25fb24 直接支持 required_facet「不同 B 的时间计算边界」，其例外项明确警告禁止跨越不同 B 合并圆弧计算，与题目条件冲突，故 condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":60122,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"32aed045-d89e-43a7-a36f-ca9b2577bcbe\",\"total_cost_usd\":0.227306,\"usage\":{\"input_tokens\":4241,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":7103,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "不同 B 的时间计算边界"
+          ],
+          "missing_facets": [
+            "分段磁场条件"
+          ],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:跨越不同 B 的圆弧合并计算"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "curated-field-work-sign",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2",
+        "EU-e2d5218e3eee60c0ad25fb24"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4309,
+          "output_tokens": 4335,
+          "total_tokens": 8644
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。Need N1 所需三个 facet 均由 EU-931521 直接支持，其余四篇候选均不覆盖任何 required_facets。条件兼容、禁止冲突不存在，验收通过。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":34234,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"56b0de91-5d55-4e27-85e6-380e7de1eb3d\",\"total_cost_usd\":0.149597,\"usage\":{\"input_tokens\":4309,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":4335,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-931521d992cb01e737e183a2"
+          ],
+          "covered_facets": [
+            "ΔEk=qU_ab",
+            "U_ab=φa−φb",
+            "保留 q 的符号"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "curated-graph-dimension-check",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-931521d992cb01e737e183a2",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4271,
+          "output_tokens": 4614,
+          "total_tokens": 8885
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。候选池中仅 EU-3a78ff1e58a1b5f7727e7e56 直接覆盖 N1 的全部三个 required_facets，其余候选与斜率和面积物理意义核对无关。条件兼容，禁止冲突不存在。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":36363,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"734d56b0-fff9-4f45-9286-51e66cb5e159\",\"total_cost_usd\":0.161742,\"usage\":{\"input_tokens\":4271,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3584,\"output_tokens\":4614,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-3a78ff1e58a1b5f7727e7e56"
+          ],
+          "covered_facets": [
+            "斜率量纲",
+            "面积量纲",
+            "坐标轴定义"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "curated-deadline-before-entry",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4921,
+          "output_tokens": 6308,
+          "total_tokens": 11229
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。N1的3个required facets均由EU-001直接覆盖，条件兼容，无已入选证据间的硬冲突，forbidden conflict absent。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":49852,\"num_turns\":4,\"stop_reason\":\"tool_use\",\"session_id\":\"ef14cee0-6ea0-4981-b840-58209ffe02e4\",\"total_cost_usd\":0.21055000000000001,\"usage\":{\"input_tokens\":4921,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":7680,\"output_tokens\":6308,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-001becd1895a4e7c37e1fa59"
+          ],
+          "covered_facets": [
+            "截止事件",
+            "从初始时刻开始",
+            "逐事件检查首次命中"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "curated-projectile-common-time",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4052,
+          "output_tokens": 4745,
+          "total_tokens": 8797
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":37737,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"094e618f-8166-45f9-9e91-15994709d598\",\"total_cost_usd\":0.166196,\"usage\":{\"input_tokens\":4052,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4745,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-ac99d72f9d43905c375c4d52"
+          ],
+          "covered_facets": [
+            "共同时间参数",
+            "优先在信息充分的轴求时间",
+            "代入另一轴"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    }
+  ]
+}

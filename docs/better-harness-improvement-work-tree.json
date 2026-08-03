@@ -1,0 +1,3405 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "provisional",
+  "problem_profile": {
+    "summary": "Execute and verify the Better Harness improvement plan without losing dirty work, weakening quality gates, breaking trace continuity, duplicating dependency truth, or drifting Skill content.",
+    "process_shape": "hybrid",
+    "epistemic_families": [
+      "engineering",
+      "procedural",
+      "normative"
+    ],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "docs/better-harness-improvement-plan.md",
+      ".qoder/better-harness/2026-08-03/182513-zhangxinqi/findings.json",
+      "docs/architecture-governance.md",
+      "docs/ai-editing-map.md",
+      "CLAUDE.md",
+      "graphify-out/graph.json",
+      "current repository and CI state"
+    ],
+    "assumptions": [
+      "The repository remains a script-oriented application unless DG-03 explicitly changes that intent.",
+      "Python 3.9 compatibility remains the minimum during this program unless DG-02 explicitly approves an uplift.",
+      "No student-private data may be committed or logged.",
+      "Remote GitHub mutation requires explicit user authorization."
+    ],
+    "constraints": [
+      "Use one dependency source of truth.",
+      "Do not weaken Ruff or mypy merely to make CI green.",
+      "Do not alter approval, publication, Agent Gateway, or canonical-answer trust boundaries.",
+      "Use isolated temporary libraries for E2E and smoke tests.",
+      "Keep recovery artifacts until at least one week after owner acceptance."
+    ],
+    "excluded_scope": [
+      "Physics answer or simulation changes",
+      "Automatic publication or GitHub push",
+      "Business-contract refactors",
+      "Guaranteed Learning Capture score increase from a single episode"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "The execution baseline and human decisions are current, fingerprinted, and auditable.",
+      "success_criteria": [
+        "Authoritative inputs, tools, HEAD, and findings are re-fingerprinted",
+        "All critical decision gates have an explicit owner decision"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "B00-input-fingerprints",
+        "B02-finding-audit",
+        "B03-decision-register"
+      ],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T2",
+      "description": "All approved dirty work and implementation changes have verified recovery boundaries and logical commits.",
+      "success_criteria": [
+        "Approved working-tree bytes can be recovered",
+        "Each logical group is independently revertible",
+        "No unexplained dirty path remains"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "R11-recovery-checkpoint",
+        "R19-recovery-acceptance",
+        "C83-final-git-state"
+      ],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T3",
+      "description": "Ruff and mypy are zero locally and mandatory in CI.",
+      "success_criteria": [
+        "Full Ruff exits zero",
+        "Full mypy exits zero",
+        "CI clean passes and lint/type canaries fail"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "Q29-quality-zero",
+        "I70-ci-gate-report",
+        "I71-ci-canary"
+      ],
+      "approval": "system"
+    },
+    {
+      "id": "T4",
+      "description": "The six W3 and correctness modules emit privacy-safe trace-linked diagnostic events.",
+      "success_criteria": [
+        "Named child logging formats correctly",
+        "Trace crosses thread-pool boundaries without leaking",
+        "A fake W3 run has one complete trace",
+        "Privacy sentinel never appears"
+      ],
+      "priority": "high",
+      "required_evidence": [
+        "O39-observability-test-report",
+        "O40-w3-trace-smoke"
+      ],
+      "approval": "system"
+    },
+    {
+      "id": "T5",
+      "description": "A clean environment installs one Python dependency source of truth and can run the application and tools.",
+      "success_criteria": [
+        "Dependency inventory covers every third-party import",
+        "Fresh venv install and smoke suite pass",
+        "CI contains no second hand-maintained package list"
+      ],
+      "priority": "high",
+      "required_evidence": [
+        "D50-dependency-ledger",
+        "D53-clean-venv-report",
+        "I70-ci-gate-report"
+      ],
+      "approval": "system"
+    },
+    {
+      "id": "T6",
+      "description": "Qoder discovers the approved Skills while Claude, Codex, and Qoder share canonical content.",
+      "success_criteria": [
+        "Qoder reports at least eight Skills",
+        "Two representative Skills trigger",
+        "All consumer hashes match the canonical source"
+      ],
+      "priority": "medium",
+      "required_evidence": [
+        "S62-skill-discovery-report"
+      ],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T7",
+      "description": "The change history and Better Harness evidence are comparable across logical episodes.",
+      "success_criteria": [
+        "Logical commits and test evidence are linked",
+        "A same-condition closure comparison exists",
+        "Learning Capture remains provisional until two episodes exist"
+      ],
+      "priority": "medium",
+      "required_evidence": [
+        "C83-final-git-state",
+        "better-harness-closure-v1"
+      ],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T8",
+      "description": "The integrated project preserves behavior, privacy, architecture boundaries, and graph health.",
+      "success_criteria": [
+        "Full unit and isolated E2E suites pass",
+        "Privacy and logging tests pass",
+        "Graphify health is recorded",
+        "No production library or publication artifact changes"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "I73-full-regression",
+        "I74-graphify-health",
+        "I76-owner-acceptance"
+      ],
+      "approval": "human-owner"
+    }
+  ],
+  "process_model": {
+    "kind": "hybrid",
+    "nodes": [
+      {
+        "id": "P0",
+        "label": "Unbounded workspace",
+        "state_in": [
+          "provided-plan",
+          "dirty-worktree"
+        ],
+        "state_out": [
+          "fingerprinted-inputs"
+        ],
+        "invariants": [
+          "No mutation before snapshot"
+        ],
+        "entry_conditions": [
+          "Repository readable"
+        ],
+        "exit_conditions": [
+          "B00 and B01 passed"
+        ]
+      },
+      {
+        "id": "P1",
+        "label": "Frozen baseline",
+        "state_in": [
+          "fingerprinted-inputs"
+        ],
+        "state_out": [
+          "approved-decisions",
+          "preservation-ledger"
+        ],
+        "invariants": [
+          "Input drift invalidates audit"
+        ],
+        "entry_conditions": [
+          "Finding audit complete"
+        ],
+        "exit_conditions": [
+          "Critical decisions approved"
+        ]
+      },
+      {
+        "id": "P2",
+        "label": "Recoverable repository",
+        "state_in": [
+          "approved-decisions",
+          "dirty-worktree"
+        ],
+        "state_out": [
+          "recovery-checkpoint",
+          "logical-baseline-commits"
+        ],
+        "invariants": [
+          "No approved byte lost",
+          "No sensitive byte committed"
+        ],
+        "entry_conditions": [
+          "Preservation ledger complete"
+        ],
+        "exit_conditions": [
+          "Recovery drill passed"
+        ]
+      },
+      {
+        "id": "P3",
+        "label": "Repaired components",
+        "state_in": [
+          "recoverable-repository"
+        ],
+        "state_out": [
+          "logging-contract",
+          "dependency-spec",
+          "skill-registration",
+          "mypy-partitions"
+        ],
+        "invariants": [
+          "Business contracts unchanged",
+          "Privacy blacklist enforced"
+        ],
+        "entry_conditions": [
+          "R19 passed"
+        ],
+        "exit_conditions": [
+          "Component verifiers pass"
+        ]
+      },
+      {
+        "id": "P4",
+        "label": "Quality-gated worktree",
+        "state_in": [
+          "repaired-components"
+        ],
+        "state_out": [
+          "quality-zero",
+          "ci-gate"
+        ],
+        "invariants": [
+          "No scope shrink or global-ignore escape"
+        ],
+        "entry_conditions": [
+          "All type partitions pass"
+        ],
+        "exit_conditions": [
+          "CI integration checks pass"
+        ]
+      },
+      {
+        "id": "P5",
+        "label": "Locally verified integration",
+        "state_in": [
+          "ci-gate",
+          "integrated-worktree"
+        ],
+        "state_out": [
+          "full-regression",
+          "logical-implementation-commits"
+        ],
+        "invariants": [
+          "E2E uses temporary stores"
+        ],
+        "entry_conditions": [
+          "Documentation reflects tested behavior"
+        ],
+        "exit_conditions": [
+          "C83 passed"
+        ]
+      },
+      {
+        "id": "P6",
+        "label": "Externally observed integration",
+        "state_in": [
+          "logical-implementation-commits"
+        ],
+        "state_out": [
+          "ci-canary",
+          "graph-health",
+          "harness-comparison"
+        ],
+        "invariants": [
+          "Remote mutation requires approval"
+        ],
+        "entry_conditions": [
+          "Final Git state accepted locally"
+        ],
+        "exit_conditions": [
+          "I75 comparison complete"
+        ]
+      },
+      {
+        "id": "P7",
+        "label": "Owner acceptance",
+        "state_in": [
+          "harness-comparison"
+        ],
+        "state_out": [
+          "accepted-or-provisional-program"
+        ],
+        "invariants": [
+          "Unresolved evidence remains visible"
+        ],
+        "entry_conditions": [
+          "Closure report available"
+        ],
+        "exit_conditions": [
+          "Human owner records final status"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P0",
+        "to": "P1",
+        "trigger": "baseline-and-decisions-pass",
+        "carried_state": [
+          "fingerprinted-inputs",
+          "decision-register"
+        ],
+        "rollback_to": "P0"
+      },
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "recovery-drill-pass",
+        "carried_state": [
+          "recovery-checkpoint",
+          "logical-baseline-commits"
+        ],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "component-work-starts",
+        "carried_state": [
+          "recovery-checkpoint",
+          "quality-policy"
+        ],
+        "rollback_to": "P2"
+      },
+      {
+        "from": "P3",
+        "to": "P4",
+        "trigger": "full-quality-zero",
+        "carried_state": [
+          "observability-evidence",
+          "dependency-spec",
+          "skill-registration",
+          "quality-zero"
+        ],
+        "rollback_to": "P3"
+      },
+      {
+        "from": "P4",
+        "to": "P5",
+        "trigger": "local-full-regression-pass",
+        "carried_state": [
+          "ci-gate",
+          "full-regression"
+        ],
+        "rollback_to": "P4"
+      },
+      {
+        "from": "P5",
+        "to": "P6",
+        "trigger": "logical-commits-and-external-checks",
+        "carried_state": [
+          "implementation-commits",
+          "ci-canary",
+          "graph-health"
+        ],
+        "rollback_to": "P5"
+      },
+      {
+        "from": "P6",
+        "to": "P7",
+        "trigger": "owner-reviews-closure",
+        "carried_state": [
+          "closure-report",
+          "retained-risks"
+        ],
+        "rollback_to": "P6"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "B00",
+      "verb": "fingerprint",
+      "description": "Fingerprint authoritative plan, findings, configuration, governance inputs, tool versions, HEAD, and branch.",
+      "target_ids": [
+        "T1"
+      ],
+      "process_node_ids": [
+        "P0"
+      ],
+      "depends_on": [],
+      "input_artifacts": [
+        "authoritative-inputs"
+      ],
+      "output_artifact": "test-results/better-harness/B00-input-fingerprints.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "sha256-and-version-recheck",
+      "assigned_role": "baseline-auditor",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "B01",
+      "verb": "snapshot",
+      "description": "Snapshot tracked, untracked, ignored, staged, stash, tag, and privacy-scan state without printing sensitive content.",
+      "target_ids": [
+        "T1",
+        "T2"
+      ],
+      "process_node_ids": [
+        "P0"
+      ],
+      "depends_on": [],
+      "input_artifacts": [
+        "working-tree"
+      ],
+      "output_artifact": "test-results/better-harness/B01-workspace-snapshot.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "repeatable-workspace-manifest",
+      "assigned_role": "baseline-auditor",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "B02",
+      "verb": "audit",
+      "description": "Reproduce every Better Harness finding against the frozen workspace and mark it confirmed, stale, expanded, or unsupported.",
+      "target_ids": [
+        "T1"
+      ],
+      "process_node_ids": [
+        "P1"
+      ],
+      "depends_on": [
+        "B00",
+        "B01"
+      ],
+      "input_artifacts": [
+        "input-fingerprints",
+        "workspace-snapshot",
+        "source-findings"
+      ],
+      "output_artifact": "test-results/better-harness/B02-finding-audit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "command-evidence-review",
+      "assigned_role": "harness-auditor",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "B03",
+      "verb": "approve",
+      "description": "Approve the preservation, Python, dependency, Skill allowlist, and remote-canary decisions.",
+      "target_ids": [
+        "T1"
+      ],
+      "process_node_ids": [
+        "P1"
+      ],
+      "depends_on": [
+        "B02"
+      ],
+      "input_artifacts": [
+        "finding-audit"
+      ],
+      "output_artifact": "test-results/better-harness/B03-decision-register.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "human-owner-approval",
+      "assigned_role": "human-owner",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R10",
+      "verb": "classify",
+      "description": "Classify every dirty path exactly once as commit, ignore, defer, or sensitive and assign approved commit groups.",
+      "target_ids": [
+        "T2"
+      ],
+      "process_node_ids": [
+        "P1"
+      ],
+      "depends_on": [
+        "B03"
+      ],
+      "input_artifacts": [
+        "decision-register",
+        "workspace-snapshot"
+      ],
+      "output_artifact": "test-results/better-harness/R10-preservation-ledger.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-completeness-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R11",
+      "verb": "checkpoint",
+      "description": "Create a named recovery object including approved untracked files, restore it immediately, and verify file hashes.",
+      "target_ids": [
+        "T2"
+      ],
+      "process_node_ids": [
+        "P1"
+      ],
+      "depends_on": [
+        "R10"
+      ],
+      "input_artifacts": [
+        "preservation-ledger"
+      ],
+      "output_artifact": "test-results/better-harness/R11-recovery-checkpoint.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "stash-oid-and-hash-replay",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R12",
+      "verb": "ignore",
+      "description": "Add precise ignore rules only for approved generated artifacts while preserving .qoder/skills visibility.",
+      "target_ids": [
+        "T2"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R11"
+      ],
+      "input_artifacts": [
+        "recovery-checkpoint",
+        "ignore-classification"
+      ],
+      "output_artifact": "test-results/better-harness/R12-ignore-diff.patch",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "git-check-ignore-scope",
+      "assigned_role": "repository-curator",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R13",
+      "verb": "partition",
+      "description": "Partition preserved files into disjoint runtime, evaluation, documentation, and Skill commit groups.",
+      "target_ids": [
+        "T2",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R12"
+      ],
+      "input_artifacts": [
+        "preservation-ledger",
+        "ignore-diff"
+      ],
+      "output_artifact": "test-results/better-harness/R13-commit-plan.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "set-partition-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R14",
+      "verb": "verify",
+      "description": "Verify each commit group with its scoped tests, diff check, and privacy scan before staging.",
+      "target_ids": [
+        "T2",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R13"
+      ],
+      "input_artifacts": [
+        "commit-plan"
+      ],
+      "output_artifact": "test-results/better-harness/R14-group-verification.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "group-test-and-privacy-check",
+      "assigned_role": "repository-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R15",
+      "verb": "commit",
+      "description": "Commit only the approved runtime and matching test group.",
+      "target_ids": [
+        "T2",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R14"
+      ],
+      "input_artifacts": [
+        "runtime-group",
+        "group-verification"
+      ],
+      "output_artifact": "test-results/better-harness/R15-runtime-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R16",
+      "verb": "commit",
+      "description": "Commit only the approved evaluation scripts and their evidence reports.",
+      "target_ids": [
+        "T2",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R15"
+      ],
+      "input_artifacts": [
+        "evaluation-group",
+        "runtime-commit"
+      ],
+      "output_artifact": "test-results/better-harness/R16-evaluation-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R17",
+      "verb": "commit",
+      "description": "Commit only the approved documents, plans, contracts, and examples.",
+      "target_ids": [
+        "T2",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R16"
+      ],
+      "input_artifacts": [
+        "documentation-group",
+        "evaluation-commit"
+      ],
+      "output_artifact": "test-results/better-harness/R17-docs-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-link-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R18",
+      "verb": "commit",
+      "description": "Commit only canonical Skill content and approved compatibility links.",
+      "target_ids": [
+        "T2",
+        "T6",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R17"
+      ],
+      "input_artifacts": [
+        "skill-group",
+        "documentation-commit"
+      ],
+      "output_artifact": "test-results/better-harness/R18-skills-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "skill-link-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "R19",
+      "verb": "verify",
+      "description": "Verify recovery-object readability, logical commit revertability, and an explainable working tree.",
+      "target_ids": [
+        "T2",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R18"
+      ],
+      "input_artifacts": [
+        "recovery-checkpoint",
+        "recovery-commits"
+      ],
+      "output_artifact": "test-results/better-harness/R19-recovery-acceptance.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "recovery-drill-and-git-status",
+      "assigned_role": "repository-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q20",
+      "verb": "freeze",
+      "description": "Freeze quality scan scope, Python semantics, override rules, and anti-gaming constraints.",
+      "target_ids": [
+        "T3"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R19"
+      ],
+      "input_artifacts": [
+        "recovery-acceptance",
+        "quality-config",
+        "decision-register"
+      ],
+      "output_artifact": "test-results/better-harness/Q20-quality-policy.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "policy-to-command-consistency",
+      "assigned_role": "quality-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q21",
+      "verb": "repair",
+      "description": "Apply only safe Ruff autofixes to a frozen explicit file list and review the behavioral diff.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "Q20"
+      ],
+      "input_artifacts": [
+        "ruff-json-baseline",
+        "quality-policy"
+      ],
+      "output_artifact": "test-results/better-harness/Q21-ruff-autofix.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "ruff-count-delta-and-scoped-tests",
+      "assigned_role": "quality-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q22",
+      "verb": "repair",
+      "description": "Repair remaining Ruff violations manually without changing behavior or weakening rules.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "Q21"
+      ],
+      "input_artifacts": [
+        "remaining-ruff-ledger"
+      ],
+      "output_artifact": "test-results/better-harness/Q22-ruff-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "full-ruff-exit-zero",
+      "assigned_role": "quality-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O30",
+      "verb": "specify",
+      "description": "Specify trace ownership, event names, required fields, log levels, privacy blacklist, and exception ownership for six modules.",
+      "target_ids": [
+        "T4"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "Q22"
+      ],
+      "input_artifacts": [
+        "logging-probe",
+        "w3-call-graph",
+        "privacy-rules"
+      ],
+      "output_artifact": "test-results/better-harness/O30-observability-contract.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "event-coverage-and-privacy-review",
+      "assigned_role": "observability-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O31",
+      "verb": "repair",
+      "description": "Repair shared logging so named child loggers receive trace_id, nested contexts restore the parent, and current trace is readable.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O30"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "log-implementation"
+      ],
+      "output_artifact": "test-results/better-harness/O31-log-infrastructure.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "child-nested-cleanup-log-tests",
+      "assigned_role": "observability-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O32",
+      "verb": "propagate",
+      "description": "Propagate the parent trace into W3 thread-pool workers and clear it after worker completion.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O31"
+      ],
+      "input_artifacts": [
+        "log-infrastructure",
+        "thread-boundaries"
+      ],
+      "output_artifact": "test-results/better-harness/O32-thread-trace.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "concurrent-trace-isolation-test",
+      "assigned_role": "observability-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O33",
+      "verb": "instrument",
+      "description": "Instrument W3 pipeline with the approved privacy-safe trace-linked events while modifying only teacher-console/w3_pipeline.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/w3_pipeline.py"
+      ],
+      "output_artifact": "test-results/better-harness/O33-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "w3-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O34",
+      "verb": "instrument",
+      "description": "Instrument Evidence Agent with the approved privacy-safe trace-linked events while modifying only teacher-console/evidence_agent.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/evidence_agent.py"
+      ],
+      "output_artifact": "test-results/better-harness/O34-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "evidence-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O35",
+      "verb": "instrument",
+      "description": "Instrument cognitive loop with the approved privacy-safe trace-linked events while modifying only teacher-console/cognitive_loop.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/cognitive_loop.py"
+      ],
+      "output_artifact": "test-results/better-harness/O35-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "loop-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O36",
+      "verb": "instrument",
+      "description": "Instrument correctness faults with the approved privacy-safe trace-linked events while modifying only teacher-console/correctness_faults.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/correctness_faults.py"
+      ],
+      "output_artifact": "test-results/better-harness/O36-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "fault-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O37",
+      "verb": "instrument",
+      "description": "Instrument Claim Ledger with the approved privacy-safe trace-linked events while modifying only teacher-console/claim_ledger.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/claim_ledger.py"
+      ],
+      "output_artifact": "test-results/better-harness/O37-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "claim-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O38",
+      "verb": "instrument",
+      "description": "Instrument proof aggregation with the approved privacy-safe trace-linked events while modifying only teacher-console/proof_aggregation.py.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O32"
+      ],
+      "input_artifacts": [
+        "observability-contract",
+        "thread-trace-contract",
+        "teacher-console/proof_aggregation.py"
+      ],
+      "output_artifact": "test-results/better-harness/O38-module-logging.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "module-behavior-and-log-record-test",
+      "assigned_role": "proof-module-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O39",
+      "verb": "test",
+      "description": "Test six-module event coverage, trace continuity, exception attribution, volume bounds, and privacy sentinels behaviorally.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O33",
+        "O34",
+        "O35",
+        "O36",
+        "O37",
+        "O38"
+      ],
+      "input_artifacts": [
+        "six-module-logging-results"
+      ],
+      "output_artifact": "test-results/better-harness/O39-observability-test-report.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "captured-record-contract-suite",
+      "assigned_role": "observability-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "O40",
+      "verb": "smoke",
+      "description": "Run one isolated fake W3 request and prove one trace spans server, worker stages, evidence, loop, ledger, and proof modules.",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O39"
+      ],
+      "input_artifacts": [
+        "observability-test-report",
+        "isolated-w3-fixture"
+      ],
+      "output_artifact": "test-results/better-harness/O40-w3-trace-smoke.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "isolated-end-to-end-trace-review",
+      "assigned_role": "observability-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "D50",
+      "verb": "inventory",
+      "description": "Inventory Python imports and classify distributions as runtime, development, optional, standard-library, or project-local.",
+      "target_ids": [
+        "T5"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R19"
+      ],
+      "input_artifacts": [
+        "python-source",
+        "ci-install-list",
+        "runbook"
+      ],
+      "output_artifact": "test-results/better-harness/D50-dependency-ledger.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "ast-import-to-distribution-check",
+      "assigned_role": "dependency-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "D51",
+      "verb": "select",
+      "description": "Select the single dependency declaration form and Python support policy after a clean-environment spike.",
+      "target_ids": [
+        "T5"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "D50"
+      ],
+      "input_artifacts": [
+        "dependency-ledger",
+        "decision-register"
+      ],
+      "output_artifact": "test-results/better-harness/D51-dependency-decision.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "clean-venv-option-spike",
+      "assigned_role": "human-owner",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "D52",
+      "verb": "declare",
+      "description": "Declare one Python dependency source of truth with separate runtime and development layers.",
+      "target_ids": [
+        "T5"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "D51"
+      ],
+      "input_artifacts": [
+        "dependency-decision"
+      ],
+      "output_artifact": "test-results/better-harness/D52-dependency-spec.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "dependency-spec-static-validation",
+      "assigned_role": "dependency-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "D53",
+      "verb": "smoke",
+      "description": "Install the dependency source in a fresh temporary venv and smoke import, startup, tests, Ruff, and mypy.",
+      "target_ids": [
+        "T5",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "D52"
+      ],
+      "input_artifacts": [
+        "dependency-spec"
+      ],
+      "output_artifact": "test-results/better-harness/D53-clean-venv-report.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "fresh-venv-command-suite",
+      "assigned_role": "dependency-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "S60",
+      "verb": "freeze",
+      "description": "Freeze the public Skill allowlist, canonical source path, consumer directories, and representation policy.",
+      "target_ids": [
+        "T6"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "R19"
+      ],
+      "input_artifacts": [
+        "agents-skill-table",
+        "skill-directories",
+        "decision-register"
+      ],
+      "output_artifact": "test-results/better-harness/S60-skill-allowlist.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "skill-existence-and-allowlist-review",
+      "assigned_role": "skill-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "S61",
+      "verb": "register",
+      "description": "Register approved Qoder Skills from the canonical .claude source using links or a versioned hash-guarded fallback.",
+      "target_ids": [
+        "T6"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "S60"
+      ],
+      "input_artifacts": [
+        "skill-allowlist"
+      ],
+      "output_artifact": "test-results/better-harness/S61-qoder-registration.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "link-resolution-and-git-mode-check",
+      "assigned_role": "skill-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "S62",
+      "verb": "verify",
+      "description": "Verify Qoder discovers at least eight Skills, two Skills trigger, and all consumer representations match canonical hashes.",
+      "target_ids": [
+        "T6",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "S61"
+      ],
+      "input_artifacts": [
+        "qoder-registration"
+      ],
+      "output_artifact": "test-results/better-harness/S62-skill-discovery-report.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "qoder-asset-baseline-and-trigger-smoke",
+      "assigned_role": "skill-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q23",
+      "verb": "classify",
+      "description": "Classify the latest mypy errors into five disjoint file-owner partitions after logging and dependency changes.",
+      "target_ids": [
+        "T3"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "O39",
+        "D52"
+      ],
+      "input_artifacts": [
+        "latest-mypy-output",
+        "observability-changes",
+        "dependency-spec"
+      ],
+      "output_artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "error-partition-completeness-check",
+      "assigned_role": "type-triager",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q24",
+      "verb": "repair",
+      "description": "Repair mypy errors in the frozen runtime file partition without modifying another owner's files.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "Q23"
+      ],
+      "input_artifacts": [
+        "mypy-ownership",
+        "runtime-partition"
+      ],
+      "output_artifact": "test-results/better-harness/Q24-mypy-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-mypy-and-scoped-tests",
+      "assigned_role": "runtime-type-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q25",
+      "verb": "repair",
+      "description": "Repair mypy errors in the frozen W3 and evidence file partition without modifying another owner's files.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "Q23"
+      ],
+      "input_artifacts": [
+        "mypy-ownership",
+        "W3 and evidence-partition"
+      ],
+      "output_artifact": "test-results/better-harness/Q25-mypy-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-mypy-and-scoped-tests",
+      "assigned_role": "w3-type-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q26",
+      "verb": "repair",
+      "description": "Repair mypy errors in the frozen visualization and publication file partition without modifying another owner's files.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "Q23"
+      ],
+      "input_artifacts": [
+        "mypy-ownership",
+        "visualization and publication-partition"
+      ],
+      "output_artifact": "test-results/better-harness/Q26-mypy-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-mypy-and-scoped-tests",
+      "assigned_role": "visual-type-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q27",
+      "verb": "repair",
+      "description": "Repair mypy errors in the frozen scripts and command-line tools file partition without modifying another owner's files.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "Q23"
+      ],
+      "input_artifacts": [
+        "mypy-ownership",
+        "scripts and command-line tools-partition"
+      ],
+      "output_artifact": "test-results/better-harness/Q27-mypy-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-mypy-and-scoped-tests",
+      "assigned_role": "script-type-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q28",
+      "verb": "repair",
+      "description": "Repair mypy errors in the frozen tests and fixtures file partition without modifying another owner's files.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P3"
+      ],
+      "depends_on": [
+        "Q23"
+      ],
+      "input_artifacts": [
+        "mypy-ownership",
+        "tests and fixtures-partition"
+      ],
+      "output_artifact": "test-results/better-harness/Q28-mypy-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "partition-mypy-and-scoped-tests",
+      "assigned_role": "test-type-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "Q29",
+      "verb": "aggregate",
+      "description": "Aggregate all type partitions and prove full-scope Ruff and mypy both exit zero.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P4"
+      ],
+      "depends_on": [
+        "Q24",
+        "Q25",
+        "Q26",
+        "Q27",
+        "Q28"
+      ],
+      "input_artifacts": [
+        "five-mypy-zero-reports",
+        "ruff-zero"
+      ],
+      "output_artifact": "test-results/better-harness/Q29-quality-zero.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "full-quality-command-suite",
+      "assigned_role": "quality-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I70",
+      "verb": "integrate",
+      "description": "Integrate the single dev dependency source and mandatory Ruff and mypy steps into CI without non-blocking escapes.",
+      "target_ids": [
+        "T3",
+        "T5",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P4"
+      ],
+      "depends_on": [
+        "Q29",
+        "D53"
+      ],
+      "input_artifacts": [
+        "quality-zero",
+        "clean-venv-report",
+        "ci-workflow"
+      ],
+      "output_artifact": "test-results/better-harness/I70-ci-gate-report.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "yaml-static-contract-and-local-equivalence",
+      "assigned_role": "integration-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I72",
+      "verb": "document",
+      "description": "Document only verified runtime rules, dependency commands, Skill registration, and change evidence in project truth documents.",
+      "target_ids": [
+        "T6",
+        "T7",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P4"
+      ],
+      "depends_on": [
+        "I70",
+        "O40",
+        "S62"
+      ],
+      "input_artifacts": [
+        "ci-gate-report",
+        "w3-trace-smoke",
+        "skill-discovery-report"
+      ],
+      "output_artifact": "test-results/better-harness/I72-governance-diff.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "documentation-link-and-fact-check",
+      "assigned_role": "documentation-owner",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I73",
+      "verb": "test",
+      "description": "Run full unit, isolated E2E, quality, privacy, dependency, logging, and Skill regression suites on the integrated worktree.",
+      "target_ids": [
+        "T8"
+      ],
+      "process_node_ids": [
+        "P5"
+      ],
+      "depends_on": [
+        "I72"
+      ],
+      "input_artifacts": [
+        "integrated-worktree"
+      ],
+      "output_artifact": "test-results/better-harness/I73-full-regression.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "full-regression-suite",
+      "assigned_role": "integration-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "C80",
+      "verb": "commit",
+      "description": "Commit only observability infrastructure, six modules, and behavioral logging tests.",
+      "target_ids": [
+        "T2",
+        "T4",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P5"
+      ],
+      "depends_on": [
+        "I73"
+      ],
+      "input_artifacts": [
+        "full-regression",
+        "observability-files"
+      ],
+      "output_artifact": "test-results/better-harness/C80-observability-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "C81",
+      "verb": "commit",
+      "description": "Commit only quality repairs, dependency declarations, CI workflow, and their tests.",
+      "target_ids": [
+        "T2",
+        "T3",
+        "T5",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P5"
+      ],
+      "depends_on": [
+        "C80"
+      ],
+      "input_artifacts": [
+        "quality-dependency-ci-files",
+        "observability-commit"
+      ],
+      "output_artifact": "test-results/better-harness/C81-quality-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "C82",
+      "verb": "commit",
+      "description": "Commit only Qoder Skill registration and minimal governance documentation.",
+      "target_ids": [
+        "T2",
+        "T6",
+        "T7"
+      ],
+      "process_node_ids": [
+        "P5"
+      ],
+      "depends_on": [
+        "C81"
+      ],
+      "input_artifacts": [
+        "skill-governance-files",
+        "quality-commit"
+      ],
+      "output_artifact": "test-results/better-harness/C82-governance-commit.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "staged-scope-and-sha-check",
+      "assigned_role": "repository-curator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "C83",
+      "verb": "verify",
+      "description": "Verify final Git status, logical commit scopes, independent revertability, and recovery checkpoint retention.",
+      "target_ids": [
+        "T2",
+        "T7",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P5"
+      ],
+      "depends_on": [
+        "C82"
+      ],
+      "input_artifacts": [
+        "implementation-commits",
+        "recovery-checkpoint"
+      ],
+      "output_artifact": "test-results/better-harness/C83-final-git-state.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "git-state-and-recovery-drill",
+      "assigned_role": "repository-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I71",
+      "verb": "test",
+      "description": "Run an authorized temporary remote CI canary proving clean success and independent lint and type failures.",
+      "target_ids": [
+        "T3",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P6"
+      ],
+      "depends_on": [
+        "C83"
+      ],
+      "input_artifacts": [
+        "committed-ci-workflow",
+        "canary-authorization"
+      ],
+      "output_artifact": "test-results/better-harness/I71-ci-canary.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "github-actions-three-state-canary",
+      "assigned_role": "ci-verifier",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I74",
+      "verb": "update",
+      "description": "Update graphify and record health plus focused CI, logging, dependency, and Skill structure queries.",
+      "target_ids": [
+        "T8"
+      ],
+      "process_node_ids": [
+        "P6"
+      ],
+      "depends_on": [
+        "C83"
+      ],
+      "input_artifacts": [
+        "accepted-commits",
+        "graphify-graph"
+      ],
+      "output_artifact": "test-results/better-harness/I74-graphify-health.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "graphify-update-and-health-check",
+      "assigned_role": "graph-maintainer",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I75",
+      "verb": "compare",
+      "description": "Rerun the same Better Harness version and produce a finding-by-finding closure comparison that preserves unresolved evidence.",
+      "target_ids": [
+        "T7",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P6"
+      ],
+      "depends_on": [
+        "I71",
+        "I74"
+      ],
+      "input_artifacts": [
+        "source-findings",
+        "ci-canary",
+        "graphify-health",
+        "all-task-evidence"
+      ],
+      "output_artifact": "docs/reports/better-harness-closure-v1.md",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "same-condition-harness-comparison",
+      "assigned_role": "harness-auditor",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    },
+    {
+      "id": "I76",
+      "verb": "accept",
+      "description": "Accept completed obligations, retained risks, recovery retention, and the next Learning Capture observation date.",
+      "target_ids": [
+        "T1",
+        "T2",
+        "T3",
+        "T4",
+        "T5",
+        "T6",
+        "T7",
+        "T8"
+      ],
+      "process_node_ids": [
+        "P7"
+      ],
+      "depends_on": [
+        "I75"
+      ],
+      "input_artifacts": [
+        "closure-report"
+      ],
+      "output_artifact": "test-results/better-harness/I76-owner-acceptance.json",
+      "output_contract": "better-harness-task-result.v1",
+      "verifier_route": "human-owner-final-approval",
+      "assigned_role": "human-owner",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "blocked",
+        "unsupported",
+        "skipped"
+      ]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S001",
+      "producer_task_id": "B00",
+      "consumer_task_id": "B02",
+      "artifact": "test-results/better-harness/B00-input-fingerprints.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "B00 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate B02 when B00's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S002",
+      "producer_task_id": "B01",
+      "consumer_task_id": "B02",
+      "artifact": "test-results/better-harness/B01-workspace-snapshot.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "B01 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate B02 when B01's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S003",
+      "producer_task_id": "B02",
+      "consumer_task_id": "B03",
+      "artifact": "test-results/better-harness/B02-finding-audit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "B02 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate B03 when B02's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S004",
+      "producer_task_id": "B03",
+      "consumer_task_id": "R10",
+      "artifact": "test-results/better-harness/B03-decision-register.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "B03 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R10 when B03's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S005",
+      "producer_task_id": "R10",
+      "consumer_task_id": "R11",
+      "artifact": "test-results/better-harness/R10-preservation-ledger.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R10 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R11 when R10's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S006",
+      "producer_task_id": "R11",
+      "consumer_task_id": "R12",
+      "artifact": "test-results/better-harness/R11-recovery-checkpoint.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R11 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R12 when R11's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S007",
+      "producer_task_id": "R12",
+      "consumer_task_id": "R13",
+      "artifact": "test-results/better-harness/R12-ignore-diff.patch",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R12 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R13 when R12's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S008",
+      "producer_task_id": "R13",
+      "consumer_task_id": "R14",
+      "artifact": "test-results/better-harness/R13-commit-plan.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R13 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R14 when R13's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S009",
+      "producer_task_id": "R14",
+      "consumer_task_id": "R15",
+      "artifact": "test-results/better-harness/R14-group-verification.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R14 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R15 when R14's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S010",
+      "producer_task_id": "R15",
+      "consumer_task_id": "R16",
+      "artifact": "test-results/better-harness/R15-runtime-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R15 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R16 when R15's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S011",
+      "producer_task_id": "R16",
+      "consumer_task_id": "R17",
+      "artifact": "test-results/better-harness/R16-evaluation-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R16 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R17 when R16's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S012",
+      "producer_task_id": "R17",
+      "consumer_task_id": "R18",
+      "artifact": "test-results/better-harness/R17-docs-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R17 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R18 when R17's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S013",
+      "producer_task_id": "R18",
+      "consumer_task_id": "R19",
+      "artifact": "test-results/better-harness/R18-skills-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R18 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate R19 when R18's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S014",
+      "producer_task_id": "R19",
+      "consumer_task_id": "Q20",
+      "artifact": "test-results/better-harness/R19-recovery-acceptance.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R19 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q20 when R19's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S015",
+      "producer_task_id": "Q20",
+      "consumer_task_id": "Q21",
+      "artifact": "test-results/better-harness/Q20-quality-policy.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q20 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q21 when Q20's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S016",
+      "producer_task_id": "Q21",
+      "consumer_task_id": "Q22",
+      "artifact": "test-results/better-harness/Q21-ruff-autofix.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q21 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q22 when Q21's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S017",
+      "producer_task_id": "Q22",
+      "consumer_task_id": "O30",
+      "artifact": "test-results/better-harness/Q22-ruff-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q22 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O30 when Q22's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S018",
+      "producer_task_id": "O30",
+      "consumer_task_id": "O31",
+      "artifact": "test-results/better-harness/O30-observability-contract.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O30 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O31 when O30's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S019",
+      "producer_task_id": "O31",
+      "consumer_task_id": "O32",
+      "artifact": "test-results/better-harness/O31-log-infrastructure.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O31 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O32 when O31's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S020",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O33",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O33 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S021",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O34",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O34 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S022",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O35",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O35 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S023",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O36",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O36 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S024",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O37",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O37 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S025",
+      "producer_task_id": "O32",
+      "consumer_task_id": "O38",
+      "artifact": "test-results/better-harness/O32-thread-trace.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O32 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O38 when O32's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S026",
+      "producer_task_id": "O33",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O33-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O33 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O33's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S027",
+      "producer_task_id": "O34",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O34-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O34 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O34's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S028",
+      "producer_task_id": "O35",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O35-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O35 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O35's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S029",
+      "producer_task_id": "O36",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O36-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O36 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O36's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S030",
+      "producer_task_id": "O37",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O37-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O37 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O37's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S031",
+      "producer_task_id": "O38",
+      "consumer_task_id": "O39",
+      "artifact": "test-results/better-harness/O38-module-logging.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O38 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O39 when O38's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S032",
+      "producer_task_id": "O39",
+      "consumer_task_id": "O40",
+      "artifact": "test-results/better-harness/O39-observability-test-report.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O39 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate O40 when O39's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S033",
+      "producer_task_id": "R19",
+      "consumer_task_id": "D50",
+      "artifact": "test-results/better-harness/R19-recovery-acceptance.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R19 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate D50 when R19's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S034",
+      "producer_task_id": "D50",
+      "consumer_task_id": "D51",
+      "artifact": "test-results/better-harness/D50-dependency-ledger.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "D50 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate D51 when D50's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S035",
+      "producer_task_id": "D51",
+      "consumer_task_id": "D52",
+      "artifact": "test-results/better-harness/D51-dependency-decision.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "D51 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate D52 when D51's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S036",
+      "producer_task_id": "D52",
+      "consumer_task_id": "D53",
+      "artifact": "test-results/better-harness/D52-dependency-spec.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "D52 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate D53 when D52's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S037",
+      "producer_task_id": "R19",
+      "consumer_task_id": "S60",
+      "artifact": "test-results/better-harness/R19-recovery-acceptance.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "R19 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate S60 when R19's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S038",
+      "producer_task_id": "S60",
+      "consumer_task_id": "S61",
+      "artifact": "test-results/better-harness/S60-skill-allowlist.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "S60 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate S61 when S60's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S039",
+      "producer_task_id": "S61",
+      "consumer_task_id": "S62",
+      "artifact": "test-results/better-harness/S61-qoder-registration.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "S61 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate S62 when S61's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S040",
+      "producer_task_id": "O39",
+      "consumer_task_id": "Q23",
+      "artifact": "test-results/better-harness/O39-observability-test-report.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O39 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q23 when O39's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S041",
+      "producer_task_id": "D52",
+      "consumer_task_id": "Q23",
+      "artifact": "test-results/better-harness/D52-dependency-spec.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "D52 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q23 when D52's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S042",
+      "producer_task_id": "Q23",
+      "consumer_task_id": "Q24",
+      "artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q23 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q24 when Q23's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S043",
+      "producer_task_id": "Q23",
+      "consumer_task_id": "Q25",
+      "artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q23 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q25 when Q23's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S044",
+      "producer_task_id": "Q23",
+      "consumer_task_id": "Q26",
+      "artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q23 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q26 when Q23's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S045",
+      "producer_task_id": "Q23",
+      "consumer_task_id": "Q27",
+      "artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q23 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q27 when Q23's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S046",
+      "producer_task_id": "Q23",
+      "consumer_task_id": "Q28",
+      "artifact": "test-results/better-harness/Q23-mypy-ownership.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q23 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q28 when Q23's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S047",
+      "producer_task_id": "Q24",
+      "consumer_task_id": "Q29",
+      "artifact": "test-results/better-harness/Q24-mypy-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q24 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q29 when Q24's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S048",
+      "producer_task_id": "Q25",
+      "consumer_task_id": "Q29",
+      "artifact": "test-results/better-harness/Q25-mypy-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q25 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q29 when Q25's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S049",
+      "producer_task_id": "Q26",
+      "consumer_task_id": "Q29",
+      "artifact": "test-results/better-harness/Q26-mypy-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q26 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q29 when Q26's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S050",
+      "producer_task_id": "Q27",
+      "consumer_task_id": "Q29",
+      "artifact": "test-results/better-harness/Q27-mypy-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q27 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q29 when Q27's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S051",
+      "producer_task_id": "Q28",
+      "consumer_task_id": "Q29",
+      "artifact": "test-results/better-harness/Q28-mypy-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q28 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate Q29 when Q28's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S052",
+      "producer_task_id": "Q29",
+      "consumer_task_id": "I70",
+      "artifact": "test-results/better-harness/Q29-quality-zero.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "Q29 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I70 when Q29's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S053",
+      "producer_task_id": "D53",
+      "consumer_task_id": "I70",
+      "artifact": "test-results/better-harness/D53-clean-venv-report.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "D53 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I70 when D53's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S054",
+      "producer_task_id": "I70",
+      "consumer_task_id": "I72",
+      "artifact": "test-results/better-harness/I70-ci-gate-report.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I70 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I72 when I70's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S055",
+      "producer_task_id": "O40",
+      "consumer_task_id": "I72",
+      "artifact": "test-results/better-harness/O40-w3-trace-smoke.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "O40 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I72 when O40's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S056",
+      "producer_task_id": "S62",
+      "consumer_task_id": "I72",
+      "artifact": "test-results/better-harness/S62-skill-discovery-report.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "S62 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I72 when S62's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S057",
+      "producer_task_id": "I72",
+      "consumer_task_id": "I73",
+      "artifact": "test-results/better-harness/I72-governance-diff.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I72 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I73 when I72's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S058",
+      "producer_task_id": "I73",
+      "consumer_task_id": "C80",
+      "artifact": "test-results/better-harness/I73-full-regression.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I73 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate C80 when I73's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S059",
+      "producer_task_id": "C80",
+      "consumer_task_id": "C81",
+      "artifact": "test-results/better-harness/C80-observability-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "C80 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate C81 when C80's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S060",
+      "producer_task_id": "C81",
+      "consumer_task_id": "C82",
+      "artifact": "test-results/better-harness/C81-quality-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "C81 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate C82 when C81's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S061",
+      "producer_task_id": "C82",
+      "consumer_task_id": "C83",
+      "artifact": "test-results/better-harness/C82-governance-commit.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "C82 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate C83 when C82's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S062",
+      "producer_task_id": "C83",
+      "consumer_task_id": "I71",
+      "artifact": "test-results/better-harness/C83-final-git-state.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "C83 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I71 when C83's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S063",
+      "producer_task_id": "C83",
+      "consumer_task_id": "I74",
+      "artifact": "test-results/better-harness/C83-final-git-state.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "C83 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I74 when C83's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S064",
+      "producer_task_id": "I71",
+      "consumer_task_id": "I75",
+      "artifact": "test-results/better-harness/I71-ci-canary.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I71 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I75 when I71's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S065",
+      "producer_task_id": "I74",
+      "consumer_task_id": "I75",
+      "artifact": "test-results/better-harness/I74-graphify-health.json",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I74 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I75 when I74's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    },
+    {
+      "id": "S066",
+      "producer_task_id": "I75",
+      "consumer_task_id": "I76",
+      "artifact": "docs/reports/better-harness-closure-v1.md",
+      "contract": "better-harness-task-result.v1",
+      "preconditions": [
+        "I75 passed, skipped by approved empty scope, or produced an explicitly accepted provisional artifact"
+      ],
+      "invalidation_rule": "Invalidate I76 when I75's artifact fingerprint, authoritative input fingerprint, or approval status changes"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": [
+        "T1"
+      ],
+      "task_ids": [
+        "B00",
+        "B01",
+        "B02",
+        "B03"
+      ],
+      "claim": "The implementation program is based on current, fingerprinted evidence and explicit decisions.",
+      "required_evidence": [
+        "input-fingerprints",
+        "workspace-snapshot",
+        "finding-audit",
+        "decision-register"
+      ],
+      "method": "Recompute hashes and rerun each finding probe under recorded tool versions.",
+      "decision_rule": "All five findings have current evidence and all critical decisions are approved.",
+      "defeaters": [
+        "Input or HEAD drift",
+        "Missing tool version",
+        "Inherited historical counts"
+      ],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": [
+        "T2"
+      ],
+      "task_ids": [
+        "R11",
+        "R19",
+        "C83"
+      ],
+      "claim": "Approved dirty work and implementation commits are recoverable and independently reversible.",
+      "required_evidence": [
+        "recovery-checkpoint",
+        "recovery-acceptance",
+        "final-git-state"
+      ],
+      "method": "Resolve recovery OID, replay hashes, inspect commit scopes, and rehearse independent revertability.",
+      "decision_rule": "All approved bytes recover; no sensitive bytes are committed; no unexplained dirty path remains.",
+      "defeaters": [
+        "Hash mismatch",
+        "Unreadable stash",
+        "Mixed commit scope",
+        "Unknown dirty file"
+      ],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V3",
+      "target_ids": [
+        "T3"
+      ],
+      "task_ids": [
+        "Q29",
+        "I70",
+        "I71"
+      ],
+      "claim": "Ruff and mypy are enforced rather than merely configured.",
+      "required_evidence": [
+        "quality-zero",
+        "ci-gate-report",
+        "ci-canary"
+      ],
+      "method": "Run full local commands, parse CI YAML, and exercise clean, lint-fail, and type-fail remote canaries.",
+      "decision_rule": "Local commands exit zero; clean CI passes; each defect canary fails; no non-blocking escape exists.",
+      "defeaters": [
+        "Scope shrink",
+        "New global ignore",
+        "continue-on-error",
+        "Canary false green"
+      ],
+      "fallback": "provisional",
+      "risk": "critical"
+    },
+    {
+      "id": "V4",
+      "target_ids": [
+        "T4"
+      ],
+      "task_ids": [
+        "O31",
+        "O32",
+        "O39",
+        "O40"
+      ],
+      "claim": "W3 diagnostics retain one trace across named child loggers, nested contexts, and thread-pool workers.",
+      "required_evidence": [
+        "log-infrastructure",
+        "thread-trace",
+        "observability-tests",
+        "w3-trace-smoke"
+      ],
+      "method": "Capture LogRecords in unit and isolated W3 tests and compare trace identifiers and required events.",
+      "decision_rule": "No formatter errors; one trace spans all required modules; reused threads do not leak traces.",
+      "defeaters": [
+        "KeyError trace_id",
+        "Trace split",
+        "Trace leak",
+        "Import-only instrumentation"
+      ],
+      "fallback": "failed",
+      "risk": "high"
+    },
+    {
+      "id": "V5",
+      "target_ids": [
+        "T4",
+        "T8"
+      ],
+      "task_ids": [
+        "O39",
+        "I73"
+      ],
+      "claim": "New observability does not expose private problem, answer, evidence, or credential content.",
+      "required_evidence": [
+        "privacy-sentinel-log-test",
+        "full-regression"
+      ],
+      "method": "Inject unique sentinels into private fields and scan captured messages, arguments, tracebacks, and artifacts.",
+      "decision_rule": "Zero private sentinel occurrences and only approved identifiers, counts, statuses, routes, and codes appear.",
+      "defeaters": [
+        "Payload interpolation",
+        "Exception includes private text",
+        "Raw artifact attached"
+      ],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V6",
+      "target_ids": [
+        "T5"
+      ],
+      "task_ids": [
+        "D50",
+        "D52",
+        "D53",
+        "I70"
+      ],
+      "claim": "The Python dependency declaration is complete, singular, and reproducible in CI and a clean venv.",
+      "required_evidence": [
+        "dependency-ledger",
+        "dependency-spec",
+        "clean-venv-report",
+        "ci-gate-report"
+      ],
+      "method": "Map imports to distributions, install into mktemp venv, and run import/start/tool/test smoke commands.",
+      "decision_rule": "Every third-party import is classified; clean install passes; CI references the same source with no manual duplicate.",
+      "defeaters": [
+        "Global package masks omission",
+        "Two manual sources",
+        "Unclassified optional dependency"
+      ],
+      "fallback": "failed",
+      "risk": "high"
+    },
+    {
+      "id": "V7",
+      "target_ids": [
+        "T6"
+      ],
+      "task_ids": [
+        "S60",
+        "S61",
+        "S62"
+      ],
+      "claim": "Qoder can discover approved Skills without introducing uncontrolled content duplication.",
+      "required_evidence": [
+        "skill-allowlist",
+        "qoder-registration",
+        "skill-discovery-report"
+      ],
+      "method": "Resolve links or guarded mirrors, compare hashes, rerun Qoder asset inventory, and trigger two Skills.",
+      "decision_rule": "At least eight Skills discovered; two triggers pass; consumer hashes match canonical.",
+      "defeaters": [
+        "Qoder ignores links",
+        "Mirror drift",
+        "Internal Skill exposed without approval"
+      ],
+      "fallback": "provisional",
+      "risk": "medium"
+    },
+    {
+      "id": "V8",
+      "target_ids": [
+        "T8"
+      ],
+      "task_ids": [
+        "R14",
+        "O40",
+        "D53",
+        "S62",
+        "I73",
+        "I74"
+      ],
+      "claim": "The integrated changes preserve project behavior, isolation, privacy, and architectural structure.",
+      "required_evidence": [
+        "group-verification",
+        "w3-smoke",
+        "clean-venv",
+        "skill-smoke",
+        "full-regression",
+        "graph-health"
+      ],
+      "method": "Run scoped and full tests, isolated E2E, privacy checks, and graphify health/query checks.",
+      "decision_rule": "All critical suites pass; no production data changes; graph warnings are either zero or explicitly unresolved.",
+      "defeaters": [
+        "Unapproved skip",
+        "Formal library mtime change",
+        "Privacy regression",
+        "Graph corruption"
+      ],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V9",
+      "target_ids": [
+        "T7"
+      ],
+      "task_ids": [
+        "R13",
+        "C83",
+        "I75",
+        "I76"
+      ],
+      "claim": "Better Harness improvement evidence is comparable across logical episodes and does not overclaim Learning Capture.",
+      "required_evidence": [
+        "commit-plan",
+        "final-git-state",
+        "closure-report",
+        "owner-acceptance"
+      ],
+      "method": "Compare same-version before/after findings and link each change to commits and tests; schedule a second episode.",
+      "decision_rule": "All findings have evidence-backed status and Learning Capture stays provisional until two comparable episodes exist.",
+      "defeaters": [
+        "Tool version drift",
+        "Scope drift",
+        "Score-only claim",
+        "No second episode"
+      ],
+      "fallback": "provisional",
+      "risk": "medium"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {
+        "id": "W00",
+        "task_ids": [
+          "B00",
+          "B01"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W01",
+        "task_ids": [
+          "B02"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W02",
+        "task_ids": [
+          "B03"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W03",
+        "task_ids": [
+          "R10"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W04",
+        "task_ids": [
+          "R11"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W05",
+        "task_ids": [
+          "R12"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W06",
+        "task_ids": [
+          "R13"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W07",
+        "task_ids": [
+          "R14"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W08",
+        "task_ids": [
+          "R15"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W09",
+        "task_ids": [
+          "R16"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W10",
+        "task_ids": [
+          "R17"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W11",
+        "task_ids": [
+          "R18"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W12",
+        "task_ids": [
+          "R19"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W13",
+        "task_ids": [
+          "Q20",
+          "D50",
+          "S60"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W14",
+        "task_ids": [
+          "Q21",
+          "D51",
+          "S61"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W15",
+        "task_ids": [
+          "Q22",
+          "D52",
+          "S62"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W16",
+        "task_ids": [
+          "O30",
+          "D53"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W17",
+        "task_ids": [
+          "O31"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W18",
+        "task_ids": [
+          "O32"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W19",
+        "task_ids": [
+          "O33",
+          "O34",
+          "O35",
+          "O36",
+          "O37",
+          "O38"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W20",
+        "task_ids": [
+          "O39"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W21",
+        "task_ids": [
+          "O40",
+          "Q23"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W22",
+        "task_ids": [
+          "Q24",
+          "Q25",
+          "Q26",
+          "Q27",
+          "Q28"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W23",
+        "task_ids": [
+          "Q29"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W24",
+        "task_ids": [
+          "I70"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W25",
+        "task_ids": [
+          "I72"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W26",
+        "task_ids": [
+          "I73"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W27",
+        "task_ids": [
+          "C80"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W28",
+        "task_ids": [
+          "C81"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W29",
+        "task_ids": [
+          "C82"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W30",
+        "task_ids": [
+          "C83"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W31",
+        "task_ids": [
+          "I71",
+          "I74"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W32",
+        "task_ids": [
+          "I75"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W33",
+        "task_ids": [
+          "I76"
+        ],
+        "parallel": false
+      }
+    ],
+    "max_concurrency": 3,
+    "allocation_notes": [
+      "Commit tasks are always serialized because they share the Git index.",
+      "O33-O38 and Q24-Q28 may run in parallel only with disjoint file ownership.",
+      "No executor may concurrently modify pyproject.toml, deploy.yml, log.py, CLAUDE.md, or the Git index.",
+      "Role allocation is a handoff plan; no subagent is authorized by this artifact alone."
+    ]
+  },
+  "control_policy": {
+    "max_global_rounds": 3,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bind every challenge to one target, interface, or verification obligation and require new evidence",
+    "hypothesis_policy": "keep repair hypotheses isolated until a deterministic probe or scoped test supports them",
+    "rollback_policy": "invalidate and roll back only the smallest dependency impact cone; never reset the repository broadly",
+    "allowed_feedback_actions": [
+      "retry-task",
+      "revise-input",
+      "invalidate-impact-cone",
+      "mark-provisional",
+      "stop"
+    ],
+    "terminal_states": [
+      "completed",
+      "provisional",
+      "unsupported",
+      "blocked"
+    ]
+  },
+  "aggregation": {
+    "required_target_ids": [
+      "T1",
+      "T2",
+      "T3",
+      "T4",
+      "T5",
+      "T6",
+      "T7",
+      "T8"
+    ],
+    "required_obligation_ids": [
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6",
+      "V7",
+      "V8",
+      "V9"
+    ],
+    "acceptance_rule": "V1-V8 must pass, every target must have an accepted artifact, the owner must approve I76, and V9 must preserve the two-episode Learning Capture condition.",
+    "conflict_policy": "Use the decisive command, recovery drill, privacy test, CI canary, or tool inventory; do not use majority vote or Better Harness score alone.",
+    "unresolved_policy": "Preserve unresolved decisions and external limitations in the closure report and mark the program provisional rather than weakening a gate.",
+    "final_artifact": "docs/reports/better-harness-closure-v1.md",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": [
+    {
+      "id": "U1",
+      "item": "Final classification of the current 147 untracked paths requires owner approval because they are user work.",
+      "resolver": "B03 and R10",
+      "default": "Do not delete; checkpoint before ignore or commit."
+    },
+    {
+      "id": "U2",
+      "item": "The project has no declared packaging intent.",
+      "resolver": "D51",
+      "default": "Use requirements.txt plus requirements-dev.txt, not a new installable package."
+    },
+    {
+      "id": "U3",
+      "item": "Dropping Python 3.9 may affect environments not represented by current CI.",
+      "resolver": "B03 and D51",
+      "default": "Retain 3.9 compatibility and CI on 3.11 for this program."
+    },
+    {
+      "id": "U4",
+      "item": "Qoder symlink-following behavior must be verified with the installed Qoder version.",
+      "resolver": "S62 with one bounded S61 representation retry",
+      "default": "Use links first; use only a hash-guarded generated mirror if necessary."
+    },
+    {
+      "id": "U5",
+      "item": "Remote CI canary requires explicit authorization and Learning Capture needs at least two comparable episodes.",
+      "resolver": "I71 and the observation date recorded by I76",
+      "default": "Deliver provisional if remote mutation is not authorized or the observation window is incomplete."
+    }
+  ]
+}
+

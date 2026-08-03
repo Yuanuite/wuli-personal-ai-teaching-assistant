@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="300" viewBox="0 0 800 300">
+  <rect width="800" height="300" fill="#fff"/>
+  <line x1="70" y1="240" x2="760" y2="240" stroke="#222" stroke-width="2"/>
+  <line x1="70" y1="30" x2="70" y2="240" stroke="#222" stroke-width="2"/>
+  <polyline points="90,55 240,75 390,105 550,135 730,165" fill="none" stroke="#222" stroke-width="4"/>
+  <polyline points="90,205 240,165 390,110 550,80 730,80" fill="none" stroke="#2a8" stroke-width="4"/>
+  <polyline points="90,65 240,95 390,145 550,205 730,235" fill="none" stroke="#d55" stroke-width="4"/>
+  <polyline points="90,235 240,195 390,175 550,225 730,240" fill="none" stroke="#36c" stroke-width="4"/>
+  <text x="735" y="165" font-size="20">Eₜ</text><text x="735" y="80" font-size="20">Uɢ</text>
+  <text x="735" y="225" font-size="20">Kᵣ</text><text x="610" y="220" font-size="20">Kₜ</text>
+  <text x="90" y="270" font-size="20">I</text><text x="240" y="270" font-size="20">II</text>
+  <text x="390" y="270" font-size="20">III</text><text x="550" y="270" font-size="20">IV</text>
+  <text x="725" y="270" font-size="20">V</text>
+</svg>
+

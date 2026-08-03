@@ -1,0 +1,93 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-08-02T12:22:00+08:00",
+  "dataset": "CPhO 2021 full year, questions 1-8",
+  "model": "deepseek-v4-flash-api",
+  "task": "atomic-decisive-physics-assertions",
+  "privacy": {
+    "official_answer_sent_to_remote_provider": false,
+    "candidate_frozen_before_local_review": true,
+    "answer_text_in_report": false
+  },
+  "execution": {
+    "question_count": 8,
+    "structural_success_count": 4,
+    "structural_rejection_count": 4,
+    "successful_call_median_seconds": 11.526,
+    "successful_call_max_seconds": 11.754,
+    "rejection_reasons": {
+      "unknown_assertion_kind": 2,
+      "unresolved_hedging": 2
+    },
+    "retry_count": 0
+  },
+  "strict_review": {
+    "authority": "local official standard answer",
+    "whole_question_verified_count": 0,
+    "whole_question_count": 8,
+    "whole_question_accuracy": 0.0,
+    "verified_target_count_over_full_year": 2,
+    "full_year_target_count": 27,
+    "full_year_target_accuracy": 0.0741,
+    "verified_target_count_with_structural_candidate": 2,
+    "target_count_with_structural_candidate": 13,
+    "structural_candidate_target_accuracy": 0.1538,
+    "comparisons": {
+      "full_core_verified_targets": "2/27",
+      "broad_physical_kernel_verified_targets": "7/27",
+      "atomic_assertion_verified_targets": "2/27"
+    },
+    "questions": [
+      {
+        "question": 1,
+        "status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "CONTRADICTED", "CONTRADICTED"],
+        "reason_codes": ["OPTICAL_SURFACE_CLASS_WRONG", "COORDINATE_ORIGIN_WRONG", "APERTURE_RELATION_WRONG"]
+      },
+      {
+        "question": 2,
+        "status": "STRUCTURAL_REJECTED",
+        "reason_codes": ["UNKNOWN_ASSERTION_KIND"]
+      },
+      {
+        "question": 3,
+        "status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "CONTRADICTED", "CONTRADICTED"],
+        "reason_codes": ["FIXED_BOARD_SYSTEM_BOUNDARY_WRONG", "COLLISION_ORDER_BASIS_INCONSISTENT", "HORIZONTAL_MOMENTUM_SCOPE_WRONG"]
+      },
+      {
+        "question": 4,
+        "status": "STRUCTURAL_REJECTED",
+        "reason_codes": ["UNRESOLVED_HEDGING"]
+      },
+      {
+        "question": 5,
+        "status": "CONTRADICTED",
+        "targets": ["INSUFFICIENT", "CONTRADICTED", "VERIFIED", "CONTRADICTED"],
+        "reason_codes": ["ONE_DIMENSIONAL_THERMAL_MODEL_MISSING", "ENERGY_FLOW_WRONG", "FIELD_BOUNDARY_CONTRADICTION"]
+      },
+      {
+        "question": 6,
+        "status": "STRUCTURAL_REJECTED",
+        "reason_codes": ["UNKNOWN_ASSERTION_KIND"]
+      },
+      {
+        "question": 7,
+        "status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "CONTRADICTED", "VERIFIED"],
+        "reason_codes": ["FREE_WHEEL_FRICTION_DIRECTION_WRONG", "STATIC_FRICTION_POWER_FLOW_WRONG"]
+      },
+      {
+        "question": 8,
+        "status": "STRUCTURAL_REJECTED",
+        "reason_codes": ["UNRESOLVED_HEDGING"]
+      }
+    ]
+  },
+  "decision": {
+    "atomic_assertions_improve_truth_accuracy": false,
+    "atomic_assertions_improve_fail_closed_behavior": true,
+    "production_qualified": false,
+    "finding": "forcing unique claims converts uncertainty into confident model errors unless an external physics authority verifies each claim"
+  }
+}

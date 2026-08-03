@@ -1,0 +1,20 @@
+{
+  "title": "APhO 2019 Q3-A3：接触点速度的竖直分量",
+  "subject": "高中物理",
+  "grade": "高三",
+  "knowledge_points": ["刚体运动学", "约束条件", "矢量求导"],
+  "error_types": ["补充评测"],
+  "difficulty": "挑战",
+  "difficulty_assessment": {"score": 65},
+  "student_error": "W4 官方竞赛补充评测样本，无学生原答。",
+  "contest_source": {
+    "organization": "Asian Physics Olympiad",
+    "exam": "20th APhO 2019",
+    "question": "Theory Q3 A.3",
+    "page_url": "https://cpho.pku.edu.cn/info/1052/1265.htm",
+    "problem_url": "https://cpho.pku.edu.cn/assets/pdf/exam-theory-Q3-chinese.pdf",
+    "solution_url": "https://cpho.pku.edu.cn/assets/pdf/Q3-Solution.pdf",
+    "adaptation": "Official Chinese atomic subproblem extraction"
+  },
+  "answer_review": {"status": "not-ready"}
+}

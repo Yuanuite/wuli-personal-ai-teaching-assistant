@@ -1,0 +1,353 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "修复第二批 fresh holdout 暴露的纠错警示作用域误判，同时保留原始 holdout 失败结论。",
+    "process_shape": "stateful",
+    "epistemic_families": ["engineering", "empirical", "procedural"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "docs/reports/evidence-agent-mvp-g-fresh-holdout-v2-paired-v1.json",
+      "student-error-library/evals/evidence-gold-holdout-v2.json",
+      "student-error-library/evals/evidence-gold-holdout-v2-overlay.json"
+    ],
+    "assumptions": [
+      "教师批准的原 holdout 标签和证据快照保持冻结",
+      "同批失败样本修复后的运行只能计作 calibration replay"
+    ],
+    "constraints": [
+      "不把 uncertain forbidden conflict 放宽成通过",
+      "diagnostic_targets 的语义不依赖 RetrievalNeed purpose",
+      "不改变生产检索、正式 Knowledge Store 或 W3 路由",
+      "不覆盖或重跑原始 21 条 holdout 报告"
+    ],
+    "excluded_scope": [
+      "新增 RRF 或第二路召回",
+      "创建新的生产资格 holdout",
+      "执行 W3 下游答案 paired"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "纠错对象不会因 purpose 不是 false_friend_check 而被误判为证据适用性冲突",
+      "success_criteria": [
+        "boundary_check 的显式 diagnostic target 可被纠错证据覆盖",
+        "真正 forbidden 的 present 或 uncertain 仍失败关闭"
+      ],
+      "priority": "critical",
+      "required_evidence": ["contract-regression-tests"],
+      "approval": "system"
+    },
+    {
+      "id": "T2",
+      "description": "修复 replay 与原始独立 holdout 在评测语义上严格隔离",
+      "success_criteria": [
+        "replay 标记为 draft calibration",
+        "replay 绑定原数据集与 overlay 指纹",
+        "原始 paired 报告不被覆盖"
+      ],
+      "priority": "critical",
+      "required_evidence": ["replay-dataset-audit"],
+      "approval": "human-owner"
+    },
+    {
+      "id": "T3",
+      "description": "一次真实 replay 验证作用域修复而不产生生产资格",
+      "success_criteria": [
+        "affected case status 为 sufficient",
+        "Gold 保留、精度、状态准确率和可追溯率均为 100%",
+        "eligible_for_production 保持 false"
+      ],
+      "priority": "high",
+      "required_evidence": ["single-replay-report"],
+      "approval": "system"
+    }
+  ],
+  "process_model": {
+    "kind": "stateful",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "原始 holdout 失败已冻结",
+        "state_in": ["teacher-approved-holdout", "single-live-report"],
+        "state_out": ["warning-scope-diagnosis"],
+        "invariants": ["原始报告不可覆盖"],
+        "entry_conditions": ["eligible_for_production=false"],
+        "exit_conditions": ["失败绑定到 diagnostic/forbidden 类型边界"]
+      },
+      {
+        "id": "P2",
+        "label": "有界契约修复",
+        "state_in": ["warning-scope-diagnosis"],
+        "state_out": ["diagnostic-scope-candidate", "calibration-replay-dataset"],
+        "invariants": ["真实 forbidden 保持 fail-closed"],
+        "entry_conditions": ["影响锥限定在 Evidence Gate 与 replay builder"],
+        "exit_conditions": ["确定性测试通过"]
+      },
+      {
+        "id": "P3",
+        "label": "一次 calibration replay",
+        "state_in": ["validated-repair", "calibration-replay-dataset"],
+        "state_out": ["repair-replay-report"],
+        "invariants": ["replay 不计作 fresh holdout"],
+        "entry_conditions": ["数据集明确 draft/calibration"],
+        "exit_conditions": ["一次 replay 完成或失败"]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "diagnosis-frozen",
+        "carried_state": ["affected-case", "source-fingerprints"],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "deterministic-gates-pass",
+        "carried_state": ["repair-fingerprint", "replay-dataset"],
+        "rollback_to": "P2"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "A1",
+      "verb": "diagnose",
+      "description": "确认纠错警示被错误放入 forbidden_conflicts 且 uncertain 被按既定规则失败关闭",
+      "target_ids": ["T1", "T2"],
+      "process_node_ids": ["P1"],
+      "depends_on": [],
+      "input_artifacts": ["fresh-holdout-v2-paired-report", "approved-gold-dataset"],
+      "output_artifact": "warning-scope-diagnosis",
+      "output_contract": "wuli.evidence-warning-scope-diagnosis.v1",
+      "verifier_route": "case-trace-and-contract-inspection",
+      "assigned_role": "failure-diagnostician",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A2",
+      "verb": "revise",
+      "description": "使 diagnostic-only incompatibility 对全部 RetrievalNeed purpose 采用相同语义",
+      "target_ids": ["T1"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["warning-scope-diagnosis", "evidence-reflection-v3"],
+      "output_artifact": "diagnostic-scope-candidate",
+      "output_contract": "wuli.evidence-reflection.v3",
+      "verifier_route": "evidence-agent-unit-tests",
+      "assigned_role": "contract-engineer",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A3",
+      "verb": "build",
+      "description": "从唯一失败样本派生 draft calibration replay 并把纠错警示归入 diagnostic_targets",
+      "target_ids": ["T2"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["approved-gold-dataset", "approved-overlay"],
+      "output_artifact": "warning-scope-replay-dataset",
+      "output_contract": "wuli.evidence-gold-dataset.v1",
+      "verifier_route": "fingerprint-split-and-origin-audit",
+      "assigned_role": "evaluation-builder",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A4",
+      "verb": "test",
+      "description": "验证 boundary diagnostic 可通过且真实 forbidden 的 uncertain 仍拒绝",
+      "target_ids": ["T1", "T2"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A2", "A3"],
+      "input_artifacts": ["diagnostic-scope-candidate", "warning-scope-replay-dataset"],
+      "output_artifact": "warning-scope-test-report",
+      "output_contract": "unittest-report.v1",
+      "verifier_route": "deterministic-regression-suite",
+      "assigned_role": "verification-engineer",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A5",
+      "verb": "replay",
+      "description": "最多执行一次真实 Claude calibration replay",
+      "target_ids": ["T3"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A4"],
+      "input_artifacts": ["warning-scope-replay-dataset", "approved-overlay"],
+      "output_artifact": "warning-scope-replay-report",
+      "output_contract": "wuli.evidence-shadow-benchmark.v1",
+      "verifier_route": "paired-replay-metrics",
+      "assigned_role": "evaluation-runner",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A6",
+      "verb": "aggregate",
+      "description": "记录修复结果、原 holdout 不可覆盖约束和第三批 fresh holdout 阻断项",
+      "target_ids": ["T2", "T3"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A5"],
+      "input_artifacts": ["warning-scope-replay-report", "original-holdout-report"],
+      "output_artifact": "warning-scope-repair-summary",
+      "output_contract": "wuli.evidence-repair-summary.v1",
+      "verifier_route": "gate-and-documentation-audit",
+      "assigned_role": "result-aggregator",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S1",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A2",
+      "artifact": "warning-scope-diagnosis",
+      "contract": "wuli.evidence-warning-scope-diagnosis.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when the original report or approved dataset fingerprint changes"
+    },
+    {
+      "id": "S2",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A3",
+      "artifact": "source-fingerprint-audit",
+      "contract": "wuli.evidence-source-fingerprints.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when dataset or overlay fingerprint changes"
+    },
+    {
+      "id": "S3",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A4",
+      "artifact": "diagnostic-scope-candidate",
+      "contract": "wuli.evidence-reflection.v3",
+      "preconditions": ["A2 passed"],
+      "invalidation_rule": "Invalidate when Evidence Gate conflict logic changes"
+    },
+    {
+      "id": "S4",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A4",
+      "artifact": "warning-scope-replay-dataset",
+      "contract": "wuli.evidence-gold-dataset.v1",
+      "preconditions": ["A3 passed", "dataset is draft calibration"],
+      "invalidation_rule": "Invalidate when the source case or overlay fingerprint changes"
+    },
+    {
+      "id": "S5",
+      "producer_task_id": "A4",
+      "consumer_task_id": "A5",
+      "artifact": "warning-scope-test-report",
+      "contract": "unittest-report.v1",
+      "preconditions": ["A4 passed"],
+      "invalidation_rule": "Invalidate when repair code or replay dataset changes"
+    },
+    {
+      "id": "S6",
+      "producer_task_id": "A5",
+      "consumer_task_id": "A6",
+      "artifact": "warning-scope-replay-report",
+      "contract": "wuli.evidence-shadow-benchmark.v1",
+      "preconditions": ["A5 terminal"],
+      "invalidation_rule": "Never overwrite; a new attempt requires a new artifact id"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": ["T1"],
+      "task_ids": ["A2", "A4"],
+      "claim": "diagnostic_targets 的纠错语义不依赖 purpose",
+      "required_evidence": ["contract-regression-tests"],
+      "method": "用 boundary_check 构造 diagnostic-only incompatible reflection",
+      "decision_rule": "证据被覆盖且 hard_conflicts 为空",
+      "defeaters": ["模型冲突不匹配显式 diagnostic target", "真实 forbidden 非 absent"],
+      "fallback": "failed",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": ["T1"],
+      "task_ids": ["A4"],
+      "claim": "修复没有放宽真实 forbidden conflict",
+      "required_evidence": ["negative-regression-test"],
+      "method": "将真实 forbidden verdict 设置为 uncertain",
+      "decision_rule": "Coverage Gate 仍输出 conflicted",
+      "defeaters": ["forbidden 检查被忽略"],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V3",
+      "target_ids": ["T2"],
+      "task_ids": ["A3", "A4"],
+      "claim": "replay 不冒充独立 holdout",
+      "required_evidence": ["replay-dataset-audit"],
+      "method": "检查 split、review_status、label_origin、source fingerprints",
+      "decision_rule": "draft + calibration + post_holdout_v2_repair_replay 且指纹精确匹配",
+      "defeaters": ["teacher_approved", "holdout split", "source fingerprint drift"],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V4",
+      "target_ids": ["T3"],
+      "task_ids": ["A5", "A6"],
+      "claim": "一次 replay 只验证已知缺口闭合",
+      "required_evidence": ["single-replay-report"],
+      "method": "检查 affected case、provider 状态、证据层指标和生产门禁",
+      "decision_rule": "affected case 通过且 eligible_for_production=false",
+      "defeaters": ["provider failure", "第二次重跑", "report overwritten"],
+      "fallback": "provisional",
+      "risk": "high"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A1"], "parallel": false},
+      {"id": "W2", "task_ids": ["A2", "A3"], "parallel": true},
+      {"id": "W3", "task_ids": ["A4"], "parallel": false},
+      {"id": "W4", "task_ids": ["A5"], "parallel": false},
+      {"id": "W5", "task_ids": ["A6"], "parallel": false}
+    ],
+    "max_concurrency": 2,
+    "allocation_notes": ["当前会话不委派子 Agent；按依赖顺序本地执行。"]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": [
+      "retry-task",
+      "revise-input",
+      "invalidate-impact-cone",
+      "mark-provisional",
+      "stop"
+    ],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked"]
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4"],
+    "acceptance_rule": "V1-V3 deterministic checks pass and the single replay reaches a terminal report without changing production gates",
+    "conflict_policy": "Preserve the original failed holdout; replay cannot override it",
+    "unresolved_policy": "A failed replay remains visible and requires a new repair hypothesis",
+    "final_artifact": "warning-scope-repair-summary",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": [
+    "即使 replay 通过，生产资格仍需要第三批未揭盲 fresh holdout 与 W3 下游 paired"
+  ]
+}

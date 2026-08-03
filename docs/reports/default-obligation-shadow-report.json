@@ -1,0 +1,502 @@
+{
+  "cases": [
+    {
+      "blueprint_available": true,
+      "entry_id": "20260719-1c51e11ccabc05dc7426a289d589330d-17002f79",
+      "report_path": "student-error-library/entries/20260719-1c51e11ccabc05dc7426a289d589330d-17002f79/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "内外反向圆形磁场中的周期轨迹"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260720-bcb60960ecc0f33af64aa7b44de0498d-ba675619",
+      "report_path": "student-error-library/entries/20260720-bcb60960ecc0f33af64aa7b44de0498d-ba675619/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "两同向分区磁场中带电粒子的运动与相遇"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p1-4fdec96f",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p1-4fdec96f/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "磁场偏转与电容器的电荷累积"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p2-3be516e0",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p2-3be516e0/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "带电粒子在交替周期电场/磁场中的运动"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p3-f5a4ce56",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p3-f5a4ce56/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 2,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T1_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T1",
+          "trigger_text": "求t=0释放粒子在指定时刻的位置坐标。",
+          "type": "branch-completeness"
+        },
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T2_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T2",
+          "trigger_text": "求给定时间区间内静电力对t=0释放粒子所做的总功。",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "交替电场与磁场中带电粒子的分段运动"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p4-c37fe64e",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p4-c37fe64e/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "三区域复合场中带电粒子的运动控制"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p5-4f1275b3",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p5-4f1275b3/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "轴向磁场中电子的螺旋运动与圆柱壁约束临界模型"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p7-9490fbce",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p7-9490fbce/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "三维复合场中电子的类平抛、螺旋运动与共圆心条件"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260722-7-22物理练习题-p8-5924df18",
+      "report_path": "student-error-library/entries/20260722-7-22物理练习题-p8-5924df18/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "方波电场与匀强磁场中的带电粒子运动"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260724-7-24物理错题-1-p1-dd865c2c",
+      "report_path": "student-error-library/entries/20260724-7-24物理错题-1-p1-dd865c2c/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 1,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T2_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T2",
+          "trigger_text": "确定导体棒所受安培力F安随位置x的变化关系",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "导体轨道方程与安培力做功"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-apho-2019-q3-a8-翻转陀螺五阶段能量变化-a87624e0",
+      "report_path": "student-error-library/entries/20260729-generated-apho-2019-q3-a8-翻转陀螺五阶段能量变化-a87624e0/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "APhO 2019 Q3-A8：翻转陀螺五阶段能量变化"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-apho-2019-q3-a8-翻转陀螺五阶段能量变化-e9c5a3bc",
+      "report_path": "student-error-library/entries/20260729-generated-apho-2019-q3-a8-翻转陀螺五阶段能量变化-e9c5a3bc/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "APhO 2019 Q3-A8：翻转陀螺五阶段能量变化"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q10改写-旋转箱中的双弹簧-24394839",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q10改写-旋转箱中的双弹簧-24394839/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "F=ma 2024 Q10改写：旋转箱中的双弹簧"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q13改写-斜绳双物块的瞬时张力-4326ccb7",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q13改写-斜绳双物块的瞬时张力-4326ccb7/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 1,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_Q3_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "Q3",
+          "trigger_text": "确定所有 x≥0 时张力的范围，并核对 x=0 与 x→∞ 两个极限及其图像一致性。",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "F=ma 2024 Q13改写：斜绳双物块的瞬时张力"
+    },
+    {
+      "blueprint_available": false,
+      "entry_id": "20260729-generated-f-ma-2024-q18改写-卫星变轨-15ef3a26",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q18改写-卫星变轨-15ef3a26/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "stored",
+      "suggestions": [],
+      "title": "F=ma 2024 Q18改写：卫星变轨"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q1改写-穿过等高圆环的箭-0e75d602",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q1改写-穿过等高圆环的箭-0e75d602/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 2,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T1_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T1",
+          "trigger_text": "确定箭到达最高点的时刻。",
+          "type": "branch-completeness"
+        },
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T2_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T2",
+          "trigger_text": "确定初速度的竖直分量。",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "F=ma 2024 Q1改写：穿过等高圆环的箭"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q25改写-变半径退绕的悠悠球-628d3257",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q25改写-变半径退绕的悠悠球-628d3257/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "F=ma 2024 Q25改写：变半径退绕的悠悠球"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q2改写-旋转游乐设施离地-e0a36eea",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q2改写-旋转游乐设施离地-e0a36eea/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 1,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T3_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T3",
+          "trigger_text": "求临界角速度，并判断其对应的原题选项。",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "F=ma 2024 Q2改写：旋转游乐设施离地"
+    },
+    {
+      "blueprint_available": false,
+      "entry_id": "20260729-generated-f-ma-2024-q9改写-干燥路面与冰面制动-16048de9",
+      "report_path": "student-error-library/entries/20260729-generated-f-ma-2024-q9改写-干燥路面与冰面制动-16048de9/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "stored",
+      "suggestions": [],
+      "title": "F=ma 2024 Q9改写：干燥路面与冰面制动"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-ipho-2021-t1-a1-油水两侧的板上合力-114ec94e",
+      "report_path": "student-error-library/entries/20260729-generated-ipho-2021-t1-a1-油水两侧的板上合力-114ec94e/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "IPhO 2021 T1-A1：油水两侧的板上合力"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-第38届全国竞赛复赛第3题-超球连续三次碰撞-91f7fdaa",
+      "report_path": "student-error-library/entries/20260729-generated-第38届全国竞赛复赛第3题-超球连续三次碰撞-91f7fdaa/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 2,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T3_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T3",
+          "trigger_text": "求第二次碰撞后的水平速度分量 v_{2x}",
+          "type": "branch-completeness"
+        },
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_T4_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "T4",
+          "trigger_text": "求第二次碰撞后的角速度 ω_{2z}",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "第38届全国竞赛复赛第3题：超球连续三次碰撞"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-第38届全国竞赛复赛第3题-超球连续三次碰撞-b62c2e2d",
+      "report_path": "student-error-library/entries/20260729-generated-第38届全国竞赛复赛第3题-超球连续三次碰撞-b62c2e2d/w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 0,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [],
+      "title": "第38届全国竞赛复赛第3题：超球连续三次碰撞"
+    },
+    {
+      "blueprint_available": true,
+      "entry_id": "20260729-generated-f-ma-2024-q13改写-斜绳双物块的瞬时张力-4326ccb7",
+      "report_path": "student-error-library/evals/w4-production-gray-1/artifacts/20260729-generated-f-ma-2024-q13改写-斜绳双物块的瞬时张力-4326ccb7/first-run-w3-shadow-report.json",
+      "status": "completed",
+      "suggestion_count": 1,
+      "suggestion_source": "recomputed-from-blueprint",
+      "suggestions": [
+        {
+          "check": "题干未限定唯一或首次时，枚举所有满足题设条件和物理可行域的解支。",
+          "id": "default_Q3_all_physical_solutions",
+          "policy": "wuli.default-obligation-rules.v1",
+          "risk": "high",
+          "rule_id": "default.solve.all-physical-solutions.v1",
+          "source": "default-convention",
+          "status": "suggested",
+          "suppressed_by": [
+            "第一次",
+            "首次",
+            "最早",
+            "唯一",
+            "最小正值",
+            "只求一个",
+            "只需判断是否存在",
+            "指定区间"
+          ],
+          "target_id": "Q3",
+          "trigger_text": "确定所有 x≥0 时张力的范围，并核对 x=0 与 x→∞ 两个极限及其图像一致性。",
+          "type": "branch-completeness"
+        }
+      ],
+      "title": "F=ma 2024 Q13改写：斜绳双物块的瞬时张力"
+    }
+  ],
+  "generated_at": "2026-07-29T05:39:21.400634+00:00",
+  "ipho_full_exam": {
+    "experiment_id": "ipho-2021-theory-closed-book-v1",
+    "path": "student-error-library/evals/ipho-2021-full-exam-v1/results/summary.json",
+    "question_count": 3,
+    "reason": "The IPhO full-exam harness answers official subparts directly through Agent Gateway and does not persist W3 decomposition blueprints; default obligation shadow suggestions therefore cannot be audited from this summary without a separate blueprint pass.",
+    "score": {
+      "awarded_points": 30.0,
+      "maximum_points": 30.0
+    },
+    "status": "not-covered-by-w3-blueprint-recompute",
+    "subpart_count": 36
+  },
+  "library": "student-error-library",
+  "mode": "shadow-only",
+  "policy": "wuli.default-obligation-rules.v1",
+  "recompute_from_blueprint": true,
+  "safety": {
+    "manual_review_required": true,
+    "promotion_recommendation": "do-not-promote-to-hard-gate-yet",
+    "solver_affected": false,
+    "verification_obligations_mutated": false,
+    "verified_gate_affected": false
+  },
+  "schema_version": 1,
+  "totals": {
+    "blueprint_available_count": 21,
+    "rule_counts": {
+      "default.solve.all-physical-solutions.v1": 10
+    },
+    "suggestion_count": 10,
+    "target_counts": {
+      "Q3": 2,
+      "T1": 2,
+      "T2": 3,
+      "T3": 2,
+      "T4": 1
+    },
+    "triggered_case_count": 7,
+    "w3_report_count": 23
+  }
+}

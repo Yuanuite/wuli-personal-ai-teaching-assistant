@@ -1,0 +1,331 @@
+{
+  "schema": "wuli.evidence-holdout-preflight.v1",
+  "status": "passed",
+  "dataset_fingerprint": "sha256:988da0615fce6e26b3cf67ee2429003690463e78357b1b1af88f75408e1ee1d6",
+  "overlay_fingerprint": "sha256:55b55578ff20cc29b62b49aa3f672723b0a441e0d290e647e21aed1fe46c2f1a",
+  "case_count": 21,
+  "revealed_evidence_overlap": [],
+  "required_or_forbidden_target_top5_rate": 1.0,
+  "expected_status_counts": {
+    "sufficient": 14,
+    "insufficient": 7
+  },
+  "cases": [
+    {
+      "case_id": "fresh3-circle-radial-force-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-7f56ba8b658e18939f870500"
+      ],
+      "top5_candidate_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-circle-zero-result-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-7f56ba8b658e18939f870500"
+      ],
+      "top5_candidate_ids": [
+        "EU-7f56ba8b658e18939f870500",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-circle-detached-trajectory-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-7f56ba8b658e18939f870500"
+      ],
+      "top5_candidate_ids": [
+        "EU-7f56ba8b658e18939f870500",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-projectile-time-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "top5_candidate_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-projectile-horizontal-speed-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "top5_candidate_ids": [
+        "EU-7f56ba8b658e18939f870500",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-projectile-drag-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "top5_candidate_ids": [
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-b288fd52bc840a8e53132a22",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-gas-two-state-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-b288fd52bc840a8e53132a22"
+      ],
+      "top5_candidate_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-b288fd52bc840a8e53132a22",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-ca6fc7256929a19a64075552"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-gas-celsius-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-b288fd52bc840a8e53132a22"
+      ],
+      "top5_candidate_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-b288fd52bc840a8e53132a22",
+        "EU-ca6fc7256929a19a64075552"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-gas-leak-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-b288fd52bc840a8e53132a22"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-b288fd52bc840a8e53132a22",
+        "EU-ca6fc7256929a19a64075552",
+        "EU-e2d5218e3eee60c0ad25fb24"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-emf-perpendicular-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45"
+      ],
+      "top5_candidate_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-emf-open-current-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-emf-rotating-nonuniform-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-shm-equilibrium-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-9db23c189878e5c7e5f88eeb"
+      ],
+      "top5_candidate_ids": [
+        "EU-7f56ba8b658e18939f870500",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-shm-endpoint-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-9db23c189878e5c7e5f88eeb"
+      ],
+      "top5_candidate_ids": [
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-shm-damping-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-9db23c189878e5c7e5f88eeb"
+      ],
+      "top5_candidate_ids": [
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-e2ecf8dcde51348f388fc00c"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-tir-critical-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-2550bbfa123aac2855a6710d"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-tir-thin-to-dense-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-2550bbfa123aac2855a6710d"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-0da542351f084b059f89b89a",
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-tir-gradient-index-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-2550bbfa123aac2855a6710d"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-76e39c9cea8a0d3d74a6ae45",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-b288fd52bc840a8e53132a22"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-decay-half-life-valid",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-ca6fc7256929a19a64075552"
+      ],
+      "top5_candidate_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-9db23c189878e5c7e5f88eeb",
+        "EU-ca6fc7256929a19a64075552",
+        "EU-e2d5218e3eee60c0ad25fb24"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-decay-temperature-diagnostic",
+      "expected_status": "sufficient",
+      "target_evidence_ids": [
+        "EU-ca6fc7256929a19a64075552"
+      ],
+      "top5_candidate_ids": [
+        "EU-2550bbfa123aac2855a6710d",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-b288fd52bc840a8e53132a22",
+        "EU-ca6fc7256929a19a64075552",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    },
+    {
+      "case_id": "fresh3-decay-bombardment-insufficient",
+      "expected_status": "insufficient",
+      "target_evidence_ids": [
+        "EU-ca6fc7256929a19a64075552"
+      ],
+      "top5_candidate_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-7f56ba8b658e18939f870500",
+        "EU-ca6fc7256929a19a64075552",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "target_in_top5": true
+    }
+  ],
+  "live_provider_run": false
+}

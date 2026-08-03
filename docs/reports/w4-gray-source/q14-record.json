@@ -1,0 +1,19 @@
+{
+  "title": "F=ma 2024 Q14改写：可动圆环上的小珠",
+  "subject": "高中物理",
+  "grade": "高二",
+  "knowledge_points": ["动量守恒", "机械能守恒", "圆周几何", "相对静止"],
+  "error_types": ["生产灰度"],
+  "difficulty": "较难",
+  "difficulty_assessment": {"score": 74},
+  "student_error": "W4-4 新生产灰度样本，无学生原答。",
+  "contest_source": {
+    "organization": "American Association of Physics Teachers",
+    "exam": "2024 F=ma Exam",
+    "question": 14,
+    "problem_url": "https://www.aapt.org/physicsteam/upload/2024_F-ma_Exam.pdf",
+    "solution_url": "https://www.aapt.org/physicsteam/upload/F-ma-2024-Solutions_v2.pdf",
+    "adaptation": "Chinese gray-cohort adaptation with three explicit targets"
+  },
+  "answer_review": {"status": "not-ready"}
+}

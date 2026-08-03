@@ -1,0 +1,57 @@
+{
+  "schema": "wuli.evidence-repair-summary.v1",
+  "status": "passed",
+  "generated_at": "2026-07-30T20:20:08+08:00",
+  "source_holdout": {
+    "dataset_fingerprint": "sha256:49b525482c65f507371efcf98a1ea02888338510e59fce2898e4dee6cdd4ed0f",
+    "report": "docs/reports/evidence-agent-mvp-e-holdout-paired-v1.json",
+    "historical_result": "failed",
+    "may_be_overwritten_by_replay": false
+  },
+  "repairs": [
+    {
+      "gap": "diagnostic-target-misclassified-as-conflict",
+      "result": "closed",
+      "artifact": "wuli.evidence-reflection.v3"
+    },
+    {
+      "gap": "circuit-connection-node-facet-missing",
+      "result": "closed",
+      "artifact": "EU-bcf841d2038df8417c913c32"
+    },
+    {
+      "gap": "claude-structured-output-protocol-failure",
+      "result": "closed_in_replay",
+      "artifact": "strict-single-json-recovery+low-effort"
+    }
+  ],
+  "verification": {
+    "deterministic_tests": {
+      "passed": 157,
+      "failed": 0
+    },
+    "replay_dataset_fingerprint": "sha256:9073a4debd823cd8282d446720d9e301b4ec566a0f0022508db1626a2cacf559",
+    "replay_case_count": 3,
+    "provider_completed": 3,
+    "provider_failed": 0,
+    "metrics": {
+      "candidate_required_recall": 1.0,
+      "gold_evidence_retention": 1.0,
+      "evidence_precision": 1.0,
+      "false_friend_admission_count": 0,
+      "traceability_rate": 1.0,
+      "status_accuracy": 1.0,
+      "required_need_coverage": 1.0
+    }
+  },
+  "gates": {
+    "replay_is_calibration_only": true,
+    "dataset_teacher_approved": false,
+    "independent_holdout_present": false,
+    "eligible_for_production": false
+  },
+  "next_required_evidence": [
+    "new-unrevealed-fresh-holdout",
+    "w3-downstream-paired-non-regression"
+  ]
+}

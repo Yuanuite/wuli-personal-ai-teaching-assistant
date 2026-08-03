@@ -1,0 +1,1596 @@
+{
+  "schema": "wuli.evidence-shadow-benchmark.v1",
+  "data_scope": {
+    "model_visible_source_kinds": [
+      "curated_technique"
+    ],
+    "student_entry_evidence_sent": false,
+    "raw_source_assets_sent": false,
+    "provider_data_locality": "provider-dependent",
+    "provider_dependent_data_acknowledged": true
+  },
+  "candidate_policy": "single-route-bypass",
+  "top_k": 5,
+  "paired": {
+    "schema": "wuli.evidence-paired-gold-report.v1",
+    "dataset": {
+      "dataset_id": "wuli-evidence-fresh-holdout-v2",
+      "dataset_version": "2026-07-30-v2",
+      "dataset_fingerprint": "sha256:a024c0e285c7a58c8de2f53fc0e39b5a46f020541e8c7c362139d9a0beb75d0e",
+      "review_status": "teacher_approved",
+      "case_count": 21
+    },
+    "baseline": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 21,
+        "prediction_count": 21,
+        "required_evidence_total": 16,
+        "required_evidence_candidates": 16,
+        "required_evidence_selected": 16,
+        "selected_evidence_total": 105,
+        "selected_acceptable_total": 16,
+        "selected_forbidden_total": 5,
+        "candidate_forbidden_total": 5,
+        "traceable_selected_total": 105,
+        "status_correct": 16,
+        "sufficient_case_total": 16,
+        "sufficient_case_covered": 16
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 1.0,
+        "evidence_precision": 0.1524,
+        "false_friend_admission_count": 5,
+        "candidate_false_friend_count": 5,
+        "traceability_rate": 1.0,
+        "status_accuracy": 0.7619,
+        "required_need_coverage": 1.0
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": true,
+        "false_friend_zero_admission": false,
+        "traceability_100": true,
+        "evidence_precision_100": false,
+        "required_need_coverage_100": true,
+        "evidence_set_gate_ready": false
+      },
+      "cases": [
+        {
+          "case_id": "fresh2-momentum-collision-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-momentum-explosion-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-momentum-boundary-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-4057ce0ba1a2b7e050192564"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-field-increase-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-area-decrease-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-open-loop-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-61c464cd60e41b4b9de52a73"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-voltage-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-current-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-loss-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-1f17981b20eb71570a5f2385"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-coherent-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-amplitude-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-frequency-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-interior-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-endpoint-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-acceleration-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-9bf2d5d1e1066b1b510c0a31"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-speed-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-period-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-ellipse-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [
+            "EU-4e2db04917015f42e21f8de0"
+          ],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-frequency-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-intensity-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-below-threshold-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "evidence_agent": {
+      "schema": "wuli.evidence-gold-report.v1",
+      "counts": {
+        "case_count": 21,
+        "prediction_count": 21,
+        "required_evidence_total": 16,
+        "required_evidence_candidates": 16,
+        "required_evidence_selected": 15,
+        "selected_evidence_total": 15,
+        "selected_acceptable_total": 15,
+        "selected_forbidden_total": 0,
+        "candidate_forbidden_total": 5,
+        "traceable_selected_total": 15,
+        "status_correct": 20,
+        "sufficient_case_total": 16,
+        "sufficient_case_covered": 15
+      },
+      "metrics": {
+        "candidate_required_recall": 1.0,
+        "gold_evidence_retention": 0.9375,
+        "evidence_precision": 1.0,
+        "false_friend_admission_count": 0,
+        "candidate_false_friend_count": 5,
+        "traceability_rate": 1.0,
+        "status_accuracy": 0.9524,
+        "required_need_coverage": 0.9375
+      },
+      "gates": {
+        "all_cases_scored": true,
+        "gold_evidence_retention_100": false,
+        "false_friend_zero_admission": true,
+        "traceability_100": true,
+        "evidence_precision_100": true,
+        "required_need_coverage_100": false,
+        "evidence_set_gate_ready": false
+      },
+      "cases": [
+        {
+          "case_id": "fresh2-momentum-collision-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-momentum-explosion-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-momentum-boundary-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-field-increase-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-area-decrease-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-lenz-open-loop-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-voltage-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-current-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-transformer-loss-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-coherent-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-amplitude-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-interference-frequency-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-interior-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-endpoint-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [
+            "EU-9bf2d5d1e1066b1b510c0a31"
+          ],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-relative-acceleration-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-speed-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-period-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-satellite-ellipse-conflict",
+          "status": "scored",
+          "expected_status": "insufficient",
+          "predicted_status": "insufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-frequency-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-intensity-valid",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        },
+        {
+          "case_id": "fresh2-photo-below-threshold-conflict",
+          "status": "scored",
+          "expected_status": "sufficient",
+          "predicted_status": "sufficient",
+          "missing_required_evidence_ids": [],
+          "selected_forbidden_evidence_ids": [],
+          "untraceable_selected_evidence_ids": []
+        }
+      ]
+    },
+    "metric_deltas": {
+      "candidate_required_recall": 0.0,
+      "gold_evidence_retention": -0.0625,
+      "evidence_precision": 0.8476,
+      "false_friend_admission_count": -5,
+      "traceability_rate": 0.0,
+      "status_accuracy": 0.1905,
+      "required_need_coverage": -0.0625
+    },
+    "gates": {
+      "dataset_teacher_approved": true,
+      "independent_holdout_present": true,
+      "candidate_recall_non_regression": true,
+      "gold_retention_non_regression": false,
+      "status_accuracy_non_regression": true,
+      "false_friend_zero_admission": true,
+      "traceability_100": true,
+      "evidence_precision_100": true,
+      "eligible_for_production": false
+    }
+  },
+  "executions": [
+    {
+      "case_id": "fresh2-momentum-collision-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4183,
+          "output_tokens": 4186,
+          "total_tokens": 8369
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。仅 EU-4057ce0ba1a2b7e050192564 覆盖全部 required facets 且适用性匹配当前题。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":38094,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"6e2b4fee-bacf-48a7-aeef-d76594a5143e\",\"total_cost_usd\":0.15181499999999998,\"usage\":{\"input_tokens\":4183,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":4186,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-4057ce0ba1a2b7e050192564"
+          ],
+          "covered_facets": [
+            "系统边界",
+            "外力冲量",
+            "总动量守恒"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-momentum-explosion-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-3a78ff1e58a1b5f7727e7e56",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-ac99d72f9d43905c375c4d52"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4376,
+          "output_tokens": 5008,
+          "total_tokens": 9384
+        },
+        "changed_files": [],
+        "message": "完成 N1 证据语义验收",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":47347,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"2f1d159d-be6a-4f68-96dd-52e9be174671\",\"total_cost_usd\":0.17308500000000002,\"usage\":{\"input_tokens\":4376,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":5008,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-4057ce0ba1a2b7e050192564"
+          ],
+          "covered_facets": [
+            "爆炸",
+            "研究时间",
+            "合外力冲量可忽略"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-momentum-boundary-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4497,
+          "output_tokens": 6148,
+          "total_tokens": 10645
+        },
+        "changed_files": [],
+        "message": "已完成 N1 证据语义验收。仅 EU-4057ce0ba1a2b7e050192564 可覆盖所需 facets，但其 exception 与当前题情景冲突，condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":54585,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"a7d391f4-c1a7-4e9d-bfc9-222e926451b2\",\"total_cost_usd\":0.20186,\"usage\":{\"input_tokens\":4497,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":6148,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"m"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "系统边界",
+            "研究时间",
+            "外力冲量"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "EU-4057ce0ba1a2b7e050192564:证据的 exception 明确列出'系统边界中途改变'，而当前题描述的解答恰好'碰撞前把两车作为系统，碰撞后却只保留其中一车'，即系统边界在研究过程中发生了改变，使该证据的结论不适用。",
+            "condition-incompatible",
+            "forbidden-conflict-present:系统边界中途改变"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-lenz-field-increase-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4335,
+          "output_tokens": 5757,
+          "total_tokens": 10092
+        },
+        "changed_files": [],
+        "message": "完成证据语义验收。N1 由 EU-61c464cd60e41b4b9de52a73 覆盖全部 required_facets，其余候选均不覆盖任何 required_facet，不入 binding。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":53423,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"f9b59637-5859-41c5-ab7e-fd65c98e790e\",\"total_cost_usd\":0.189266,\"usage\":{\"input_tokens\":4335,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":5757,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-61c464cd60e41b4b9de52a73"
+          ],
+          "covered_facets": [
+            "原磁通方向",
+            "磁通量增加",
+            "阻碍磁通变化"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-lenz-area-decrease-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4363,
+          "output_tokens": 4991,
+          "total_tokens": 9354
+        },
+        "changed_files": [],
+        "message": "Evidence semantic acceptance completed for N1 using candidate EU-61c464cd60e41b4b9de52a73.",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":52950,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"fa571579-e0c2-487a-8f81-765db55ffd51\",\"total_cost_usd\":0.176346,\"usage\":{\"input_tokens\":4363,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4991,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-61c464cd60e41b4b9de52a73"
+          ],
+          "covered_facets": [
+            "闭合导体回路",
+            "面积变化",
+            "感应电流方向"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-lenz-open-loop-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4449,
+          "output_tokens": 10092,
+          "total_tokens": 14541
+        },
+        "changed_files": [],
+        "message": "Need N1 证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":90442,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"fd20c66b-3f52-40e3-ba1a-c68e63bd7434\",\"total_cost_usd\":0.297685,\"usage\":{\"input_tokens\":4449,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":10092,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "闭合导体回路",
+            "磁通量变化",
+            "感应电流方向"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:回路不闭合却声称有持续感应电流"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-transformer-voltage-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-bcf841d2038df8417c913c32"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4381,
+          "output_tokens": 5602,
+          "total_tokens": 9983
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成：Need N1 所需三个 facet 均由 EU-1f17981b20eb71570a5f2385 直接支持，当前题为理想变压器+正弦交流，与 applicability 兼容，禁止冲突 absent。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":62893,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"3342270a-46a1-4449-9302-2ebe99885222\",\"total_cost_usd\":0.19871999999999998,\"usage\":{\"input_tokens\":4381,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":5602,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"s"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-1f17981b20eb71570a5f2385"
+          ],
+          "covered_facets": [
+            "理想变压器",
+            "匝数比",
+            "电压比"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-transformer-current-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-61c464cd60e41b4b9de52a73",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4401,
+          "output_tokens": 5296,
+          "total_tokens": 9697
+        },
+        "changed_files": [],
+        "message": "N1 语义验收完成：仅 EU-1f17981b20eb71570a5f2385 覆盖全部三个 required facets，其他候选证据均不涉及变压器或电流比相关物理量，无法覆盖任何 required facet。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":67676,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"03d2ee8d-bb85-4c57-9adc-c3fedc65ce28\",\"total_cost_usd\":0.20627,\"usage\":{\"input_tokens\":4401,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":5296,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"m"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-1f17981b20eb71570a5f2385"
+          ],
+          "covered_facets": [
+            "输入输出功率相等",
+            "电流比",
+            "匝数比互为倒数"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-transformer-loss-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-bcf841d2038df8417c913c32",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4407,
+          "output_tokens": 5441,
+          "total_tokens": 9848
+        },
+        "changed_files": [],
+        "message": "对 N1 的证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":63016,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"ed7df8d7-27e4-41df-bb64-c136500709c3\",\"total_cost_usd\":0.195565,\"usage\":{\"input_tokens\":4407,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":5441,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "理想变压器",
+            "功率守恒",
+            "电流比"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:非理想变压器仍直接令输入功率等于输出功率",
+            "explicit-current-problem-conflict:非理想变压器仍直接令输入功率等于输出功率"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-interference-coherent-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4244,
+          "output_tokens": 2792,
+          "total_tokens": 7036
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":30249,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"b7f9106f-afc9-45e3-945d-2859c6d2be34\",\"total_cost_usd\":0.11912,\"usage\":{\"input_tokens\":4244,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":2792,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"m"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-0e469416091f17642b095b5d"
+          ],
+          "covered_facets": [
+            "频率相同",
+            "相位差恒定",
+            "观察区域叠加"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-interference-amplitude-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-0da542351f084b059f89b89a",
+        "EU-0e469416091f17642b095b5d",
+        "EU-d1dc406ced943e167e2428f0"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4361,
+          "output_tokens": 2952,
+          "total_tokens": 7313
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。候选池中仅 EU-0e469416091f17642b095b5d 满足 N1 全部 required_facets，且适用性匹配，无硬冲突或禁区命中。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":32565,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"d7bcbc19-1ddd-41bb-9eb6-4a2827b1e7ca\",\"total_cost_usd\":0.120276,\"usage\":{\"input_tokens\":4361,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":2952,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-0e469416091f17642b095b5d"
+          ],
+          "covered_facets": [
+            "稳定干涉图样",
+            "频率相同",
+            "相位差恒定"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-interference-frequency-conflict",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4269,
+          "output_tokens": 2600,
+          "total_tokens": 6869
+        },
+        "changed_files": [],
+        "message": "完成证据语义验收",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":29876,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"42c943c3-4621-40e1-94d9-8bab8415ca81\",\"total_cost_usd\":0.11961,\"usage\":{\"input_tokens\":4269,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":2600,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"m"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-0e469416091f17642b095b5d"
+          ],
+          "covered_facets": [
+            "频率相同",
+            "相位差恒定",
+            "稳定干涉图样"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-relative-interior-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4410,
+          "output_tokens": 3916,
+          "total_tokens": 8326
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成。N1所需四个facets（相对位置、相对速度、垂直、时间区间）均由EU-9bf2d5d1e1066b1b510c0a31直接支持；其余候选与该need不相关。条件可兼容，无硬冲突，forbidden_conflict不存在。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":37609,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"f1e0fea0-38f4-42a4-a0ed-beeb3ed002b1\",\"total_cost_usd\":0.148536,\"usage\":{\"input_tokens\":4410,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":3916,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-9bf2d5d1e1066b1b510c0a31"
+          ],
+          "covered_facets": [
+            "相对位置",
+            "相对速度",
+            "垂直",
+            "时间区间"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-relative-endpoint-valid",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-277d79cd61babffd9055b89c",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-9bf2d5d1e1066b1b510c0a31"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4376,
+          "output_tokens": 5775,
+          "total_tokens": 10151
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":56211,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"7f8fbb12-5c46-498c-853b-45b6678d92f9\",\"total_cost_usd\":0.191845,\"usage\":{\"input_tokens\":4376,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":5775,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "研究时间区间",
+            "垂直时刻",
+            "区间端点"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "forbidden-conflict-uncertain:求得的垂直时刻不在区间内却不检查端点"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-relative-acceleration-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-277d79cd61babffd9055b89c",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-a4acafd42b4332c3ade8b8f8",
+        "EU-ac99d72f9d43905c375c4d52",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4342,
+          "output_tokens": 7933,
+          "total_tokens": 12275
+        },
+        "changed_files": [],
+        "message": "Evidence semantic verification completed for N1.",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "Tokens\":3240,\"outputTokens\":476,\"cacheReadInputTokens\":0,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.0281,\"contextWindow\":200000,\"maxOutputTokens\":32000,\"canonicalModel\":\"deepseek-v4-flash\",\"provider\":\"firstParty\"},\"Deepseek-v4-flash[1m]\":{\"inputTokens\":4342,\"outputTokens\":7933,\"cacheReadInputTokens\":3712,\"cacheCreationInputTokens\":0,\"webSearchRequests\":0,\"costUSD\":0.221891,\"contextWindow\":1000000,\"maxOutputTokens\":32000,\"canonicalModel\":\"deepseek-v4-flash[1m]\",\"provider\":\"fir"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "匀速直线运动",
+            "相对速度",
+            "最近距离"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "condition-incompatible",
+            "forbidden-conflict-present:存在加速度仍把相对速度当常量"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-satellite-speed-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-9bf2d5d1e1066b1b510c0a31",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4398,
+          "output_tokens": 4694,
+          "total_tokens": 9092
+        },
+        "changed_files": [],
+        "message": "完成证据语义验收",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":44971,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"78942dbd-a17e-480f-b193-e007dc57dc05\",\"total_cost_usd\":0.164346,\"usage\":{\"input_tokens\":4398,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4694,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-4e2db04917015f42e21f8de0"
+          ],
+          "covered_facets": [
+            "同一中心天体",
+            "圆轨道",
+            "线速度",
+            "轨道半径"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-satellite-period-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-d1dc406ced943e167e2428f0",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4238,
+          "output_tokens": 4559,
+          "total_tokens": 8797
+        },
+        "changed_files": [],
+        "message": "已完成 N1 证据语义验收，仅 EU-4e2db04917015f42e21f8de0 满足全部 required_facets。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":45906,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"2eb44f99-12de-4c58-a944-dc0adc797d9c\",\"total_cost_usd\":0.164486,\"usage\":{\"input_tokens\":4238,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":4559,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-4e2db04917015f42e21f8de0"
+          ],
+          "covered_facets": [
+            "周期",
+            "轨道半径",
+            "同一中心天体"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-satellite-ellipse-conflict",
+      "status": "insufficient",
+      "candidate_evidence_ids": [
+        "EU-0da542351f084b059f89b89a",
+        "EU-4e2db04917015f42e21f8de0",
+        "EU-e2d5218e3eee60c0ad25fb24",
+        "EU-eef1ded86a99a91d252132b6",
+        "EU-f77a25f68669afd927711788"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4479,
+          "output_tokens": 6601,
+          "total_tokens": 11080
+        },
+        "changed_files": [],
+        "message": "完成 N1 证据语义验收：EU-4e2db04917015f42e21f8de0 覆盖全部三个 required_facets，但 forbidden_conflict 存在于当前题中，condition_verdict=incompatible。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":67370,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"3e62db28-0a01-47e2-a616-c38126de927f\",\"total_cost_usd\":0.216251,\"usage\":{\"input_tokens\":4479,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":6601,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "conflicted",
+          "evidence_ids": [],
+          "covered_facets": [
+            "圆轨道",
+            "瞬时速度",
+            "轨道半径"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": [
+            "EU-4e2db04917015f42e21f8de0:证据适用条件要求「轨道为圆轨道」，但当前题描述为椭圆轨道，不满足该适用条件。",
+            "condition-incompatible",
+            "forbidden-conflict-present:把椭圆轨道瞬时速度直接代入圆轨道比例",
+            "explicit-current-problem-conflict:把椭圆轨道瞬时速度直接代入圆轨道比例"
+          ]
+        }
+      ],
+      "insufficient_evidence": "N1:conflicted"
+    },
+    {
+      "case_id": "fresh2-photo-frequency-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-1f17981b20eb71570a5f2385",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4262,
+          "output_tokens": 5767,
+          "total_tokens": 10029
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成：N1 由 EU-05e31fa 覆盖全部三个 required facets，条件兼容，无禁区冲突。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":51642,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"48fb980b-d970-4d44-a0b3-58b6c38043e3\",\"total_cost_usd\":0.190181,\"usage\":{\"input_tokens\":4262,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3712,\"output_tokens\":5767,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-05e31fa12735f575bd819262"
+          ],
+          "covered_facets": [
+            "最大初动能",
+            "频率",
+            "逸出功"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-photo-intensity-valid",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-05e31fa12735f575bd819262",
+        "EU-0e469416091f17642b095b5d",
+        "EU-4057ce0ba1a2b7e050192564",
+        "EU-4a36df71d3e05cc730ea9aae",
+        "EU-931521d992cb01e737e183a2"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4265,
+          "output_tokens": 4680,
+          "total_tokens": 8945
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":37235,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"8d8df93b-e569-46d3-81f3-0a8dcffa812a\",\"total_cost_usd\":0.159325,\"usage\":{\"input_tokens\":4265,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":4680,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\""
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-05e31fa12735f575bd819262"
+          ],
+          "covered_facets": [
+            "光强",
+            "光电子数",
+            "最大初动能"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    },
+    {
+      "case_id": "fresh2-photo-below-threshold-conflict",
+      "status": "sufficient",
+      "candidate_evidence_ids": [
+        "EU-001becd1895a4e7c37e1fa59",
+        "EU-05e31fa12735f575bd819262",
+        "EU-0da542351f084b059f89b89a",
+        "EU-0e469416091f17642b095b5d",
+        "EU-277d79cd61babffd9055b89c"
+      ],
+      "gateway": {
+        "status": "completed",
+        "provider": "claude",
+        "model_id": null,
+        "failure_type": null,
+        "duration_seconds": null,
+        "usage": {
+          "input_tokens": 4273,
+          "output_tokens": 4015,
+          "total_tokens": 8288
+        },
+        "changed_files": [],
+        "message": "证据语义验收完成：Need N1（false_friend_check）仅有一项候选（EU-05e31fa12735f575bd819262）直接支持全部三个 required_facets，其余四项候选与光电效应主题无关，未纳入绑定。",
+        "attempts": [
+          {
+            "provider": "claude",
+            "returncode": 0,
+            "failure_type": "",
+            "stderr": "",
+            "stdout": "{\"is_error\":false,\"duration_api_ms\":35106,\"num_turns\":3,\"stop_reason\":\"tool_use\",\"session_id\":\"4cc28a01-cb9e-4a9b-980c-c70d598596a0\",\"total_cost_usd\":0.1574,\"usage\":{\"input_tokens\":4273,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":3840,\"output_tokens\":4015,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"mo"
+          }
+        ]
+      },
+      "coverage": [
+        {
+          "need_id": "N1",
+          "status": "covered",
+          "evidence_ids": [
+            "EU-05e31fa12735f575bd819262"
+          ],
+          "covered_facets": [
+            "截止频率",
+            "光强",
+            "光电子"
+          ],
+          "missing_facets": [],
+          "hard_conflicts": []
+        }
+      ],
+      "insufficient_evidence": null
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "title": "F=ma 2024 Q13改写：斜绳双物块的瞬时张力",
+  "subject": "高中物理",
+  "grade": "高二",
+  "knowledge_points": ["连接体", "约束关系", "牛顿第二定律", "极限检验"],
+  "error_types": ["生产灰度"],
+  "difficulty": "较难",
+  "difficulty_assessment": {"score": 72},
+  "student_error": "W4-4 新生产灰度样本，无学生原答。",
+  "contest_source": {
+    "organization": "American Association of Physics Teachers",
+    "exam": "2024 F=ma Exam",
+    "question": 13,
+    "problem_url": "https://www.aapt.org/physicsteam/upload/2024_F-ma_Exam.pdf",
+    "solution_url": "https://www.aapt.org/physicsteam/upload/F-ma-2024-Solutions_v2.pdf",
+    "adaptation": "Chinese gray-cohort adaptation with three explicit targets"
+  },
+  "answer_review": {"status": "not-ready"}
+}

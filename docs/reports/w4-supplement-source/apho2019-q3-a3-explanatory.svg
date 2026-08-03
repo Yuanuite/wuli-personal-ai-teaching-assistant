@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="360" viewBox="0 0 720 360">
+  <rect width="720" height="360" fill="#f8fafc"/>
+  <line x1="70" y1="286" x2="650" y2="286" stroke="#334155" stroke-width="5"/>
+  <text x="590" y="318" font-family="sans-serif" font-size="22" fill="#334155">静止地面</text>
+  <circle cx="355" cy="135" r="32" fill="#2563eb"/>
+  <text x="345" y="144" font-family="sans-serif" font-size="24" fill="white">C</text>
+  <circle cx="435" cy="286" r="10" fill="#dc2626"/>
+  <text x="449" y="281" font-family="sans-serif" font-size="24" fill="#dc2626">A</text>
+  <line x1="377" y1="158" x2="427" y2="274" stroke="#0f172a" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="420" y="207" font-family="sans-serif" font-size="24" fill="#0f172a">a</text>
+  <line x1="110" y1="270" x2="110" y2="90" stroke="#16a34a" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="125" y="108" font-family="sans-serif" font-size="24" fill="#16a34a">ẑ</text>
+  <line x1="435" y1="260" x2="535" y2="260" stroke="#9333ea" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="475" y="245" font-family="sans-serif" font-size="22" fill="#9333ea">v_A</text>
+  <text x="210" y="338" font-family="sans-serif" font-size="22" fill="#475569">接触约束 ⇒ v_A · ẑ = 0</text>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+</svg>

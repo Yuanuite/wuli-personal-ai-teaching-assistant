@@ -1,0 +1,311 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "构建第三批未揭盲 Evidence Agent fresh holdout，并在教师审核门禁前停止。",
+    "process_shape": "workflow",
+    "epistemic_families": ["engineering", "empirical", "procedural"],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "student-error-library/evals/evidence-gold-calibration.json",
+      "student-error-library/evals/evidence-gold-holdout.json",
+      "student-error-library/evals/evidence-gold-holdout-v2.json",
+      "teacher-console/tests/fixtures/evidence-agent/repair-replay-v1.json",
+      "teacher-console/tests/fixtures/evidence-agent/warning-scope-repair-replay-v1.json"
+    ],
+    "assumptions": [
+      "新证据物理内容与 Gold 标签必须由教师审核后才是真值",
+      "教师审核前不调用 live provider"
+    ],
+    "constraints": [
+      "新 overlay Evidence ID 与全部已揭盲数据集零重叠",
+      "overlay 只能显式注入评测且不进入正式 Knowledge Store",
+      "至少 20 条 holdout 且 required/forbidden 目标全部进入 Top-5",
+      "不改变生产检索、W3 路由或 RRF"
+    ],
+    "excluded_scope": [
+      "本阶段不执行 live paired",
+      "本阶段不开放生产门禁",
+      "本阶段不做 W3 下游 paired"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "第三批证据与全部已揭盲 Evidence ID 零重叠",
+      "success_criteria": ["历史 Evidence ID 交集为空", "新批次 ID 和数据集指纹冻结"],
+      "priority": "critical",
+      "required_evidence": ["independence-audit"],
+      "approval": "system"
+    },
+    {
+      "id": "T2",
+      "description": "新证据与标签覆盖至少 20 条可审核物理场景",
+      "success_criteria": ["case_count >= 20", "充分与不足样本均存在", "每条均展示证据条件和例外"],
+      "priority": "critical",
+      "required_evidence": ["teacher-review-html"],
+      "approval": "domain-expert"
+    },
+    {
+      "id": "T3",
+      "description": "评测 overlay 与生产系统保持结构隔离",
+      "success_criteria": ["默认加载路径不含新 overlay", "只有显式 benchmark 参数可注入"],
+      "priority": "critical",
+      "required_evidence": ["isolation-tests"],
+      "approval": "system"
+    },
+    {
+      "id": "T4",
+      "description": "所有评测目标在固定 Top-5 候选池中可见",
+      "success_criteria": ["target_in_top5 逐条为 true", "预检不调用 provider"],
+      "priority": "high",
+      "required_evidence": ["preflight-report"],
+      "approval": "system"
+    }
+  ],
+  "process_model": {
+    "kind": "workflow",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "已揭盲证据空间冻结",
+        "state_in": ["prior-gold-datasets", "repair-replays"],
+        "state_out": ["revealed-evidence-id-set"],
+        "invariants": ["历史评测产物不可覆盖"],
+        "entry_conditions": ["所有历史数据集可规范化"],
+        "exit_conditions": ["排除集合完成"]
+      },
+      {
+        "id": "P2",
+        "label": "第三批隔离候选",
+        "state_in": ["revealed-evidence-id-set"],
+        "state_out": ["third-overlay", "third-holdout", "preflight"],
+        "invariants": ["生产 Knowledge Store 不变"],
+        "entry_conditions": ["新 namespace 冻结"],
+        "exit_conditions": ["独立性、schema、Top-5 预检通过"]
+      },
+      {
+        "id": "P3",
+        "label": "等待教师审核",
+        "state_in": ["validated-third-holdout"],
+        "state_out": ["teacher-review-decision"],
+        "invariants": ["审核前禁止 provider"],
+        "entry_conditions": ["本地单文件 HTML 可打开"],
+        "exit_conditions": ["教师下载完整指纹绑定审核 JSON"]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "exclusion-audit-pass",
+        "carried_state": ["revealed-evidence-id-set"],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "preflight-pass",
+        "carried_state": ["dataset-fingerprint", "overlay-fingerprint"],
+        "rollback_to": "P2"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "A1",
+      "verb": "audit",
+      "description": "汇总全部已揭盲 Evidence ID",
+      "target_ids": ["T1"],
+      "process_node_ids": ["P1"],
+      "depends_on": [],
+      "input_artifacts": ["prior-evaluation-datasets"],
+      "output_artifact": "revealed-evidence-id-set",
+      "output_contract": "wuli.evidence-exclusion-set.v1",
+      "verifier_route": "deterministic-id-union",
+      "assigned_role": "evaluation-auditor",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A2",
+      "verb": "author",
+      "description": "编写新的 A 级 evaluation-only Evidence Units",
+      "target_ids": ["T1", "T2", "T3"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A1"],
+      "input_artifacts": ["revealed-evidence-id-set"],
+      "output_artifact": "third-evidence-overlay",
+      "output_contract": "wuli.evidence-overlay.v1",
+      "verifier_route": "evidence-contract-normalization",
+      "assigned_role": "physics-evidence-curator",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A3",
+      "verb": "build",
+      "description": "构建至少 20 条第三批 holdout 候选",
+      "target_ids": ["T1", "T2", "T4"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A2"],
+      "input_artifacts": ["third-evidence-overlay"],
+      "output_artifact": "third-fresh-holdout",
+      "output_contract": "wuli.evidence-gold-dataset.v1",
+      "verifier_route": "dataset-normalization",
+      "assigned_role": "evaluation-builder",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A4",
+      "verb": "test",
+      "description": "验证零重叠、显式 overlay、Top-5 和 provider 未触发",
+      "target_ids": ["T1", "T3", "T4"],
+      "process_node_ids": ["P2"],
+      "depends_on": ["A3"],
+      "input_artifacts": ["third-evidence-overlay", "third-fresh-holdout"],
+      "output_artifact": "third-holdout-preflight",
+      "output_contract": "wuli.evidence-holdout-preflight.v1",
+      "verifier_route": "deterministic-preflight-and-regression",
+      "assigned_role": "isolation-verifier",
+      "max_attempts": 2,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    },
+    {
+      "id": "A5",
+      "verb": "render",
+      "description": "生成绑定双指纹的本地教师审核 HTML",
+      "target_ids": ["T2", "T3"],
+      "process_node_ids": ["P3"],
+      "depends_on": ["A4"],
+      "input_artifacts": ["third-fresh-holdout", "third-evidence-overlay"],
+      "output_artifact": "third-holdout-review-html",
+      "output_contract": "text/html",
+      "verifier_route": "html-contract-tests",
+      "assigned_role": "review-ui-renderer",
+      "max_attempts": 1,
+      "terminal_states": ["passed", "failed", "unsupported"]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S1",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A2",
+      "artifact": "revealed-evidence-id-set",
+      "contract": "wuli.evidence-exclusion-set.v1",
+      "preconditions": ["A1 passed"],
+      "invalidation_rule": "Invalidate when any prior dataset fingerprint changes"
+    },
+    {
+      "id": "S2",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A3",
+      "artifact": "third-evidence-overlay",
+      "contract": "wuli.evidence-overlay.v1",
+      "preconditions": ["A2 passed"],
+      "invalidation_rule": "Invalidate when any Evidence Unit content hash changes"
+    },
+    {
+      "id": "S3",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A4",
+      "artifact": "third-fresh-holdout",
+      "contract": "wuli.evidence-gold-dataset.v1",
+      "preconditions": ["A3 passed"],
+      "invalidation_rule": "Invalidate when dataset fingerprint changes"
+    },
+    {
+      "id": "S4",
+      "producer_task_id": "A4",
+      "consumer_task_id": "A5",
+      "artifact": "third-holdout-preflight",
+      "contract": "wuli.evidence-holdout-preflight.v1",
+      "preconditions": ["A4 passed"],
+      "invalidation_rule": "Invalidate when dataset or overlay fingerprint changes"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": ["T1"],
+      "task_ids": ["A1", "A4"],
+      "claim": "第三批 Evidence ID 未在历史评测中揭盲",
+      "required_evidence": ["independence-audit"],
+      "method": "合并历史 required/acceptable/forbidden ID 并与新 overlay 求交集",
+      "decision_rule": "交集为空",
+      "defeaters": ["遗漏历史数据集"],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": ["T2"],
+      "task_ids": ["A2", "A3", "A5"],
+      "claim": "教师可完整审核全部新证据与 Gold 标签",
+      "required_evidence": ["teacher-review-html"],
+      "method": "检查每条 case、证据原文、适用条件、例外及审核控件",
+      "decision_rule": "全部 case 和 overlay units 嵌入离线 HTML",
+      "defeaters": ["证据缺失", "case 缺失", "页面联网"],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V3",
+      "target_ids": ["T3"],
+      "task_ids": ["A2", "A4", "A5"],
+      "claim": "新 overlay 不进入生产默认路径",
+      "required_evidence": ["isolation-tests"],
+      "method": "检查显式参数、默认调用和正式 Knowledge Store",
+      "decision_rule": "只有评测脚本显式参数加载且 provider_run=false",
+      "defeaters": ["默认自动加载", "Knowledge Store 被写入"],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V4",
+      "target_ids": ["T4"],
+      "task_ids": ["A4"],
+      "claim": "每条 Gold 目标在固定 Top-5 候选池中可见",
+      "required_evidence": ["preflight-report"],
+      "method": "对每条 need 运行确定性单路候选召回",
+      "decision_rule": "target_in_top5 逐条为 true 且 case_count >= 20",
+      "defeaters": ["目标召回缺失", "provider 被调用"],
+      "fallback": "failed",
+      "risk": "high"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {"id": "W1", "task_ids": ["A1"], "parallel": false},
+      {"id": "W2", "task_ids": ["A2"], "parallel": false},
+      {"id": "W3", "task_ids": ["A3"], "parallel": false},
+      {"id": "W4", "task_ids": ["A4"], "parallel": false},
+      {"id": "W5", "task_ids": ["A5"], "parallel": false}
+    ],
+    "max_concurrency": 1,
+    "allocation_notes": ["不委派子 Agent；物理内容保留教师终审。"]
+  },
+  "control_policy": {
+    "max_global_rounds": 2,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": ["retry-task", "revise-input", "invalidate-impact-cone", "mark-provisional", "stop"],
+    "terminal_states": ["completed", "provisional", "unsupported", "blocked"]
+  },
+  "aggregation": {
+    "required_target_ids": ["T1", "T2", "T3", "T4"],
+    "required_obligation_ids": ["V1", "V2", "V3", "V4"],
+    "acceptance_rule": "V1、V3、V4 通过且 V2 进入教师审核等待态",
+    "conflict_policy": "教师退回只回跳受影响证据和 case；不得调用 provider",
+    "unresolved_policy": "教师未批准前保持 draft candidate",
+    "final_artifact": "third-holdout-review-html",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": ["第三批证据物理内容和 Gold 标签等待教师逐条审核"]
+}

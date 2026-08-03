@@ -1,0 +1,21 @@
+{
+  "title": "第38届全国竞赛复赛第3题：超球连续三次碰撞",
+  "subject": "高中物理",
+  "grade": "高三",
+  "knowledge_points": ["动量定理", "角动量定理", "弹性碰撞", "递推状态"],
+  "error_types": ["补充评测"],
+  "difficulty": "挑战",
+  "difficulty_assessment": {"score": 90},
+  "student_error": "W4 官方竞赛补充评测样本，无学生原答。",
+  "contest_source": {
+    "organization": "中国物理学会",
+    "exam": "第38届全国中学生物理竞赛复赛",
+    "question": 3,
+    "page_url": "https://cpho.pku.edu.cn/info/1053/1309.htm",
+    "problem_url": "https://cpho.pku.edu.cn/assets/file/2021cpho/3821fsst.pdf",
+    "solution_url": "https://cpho.pku.edu.cn/assets/file/2021cpho/3821fsstjd.pdf",
+    "adaptation": "Official atomic problem transcription"
+  },
+  "answer_review": {"status": "not-ready"}
+}
+

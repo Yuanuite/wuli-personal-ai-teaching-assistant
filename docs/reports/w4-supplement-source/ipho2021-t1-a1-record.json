@@ -1,0 +1,21 @@
+{
+  "title": "IPhO 2021 T1-A1：油水两侧的板上合力",
+  "subject": "高中物理",
+  "grade": "高二",
+  "knowledge_points": ["流体静力学", "压强分布", "图像面积"],
+  "error_types": ["补充评测"],
+  "difficulty": "较难",
+  "difficulty_assessment": {"score": 68},
+  "student_error": "W4 官方竞赛补充评测样本，无学生原答。",
+  "contest_source": {
+    "organization": "International Physics Olympiad",
+    "exam": "52nd IPhO 2021",
+    "question": "Theory 1 A.1",
+    "page_url": "https://cpho.pku.edu.cn/info/1051/1307.htm",
+    "problem_url": "https://cpho.pku.edu.cn/assets/file/2021IPho/LL-Q1-CHN.pdf",
+    "solution_url": "https://cpho.pku.edu.cn/assets/file/2021IPho/LL1_JD.pdf",
+    "adaptation": "Official Chinese atomic subproblem extraction"
+  },
+  "answer_review": {"status": "not-ready"}
+}
+

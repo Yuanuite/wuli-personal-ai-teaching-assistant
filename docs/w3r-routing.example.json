@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "policy_version": "wuli-w3r-routing-v1",
+  "mode": "off",
+  "gray_entry_ids": [],
+  "evidence": {
+    "report_digest": "",
+    "paired_case_count": 0,
+    "teacher_reviewed_case_count": 0,
+    "fresh_holdout_case_count": 0,
+    "fresh_holdout_target_count": 0,
+    "final_answer_fidelity": 0.0,
+    "claim_support_coverage": 0.0,
+    "condition_retention": 0.0,
+    "target_coverage": 0.0,
+    "latex_validity": 0.0,
+    "unsupported_claim_rate": 1.0,
+    "teacher_readability_preference": 0.0,
+    "teacher_edit_rate_non_regression": false
+  }
+}

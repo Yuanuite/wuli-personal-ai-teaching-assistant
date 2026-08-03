@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "evaluated_at": "2026-08-02T12:05:00+08:00",
+  "dataset": "CPhO 2021 full year, questions 1-8",
+  "model": "deepseek-v4-flash-api",
+  "task": "physical-process-analysis-only",
+  "privacy": {
+    "official_answer_sent_to_remote_provider": false,
+    "candidate_frozen_before_local_review": true,
+    "answer_text_in_report": false
+  },
+  "contract": {
+    "final_answer_forbidden": true,
+    "algebraic_derivation_forbidden": true,
+    "numerical_calculation_forbidden": true,
+    "required_sections": [
+      "system_boundary",
+      "state_variables",
+      "process_stages",
+      "interactions_and_directions",
+      "governing_laws",
+      "constraints_and_boundaries",
+      "target_decisive_physics",
+      "target_risk_checks"
+    ]
+  },
+  "execution": {
+    "question_count": 8,
+    "structural_success_count": 8,
+    "under_90_seconds_count": 8,
+    "flash_median_seconds": 19.622,
+    "flash_max_seconds": 26.198
+  },
+  "strict_review": {
+    "authority": "local official standard answer",
+    "whole_question_verified_count": 0,
+    "whole_question_count": 8,
+    "whole_question_accuracy": 0.0,
+    "target_verified_count": 7,
+    "target_count": 27,
+    "target_accuracy": 0.2593,
+    "baseline_core_target_verified_count": 2,
+    "baseline_core_target_count": 27,
+    "questions": [
+      {
+        "question": 1,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["INSUFFICIENT", "CONTRADICTED", "INSUFFICIENT"],
+        "reason_codes": ["COORDINATE_AND_MEDIUM_ORDER_UNRESOLVED", "COLLIMATION_INTERFACE_WRONG", "APERTURE_MAPPING_INCOMPLETE"]
+      },
+      {
+        "question": 2,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "INSUFFICIENT"],
+        "reason_codes": ["CONSTANT_PRESSURE_PROCESS_MISIDENTIFIED", "STABILITY_DECISION_MISSING"]
+      },
+      {
+        "question": 3,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "CONTRADICTED", "CONTRADICTED"],
+        "reason_codes": ["CONTACT_VELOCITY_RULE_WRONG", "COLLISION_SIGN_MAP_UNRESOLVED"]
+      },
+      {
+        "question": 4,
+        "whole_question_status": "INSUFFICIENT",
+        "targets": ["INSUFFICIENT", "INSUFFICIENT", "INSUFFICIENT"],
+        "reason_codes": ["FIELD_DIRECTION_NOT_RESOLVED", "STABLE_ORIENTATION_NOT_RESOLVED", "POSITION_BRANCH_DEPENDS_ON_UNRESOLVED_DIRECTION"]
+      },
+      {
+        "question": 5,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["VERIFIED", "VERIFIED", "VERIFIED", "CONTRADICTED"],
+        "reason_codes": ["DOPPLER_DIRECTION_INCONSISTENT", "FIELD_BOUNDARY_SELF_CONTRADICTION"]
+      },
+      {
+        "question": 6,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["VERIFIED", "CONTRADICTED", "INSUFFICIENT", "CONTRADICTED", "INSUFFICIENT", "VERIFIED"],
+        "reason_codes": ["MAGNETIC_REGION_AND_SIGN_WRONG", "GENERALIZED_ANGULAR_MOMENTUM_MISSING", "EXTERNAL_TORQUE_BOUNDARY_WRONG"]
+      },
+      {
+        "question": 7,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["CONTRADICTED", "INSUFFICIENT", "INSUFFICIENT"],
+        "reason_codes": ["DRIVEN_AND_FREE_WHEEL_FRICTION_DIRECTIONS_UNRESOLVED", "BODY_AND_WHEEL_ANGULAR_MOMENTUM_INCOMPLETE"]
+      },
+      {
+        "question": 8,
+        "whole_question_status": "CONTRADICTED",
+        "targets": ["VERIFIED", "CONTRADICTED", "VERIFIED"],
+        "reason_codes": ["UNSUPPORTED_CONSTANT_POWER_STAGE_ADDED", "PROCESS_BRANCH_CONFLICTS_WITH_GIVEN_MOTOR_LAW"]
+      }
+    ]
+  },
+  "conclusion": {
+    "process_only_improves_target_accuracy": true,
+    "process_only_is_production_qualified": false,
+    "dominant_remaining_faults": [
+      "reference-frame-and-direction-resolution",
+      "state-transition-law-selection",
+      "stability-and-boundary-decision",
+      "system-boundary-for-conservation-law",
+      "unsupported-process-branch-invention"
+    ]
+  }
+}

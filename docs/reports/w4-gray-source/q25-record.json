@@ -1,0 +1,19 @@
+{
+  "title": "F=ma 2024 Q25改写：变半径退绕的悠悠球",
+  "subject": "高中物理",
+  "grade": "高二",
+  "knowledge_points": ["机械能守恒", "转动动能", "约束关系", "过程判断"],
+  "error_types": ["生产灰度"],
+  "difficulty": "挑战",
+  "difficulty_assessment": {"score": 86},
+  "student_error": "W4-4 新生产灰度样本，无学生原答。",
+  "contest_source": {
+    "organization": "American Association of Physics Teachers",
+    "exam": "2024 F=ma Exam",
+    "question": 25,
+    "problem_url": "https://www.aapt.org/physicsteam/upload/2024_F-ma_Exam.pdf",
+    "solution_url": "https://www.aapt.org/physicsteam/upload/F-ma-2024-Solutions_v2.pdf",
+    "adaptation": "Chinese gray-cohort adaptation with three explicit targets"
+  },
+  "answer_review": {"status": "not-ready"}
+}

@@ -1,0 +1,21 @@
+{
+  "title": "APhO 2019 Q3-A8：翻转陀螺五阶段能量变化",
+  "subject": "高中物理",
+  "grade": "高三",
+  "knowledge_points": ["功能关系", "摩擦耗散", "分阶段过程", "能量图像"],
+  "error_types": ["补充评测"],
+  "difficulty": "挑战",
+  "difficulty_assessment": {"score": 82},
+  "student_error": "W4 官方竞赛补充评测样本，无学生原答。",
+  "contest_source": {
+    "organization": "Asian Physics Olympiad",
+    "exam": "20th APhO 2019",
+    "question": "Theory Q3 A.8",
+    "page_url": "https://cpho.pku.edu.cn/info/1052/1265.htm",
+    "problem_url": "https://cpho.pku.edu.cn/assets/pdf/exam-theory-Q3-chinese.pdf",
+    "solution_url": "https://cpho.pku.edu.cn/assets/pdf/Q3-Solution.pdf",
+    "adaptation": "Official Chinese atomic subproblem extraction"
+  },
+  "answer_review": {"status": "not-ready"}
+}
+

@@ -1,0 +1,102 @@
+{
+  "schema": "wuli.evidence-agent-baseline.v1",
+  "captured_on": "2026-07-30",
+  "captured_from": "read-only retrieval_benchmark",
+  "ranking_policy": "baseline",
+  "evidence_selection_policy": "baseline",
+  "evaluation_split": "all",
+  "top_k": 5,
+  "eligible_cases": 42,
+  "calibration_ready": true,
+  "holdout_ready": true,
+  "evidence_gate_ready": false,
+  "policy_gate_ready": false,
+  "w2_evidence_set_ready": false,
+  "overall": {
+    "count": 42,
+    "empty_rate": 0.0,
+    "hit_rate": {
+      "@1": 0.7619,
+      "@3": 0.8333,
+      "@5": 0.9524
+    },
+    "mrr": 0.8143,
+    "recall": {
+      "@1": 0.6379,
+      "@3": 0.7351,
+      "@5": 0.878
+    }
+  },
+  "by_split": {
+    "calibration": {
+      "count": 30,
+      "empty_rate": 0.0,
+      "hit_rate": {
+        "@1": 0.8,
+        "@3": 0.8667,
+        "@5": 0.9333
+      },
+      "mrr": 0.8389,
+      "recall": {
+        "@1": 0.6264,
+        "@3": 0.7292,
+        "@5": 0.8292
+      }
+    },
+    "holdout": {
+      "count": 12,
+      "empty_rate": 0.0,
+      "hit_rate": {
+        "@1": 0.6667,
+        "@3": 0.75,
+        "@5": 1.0
+      },
+      "mrr": 0.7528,
+      "recall": {
+        "@1": 0.6667,
+        "@3": 0.75,
+        "@5": 1.0
+      }
+    }
+  },
+  "evidence_gate": {
+    "accepted_precision_at_k": 0.3019,
+    "accepted_relevant_item_count": 48,
+    "evaluated_cases": 42,
+    "policy": "deterministic-condition-audit-v1",
+    "rejected_relevant_case_ids": [
+      "retrieval-009",
+      "retrieval-024",
+      "retrieval-028"
+    ],
+    "relevant_item_count": 73,
+    "relevant_preservation_rate": 0.6575
+  },
+  "evidence_selection": {
+    "cases_with_empty_selection": [],
+    "evaluated_cases": 42,
+    "policy": "baseline",
+    "rejected_conflict_count": 0,
+    "rejected_duplicate_count": 0,
+    "rejected_low_precision_count": 0,
+    "relevant_item_count": 73,
+    "relevant_preservation_rate": 0.6986,
+    "selected_conflict_pair_count": 153,
+    "selected_duplicate_pair_count": 1,
+    "selected_relevant_item_count": 51
+  },
+  "validation": {
+    "approved_split_counts": {
+      "calibration": 30,
+      "holdout": 12
+    },
+    "errors": [],
+    "warnings": []
+  },
+  "limitations": [
+    "This is the pre-Evidence-Agent entry-level retrieval baseline.",
+    "The existing cases label relevant entries, not typed Evidence Units or RetrievalNeed facets.",
+    "The holdout can compare current entry retrieval policies but cannot authorize the future Evidence Agent contract without a fresh Evidence Unit gold set.",
+    "No model was called and no production policy was changed while capturing this snapshot."
+  ]
+}

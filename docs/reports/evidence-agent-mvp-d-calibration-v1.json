@@ -1,0 +1,103 @@
+{
+  "schema": "wuli.evidence-mvp-d-calibration-report.v1",
+  "captured_on": "2026-07-30",
+  "dataset": {
+    "dataset_id": "wuli-evidence-curated-calibration",
+    "dataset_version": "2026-07-30-v1",
+    "dataset_fingerprint": "sha256:13f95f9534387a02bd1e9e17c981a788d8c7498f01079e39297797b3d2fe429f",
+    "case_count": 8,
+    "review_status": "teacher_approved",
+    "label_origin": "teacher_reviewed",
+    "source_scope": ["curated_technique"],
+    "teacher_approved": true,
+    "independent_holdout": false
+  },
+  "privacy_scope": {
+    "model_visible_source_kinds": ["curated_technique"],
+    "student_entry_evidence_sent": false,
+    "raw_source_assets_sent": false,
+    "provider_data_locality": "provider-dependent",
+    "explicit_ack_required": true
+  },
+  "live_diagnostic_sequence": [
+    {
+      "revision": "reflection-v1",
+      "provider": "codex",
+      "cases": 2,
+      "result": "positive passed; explicit conflict was incorrectly admitted",
+      "gate_effect": "false_friend_zero_admission failed"
+    },
+    {
+      "revision": "reflection-v2-condition-checks",
+      "provider": "codex",
+      "cases": 2,
+      "result": "conflict rejected; positive output timed out before valid JSON completed",
+      "gate_effect": "provider availability and gold retention failed"
+    },
+    {
+      "revision": "reflection-v2-condition-checks",
+      "provider": "claude",
+      "cases": 2,
+      "result": "conflict rejected; ambiguous positive calibration wording was rejected",
+      "gate_effect": "gold case was revised instead of weakening the gate"
+    },
+    {
+      "revision": "reflection-v2-evidenceunit-field-clarification",
+      "provider": "claude",
+      "cases": 1,
+      "result": "positive passed but model listed all five candidates as selected",
+      "observed_evidence_precision": 0.2,
+      "gate_effect": "added per-evidence facet binding and evidence_precision_100"
+    },
+    {
+      "revision": "reflection-v2-per-evidence-binding",
+      "provider": "claude",
+      "cases": 1,
+      "result": "irrelevant evidence was not selected, but an unselected candidate conflict incorrectly blocked the need",
+      "observed_evidence_precision": 1.0,
+      "gate_effect": "hard conflicts now must bind selected evidence"
+    }
+  ],
+  "current_contract": {
+    "name": "wuli.evidence-reflection.v2",
+    "requires_per_evidence_facet_binding": true,
+    "requires_condition_verdict": true,
+    "requires_each_forbidden_conflict_check": true,
+    "hard_conflicts_must_bind_selected_evidence": true,
+    "explicit_problem_conflict_sentinel": true,
+    "evidence_precision_100_gate": true
+  },
+  "teacher_review_surface": {
+    "path": "output/evidence-calibration-review.html",
+    "network_required": false,
+    "manual_json_edit_required": false,
+    "export_contract": "wuli.evidence-gold-review.v1",
+    "approval_importer": "teacher-console/scripts/apply_evidence_gold_review.py",
+    "browser_cannot_self_approve": true
+  },
+  "approval_artifacts": {
+    "review": "student-error-library/evals/evidence-gold-calibration-review.json",
+    "teacher_approved_dataset": "student-error-library/evals/evidence-gold-calibration.json",
+    "full_live_paired_report": "docs/reports/evidence-agent-mvp-d-paired-v1.json"
+  },
+  "full_live_paired_result": {
+    "provider": "claude",
+    "case_count": 8,
+    "baseline_evidence_precision": 0.15,
+    "evidence_agent_evidence_precision": 1.0,
+    "baseline_status_accuracy": 0.75,
+    "evidence_agent_status_accuracy": 1.0,
+    "baseline_false_friend_admission_count": 2,
+    "evidence_agent_false_friend_admission_count": 0,
+    "candidate_required_recall": 1.0,
+    "gold_evidence_retention": 1.0,
+    "evidence_layer_calibration_gates_passed": true
+  },
+  "status": "teacher-approved-calibration-passed-holdout-pending",
+  "production_eligibility": false,
+  "blocking_reasons": [
+    "no independent Evidence Unit holdout exists",
+    "W3 downstream non-regression has not been measured"
+  ],
+  "interpretation": "The teacher-approved calibration proves that the frozen contract closes the observed false-sufficiency channels on these eight seen cases. It does not estimate generalization or authorize production because no independent holdout or W3 downstream non-regression result exists."
+}
