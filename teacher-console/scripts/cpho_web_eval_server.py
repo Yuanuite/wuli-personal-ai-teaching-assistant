@@ -125,7 +125,7 @@ def configure_server(library: Path, workspace: Path) -> None:
             },
         )
 
-    teacher_server.Handler.run_adaptive_analysis = run_competition_analysis
+    setattr(teacher_server.Handler, "run_adaptive_analysis", run_competition_analysis)
 
 
 def main() -> int:

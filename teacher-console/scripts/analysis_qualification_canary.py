@@ -22,6 +22,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 CONSOLE = ROOT / "teacher-console"
@@ -104,7 +105,7 @@ def _model_env(model_id: str) -> dict:
     return env
 
 
-def _build_task(problem: dict) -> dict:
+def _build_task(problem: dict) -> tuple[dict, dict]:
     # Replicate the gateway's privacy gate (server.remote_agent_allowed):
     # a remote call is only permitted when the project authorizes it.
     model_registry.LIBRARY = LIBRARY
@@ -236,7 +237,7 @@ def main() -> int:
     n = len(latencies)
     p50 = latencies[n // 2] if n else 0
     p95 = latencies[min(n - 1, int(n * 0.95))] if n else 0
-    usage = {}
+    usage: dict[str, Any] = {}
     for r in runs:
         for key, value in (r.get("usage") or {}).items():
             if isinstance(value, int) and value >= 0:

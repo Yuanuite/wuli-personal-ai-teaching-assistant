@@ -94,7 +94,7 @@ def main() -> int:
     build.set_defaults(handler=cmd_build_diagram)
 
     args = parser.parse_args()
-    return args.handler(args)
+    return int(args.handler(args))
 
 
 if __name__ == "__main__":

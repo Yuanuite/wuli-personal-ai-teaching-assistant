@@ -48,7 +48,7 @@ def main() -> int:
         return 2
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.main()
+    return int(module.main())
 
 
 if __name__ == "__main__":
