@@ -17,3 +17,4 @@ docs/diagrams/*.html
 !docs/diagrams/system.architecture.html
 graphify-out/
 test-results/
+.qoder/

@@ -1,0 +1,530 @@
+{
+  "schema": "complex-process-decomposition.v1",
+  "status": "completed",
+  "problem_profile": {
+    "summary": "Assemble verified components into a compatible system",
+    "process_shape": "stateful",
+    "epistemic_families": [
+      "engineering"
+    ],
+    "source_policy": "provided-material",
+    "authoritative_inputs": [
+      "component-specifications"
+    ],
+    "assumptions": [],
+    "constraints": [
+      "Accepted component specifications cannot be changed silently"
+    ],
+    "excluded_scope": [
+      "Manufacturing the components"
+    ]
+  },
+  "targets": [
+    {
+      "id": "T1",
+      "description": "Every module passes its local contract",
+      "success_criteria": [
+        "All module tests pass"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "module-test-reports"
+      ],
+      "approval": "system"
+    },
+    {
+      "id": "T2",
+      "description": "The assembled system passes interface and operational checks",
+      "success_criteria": [
+        "All critical interfaces are compatible",
+        "The system test passes"
+      ],
+      "priority": "critical",
+      "required_evidence": [
+        "interface-report",
+        "system-test-report"
+      ],
+      "approval": "human-owner"
+    }
+  ],
+  "process_model": {
+    "kind": "stateful",
+    "nodes": [
+      {
+        "id": "P1",
+        "label": "Components available",
+        "state_in": [
+          "component-specifications"
+        ],
+        "state_out": [
+          "component-candidates"
+        ],
+        "invariants": [
+          "Every component has a stable identifier"
+        ],
+        "entry_conditions": [
+          "Specifications are readable"
+        ],
+        "exit_conditions": [
+          "Components are enumerated"
+        ]
+      },
+      {
+        "id": "P2",
+        "label": "Modules verified",
+        "state_in": [
+          "component-candidates"
+        ],
+        "state_out": [
+          "verified-modules"
+        ],
+        "invariants": [
+          "Failed modules are not promoted"
+        ],
+        "entry_conditions": [
+          "Local contracts are known"
+        ],
+        "exit_conditions": [
+          "Module reports exist"
+        ]
+      },
+      {
+        "id": "P3",
+        "label": "System integrated",
+        "state_in": [
+          "verified-modules"
+        ],
+        "state_out": [
+          "system-candidate"
+        ],
+        "invariants": [
+          "Only verified modules are integrated"
+        ],
+        "entry_conditions": [
+          "Interface contracts are known"
+        ],
+        "exit_conditions": [
+          "A system candidate exists"
+        ]
+      },
+      {
+        "id": "P4",
+        "label": "System accepted",
+        "state_in": [
+          "system-candidate"
+        ],
+        "state_out": [
+          "accepted-system"
+        ],
+        "invariants": [
+          "Unresolved critical conflicts block acceptance"
+        ],
+        "entry_conditions": [
+          "System tests are executable"
+        ],
+        "exit_conditions": [
+          "The owner reviews the acceptance evidence"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "P1",
+        "to": "P2",
+        "trigger": "component-list-complete",
+        "carried_state": [
+          "component-candidates"
+        ],
+        "rollback_to": "P1"
+      },
+      {
+        "from": "P2",
+        "to": "P3",
+        "trigger": "module-tests-pass",
+        "carried_state": [
+          "verified-modules"
+        ],
+        "rollback_to": "P2"
+      },
+      {
+        "from": "P3",
+        "to": "P4",
+        "trigger": "integration-tests-pass",
+        "carried_state": [
+          "system-candidate"
+        ],
+        "rollback_to": "P3"
+      },
+      {
+        "from": "P3",
+        "to": "P2",
+        "trigger": "module-interface-conflict",
+        "carried_state": [
+          "conflict-report"
+        ],
+        "rollback_to": "P2"
+      }
+    ]
+  },
+  "atomic_tasks": [
+    {
+      "id": "A1",
+      "verb": "extract",
+      "description": "Extract module and interface contracts",
+      "target_ids": [
+        "T1",
+        "T2"
+      ],
+      "process_node_ids": [
+        "P1"
+      ],
+      "depends_on": [],
+      "input_artifacts": [
+        "component-specifications"
+      ],
+      "output_artifact": "contract-register",
+      "output_contract": "contract-register.v1",
+      "verifier_route": "schema-check",
+      "assigned_role": "contract-analyst",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "unsupported"
+      ]
+    },
+    {
+      "id": "A2",
+      "verb": "verify",
+      "description": "Verify module local contracts",
+      "target_ids": [
+        "T1"
+      ],
+      "process_node_ids": [
+        "P2"
+      ],
+      "depends_on": [
+        "A1"
+      ],
+      "input_artifacts": [
+        "contract-register"
+      ],
+      "output_artifact": "module-test-reports",
+      "output_contract": "module-tests.v1",
+      "verifier_route": "module-test-runner",
+      "assigned_role": "module-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "unsupported"
+      ]
+    },
+    {
+      "id": "A3",
+      "verb": "compare",
+      "description": "Compare cross-module interface contracts",
+      "target_ids": [
+        "T2"
+      ],
+      "process_node_ids": [
+        "P2",
+        "P3"
+      ],
+      "depends_on": [
+        "A1"
+      ],
+      "input_artifacts": [
+        "contract-register"
+      ],
+      "output_artifact": "interface-report",
+      "output_contract": "interface-report.v1",
+      "verifier_route": "deterministic-interface-check",
+      "assigned_role": "interface-verifier",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "unsupported"
+      ]
+    },
+    {
+      "id": "A4",
+      "verb": "test",
+      "description": "Run the integrated system test",
+      "target_ids": [
+        "T2"
+      ],
+      "process_node_ids": [
+        "P3",
+        "P4"
+      ],
+      "depends_on": [
+        "A2",
+        "A3"
+      ],
+      "input_artifacts": [
+        "module-test-reports",
+        "interface-report"
+      ],
+      "output_artifact": "system-test-report",
+      "output_contract": "system-test.v1",
+      "verifier_route": "integration-test-runner",
+      "assigned_role": "system-verifier",
+      "max_attempts": 2,
+      "terminal_states": [
+        "passed",
+        "failed",
+        "unsupported"
+      ]
+    },
+    {
+      "id": "A5",
+      "verb": "aggregate",
+      "description": "Aggregate accepted evidence for owner review",
+      "target_ids": [
+        "T1",
+        "T2"
+      ],
+      "process_node_ids": [
+        "P4"
+      ],
+      "depends_on": [
+        "A2",
+        "A3",
+        "A4"
+      ],
+      "input_artifacts": [
+        "module-test-reports",
+        "interface-report",
+        "system-test-report"
+      ],
+      "output_artifact": "acceptance-packet",
+      "output_contract": "acceptance-packet.v1",
+      "verifier_route": "coverage-and-conflict-check",
+      "assigned_role": "evidence-aggregator",
+      "max_attempts": 1,
+      "terminal_states": [
+        "passed",
+        "failed"
+      ]
+    }
+  ],
+  "state_transfers": [
+    {
+      "id": "S1",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A2",
+      "artifact": "contract-register",
+      "contract": "contract-register.v1",
+      "preconditions": [
+        "A1 passed"
+      ],
+      "invalidation_rule": "Invalidate when a component specification changes"
+    },
+    {
+      "id": "S2",
+      "producer_task_id": "A1",
+      "consumer_task_id": "A3",
+      "artifact": "contract-register",
+      "contract": "contract-register.v1",
+      "preconditions": [
+        "A1 passed"
+      ],
+      "invalidation_rule": "Invalidate when a component specification changes"
+    },
+    {
+      "id": "S3",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A4",
+      "artifact": "module-test-reports",
+      "contract": "module-tests.v1",
+      "preconditions": [
+        "A2 passed"
+      ],
+      "invalidation_rule": "Invalidate affected module reports when a module fingerprint changes"
+    },
+    {
+      "id": "S4",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A4",
+      "artifact": "interface-report",
+      "contract": "interface-report.v1",
+      "preconditions": [
+        "A3 passed"
+      ],
+      "invalidation_rule": "Invalidate when either endpoint contract changes"
+    },
+    {
+      "id": "S5",
+      "producer_task_id": "A4",
+      "consumer_task_id": "A5",
+      "artifact": "system-test-report",
+      "contract": "system-test.v1",
+      "preconditions": [
+        "A4 passed"
+      ],
+      "invalidation_rule": "Invalidate when any integrated module or interface changes"
+    },
+    {
+      "id": "S6",
+      "producer_task_id": "A2",
+      "consumer_task_id": "A5",
+      "artifact": "module-test-reports",
+      "contract": "module-tests.v1",
+      "preconditions": [
+        "A2 passed"
+      ],
+      "invalidation_rule": "Invalidate affected module evidence when a module fingerprint changes"
+    },
+    {
+      "id": "S7",
+      "producer_task_id": "A3",
+      "consumer_task_id": "A5",
+      "artifact": "interface-report",
+      "contract": "interface-report.v1",
+      "preconditions": [
+        "A3 passed"
+      ],
+      "invalidation_rule": "Invalidate when either endpoint contract changes"
+    }
+  ],
+  "verification_obligations": [
+    {
+      "id": "V1",
+      "target_ids": [
+        "T1"
+      ],
+      "task_ids": [
+        "A2"
+      ],
+      "claim": "Every promoted module passes its local contract",
+      "required_evidence": [
+        "module-test-reports"
+      ],
+      "method": "Run the declared module tests against frozen inputs",
+      "decision_rule": "Every critical test passes",
+      "defeaters": [
+        "A test does not exercise the declared interface"
+      ],
+      "fallback": "provisional",
+      "risk": "critical"
+    },
+    {
+      "id": "V2",
+      "target_ids": [
+        "T2"
+      ],
+      "task_ids": [
+        "A3"
+      ],
+      "claim": "Cross-module interfaces are compatible",
+      "required_evidence": [
+        "interface-report"
+      ],
+      "method": "Compare ports, units, ranges, lifecycle, and failure semantics",
+      "decision_rule": "No critical incompatibility remains",
+      "defeaters": [
+        "An undocumented adapter changes semantics"
+      ],
+      "fallback": "blocked",
+      "risk": "critical"
+    },
+    {
+      "id": "V3",
+      "target_ids": [
+        "T2"
+      ],
+      "task_ids": [
+        "A4"
+      ],
+      "claim": "The integrated system works under the acceptance scenario",
+      "required_evidence": [
+        "system-test-report"
+      ],
+      "method": "Run the end-to-end acceptance test",
+      "decision_rule": "All acceptance assertions pass",
+      "defeaters": [
+        "The scenario omits a required operating state"
+      ],
+      "fallback": "provisional",
+      "risk": "critical"
+    }
+  ],
+  "execution_plan": {
+    "waves": [
+      {
+        "id": "W1",
+        "task_ids": [
+          "A1"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W2",
+        "task_ids": [
+          "A2",
+          "A3"
+        ],
+        "parallel": true
+      },
+      {
+        "id": "W3",
+        "task_ids": [
+          "A4"
+        ],
+        "parallel": false
+      },
+      {
+        "id": "W4",
+        "task_ids": [
+          "A5"
+        ],
+        "parallel": false
+      }
+    ],
+    "max_concurrency": 2,
+    "allocation_notes": [
+      "Keep module and interface verification independent until integration"
+    ]
+  },
+  "control_policy": {
+    "max_global_rounds": 3,
+    "max_attempts_per_task": 2,
+    "no_progress_limit": 1,
+    "duplicate_policy": "reuse-by-fingerprint",
+    "challenge_policy": "bound-to-target-or-interface",
+    "hypothesis_policy": "isolated-until-tested",
+    "rollback_policy": "dependency-impact-cone",
+    "allowed_feedback_actions": [
+      "retry-task",
+      "revise-input",
+      "invalidate-impact-cone",
+      "mark-provisional",
+      "stop"
+    ],
+    "terminal_states": [
+      "completed",
+      "provisional",
+      "unsupported",
+      "blocked"
+    ]
+  },
+  "aggregation": {
+    "required_target_ids": [
+      "T1",
+      "T2"
+    ],
+    "required_obligation_ids": [
+      "V1",
+      "V2",
+      "V3"
+    ],
+    "acceptance_rule": "All critical obligations pass and every target has an accepted artifact",
+    "conflict_policy": "Use a decisive test; do not use majority vote",
+    "unresolved_policy": "Preserve unresolved conditions and block acceptance",
+    "final_artifact": "acceptance-packet",
+    "approval_authority": "human-owner"
+  },
+  "unresolved": []
+}
