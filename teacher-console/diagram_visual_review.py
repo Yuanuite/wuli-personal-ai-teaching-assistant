@@ -19,8 +19,9 @@ api_key 或 base64 data URL。
 
 import json
 import os
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 

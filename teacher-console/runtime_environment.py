@@ -9,9 +9,9 @@ import os
 import shutil
 import socket
 import subprocess
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urlparse
 
 import kb

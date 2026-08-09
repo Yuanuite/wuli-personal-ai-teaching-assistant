@@ -212,7 +212,7 @@ class UrlerrorTimeoutSignatureTest(unittest.TestCase):
         import socket
 
         self.assertTrue(_urlerror_timeout_signature(TimeoutError("timed out")))
-        self.assertTrue(_urlerror_timeout_signature(socket.timeout("timed out")))
+        self.assertTrue(_urlerror_timeout_signature(TimeoutError("timed out")))
 
     def test_timeout_message_is_timeout(self):
         self.assertTrue(_urlerror_timeout_signature("timed out"))

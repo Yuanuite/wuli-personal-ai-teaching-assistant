@@ -7,9 +7,10 @@ import json
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from agent_outcome import build_agent_request_outcome
 from log import logger

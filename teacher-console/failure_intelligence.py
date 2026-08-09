@@ -11,8 +11,8 @@ from __future__ import annotations
 import copy
 import json
 import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from log import logger
 

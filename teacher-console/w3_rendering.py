@@ -4,7 +4,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import teaching_method_policy
 import w3r_contract

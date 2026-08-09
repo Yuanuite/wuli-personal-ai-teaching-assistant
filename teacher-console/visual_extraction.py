@@ -3,8 +3,9 @@ import json
 import mimetypes
 import os
 import re
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 

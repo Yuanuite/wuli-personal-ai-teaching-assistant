@@ -568,6 +568,15 @@ python3 .claude/skills/build-physics-simulator/scripts/build_simulator.py \
 - HTML 能开但没有动画：查看 `runtime_check` 的控制交互和控制台错误。
 - 答案与仿真事件不同：不要手改 HTML；修正 `physics-model.json` 的对应所有者字段，重新校验和构建。
 - 修改解析后检索仍是旧内容：运行 `kb.py rebuild`。正常的 finalize、答案渲染和导出会自动重建。
+- Agent 作业提示“知识库索引过期”（`knowledge-store-stale`，evidence pack 返回
+  `unavailable`）：Knowledge Store 的 dirty marker 会在**任意**候选事件追加时置位
+  （含 `analysis.generate`/`answer.revise` 作业完成、教师 `save-answer` 等中途操作），
+  但自动重建只发生在完成类动作（approve/finalize/review/rename/feedback）。一条
+  停留在 `needs-review` 的题目足以让**全库** RAG 证据注入降级，直到该题走完复核或
+  手动重建。处置：`python3 .claude/skills/manage-student-error-library/scripts/
+  knowledge_store.py --library student-error-library rebuild`；处理完一批题目后例行
+  执行一次。如需"作业完成即自动重建"，属于设计变更，需先在
+  `docs/knowledge-store.md` 评审。
 
 ### 可视化请求返回 409 blocked
 

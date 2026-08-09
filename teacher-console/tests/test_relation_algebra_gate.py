@@ -7,6 +7,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest import mock
 
 import core_analysis
@@ -214,7 +215,7 @@ class ServerRetryChannelTest(unittest.TestCase):
         (library / "indexes").mkdir()
         self.checkpoint_path = library / ".cache" / "core-checkpoints" / "test-entry.json"
         self.checkpoint_path.parent.mkdir(parents=True)
-        self.task = {"kind": "analysis.generate", "prompt": "solve it"}
+        self.task: dict[str, Any] = {"kind": "analysis.generate", "prompt": "solve it"}
 
     def tearDown(self) -> None:
         self._tmp.cleanup()

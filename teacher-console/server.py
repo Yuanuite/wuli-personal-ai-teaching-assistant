@@ -16,11 +16,12 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import Callable
 from datetime import datetime
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable, Optional, cast
+from typing import Any, cast
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 CONSOLE_DIR = Path(__file__).resolve().parent
@@ -1399,7 +1400,7 @@ def replay_w3_stage_checkpoint(
             **normalized,
             "_runtime_identity": checkpoint.get("runtime_identity", {}),
         }
-    return cast(Optional[dict], normalized)
+    return cast(dict | None, normalized)
 
 
 def summarize_w3_stage_timing(

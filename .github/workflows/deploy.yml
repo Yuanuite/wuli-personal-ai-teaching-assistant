@@ -28,9 +28,9 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
       - name: Run ruff lint
-        run: ruff check teacher-console/
+        run: ruff check teacher-console/ deploy/mcp-server/
       - name: Run mypy type check
-        run: mypy teacher-console/
+        run: mypy teacher-console/ deploy/mcp-server/mcp_server.py
       - name: Run tests with coverage
         run: |
           coverage run --source=teacher-console -m pytest teacher-console/tests/ -q
