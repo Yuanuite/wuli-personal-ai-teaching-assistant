@@ -30,6 +30,13 @@ WARNING_SCOPE_REPLAY_FIXTURE = CONSOLE / "tests" / "fixtures" / "evidence-agent"
 WARNING_SCOPE_REPLAY_REPORT = ROOT / "docs" / "reports" / "evidence-agent-mvp-g2-warning-scope-repair-replay-v1.json"
 
 
+def _evals_artifact(path: Path, label: str) -> str:
+    """本地 eval 基准集位于被 gitignore 的 student-error-library/evals；CI 干净检出时跳过。"""
+    if not path.exists():
+        raise unittest.SkipTest(f"缺少本地 eval 基准集 {path.relative_to(ROOT)}（{label}）；本地生成后运行")
+    return path.read_text(encoding="utf-8")
+
+
 class EvidenceBenchmarkTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -145,7 +152,9 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             evidence_evaluation.normalize_gold_review(missing_note, self.dataset)
 
     def test_saved_teacher_approval_and_live_paired_report_keep_holdout_gate_closed(self):
-        approved = evidence_evaluation.normalize_gold_dataset(json.loads(APPROVED_DATASET.read_text(encoding="utf-8")))
+        approved = evidence_evaluation.normalize_gold_dataset(
+            json.loads(_evals_artifact(APPROVED_DATASET, "evidence-gold-calibration.json"))
+        )
         report = json.loads(FULL_PAIRED_REPORT.read_text(encoding="utf-8"))
         paired = report["paired"]
 
@@ -295,7 +304,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             ROOT / "student-error-library/evals/evidence-gold-holdout.json",
             REPAIR_REPLAY_FIXTURE,
         ):
-            prior = evidence_evaluation.normalize_gold_dataset(json.loads(path.read_text(encoding="utf-8")))
+            prior = evidence_evaluation.normalize_gold_dataset(json.loads(_evals_artifact(path, path.name)))
             for item in prior["cases"]:
                 for field in (
                     "required_evidence_ids",
@@ -403,10 +412,16 @@ class EvidenceBenchmarkTest(unittest.TestCase):
         assert spec.loader is not None
         spec.loader.exec_module(module)
         source = json.loads(
-            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json").read_text(encoding="utf-8")
+            _evals_artifact(
+                ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json",
+                "evidence-gold-holdout-v2.json",
+            )
         )
         overlay = json.loads(
-            (ROOT / "student-error-library/evals/evidence-gold-holdout-v2-overlay.json").read_text(encoding="utf-8")
+            _evals_artifact(
+                ROOT / "student-error-library/evals/evidence-gold-holdout-v2-overlay.json",
+                "evidence-gold-holdout-v2-overlay.json",
+            )
         )
         replay = module.build(source, overlay)
         gold = replay["cases"][0]["gold_case"]
@@ -462,7 +477,7 @@ class EvidenceBenchmarkTest(unittest.TestCase):
             ROOT / "student-error-library/evals/evidence-gold-holdout-v2.json",
             WARNING_SCOPE_REPLAY_FIXTURE,
         ):
-            prior = evidence_evaluation.normalize_gold_dataset(json.loads(path.read_text(encoding="utf-8")))
+            prior = evidence_evaluation.normalize_gold_dataset(json.loads(_evals_artifact(path, path.name)))
             for item in prior["cases"]:
                 for field in (
                     "required_evidence_ids",

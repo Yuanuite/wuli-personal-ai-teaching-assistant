@@ -23,10 +23,17 @@ FRESH_V3_OVERLAY = (
 )
 
 
+def _read_output_artifact(path: Path, label: str) -> str:
+    """输出 HTML 由本地渲染脚本生成（output/ 被 gitignore）；CI 干净检出时跳过。"""
+    if not path.exists():
+        raise unittest.SkipTest(f"缺少本地生成产物 {path.relative_to(ROOT)}（{label}）；本地渲染后运行")
+    return path.read_text(encoding="utf-8")
+
+
 class EvidenceReviewHtmlTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.html = HTML.read_text(encoding="utf-8")
+        cls.html = _read_output_artifact(HTML, "evidence-calibration-review.html")
         cls.dataset = json.loads(FIXTURE.read_text(encoding="utf-8"))
 
     def test_page_embeds_exact_dataset_fingerprint_and_every_case(self):
@@ -60,7 +67,7 @@ class EvidenceReviewHtmlTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_revised_page_carries_only_unchanged_approvals(self):
-        html = CURRENT_HOLDOUT_HTML.read_text(encoding="utf-8")
+        html = _read_output_artifact(CURRENT_HOLDOUT_HTML, "evidence-holdout-review-v3.html")
         dataset = json.loads(CURRENT_HOLDOUT_FIXTURE.read_text(encoding="utf-8"))
         self.assertIn(dataset["dataset_fingerprint"], html)
         self.assertIn("已结转 19 条", html)
@@ -82,7 +89,7 @@ class EvidenceReviewHtmlTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_fresh_holdout_page_is_local_and_embeds_all_twenty_cases(self):
-        html = HOLDOUT_HTML.read_text(encoding="utf-8")
+        html = _read_output_artifact(HOLDOUT_HTML, "evidence-holdout-review.html")
         dataset = json.loads(HOLDOUT_FIXTURE.read_text(encoding="utf-8"))
         self.assertEqual(len(dataset["cases"]), 20)
         self.assertIn(dataset["dataset_fingerprint"], html)
@@ -105,7 +112,7 @@ class EvidenceReviewHtmlTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_second_fresh_holdout_page_embeds_overlay_and_all_cases(self):
-        html = FRESH_V2_HTML.read_text(encoding="utf-8")
+        html = _read_output_artifact(FRESH_V2_HTML, "evidence-holdout-review-v5.html")
         dataset = json.loads(FRESH_V2_FIXTURE.read_text(encoding="utf-8"))
         overlay = json.loads(FRESH_V2_OVERLAY.read_text(encoding="utf-8"))
         self.assertEqual(len(dataset["cases"]), 21)
@@ -140,7 +147,7 @@ class EvidenceReviewHtmlTest(unittest.TestCase):
         self.assertEqual(completed.returncode, 0, completed.stderr)
 
     def test_third_fresh_holdout_page_shows_diagnostics_and_stays_local(self):
-        html = FRESH_V3_HTML.read_text(encoding="utf-8")
+        html = _read_output_artifact(FRESH_V3_HTML, "evidence-holdout-review-v6.html")
         dataset = json.loads(FRESH_V3_FIXTURE.read_text(encoding="utf-8"))
         overlay = json.loads(FRESH_V3_OVERLAY.read_text(encoding="utf-8"))
         self.assertEqual(len(dataset["cases"]), 21)
