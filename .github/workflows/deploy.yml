@@ -17,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pillow reportlab jsonschema coverage ruff mypy
+          pip install pytest pillow reportlab jsonschema coverage ruff mypy "mcp[cli]>=1.0" uvicorn
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -33,7 +33,7 @@ jobs:
         run: mypy teacher-console/ deploy/mcp-server/mcp_server.py
       - name: Run tests with coverage
         run: |
-          coverage run --source=teacher-console -m pytest teacher-console/tests/ -q
+          coverage run --source=teacher-console -m pytest teacher-console/tests/ deploy/mcp-server/tests/ -q
           coverage report
       - name: Run isolated teacher-console E2E
         run: npm run test:e2e
