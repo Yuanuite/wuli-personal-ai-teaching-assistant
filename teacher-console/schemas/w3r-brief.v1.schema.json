@@ -68,7 +68,8 @@
           "statement": {"type": "string", "minLength": 1, "maxLength": 2000},
           "formula_latex": {"type": "string", "maxLength": 2000},
           "conditions": {"type": "array", "items": {"type": "string"}},
-          "teaching_role": {"enum": ["setup", "derivation", "substitution", "conclusion", "check"]}
+          "teaching_role": {"enum": ["setup", "derivation", "substitution", "conclusion", "check"]},
+          "detailed_derivation": {"type": "string", "maxLength": 5000}
         }
       }
     },

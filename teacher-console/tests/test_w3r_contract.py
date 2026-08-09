@@ -18,6 +18,34 @@ def fixture():
 
 
 class W3RContractTest(unittest.TestCase):
+    def test_brief_with_detailed_derivation_normalizes(self):
+        source = fixture()
+        built = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])
+        self.assertEqual(built["status"], "completed")
+        brief = built["brief"]
+        self.assertIn("proof_skeleton", brief)
+        # 验证至少一个 proof_skeleton 步骤有 detailed_derivation
+        steps_with_derivation = [s for s in brief["proof_skeleton"] if s.get("detailed_derivation")]
+        self.assertTrue(steps_with_derivation)
+        # 验证 normalize 也能通过
+        normalized = w3r_contract.normalize_w3r_brief(brief)
+        self.assertIn("proof_skeleton", normalized)
+        self.assertTrue(any(s.get("detailed_derivation") for s in normalized["proof_skeleton"]))
+
+    def test_brief_without_detailed_derivation_backward_compatible(self):
+        import copy
+        source = fixture()
+        built = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])
+        brief = copy.deepcopy(built["brief"])
+        # 移除所有 detailed_derivation 字段
+        for step in brief["proof_skeleton"]:
+            step.pop("detailed_derivation", None)
+        # normalize 应仍能通过（向后兼容）
+        normalized = w3r_contract.normalize_w3r_brief(brief)
+        self.assertIn("proof_skeleton", normalized)
+        for step in normalized["proof_skeleton"]:
+            self.assertEqual(step.get("detailed_derivation", ""), "")
+
     def test_verified_proof_package_projects_stable_strict_brief(self):
         source = fixture()
         first = w3r_contract.build_w3r_brief(source["problem"], source["blueprint"], source["proof_package"])
@@ -33,6 +61,8 @@ class W3RContractTest(unittest.TestCase):
             [item["response_mode"] for item in first["brief"]["question_targets"]],
             ["single", "enumerate_all"],
         )
+        # 验证 detailed_derivation 不影响指纹稳定性
+        self.assertTrue(any(s.get("detailed_derivation") for s in first["brief"]["proof_skeleton"]))
 
     def test_unverified_package_never_reaches_renderer(self):
         source = fixture()

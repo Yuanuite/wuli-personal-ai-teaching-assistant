@@ -106,6 +106,12 @@ def classify_agent_failure(result: dict) -> str:
             return "output_truncated"
         if adapter_failure == "provider_timeout":
             return "provider_timeout"
+        # The envelope JSON on stderr always carries a "timeout_layer" key, so
+        # the textual timeout check below would misclassify any non-timeout
+        # adapter failure (e.g. an upstream HTTP 503 "service too busy"). A
+        # structured adapter failure type is authoritative over text.
+        if adapter_failure in _ADAPTER_STRUCTURED_FAILURES:
+            return adapter_failure
         if str(container.get("finish_reason", "")).lower() == "length":
             return "output_truncated"
         content_chars = container.get("content_chars")
@@ -174,6 +180,15 @@ def classify_agent_failure(result: dict) -> str:
 
 
 _FAILURE_ENVELOPE_MARKER = "WULI_AGENT_FAILURE_ENVELOPE:"
+
+# Adapter-emitted failure types (other than truncation/timeout, handled above)
+# that are authoritative over text heuristics in classify_agent_failure.
+_ADAPTER_STRUCTURED_FAILURES = {
+    "provider_execution_failed",
+    "provider_rate_limited",
+    "provider_budget_exceeded",
+    "provider_unavailable",
+}
 
 
 def _parse_failure_envelope(stderr: str) -> dict | None:

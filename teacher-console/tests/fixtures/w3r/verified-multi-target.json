@@ -46,7 +46,8 @@
         "depends_on": [],
         "conditions": ["只受洛伦兹力"],
         "status": "verified",
-        "formula_latex": "qvB=\\frac{mv^2}{R}"
+        "formula_latex": "qvB=\\frac{mv^2}{R}",
+        "detailed_derivation": "由洛伦兹力提供向心力：\n\n$$qvB = \\frac{mv^2}{R}$$\n\n因此回旋半径 $$R = \\frac{mv}{qB}$$，回旋周期 $$T = \\frac{2\\pi m}{qB}$$"
       },
       {
         "id": "c2",

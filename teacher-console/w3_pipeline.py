@@ -939,6 +939,8 @@ def claim_evidence_teacher_snapshot(report: dict[str, Any]) -> dict[str, Any]:
             "conditions": [str(item)[:300] for item in raw.get("conditions", []) if str(item)],
             "obligation_ids": obligation_ids,
             "status": status,
+            "formula_latex": str(raw.get("formula_latex", "")).strip(),
+            "detailed_derivation": str(raw.get("detailed_derivation", "")).strip(),
         })
         if status != "verified":
             assessment = assessments.get(claim_id, {})

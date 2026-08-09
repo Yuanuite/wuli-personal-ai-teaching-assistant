@@ -9,6 +9,7 @@ import os
 import re
 import socket
 import sys
+import threading
 import time
 import unicodedata
 import urllib.error
@@ -584,7 +585,7 @@ def call_chat_completion(
     model: str,
     instruction: str,
     api_key: str,
-    timeout: int,
+    timeout: float,
     options: dict,
 ) -> tuple[dict, dict]:
     body = json.dumps(
@@ -640,6 +641,68 @@ def call_chat_completion(
     return parse_content(content), payload
 
 
+def install_budget_watchdog(
+    *,
+    horizon_seconds: float,
+    cleanup_grace_seconds: float,
+    started_at_epoch: float,
+    stage_progress: list,
+    completed: threading.Event,
+) -> None:
+    """Last-resort wall-clock guard for the whole adapter run.
+
+    The HTTP soft deadline bounds each socket recv, but a trickle stream or a
+    hang outside the recv phase can keep one request alive past the attempt
+    hard deadline; the Gateway would then kill the child with zero output. A
+    daemon watchdog fires at horizon minus cleanup grace and emits the
+    structured envelope before that kill, so a hung run is always attributed
+    with telemetry instead of vanishing.
+    """
+    budget = float(horizon_seconds) - float(cleanup_grace_seconds)
+    if budget <= 0:
+        return
+
+    def _watch() -> None:
+        remaining = budget - (time.monotonic() - started_at_epoch)
+        if remaining > 0:
+            time.sleep(remaining)
+        if completed.is_set():
+            return
+        _emit_failure_envelope(
+            _AdapterFailure(
+                "provider_timeout",
+                message="total wall-clock budget exhausted; watchdog terminated the run before the hard deadline",
+                finish_reason="timeout",
+                timeout_layer="task_budget",
+                stage_progress=list(stage_progress),
+            )
+        )
+        sys.stderr.flush()
+        os._exit(1)
+
+    threading.Thread(target=_watch, daemon=True).start()
+
+
+def budgeted_call_timeout(
+    configured: float,
+    *,
+    elapsed_seconds: float,
+    horizon_seconds: float,
+    cleanup_grace_seconds: float,
+) -> float:
+    """Cap a follow-up HTTP timeout so the child can exit before the hard kill.
+
+    Compact contracts issue sequential calls; each call's fixed HTTP timeout
+    must shrink to the remaining attempt budget (minus cleanup grace),
+    otherwise a slow first call plus any second call can run past the attempt
+    hard deadline and get killed without a structured envelope.
+    """
+    if horizon_seconds <= 0:
+        return float(configured)
+    remaining = horizon_seconds - float(elapsed_seconds) - float(cleanup_grace_seconds)
+    return min(float(configured), remaining)
+
+
 def add_usage(total: dict, payload: dict) -> dict:
     current = normalized_usage(payload)
     for key, value in current.items():
@@ -693,8 +756,20 @@ def main() -> int:
         result_preflight = {}
     deadline_budget = task.get("deadline_budget") if isinstance(task.get("deadline_budget"), dict) else {}
     task_deadline = float(deadline_budget.get("task_deadline") or 0)
+    attempt_deadline = float(deadline_budget.get("attempt_deadline") or 0)
+    cleanup_grace = float(deadline_budget.get("cleanup_grace") or 2.0)
+    budget_horizons = [value for value in (attempt_deadline, task_deadline) if value > 0]
+    budget_horizon = min(budget_horizons) if budget_horizons else 0.0
     started_at_epoch = time.monotonic()
     stage_progress: list[dict] = []
+    completed_event = threading.Event()
+    install_budget_watchdog(
+        horizon_seconds=budget_horizon,
+        cleanup_grace_seconds=cleanup_grace,
+        started_at_epoch=started_at_epoch,
+        stage_progress=stage_progress,
+        completed=completed_event,
+    )
 
     def record_stage(phase: str, started_at: float, payload: dict, request_count: int = 1) -> None:
         choice = (payload.get("choices") or [{}])[0] if isinstance(payload, dict) else {}
@@ -755,6 +830,23 @@ def main() -> int:
                     f"{context}\n\n--- VERIFIED CORE CANDIDATE (DO NOT ALTER) ---\n"
                     f"{json.dumps(core, ensure_ascii=False)}\n"
                 )
+                # The second call must fit inside the remaining attempt budget;
+                # otherwise the Gateway hard kill lands between the two fixed
+                # HTTP timeouts with no structured envelope.
+                interface_timeout = budgeted_call_timeout(
+                    timeout,
+                    elapsed_seconds=time.monotonic() - started_at_epoch,
+                    horizon_seconds=budget_horizon,
+                    cleanup_grace_seconds=cleanup_grace,
+                )
+                if interface_timeout <= 0:
+                    raise _AdapterFailure(
+                        "provider_timeout",
+                        message="attempt deadline budget exhausted before the compact-interface call",
+                        finish_reason="timeout",
+                        timeout_layer="task_budget",
+                        usage=usage,
+                    )
                 interface_started = time.monotonic()
                 try:
                     interfaces, interface_payload = call_chat_completion(
@@ -762,7 +854,7 @@ def main() -> int:
                         model=model,
                         instruction=build_structured_instruction(task, interface_contract, interface_context),
                         api_key=api_key,
-                        timeout=timeout,
+                        timeout=interface_timeout,
                         options=options,
                     )
                 except _AdapterFailure as exc:
@@ -790,6 +882,7 @@ def main() -> int:
             result["stage_progress"] = stage_progress
         if routing_notice:
             result["routing_notice"] = routing_notice
+        completed_event.set()
         print(json.dumps(result, ensure_ascii=False))
         return 0
     except _AdapterFailure as exc:

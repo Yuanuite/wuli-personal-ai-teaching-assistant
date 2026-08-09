@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -274,7 +275,8 @@ def output_contract(brief: dict[str, Any], *, rich: bool = False) -> dict[str, A
             "Claim Ledger、Solver B 或仲裁。targets 必须且只能覆盖 "
             f"{target_ids}，target_brief_digest 必须原样返回 {brief['digest']}。"
             "final_answer 写可直接判分的最终结论且不超过八百字；key_relations 每问最多四条，只保留决定结论所需的等式、"
-            "几何关系、事件链、适用条件和必要复核，不能用‘显然’省略。"
+            "几何关系、事件链、适用条件和必要复核，不能用‘显然’省略，每条必须由题设或紧邻上一条 relation 直接推出"
+            "并写明所依据的定律/守恒律；禁止不经过中间 relation 直接给出与已有方程代数上不一致的新公式。"
             f"方法范围为 {profile}；竞赛官方范围允许微积分时不得强行改写成高中课堂方法。"
             "不要输出方法比较、元数据、教学章节或额外字段。无法确定时返回 unsupported，"
             "target_brief_digest 和 targets 设为 null，不猜答案。"
@@ -294,7 +296,9 @@ def rich_output_contract(brief: dict[str, Any]) -> dict[str, Any]:
             "只输出符合 JSON Schema 的对象。一次完成物理/数学求解核心，不做阶段接口、"
             "Claim Ledger、Solver B 或仲裁。claims 必须且只能覆盖 "
             f"{target_ids}，target_brief_digest 必须原样返回 {brief['digest']}；claims 是判分锚点，"
-            "final_answer 写可直接判分的最终结论且不超过八百字，key_relations 每问最多四条。"
+            "final_answer 写可直接判分的最终结论且不超过八百字，key_relations 每问最多四条，每条必须由题设或紧邻"
+            "上一条 relation 直接推出并写明所依据的定律/守恒律（如：由角动量守恒 m r1^2 ω + m r2^2 Ω = 0）；"
+            "禁止不经过中间 relation 直接给出与已有方程代数上不一致的新公式。"
             f"student_solution 是针对本题的学生版 Markdown，必须包含二级标题章节：{sections}，"
             "一眼识别必须给出最短主线，详细解答必须使用不超过五个「### 第 N 步」编号标题，"
             "内容必须针对本题具体条件与结论，禁止占位文案；claims 的每条 final_answer 与 "
@@ -382,6 +386,16 @@ def _rich_markdown(value: Any, field: str, *, minimum: int) -> str:
     return text
 
 
+def _fold_whitespace(text: str) -> str:
+    r"""Whitespace-free key for the verbatim-claims fidelity comparison.
+
+    Providers routinely drift spacing around inline LaTeX ("代入Q4i的$\omega$"
+    vs "代入 Q4i 的 $\omega$"); folding whitespace on both sides keeps the
+    content-presence invariant verbatim while ignoring typographic spacing.
+    """
+    return re.sub(r"\s+", "", text)
+
+
 def _normalize_rich_method_check(raw: Any) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("method_check must be an object")
@@ -441,7 +455,10 @@ def normalize_payload(
         }
 
     student_solution = _rich_markdown(payload.get("student_solution"), "student_solution", minimum=100)
-    missing = [section for section in CORE_RICH_SECTIONS if section not in student_solution]
+    # Section names are checked with folded whitespace: providers routinely
+    # drop the space in "30 秒自测" (writing "30秒自测") and similar headings.
+    folded_student = _fold_whitespace(student_solution)
+    missing = [section for section in CORE_RICH_SECTIONS if _fold_whitespace(section) not in folded_student]
     if missing:
         raise ValueError("student_solution missing section: " + ", ".join(missing))
     section_errors = teaching_method_policy.method_errors(student_solution, brief["method_profile"])
@@ -519,6 +536,138 @@ def load_checkpoint(entry: Path, *, fingerprint: str) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
+def clear_checkpoint(entry: Path) -> None:
+    """Drop a persisted solve so the next attempt regenerates from a provider.
+
+    Fidelity-gate rejections are intrinsic payload defects (the provider broke
+    the verbatim-claims contract), so repairing a deterministic gate never
+    flips the verdict; keeping such a checkpoint deadlocks every replay.
+    """
+    core_checkpoint_path(entry).unlink(missing_ok=True)
+
+
+def render_fidelity_rejected(gateway: dict[str, Any]) -> bool:
+    """True when a failed run was rejected by the render fidelity gate.
+
+    The gate enforces the provider's verbatim-claims contract, so its verdict
+    is intrinsic to the payload and cannot change after a deterministic-gate
+    repair — unlike physics-gate rejections, which B1 checkpoints are meant to
+    outlive.
+    """
+    attempts = gateway.get("attempts")
+    if not isinstance(attempts, list):
+        return False
+    return any(
+        str(attempt.get("error", "")).startswith("render fidelity gate rejected")
+        for attempt in attempts
+        if isinstance(attempt, dict)
+    )
+
+
+RENDER_RETRY_ENV = "WULI_RENDER_FIDELITY_RETRY"
+RENDER_REJECT_PREFIX = "render fidelity gate rejected"
+MAX_RENDER_FEEDBACK_CHARS = 3000
+MAX_RENDER_MISSING_ITEM_CHARS = 300
+
+
+def render_retry_enabled() -> bool:
+    """Corrective single-retry switch for render-fidelity rejections.
+
+    Isolated behind its own flag (independent of the algebra retry) so the
+    channel degrades to a no-op when unset (zero-cost rollback).
+    """
+    return os.environ.get(RENDER_RETRY_ENV, "").strip().lower() in ("1", "on", "true", "yes")
+
+
+def render_fidelity_feedback(reject_reason: str) -> str:
+    """Corrective prompt text for one bounded retry; empty when nothing to say.
+
+    The rejected payload already passed every physics gate, so the feedback
+    only demands the verbatim-claims contract: copy the structured fields into
+    the student Markdown without rewording, shortening or omission.
+    """
+    if not render_retry_enabled():
+        return ""
+    text = str(reject_reason or "")
+    if not text.startswith(RENDER_REJECT_PREFIX):
+        return ""
+    missing: list[str] = []
+    if "missing content: " in text:
+        missing = [
+            item.strip()[:MAX_RENDER_MISSING_ITEM_CHARS]
+            for item in text.split("missing content: ", 1)[1].split("; ")
+            if item.strip()
+        ]
+    lines = [
+        "\n\n【渲染保真修正（一次性重试）】上一轮输出被渲染保真门拒绝："
+        "结构化字段的内容没有完整出现在 student_solution 的 Markdown 中。"
+    ]
+    lines.extend(f"- 缺失内容：{item}" for item in missing)
+    lines.append(
+        "修正要求：每个目标的 final_answer 与每一条 key_relations 必须逐字包含在 "
+        "student_solution 的 Markdown 对应位置；允许调整换行与空格，"
+        "但不得改写、缩写、省略或重新措辞任何内容，也不得改动结构化字段的物理结论。"
+    )
+    return "\n".join(lines)[:MAX_RENDER_FEEDBACK_CHARS]
+
+
+RENDER_AGENT_ENV = "WULI_RENDER_AGENT"
+
+
+def render_agent_enabled() -> bool:
+    """Dedicated render-agent switch: an isolated second call turns approved
+    claims into the five-section Markdown instead of asking the solver to do
+    both jobs in one context. Unset keeps the legacy behaviour exactly."""
+    return os.environ.get(RENDER_AGENT_ENV, "").strip().lower() in ("1", "on", "true", "yes")
+
+
+RENDER_OUTPUT_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        # The gateway only materializes payloads with status == "completed"
+        # (same convention as the solve contracts), so the render agent must
+        # echo it back even though rendering never reports "unsupported".
+        "status": {"type": "string", "enum": ["completed"]},
+        "student_solution": {"type": "string", "maxLength": 20000},
+    },
+    "required": ["status", "student_solution"],
+}
+
+
+def render_agent_contract(claims: list[dict[str, Any]], method_profile: str) -> dict[str, Any]:
+    """Prompt + output contract for the render-only agent.
+
+    The claims already passed every physics gate, so the agent never re-solves:
+    it only arranges the given content into the five-section template and must
+    copy every final_answer / key_relation verbatim.
+    """
+    target_ids = ", ".join(str(claim.get("id", "")) for claim in claims)
+    sections = "、".join(CORE_RICH_SECTIONS)
+    claim_blocks: list[str] = []
+    for claim in claims:
+        relations = "\n".join(f"  - {item}" for item in claim.get("key_relations", []))
+        claim_blocks.append(
+            f"【{claim.get('id', '')}】\n最终结论（final_answer）：{claim.get('final_answer', '')}\n"
+            f"决定性关系（key_relations）：\n{relations}"
+        )
+    instructions = (
+        "你是排版渲染器，不是解题器：物理推导与结论已在下方 claims 中通过全部校验，"
+        "禁止重新求解、修改、增删或重新措辞任何物理内容。\n"
+        f"任务：把 claims 组织成学生版 Markdown，必须包含二级标题章节：{sections}；"
+        "「一眼识别」章节必须逐字包含“最短主线”四字并给出最短主线，详细解答使用不超过五个「### 第 N 步」编号标题，"
+        f"覆盖目标 {target_ids}。\n"
+        "硬性要求：每条 final_answer 与每条 key_relations 必须逐字出现在正文中"
+        "（可调整换行与空格，不得改写、缩写、省略）；不得出现占位文案；"
+        f"方法范围为 {method_profile}。输出对象必须包含 status=\"completed\"。\n\n" + "\n\n".join(claim_blocks)
+    )
+    return {
+        "name": "wuli.core-render.v1",
+        "schema": RENDER_OUTPUT_SCHEMA,
+        "instructions": instructions,
+    }
+
+
 def _student_markdown(core: dict[str, Any]) -> str:
     targets = core["targets"]
     quick = "\n".join(f"- **{target['id']}**：{target['final_answer']}" for target in targets)
@@ -594,11 +743,14 @@ def materialize(staging: Path, payload: Any, brief: dict[str, Any]) -> dict[str,
         student = _student_markdown(core)
     # Render fidelity is a real invariant check: every accepted final answer and
     # decisive relation must appear verbatim in the rendered student markdown.
+    # Whitespace is folded on both sides so spacing drift around inline LaTeX
+    # cannot mask genuinely present content.
+    folded_student = _fold_whitespace(student)
     render_violations = [
         f"{claim['id']}: {expected}"
         for claim in claims
         for expected in [claim["final_answer"], *claim["key_relations"]]
-        if expected not in student
+        if _fold_whitespace(expected) not in folded_student
     ]
     if render_violations:
         raise ValueError("render fidelity gate rejected: missing content: " + "; ".join(render_violations[:3]))

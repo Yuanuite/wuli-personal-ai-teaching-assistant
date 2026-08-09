@@ -25,6 +25,7 @@ from providers.openai_compatible_agent_adapter import (  # noqa: E402
     _AdapterFailure,
     _emit_failure_envelope,
     _urlerror_timeout_signature,
+    budgeted_call_timeout,
     call_chat_completion,
 )
 
@@ -60,6 +61,26 @@ class _HangHandler(BaseHTTPRequestHandler):
         time.sleep(30)
         self.send_response(200)
         self.end_headers()
+
+    def log_message(self, *args):  # noqa: A003
+        pass
+
+
+class _TrickleHandler(BaseHTTPRequestHandler):
+    """Sends one byte per second forever: every socket recv finishes inside
+    the HTTP soft deadline, so only the total wall-clock watchdog can stop it."""
+
+    def do_POST(self):  # noqa: N802
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        for _ in range(30):
+            try:
+                self.wfile.write(b".")
+                self.wfile.flush()
+            except OSError:
+                return
+            time.sleep(1)
 
     def log_message(self, *args):  # noqa: A003
         pass
@@ -151,6 +172,38 @@ class StageProgressTest(unittest.TestCase):
         for forbidden in ("sk-", "reasoning_content", "Authorization"):
             self.assertNotIn(forbidden, envelope_line.lower())
 
+    def test_watchdog_emits_envelope_when_trickle_defeats_soft_deadline(self):
+        # Regression (2026-08-04 incident, repeated hard kills with zero
+        # output): a trickle stream keeps each recv inside the HTTP timeout,
+        # so the soft deadline never fires. The total wall-clock watchdog
+        # must emit the structured envelope before the Gateway hard kill.
+        server, base = _serve(_TrickleHandler)
+        self.addCleanup(server.shutdown)
+        self.addCleanup(server.server_close)
+        start = time.monotonic()
+        result = _run_adapter(
+            base,
+            task_extra={
+                "deadline_budget": {
+                    "task_deadline": 6,
+                    "attempt_deadline": 6,
+                    "http_soft_deadline": 4,
+                    "cleanup_grace": 2,
+                }
+            },
+            # Deliberately larger than the budget: simulates a mis-bound or
+            # per-recv-only timeout that the watchdog must backstop.
+            env_extra={"TEACHER_CONSOLE_AGENT_API_TIMEOUT_SECONDS": "60"},
+        )
+        elapsed = time.monotonic() - start
+        self.assertNotEqual(result.returncode, 0)
+        self.assertLess(elapsed, 15, "watchdog must fire before the hard deadline, not hang")
+        envelope_line = next(line for line in result.stderr.splitlines() if "WULI_AGENT_FAILURE_ENVELOPE:" in line)
+        envelope = json.loads(envelope_line.split("WULI_AGENT_FAILURE_ENVELOPE:", 1)[1])
+        self.assertEqual(envelope["failure_type"], "provider_timeout")
+        self.assertEqual(envelope["finish_reason"], "timeout")
+        self.assertEqual(envelope["timeout_layer"], "task_budget")
+        self.assertIn("watchdog", envelope["message"])
 
 class UrlerrorTimeoutSignatureTest(unittest.TestCase):
     """A4.2 (w3-w3r work-tree): URLError-wrapped timeouts classify uniformly."""
@@ -180,6 +233,49 @@ class UrlerrorTimeoutSignatureTest(unittest.TestCase):
         envelope = json.loads(envelope_line.split("WULI_AGENT_FAILURE_ENVELOPE:", 1)[1])
         self.assertEqual(envelope["failure_type"], "provider_execution_failed")
         self.assertEqual(envelope["timeout_layer"], "")
+
+
+class BudgetedCallTimeoutTest(unittest.TestCase):
+    """Regression (2026-08-04 incident): the compact contract issues two
+    sequential HTTP calls. Each fixed per-call timeout must shrink to the
+    remaining attempt budget, otherwise a slow first call plus any second
+    call can run past the attempt hard deadline and get killed without a
+    structured envelope."""
+
+    def test_second_call_shrinks_to_remaining_attempt_budget(self):
+        # Production shape: attempt 90s, soft 76.5s, grace 2s; the core call
+        # consumed most of the budget, so the interface call must be capped.
+        capped = budgeted_call_timeout(
+            76.5, elapsed_seconds=75.0, horizon_seconds=90.0, cleanup_grace_seconds=2.0
+        )
+        self.assertAlmostEqual(capped, 13.0, places=6)
+        self.assertLess(capped, 76.5)
+
+    def test_fresh_budget_keeps_configured_timeout(self):
+        capped = budgeted_call_timeout(
+            76.5, elapsed_seconds=0.5, horizon_seconds=90.0, cleanup_grace_seconds=2.0
+        )
+        self.assertAlmostEqual(capped, 76.5, places=6)
+
+    def test_no_horizon_keeps_configured_timeout(self):
+        capped = budgeted_call_timeout(
+            300, elapsed_seconds=50.0, horizon_seconds=0.0, cleanup_grace_seconds=2.0
+        )
+        self.assertAlmostEqual(capped, 300.0, places=6)
+
+    def test_exhausted_budget_signals_non_positive_timeout(self):
+        capped = budgeted_call_timeout(
+            76.5, elapsed_seconds=89.0, horizon_seconds=90.0, cleanup_grace_seconds=2.0
+        )
+        self.assertLessEqual(capped, 0)
+
+    def test_two_calls_can_never_exceed_hard_deadline(self):
+        # Worst case: the first call consumes its full soft deadline.
+        horizon, soft, grace = 90.0, 76.5, 2.0
+        second = budgeted_call_timeout(
+            soft, elapsed_seconds=soft, horizon_seconds=horizon, cleanup_grace_seconds=grace
+        )
+        self.assertLessEqual(soft + second + grace, horizon)
 
 
 class AdapterUnitTest(unittest.TestCase):

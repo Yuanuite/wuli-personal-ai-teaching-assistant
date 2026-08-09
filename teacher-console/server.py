@@ -50,6 +50,7 @@ import physics_diagram  # noqa: E402
 import problem_decomposition  # noqa: E402
 import process_uploads  # noqa: E402
 import public_site  # noqa: E402
+import relation_algebra_gate  # noqa: E402
 import solution_reasoning  # noqa: E402
 import solution_verification  # noqa: E402
 import svg_collaboration  # noqa: E402
@@ -338,17 +339,39 @@ def run_agent_gateway(
     *,
     materializer=None,
     bounded_failure_repair: bool = True,
+    retry_on_algebra_reject: bool = False,
+    checkpoint_entry: Path | None = None,
+    method_profile: str = "high_school_standard",
 ) -> dict:
-    """Run one scoped task through the Gateway and the bounded repair policy."""
+    """Run one scoped task through the Gateway and the bounded repair policy.
+
+    ``retry_on_algebra_reject`` enables the isolated layer-three experiment
+    (``WULI_RELATION_ALGEBRA_RETRY``): when the run fails specifically on the
+    algebra-consistency gate, the stale checkpoint is dropped and ONE fresh
+    provider call is made with corrective feedback appended to the prompt.
+    With the flag off this path never triggers (zero-cost rollback).
+    """
+    captured: dict[str, object] = {}
     if materializer is None:
         run_once: Callable[..., dict] = AGENT_GATEWAY.run
+        capture_materializer = None
     else:
+
+        def capture_materializer(staging, payload):
+            captured["payload"] = payload
+            try:
+                return materializer(staging, payload)
+            except ValueError as exc:
+                # The gateway envelope keeps only ``materializer_error: true``;
+                # preserve the gate text here so the retry channel can match it.
+                captured["reject_reason"] = str(exc)
+                raise
 
         def run_once(current_task, current_validator):
             return AGENT_GATEWAY.run(
                 current_task,
                 current_validator,
-                materializer=materializer,
+                materializer=capture_materializer,
             )
 
     result = (
@@ -361,10 +384,190 @@ def run_agent_gateway(
         if bounded_failure_repair
         else run_once(task, validator)
     )
+    if retry_on_algebra_reject and captured.get("reject_reason"):
+        # The gateway envelope keeps only ``materializer_error: true``; surface
+        # the deterministic gate text so job records and logs are diagnosable.
+        result["materializer_reject_reason"] = str(captured["reject_reason"])[:500]
+        logger.info(
+            "stage=core-analysis entry_id=%s materializer_reject_reason=%s",
+            entry.name,
+            result["materializer_reject_reason"],
+        )
+    reject_reason = str(captured.get("reject_reason", ""))
+    retry_kind = ""
+    if retry_on_algebra_reject and relation_algebra_gate.should_retry(result, reject_reason):
+        retry_kind = "algebra"
+    elif (
+        retry_on_algebra_reject
+        and result.get("status") != "completed"
+        and core_analysis.render_retry_enabled()
+        and reject_reason.startswith(core_analysis.RENDER_REJECT_PREFIX)
+    ):
+        retry_kind = "render-fidelity"
+    if retry_kind:
+        import copy
+
+        # The rejected payload may be checkpointed; replaying it would reproduce
+        # the same rejection, so drop it before the fresh corrective call.
+        if checkpoint_entry is not None:
+            core_analysis.clear_checkpoint(checkpoint_entry)
+        # The caller's materializer already checkpoints the payload, so the
+        # retry reuses the same capture-wrapped materializer.
+        retry_materializer = capture_materializer
+        last_payload = captured.get("payload")
+        corrective_claims = (
+            list(last_payload.get("claims") or []) if isinstance(last_payload, dict) else []
+        )
+        if retry_kind == "algebra":
+            feedback = relation_algebra_gate.corrective_feedback(corrective_claims)
+        else:
+            feedback = core_analysis.render_fidelity_feedback(reject_reason)
+        first_reject_reason = reject_reason
+        retried = None
+        if retry_kind == "render-fidelity" and core_analysis.render_agent_enabled():
+            # The claims already passed every physics gate; repair the broken
+            # markdown with a scoped render-only agent in a fresh context.
+            retried = _run_render_agent_repair(
+                entry,
+                task,
+                validator,
+                method_profile,
+                captured,
+                capture_materializer,
+            )
+        if retried is None:
+            # Algebra repair, render-agent unavailable, or no renderer model
+            # resolvable: one rewrite retry with corrective feedback appended.
+            retry_task = copy.deepcopy(task)
+            if feedback:
+                retry_task["prompt"] = (str(retry_task.get("prompt", "")) + feedback).strip()
+            feedback_chars = len(feedback)
+            logger.info(
+                "stage=core-analysis entry_id=%s algebra_gate_retry kind=%s feedback_chars=%d",
+                entry.name,
+                retry_kind,
+                feedback_chars,
+            )
+            retried = AGENT_GATEWAY.run(retry_task, validator, materializer=retry_materializer)
+            retried["algebra_gate_retry"] = {
+                "status": "recovered" if retried.get("status") == "completed" else "exhausted",
+                "kind": retry_kind,
+                "feedback_chars": feedback_chars,
+            }
+        if (
+            retry_kind == "algebra"
+            and retried.get("status") != "completed"
+            and core_analysis.render_retry_enabled()
+            and core_analysis.render_agent_enabled()
+            and str(captured.get("reject_reason", "")).startswith(core_analysis.RENDER_REJECT_PREFIX)
+        ):
+            # The algebra repair passed the physics gates but its markdown broke
+            # the verbatim-claims contract; chain ONE scoped render repair.
+            render_result = _run_render_agent_repair(
+                entry,
+                task,
+                validator,
+                method_profile,
+                captured,
+                capture_materializer,
+            )
+            if render_result is not None:
+                retried = render_result
+        if retried.get("status") != "completed":
+            if checkpoint_entry is not None:
+                # A failed repair may have checkpointed its own poisoned payload
+                # (structural validation passes before the validator/gate
+                # rejects); leaving it behind deadlocks every later replay.
+                core_analysis.clear_checkpoint(checkpoint_entry)
+            retry_reason = str(captured.get("reject_reason", ""))
+            if retry_reason and retry_reason != first_reject_reason:
+                # The retry reached a gate with a new verdict: surface it.
+                logger.info(
+                    "stage=core-analysis entry_id=%s algebra_gate_retry_reject_reason=%s",
+                    entry.name,
+                    retry_reason[:500],
+                )
+            else:
+                logger.info(
+                    "stage=core-analysis entry_id=%s algebra_gate_retry_reject_reason=failed-before-materializer",
+                    entry.name,
+                )
+        result = retried
     from agent_outcome import build_agent_request_outcome
 
     result["outcome"] = build_agent_request_outcome(result)
     return result
+
+
+def _run_render_agent_repair(
+    entry: Path,
+    task: dict,
+    validator,
+    method_profile: str,
+    captured: dict,
+    retry_materializer,
+) -> dict | None:
+    """One scoped render-only repair for a render-fidelity rejection.
+
+    The claims already passed every physics gate, so a fresh render-only
+    context rebuilds the five-section Markdown instead of asking the solver
+    to redo both jobs in one shared context. Returns None when no renderer
+    model can be resolved (caller keeps the existing failure).
+    """
+    import copy
+
+    last_payload = captured.get("payload")
+    corrective_claims = (
+        list(last_payload.get("claims") or []) if isinstance(last_payload, dict) else []
+    )
+    if not corrective_claims or retry_materializer is None:
+        return None
+    render_model_config = None
+    render_tier = "economy"
+    try:
+        render_model_config = model_config_for_task(
+            "analysis.generate",
+            resolve_model_id_for_task("analysis.generate", "economy", "auto"),
+            "economy",
+        )
+    except Exception:  # registry miss degrades below
+        render_model_config = None
+    if render_model_config is None:
+        # No qualified economy renderer: reuse the solver model in a fresh
+        # render-only context — the isolation that matters here is the
+        # context, not the model identity.
+        fallback_config = task.get("model_config")
+        if isinstance(fallback_config, dict) and fallback_config:
+            render_model_config = fallback_config
+            render_tier = str(task.get("routing_tier", "auto"))
+    if render_model_config is None:
+        return None
+    render_contract = core_analysis.render_agent_contract(corrective_claims, method_profile)
+    retry_task = copy.deepcopy(task)
+    retry_task["prompt"] = "把已通过全部校验的 claims 排版为学生版 Markdown；只做渲染，禁止重新求解。"
+    retry_task["output_contract"] = render_contract
+    retry_task["routing_tier"] = render_tier
+    retry_task["model_config"] = render_model_config
+
+    def render_materializer(staging, render_output):
+        merged = copy.deepcopy(last_payload) if isinstance(last_payload, dict) else {}
+        merged["student_solution"] = str(
+            render_output.get("student_solution", "") if isinstance(render_output, dict) else ""
+        )
+        return retry_materializer(staging, merged)
+
+    logger.info(
+        "stage=core-analysis entry_id=%s algebra_gate_retry kind=render-agent feedback_chars=%d",
+        entry.name,
+        len(render_contract["instructions"]),
+    )
+    retried = AGENT_GATEWAY.run(retry_task, validator, materializer=render_materializer)
+    retried["algebra_gate_retry"] = {
+        "status": "recovered" if retried.get("status") == "completed" else "exhausted",
+        "kind": "render-agent",
+        "feedback_chars": len(render_contract["instructions"]),
+    }
+    return retried
 
 
 def archive_agent_result(
@@ -3365,7 +3568,15 @@ class Handler(SimpleHTTPRequestHandler):
                     materializer=materialize_with_checkpoint,
                     # A failed solve is not repeated under a different W2/W3 prompt.
                     bounded_failure_repair=False,
+                    # Layer-three experiment: one corrective retry on the algebra gate.
+                    retry_on_algebra_reject=True,
+                    checkpoint_entry=entry,
+                    method_profile=method_profile,
                 )
+            if gateway.get("status") != "completed" and core_analysis.render_fidelity_rejected(gateway):
+                # Fidelity failure is an intrinsic payload defect: no gate repair
+                # can flip it, so the checkpoint must not survive into replays.
+                core_analysis.clear_checkpoint(entry)
             completed = gateway.get("status") == "completed"
             if completed:
                 marked = mark_answer_needs_review(
@@ -3524,6 +3735,9 @@ class Handler(SimpleHTTPRequestHandler):
             if current_state["state"] == "needs-source-review":
                 return {"status": "blocked", "errors": ["请先对照原图批准正式题干"], "state": current_state}
             instruction = str(data.get("instruction", "生成分层解析和解释图；本阶段不生成交互仿真"))
+            method_profile = teaching_method_policy.normalize_profile(
+                data.get("method_profile", teaching_method_policy.DEFAULT_PROFILE)
+            )
             request = {
                 "schema_version": 1,
                 "entry_id": entry.name,
@@ -3531,6 +3745,7 @@ class Handler(SimpleHTTPRequestHandler):
                 "requested_at": datetime.now().astimezone().isoformat(timespec="seconds"),
                 "instruction": instruction,
                 "routing_tier": routing_tier,
+                "method_profile": method_profile,
                 "model_id": model_id,
                 "model_display_name": model_config.get("display_name") if model_config else "",
             }
@@ -3593,6 +3808,7 @@ class Handler(SimpleHTTPRequestHandler):
                     changed,
                     entry,
                     allow_pending_diagram=True,
+                    method_profile=method_profile,
                 )
 
             if checkpoint is not None:
@@ -4060,6 +4276,16 @@ class Handler(SimpleHTTPRequestHandler):
         with TraceContext() as ctx:
             ctx.info("stage=answer.revise entry_id=%s status=started", entry.name)
             routing_tier = normalize_routing_tier(data.get("routing_tier"))
+            # The revision must be validated under the same method profile that
+            # generated the current answer; fall back to the persisted analysis
+            # request so an olympiad-grade answer is not re-judged as high-school.
+            profile_source = str(data.get("method_profile", "")).strip()
+            if not profile_source:
+                prior_request = kb.load_json(entry / "analysis-request.json", {})
+                profile_source = str(prior_request.get("method_profile", ""))
+            method_profile = teaching_method_policy.normalize_profile(
+                profile_source or teaching_method_policy.DEFAULT_PROFILE
+            )
             raw_model_id = data.get("model_id")
             model_id = resolve_model_id_for_task("answer.revise", routing_tier, raw_model_id)
             model_config = (
@@ -4114,7 +4340,9 @@ class Handler(SimpleHTTPRequestHandler):
                 gateway = run_agent_gateway(
                     entry,
                     answer_revision_task(entry, note, request_path, routing_tier, model_config),
-                    lambda staging, changed: validate_answer_candidate(staging, changed, entry),
+                    lambda staging, changed: validate_answer_candidate(
+                        staging, changed, entry, method_profile=method_profile
+                    ),
                 )
                 if gateway["status"] == "unavailable":
                     request.update({

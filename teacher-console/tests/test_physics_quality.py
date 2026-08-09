@@ -66,7 +66,10 @@ FIXTURE_A_TARGETS = [
         "id": "Q1",
         "final_answer": "\\omega \\geq \\sqrt{ q Q (1/r1 - 1/r2) / (\\pi \\varepsilon_0 \\mu) }",
         "key_relations": [
-            "电场力做功：W_E = Q\\int_{r1}^{r2} E dr = Q q/(2\\pi \\varepsilon_0) \\ln(r2/r1)。",
+            # No \int here: the teaching-method gate rejects calculus in
+            # key_relations before the physics gate runs; the log-form vs
+            # reciprocal-difference mismatch below is the defect under test.
+            "电场力做功：W_E = Q q/(2\\pi \\varepsilon_0) \\ln(r2/r1)。",
             "能量守恒：1/2 \\mu v^2 = W_E。",
             "由角动量守恒代入能量方程可得条件 \\omega \\geq \\sqrt{ q Q (1/r1 - 1/r2) / (\\pi \\varepsilon_0 \\mu) }。",
         ],
@@ -134,6 +137,26 @@ GOOD_G3_TARGETS = [
     }
 ]
 
+# Regression (2026-08-04 incident): a 验证 relation that substitutes a negative
+# intermediate value and concludes $L=0$ is a consistent verification, not an
+# internal contradiction; only the concluding value of the relation matters.
+PROBLEM_G4 = (
+    "两同轴圆筒初始静止，半径 $r1$、$r2$，单位长度转动惯量 $m r^2$。"
+    "外力矩驱动外圆筒至角速度 $\\Omega$。求：（1）系统总机械角动量 $L$。"
+)
+GOOD_G4_TARGETS = [
+    {
+        "id": "Q1",
+        "final_answer": "沿轴向单位长度的内、外圆筒的总的机械角动量$L = 0$。",
+        "key_relations": [
+            "系统初始静止，总角动量为0。",
+            "系统所受合外力矩为0，故总角动量守恒。",
+            "因此末态总角动量$L = L_1 + L_2 = I_1\\omega + I_2\\Omega = 0$。",
+            "代入$\\omega = -\\frac{r2^2}{r1^2}\\Omega$，验证$L=0$。",
+        ],
+    }
+]
+
 # Cross-target references (work-tree A1): roman sub-question ids like ``Q4i``
 # are legal answer references, not undefined physics symbols.
 PROBLEM_CROSS = (
@@ -178,6 +201,27 @@ class PhysicsQualityReportTest(unittest.TestCase):
         self.assertEqual(report["status"], "fail")
         codes = [item["code"] for item in report["reason_codes"]]
         self.assertIn("internal-recheck-conflict", codes)
+
+    def test_rejects_chained_negative_recheck_conclusion(self):
+        targets = [
+            {
+                "id": "Q1",
+                "final_answer": "L = m r1^2 \\omega + m r2^2 \\Omega",
+                "key_relations": [
+                    "复核：L = I \\omega + I \\Omega = -m r1^2 \\omega",
+                ],
+            }
+        ]
+        report = self.report(PROBLEM_C, targets)
+        self.assertEqual(report["status"], "fail")
+        codes = [item["code"] for item in report["reason_codes"]]
+        self.assertIn("internal-recheck-conflict", codes)
+
+    def test_accepts_negative_substitution_in_recheck(self):
+        report = self.report(PROBLEM_G4, GOOD_G4_TARGETS)
+        self.assertEqual(report["status"], "pass", report["reason_codes"])
+        codes = [item["code"] for item in report["reason_codes"]]
+        self.assertNotIn("internal-recheck-conflict", codes)
 
     def test_rejects_symbol_undefined(self):
         report = self.report(PROBLEM_D, FIXTURE_D_TARGETS)

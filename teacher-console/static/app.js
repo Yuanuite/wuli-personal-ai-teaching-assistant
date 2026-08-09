@@ -38,10 +38,16 @@ function currentJob() {
 const $ = (id) => document.getElementById(id);
 const AGENT_TIER_KEY = "wuli.teacher-console.agent-tier";
 const AGENT_MODEL_KEY = "wuli.teacher-console.agent-model";
+const METHOD_PROFILE_KEY = "wuli.teacher-console.method-profile";
 
 function selectedAgentTier() {
   const value = $("agent-tier")?.value || "auto";
   return ["auto", "economy", "expert", "custom"].includes(value) ? value : "auto";
+}
+
+function selectedMethodProfile() {
+  const value = $("method-profile")?.value || "high_school_standard";
+  return ["high_school_standard", "olympiad_official"].includes(value) ? value : "high_school_standard";
 }
 
 function selectedAgentModelId() {
@@ -61,6 +67,7 @@ function withRoutingTier(body = {}) {
     ...body,
     routing_tier: tier === "custom" ? "auto" : tier,
     model_id: tier === "custom" ? selectedAgentModelId() : "auto",
+    method_profile: selectedMethodProfile(),
   };
 }
 
@@ -2861,6 +2868,8 @@ $("save-agent-settings").addEventListener("click", () => {
 try {
   const savedTier = localStorage.getItem(AGENT_TIER_KEY);
   if (["auto", "economy", "expert", "custom"].includes(savedTier)) $("agent-tier").value = savedTier;
+  const savedProfile = localStorage.getItem(METHOD_PROFILE_KEY);
+  if (["high_school_standard", "olympiad_official"].includes(savedProfile)) $("method-profile").value = savedProfile;
 } catch (_error) {
   // Private browsing or a locked-down browser may disable local storage.
 }
@@ -2870,6 +2879,9 @@ $("agent-tier").addEventListener("change", () => {
   syncAgentModelVisibility();
   renderAgentMessage();
   refreshRoutePreview();
+});
+$("method-profile").addEventListener("change", () => {
+  try { localStorage.setItem(METHOD_PROFILE_KEY, selectedMethodProfile()); } catch (_error) { /* preference is optional */ }
 });
 $("agent-model").addEventListener("change", () => {
   try { localStorage.setItem(AGENT_MODEL_KEY, selectedAgentModelId()); } catch (_error) { /* preference is optional */ }

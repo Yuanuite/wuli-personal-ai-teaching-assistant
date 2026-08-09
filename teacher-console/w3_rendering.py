@@ -13,7 +13,6 @@ REQUIRED_STUDENT_SECTIONS = (
     "答案速览",
     "一眼识别",
     "建模与符号",
-    "详细解答",
     "分阶段详细推导",
     "结果与适用条件",
     "易错点",
@@ -76,26 +75,26 @@ def _render_documents(brief: dict[str, Any]) -> tuple[str, str, list[dict[str, A
 
     student.extend([
         "",
-        "## 详细解答",
-        "",
         "## 分阶段详细推导",
         "",
     ])
     for index, step in enumerate(brief["proof_skeleton"], 1):
         target_markers = " ".join(f"【{target_id}】" for target_id in step["target_ids"])
-        fragment_lines = [
+        student.extend([
             f"### 第 {index} 步",
             "",
             f"**对应目标**：{target_markers}",
             "",
-            step["statement"],
-        ]
-        if step["formula_latex"]:
-            fragment_lines.extend(["", f"$${step['formula_latex']}$$"])
+        ])
+        if step.get("detailed_derivation"):
+            student.append(step["detailed_derivation"])
+        else:
+            student.append(step["statement"])
+            if step["formula_latex"]:
+                student.extend(["", f"$${step['formula_latex']}$$"])
         for condition in step["conditions"]:
-            fragment_lines.append(f"- 成立条件：{condition}")
-        fragment = "\n".join(fragment_lines)
-        student.extend([fragment, ""])
+            student.append(f"- 成立条件：{condition}")
+        student.append("")
         spans.append({
             "document": "student",
             "section_id": _section_id("detail", step["step_id"], index),
@@ -272,8 +271,16 @@ def render_gate(
     allowed_display_math = {
         re.sub(r"\s+", "", item["formula_latex"]) for item in brief["proof_skeleton"] if item["formula_latex"]
     }
+    # 排除分阶段详细推导区域中的公式（仅排除该区域内部，不影响区域外）
+    text_for_formula_check = re.sub(
+        r"## 分阶段详细推导\n.*?(?=\n## |\Z)",
+        "",
+        student,
+        flags=re.DOTALL,
+    )
     rendered_display_math = {
-        re.sub(r"\s+", "", item.strip()) for item in re.findall(r"\$\$(.*?)\$\$", student, flags=re.DOTALL)
+        re.sub(r"\s+", "", item.strip())
+        for item in re.findall(r"\$\$(.*?)\$\$", text_for_formula_check, flags=re.DOTALL)
     }
     unknown_formulas = rendered_display_math - allowed_display_math
     if unknown_formulas:

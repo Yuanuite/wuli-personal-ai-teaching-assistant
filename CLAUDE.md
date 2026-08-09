@@ -69,6 +69,7 @@ Agent 任务 prompt 只负责内容质量，Gateway/Validator 负责合规——
 - `docs/agent-gateway.md`：后台 Agent 作业、provider adapter、隔离候选、降级和远程隐私门禁。
 - `docs/agent-scheduler.md`：后台 Agent 作业调度、优先级、并发配置和后续 Evolve 接口。
 - `docs/evaluator.md`、`docs/candidate-archive.md`、`docs/knowledge-store.md`：评价报告、候选事件档案与本地 RAG evidence pack。
+- `docs/mcp-interface.md`：MCP 只读检索接口设计稿；实现位于 `deploy/mcp-server/`（stdio + streamable-http，7 个只读工具，投稿前验证清单见其 README）。
 - `docs/failure-intelligence.md`：Agent 失败排障策略、自动重试边界与一次性纠正机制。
 - `docs/evolve-roadmap.md`：检索评测、RAG 效果观察与慢循环策略更新的分阶段路线和样本门槛。
 - `docs/w3-reasoning-pipeline.md`：W3 复杂题拆解、定向召回、求解、验证、仲裁、自适应生产路由与私有审计报告契约。

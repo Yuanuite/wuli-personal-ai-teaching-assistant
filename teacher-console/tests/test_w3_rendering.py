@@ -21,6 +21,41 @@ def brief():
 
 
 class W3RenderingTest(unittest.TestCase):
+    def test_detailed_derivation_is_rendered_in_dedicated_section(self):
+        value = brief()
+        result = w3_rendering.render_w3r(value)
+        student = result["student_solution_md"]
+        # 验证 detailed_derivation 内容出现在 ## 分阶段详细推导 区域
+        self.assertIn("## 分阶段详细推导", student)
+        self.assertIn("由洛伦兹力提供向心力", student)
+        self.assertIn("$$qvB = \\frac{mv^2}{R}$$", student)
+        # 验证 detailed_derivation 中的公式不在违规列表中
+        self.assertEqual(result["render_gate_report"]["status"], "pass")
+
+    def test_detailed_derivation_formulas_are_not_flagged(self):
+        value = brief()
+        # 在 proof_skeleton 步骤的 detailed_derivation 中放入不在 formula_latex 中的公式
+        for step in value["proof_skeleton"]:
+            step["detailed_derivation"] = "推导过程：\n\n$$E=mc^2$$\n\n得证。"
+        result = w3_rendering.render_w3r(value)
+        # detailed_derivation 中的公式不应触发 formula-without-brief-source
+        self.assertEqual(result["render_gate_report"]["status"], "pass")
+        self.assertIn("$$E=mc^2$$", result["student_solution_md"])
+
+    def test_brief_without_detailed_derivation_falls_back_gracefully(self):
+        import copy
+        value = brief()
+        # 移除所有 proof_skeleton 步骤中的 detailed_derivation
+        for step in value["proof_skeleton"]:
+            step.pop("detailed_derivation", None)
+        result = w3_rendering.render_w3r(value)
+        self.assertEqual(result["render_gate_report"]["status"], "pass")
+        student = result["student_solution_md"]
+        # 验证没有 detailed_derivation 时退回到 statement + formula
+        self.assertIn("## 分阶段详细推导", student)
+        self.assertIn("粒子在匀强磁场中做匀速圆周运动", student)
+        self.assertIn("$$qvB=\\frac{mv^2}{R}$$", student)
+
     def test_renderer_outputs_student_teacher_and_passing_gate(self):
         value = brief()
         result = w3_rendering.render_w3r(value)
@@ -28,6 +63,7 @@ class W3RenderingTest(unittest.TestCase):
         self.assertEqual(result["render_gate_report"]["status"], "pass")
         for section in w3_rendering.REQUIRED_STUDENT_SECTIONS:
             self.assertIn(f"## {section}", result["student_solution_md"])
+        self.assertNotIn("## 详细解答", result["student_solution_md"])
         self.assertIn("教师审计（不公开）", result["teacher_solution_md"])
         self.assertNotIn("教师审计", result["student_solution_md"])
         self.assertTrue(result["claim_span_map"])

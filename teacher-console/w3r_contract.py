@@ -220,6 +220,10 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
 
     steps = []
     for index, item in enumerate(raw["proof_skeleton"]):
+        # Ensure backward compatibility: detailed_derivation may be absent
+        if "detailed_derivation" not in item:
+            item = dict(item)
+            item["detailed_derivation"] = ""
         item = _object(
             item,
             f"brief.proof_skeleton[{index}]",
@@ -232,6 +236,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
                 "formula_latex",
                 "conditions",
                 "teaching_role",
+                "detailed_derivation",
             },
         )
         role = _text(item["teaching_role"], "step.teaching_role", 24)
@@ -246,6 +251,7 @@ def normalize_w3r_brief(payload: Any) -> dict[str, Any]:
             "formula_latex": _text(item["formula_latex"], "step.formula_latex", 2_000, empty=True),
             "conditions": _strings(item["conditions"], "step.conditions"),
             "teaching_role": role,
+            "detailed_derivation": str(item.get("detailed_derivation", "")).strip(),
         })
     step_ids = [item["step_id"] for item in steps]
     if len(step_ids) != len(set(step_ids)):
@@ -685,6 +691,14 @@ def build_w3r_brief(
                 for condition in item["conditions"]
             )
         )
+        derivation_parts = list(
+            dict.fromkeys(
+                str(source.get("detailed_derivation", "")).strip()
+                for source in sources
+                if str(source.get("detailed_derivation", "")).strip()
+            )
+        )
+        detailed_derivation = "\n\n".join(derivation_parts) if derivation_parts else ""
         proof_skeleton.append({
             "step_id": f"s{group_index}",
             "target_ids": target_ids,
@@ -692,6 +706,7 @@ def build_w3r_brief(
             "depends_on": dependencies,
             "statement": statement,
             "formula_latex": (str(sources[0].get("formula_latex", "")).strip() if len(sources) == 1 else ""),
+            "detailed_derivation": detailed_derivation,
             "conditions": conditions,
             "teaching_role": (
                 "conclusion" if any(str(source.get("kind", "")) == "final" for source in sources) else "derivation"

@@ -28,6 +28,8 @@ import json
 import re
 from typing import Any
 
+import relation_algebra_gate
+
 PHYSICS_QUALITY_CONTRACT = "wuli.physics-quality-gate.v1"
 
 # Tokens that mark a derivation relation as the energy/work statement carrying a
@@ -97,6 +99,20 @@ def _explicit_negative(expression: str) -> bool:
     if re.search(r"(?<![\w}])-\s*[A-Za-zα-ωΑ-Ωε(]", expression):
         return True
     return False
+
+
+def _recheck_conclusion_negative(relation: str) -> bool:
+    """True when the relation's concluding value is unconditionally negative.
+
+    Only the final ``= ...`` segment counts as the conclusion: a negative term
+    substituted earlier in the sentence (``代入 $\\omega = -x$，验证 $L=0$``)
+    is part of a consistent verification, not a contradiction. Relations without
+    an equation keep the whole-text scan so bare negative results still trip.
+    """
+    if "=" not in relation:
+        return _explicit_negative(relation)
+    conclusion = relation.rsplit("=", 1)[1].strip().lstrip("$").strip()
+    return bool(re.match(r"-\s*(?:\\frac|\\dfrac|\(|\\left\(|[A-Za-zα-ωΑ-Ωε(])", conclusion))
 
 
 def _reciprocal_difference_pairs(text: str) -> set[tuple[str, str]]:
@@ -288,7 +304,7 @@ def _check_internal_recheck_conflict(target: dict[str, Any]) -> list[dict[str, s
         relation = str(relation)
         if not any(marker in relation for marker in _RECHECK_MARKERS):
             continue
-        if _explicit_negative(relation) and "|" not in relation:
+        if _recheck_conclusion_negative(relation) and "|" not in relation:
             return [
                 {
                     "code": "internal-recheck-conflict",
@@ -321,20 +337,24 @@ def physics_quality_report(
         reason_codes.extend(_check_derivation_answer_mismatch(target))
         reason_codes.extend(_check_sign_flip_unjustified(target))
         reason_codes.extend(_check_internal_recheck_conflict(target))
+        reason_codes.extend(relation_algebra_gate.algebra_violations(target))
 
     status = "fail" if reason_codes else "pass"
     digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    checked_obligations = [
+        {"name": "symbol-definition", "status": "checked"},
+        {"name": "derivation-conclusion-consistency", "status": "checked"},
+        {"name": "sign-and-direction", "status": "checked"},
+        {"name": "dimension", "status": "deferred-verifier"},
+        {"name": "applicability-conditions", "status": "deferred-verifier"},
+    ]
+    if relation_algebra_gate.gate_enabled():
+        checked_obligations.append({"name": "relation-algebra-consistency", "status": "checked"})
     return {
         "schema_version": 1,
         "contract": PHYSICS_QUALITY_CONTRACT,
         "status": status,
         "candidate_digest": digest,
-        "checked_obligations": [
-            {"name": "symbol-definition", "status": "checked"},
-            {"name": "derivation-conclusion-consistency", "status": "checked"},
-            {"name": "sign-and-direction", "status": "checked"},
-            {"name": "dimension", "status": "deferred-verifier"},
-            {"name": "applicability-conditions", "status": "deferred-verifier"},
-        ],
+        "checked_obligations": checked_obligations,
         "reason_codes": reason_codes,
     }

@@ -282,6 +282,29 @@ class AgentGatewayTest(unittest.TestCase):
         }
         self.assertEqual(classify_agent_failure(timeout_attempt), "provider_timeout")
 
+    def test_classifier_keeps_execution_failed_for_upstream_503_envelope(self):
+        # Regression (2026-08-04 incident): the upstream returned HTTP 503
+        # "Service is too busy" and the adapter reported
+        # provider_execution_failed, but the envelope's "timeout_layer" key
+        # name tripped the textual timeout check and the job surfaced as
+        # provider_timeout. The structured adapter type is authoritative.
+        attempt = {
+            "status": "failed",
+            "returncode": 1,
+            "adapter_failure_type": "provider_execution_failed",
+            "stderr": (
+                'WULI_AGENT_FAILURE_ENVELOPE:{"failure_type": "provider_execution_failed", '
+                '"finish_reason": "", "usage": {}, "timeout_layer": "", "message": "HTTP 503"}\n'
+                'OpenAI-compatible Agent adapter failed: HTTP 503: {"error":{"message":'
+                '"Service is too busy.","type":"service_unavailable_error"}}\n'
+            ),
+        }
+        self.assertEqual(classify_agent_failure(attempt), "provider_execution_failed")
+        self.assertEqual(
+            classify_agent_failure({"status": "failed", "attempts": [attempt]}),
+            "provider_execution_failed",
+        )
+
     def test_materializer_rejection_not_truncated(self):
         # Work-tree A2: provider completed with normal telemetry, but the
         # local physics quality gate rejected the candidate. This must never

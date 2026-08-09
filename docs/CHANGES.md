@@ -1,5 +1,24 @@
 # 变更记录
 
+## 2026-08-10：MCP 只读检索接口落地 + 真实库索引恢复 + 质量配置对齐
+
+- MCP 接口（Phase 1 只读）落地于 `deploy/mcp-server/`：FastMCP 双传输
+  （`--stdio` 本地客户端 / `--http` Streamable HTTP 公网部署），7 个只读工具
+  （list_entries/get_entry/retrieve/build_evidence_pack/entry_events/
+  evaluator_summary/library_stats），薄包装直连 `knowledge_store`/`kb`，
+  结构化错误契约（`{"error","msg","trace_id"}`），隐私默认（HTTP 模式未指定
+  `WULI_LIBRARY` 拒绝启动；get_entry 默认不含教师版解析；retrieve 匹配片段默认
+  只含标签/题干）。设计稿 `docs/mcp-interface.md`，投稿前验证清单见其 README；
+  9 项 mcp.client 端到端测试。写操作（上传/解析/批准/发布）不在本服务内。
+- 真实库 RAG 索引恢复：`wuli-memory.db` 重建（40 条目 / 235 文档 / 33 evidence
+  units / 0 投影错误），`build_agent_evidence` 从 `knowledge-store-stale` 恢复
+  `ready`，Agent 证据注入重新可用。
+- 质量配置对齐（guardrail 修复）：`pyproject.toml` 的 ruff/mypy 目标版本
+  py39→py310（mypy 2.x 已不支持 3.9，且代码实际使用 3.10 联合类型语法）；
+  新增 `mcp_server` 模块的 mypy per-file ignore（FastMCP `@mcp.tool()` 无类型桩）。
+  `deploy/mcp-server/` 新增代码 ruff+mypy 双全绿；全库基线：1 处存量 mypy 错误
+  （W3 测试类型标注）+ 48 处存量 ruff 问题（既有 skill 脚本，未越权修改）。
+
 ## 2026-08-04：Core-first 验证责任与路由配置真源统一（core-failure-attribution-repair B2/C1）
 
 - 验证责任归属（B2）：文档明确复杂题（decompose）由答案后自动 claim 验证链承担
